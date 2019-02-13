@@ -7,7 +7,7 @@ module TypeProfiler
         do_send_core(state, flags, recv, mid, args, blk, lenv, genv, scratch, &ctn)
       else
         do_send_core(state, flags, recv, mid, args, blk, lenv, genv, scratch) do |ret_ty, lenv, genv|
-          nlenv, ret_ty = lenv.deploy_type(ret_ty)
+          nlenv, ret_ty, = lenv.deploy_type(ret_ty, 0)
           nlenv = nlenv.push(ret_ty).next
           State.new(nlenv, genv)
         end
@@ -45,9 +45,10 @@ module TypeProfiler
       locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (@iseq.locals.size - args.size)
       locals[@iseq.args[:block_start]] = blk if @iseq.args[:block_start]
 
-      nlenv = LocalEnv.new(ctx, 0, [nil] * locals.size, [], {}, {}, nil)
+      nlenv = LocalEnv.new(ctx, 0, [nil] * locals.size, [], {}, nil)
+      id = 0
       locals.each_with_index do |ty, idx|
-        nlenv, ty = nlenv.deploy_type(ty)
+        nlenv, ty, id = nlenv.deploy_type(ty, id)
         nlenv = nlenv.local_update(idx, 0, ty)
       end
 
@@ -70,7 +71,7 @@ module TypeProfiler
         recv = recv.strip_local_info(lenv)
         args = args.map {|arg| arg.strip_local_info(lenv) }
         dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, args, blk))
-        dummy_lenv = LocalEnv.new(dummy_ctx, -1, [], [], {}, {}, nil)
+        dummy_lenv = LocalEnv.new(dummy_ctx, -1, [], [], {}, nil)
         # XXX: check blk type
         next if args.size != sig.arg_tys.size
         next unless args.zip(sig.arg_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }

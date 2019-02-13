@@ -32,13 +32,12 @@ module TypeProfiler
   class LocalEnv
     include Utils::StructuralEquality
 
-    def initialize(ctx, pc, locals, stack, type_params, deploy_log, outer)
+    def initialize(ctx, pc, locals, stack, type_params, outer)
       @ctx = ctx
       @pc = pc
       @locals = locals
       @stack = stack
       @type_params = type_params
-      @deploy_log = deploy_log
       @outer = outer
     end
 
@@ -49,7 +48,7 @@ module TypeProfiler
     attr_reader :ctx, :pc, :locals, :stack, :type_params, :outer
 
     def jump(pc)
-      LocalEnv.new(@ctx, pc, @locals, @stack, @type_params, @deploy_log, @outer)
+      LocalEnv.new(@ctx, pc, @locals, @stack, @type_params, @outer)
     end
 
     def next
@@ -61,56 +60,54 @@ module TypeProfiler
         raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         raise "nil cannot be pushed to the stack" if ty.nil?
       end
-      LocalEnv.new(@ctx, @pc, @locals, @stack + tys, @type_params, @deploy_log, @outer)
+      LocalEnv.new(@ctx, @pc, @locals, @stack + tys, @type_params, @outer)
     end
 
     def pop(n)
       stack = @stack.dup
       tys = stack.pop(n)
-      nlenv = LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @deploy_log, @outer)
+      nlenv = LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @outer)
       return nlenv, tys
     end
 
     def setn(i, ty)
       stack = Utils.array_update(@stack, -i+0, ty)
-      LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @deploy_log, @outer)
+      LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @outer)
     end
 
     def local_update(idx, scope, ty)
       if scope == 0
-        LocalEnv.new(@ctx, @pc, Utils.array_update(@locals, idx, ty), @stack, @type_params, @deploy_log, @outer)
+        LocalEnv.new(@ctx, @pc, Utils.array_update(@locals, idx, ty), @stack, @type_params, @outer)
       else
-        LocalEnv.new(@ctx, @pc, @locals, @stack, @type_params, @deploy_log, @outer.local_update(idx, scope - 1, ty))
+        LocalEnv.new(@ctx, @pc, @locals, @stack, @type_params, @outer.local_update(idx, scope - 1, ty))
       end
     end
 
-    def deploy_type(ty)
+    def deploy_type(ty, id)
       case ty
       when Type::Array
-        if @deploy_log[ty]
-          local_ty = @deploy_log[ty]
-          return self, local_ty
+        if @type_params[site]
+          local_ty = Type::LocalArray.new(site, ty.type)
+          return self, local_ty, id
         else
           lenv = self
           elems = ty.elems.map do |elem|
             elem.map do |ty|
-              lenv, ty = lenv.deploy_type(ty)
+              lenv, ty, id = lenv.deploy_type(ty, id)
               ty
             end
           end
-          return lenv.deploy_array_type(ty, elems)
+          return lenv.deploy_array_type(ty, elems, id)
         end
       else
-        return self, ty
+        return self, ty, id
       end
     end
 
-    def deploy_array_type(ty, elems)
-      id = @type_params.size
-      local_ty = Type::LocalArray.new(id, ty.type)
-      type_params = @type_params.merge({ id => elems })
-      deploy_log = @deploy_log.merge({ ty => local_ty })
-      return LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, deploy_log, @outer), local_ty
+    def deploy_array_type(ty, elems, id)
+      local_ty = Type::LocalArray.new([site, id], ty.type)
+      type_params = @type_params.merge({ [site, id] => elems })
+      return LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer), local_ty, id + 1
     end
 
     def get_array_elem_types(id)
@@ -124,7 +121,7 @@ module TypeProfiler
         elems = elems.map {|elem| elem | [ty] }
       end
       type_params = @type_params.merge({ id => elems })
-      LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @deploy_log, @outer)
+      LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
     end
   end
 
@@ -563,6 +560,7 @@ module TypeProfiler
           states += new_states
         end
       end
+      #p visited.size # visited state count # TODO: debug output
     end
 
     def run(scratch)
@@ -589,7 +587,7 @@ module TypeProfiler
         lenv = lenv.push(Type::Instance.new(Type::Builtin[:nil]))
       when :putobject, :duparray
         obj, = operands
-        lenv, ty = lenv.deploy_type(Type.guess_literal_type(obj))
+        lenv, ty, = lenv.deploy_type(Type.guess_literal_type(obj), 0)
         lenv = lenv.push(ty)
       when :putstring
         str, = operands
@@ -604,7 +602,7 @@ module TypeProfiler
         len, = operands
         lenv, elems = lenv.pop(len)
         ty = Type::Array.new(elems.map {|elem| [elem] }, Type::Instance.new(Type::Builtin[:ary]))
-        lenv, ty = lenv.deploy_type(ty)
+        lenv, ty, = lenv.deploy_type(ty, 0)
         lenv = lenv.push(ty)
       when :newhash
         # XXX
@@ -663,7 +661,7 @@ module TypeProfiler
         recv = klass
         blk = lenv.ctx.sig.blk_ty
         ctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, [], blk))
-        nlenv = LocalEnv.new(ctx, 0, nil, [], {}, {}, nil)
+        nlenv = LocalEnv.new(ctx, 0, nil, [], {}, nil)
         state = State.new(nlenv, genv)
         scratch.add_callsite!(nlenv.ctx, lenv, genv) do |ret_ty, lenv, genv|
           nlenv = lenv.push(ret_ty).next
@@ -754,7 +752,7 @@ module TypeProfiler
         var, = operands
         recv = lenv.ctx.sig.recv_ty
         scratch.add_ivar_site!(recv, var, lenv, genv) do |ty, genv|
-          nlenv, ty = lenv.deploy_type(ty)
+          nlenv, ty, = lenv.deploy_type(ty, 0)
           nlenv = nlenv.push(ty).next
           State.new(nlenv, genv)
         end
@@ -880,7 +878,7 @@ module TypeProfiler
             # fetch num elements from the head
             if splat
               ty = Type::Array.new(elems[num..-1], Type::Instance.new(Type::Builtin[:ary]))
-              lenv, ty = lenv.deploy_type(ty)
+              lenv, ty, = lenv.deploy_type(ty, 0)
               lenv = lenv.push(ty)
             end
             lenvs = [lenv]
@@ -899,8 +897,9 @@ module TypeProfiler
             end
             if splat
               ty = Type::Array.new(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
+              id = 0
               lenvs = lenvs.map do |le|
-                le, local_ary_ty = le.deploy_type(ty)
+                le, local_ary_ty, id = le.deploy_type(ty, id)
                 le = le.push(local_ary_ty)
               end
             end
@@ -955,7 +954,7 @@ module TypeProfiler
       recv = blk_lenv.ctx.sig.recv_ty
       lenv_blk = blk_lenv.ctx.sig.blk_ty
       nctx = Context.new(blk_iseq, blk_lenv.ctx.cref, Signature.new(recv, nil, nil, args, lenv_blk))
-      nlenv = LocalEnv.new(nctx, 0, locals, [], {}, {}, blk_lenv)
+      nlenv = LocalEnv.new(nctx, 0, locals, [], {}, blk_lenv)
       state = State.new(nlenv, genv)
 
       # caution: given_block flag is not complete
