@@ -9,6 +9,10 @@ module TypeProfiler
     Builtin = {}
 
     def strip_local_info(lenv)
+      strip_local_info_core(lenv, {})
+    end
+
+    def strip_local_info_core(lenv, visited)
       self
     end
 
@@ -162,7 +166,7 @@ module TypeProfiler
         @type.screen_name(genv) + "<#{ @lit.inspect }>"
       end
 
-      def strip_local_info(lenv)
+      def strip_local_info_core(lenv, visited)
         @type
       end
 
@@ -187,10 +191,15 @@ module TypeProfiler
         raise "LocalArray must not be included in signature"
       end
 
-      def strip_local_info(lenv)
-        elems = lenv.get_array_elem_types(@id)
-        elems = elems.map {|elem| elem.map {|ty| ty.strip_local_info(lenv) } }
-        Array.new(elems, @type)
+      def strip_local_info_core(lenv, visited)
+        if visited[self]
+          Type::Any.new
+        else
+          visited[self] = true
+          elems = lenv.get_array_elem_types(@id)
+          elems = elems.map {|elem| elem.map {|ty| ty.strip_local_info_core(lenv, visited) } }
+          Array.new(elems, @type)
+        end
       end
 
       def get_method(mid, genv)
@@ -220,7 +229,7 @@ module TypeProfiler
         end.join(", ") + "]"
       end
 
-      def strip_local_info(lenv)
+      def strip_local_info_core(lenv, visited)
         self
       end
 
