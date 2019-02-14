@@ -197,9 +197,7 @@ module TypeProfiler
         else
           visited[self] = true
           elems = lenv.get_array_elem_types(@id)
-          elems = elems.map do |elem|
-            Union.new(*elem.types.map {|ty| ty.strip_local_info_core(lenv, visited) })
-          end
+          elems = elems.strip_local_info_core(lenv, visited)
           Array.new(elems, @base_type)
         end
       end
@@ -224,9 +222,7 @@ module TypeProfiler
       end
 
       def screen_name(genv)
-        "[" + @elems.map do |elem|
-          elem.screen_name(genv)
-        end.join(", ") + "]"
+        @elems.screen_name(genv)
       end
 
       def strip_local_info_core(lenv, visited)
@@ -236,13 +232,113 @@ module TypeProfiler
       def get_method(mid, genv)
         raise
       end
+
+      def self.tuple(elems, base_type = Type::Instance.new(Type::Builtin[:ary]))
+        new(Tuple.new(*elems), base_type)
+      end
+
+      def self.seq(elems, base_type = Type::Instance.new(Type::Builtin[:ary]))
+        new(Seq.new(elems), base_type)
+      end
+
+      class Seq
+        include Utils::StructuralEquality
+
+        def initialize(elems)
+          raise if !elems.is_a?(Union)
+          @elems = elems
+        end
+
+        attr_reader :elems
+
+        def strip_local_info_core(lenv, visited)
+          Seq.new(Union.new(*@elems.types.map {|ty| ty.strip_local_info_core(lenv, visited) }))
+        end
+
+        def screen_name(genv)
+          "Array[" + @elems.screen_name(genv) + "]"
+        end
+
+        def deploy_type(lenv, id)
+          elems = Type::Union.new(*@elems.types.map do |ty|
+            lenv, ty, id = lenv.deploy_type(ty, id)
+            ty
+          end)
+          return lenv, Seq.new(elems), id
+        end
+
+        def types
+          @elems.types
+        end
+
+        def [](idx)
+          @elems
+        end
+
+        def update(idx, ty)
+          Seq.new(Type::Union.new(*(@elems.types | [ty])))
+        end
+      end
+
+      class Tuple
+        include Utils::StructuralEquality
+
+        def initialize(*elems)
+          @elems = elems
+        end
+
+        attr_reader :elems
+
+        def strip_local_info_core(lenv, visited)
+          elems = @elems.map do |elem|
+            Union.new(*elem.types.map {|ty| ty.strip_local_info_core(lenv, visited) })
+          end
+          Tuple.new(*elems)
+        end
+
+        def screen_name(genv)
+          "[" + @elems.map do |elem|
+            elem.screen_name(genv)
+          end.join(", ") + "]"
+        end
+
+        def deploy_type(lenv, id)
+          elems = @elems.map do |elem|
+            Type::Union.new(*elem.types.map do |ty|
+              lenv, ty, id = lenv.deploy_type(ty, id)
+              ty
+            end)
+          end
+          return lenv, Tuple.new(*elems), id
+        end
+
+        def types
+          @elems.flat_map {|union| union.types }.uniq # Is this okay?
+        end
+
+        def [](idx)
+          @elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
+        end
+
+        def update(idx, ty)
+          if idx
+            if idx < @elems.size
+              Tuple.new(*Utils.array_update(@elems, idx, Type::Union.new(ty)))
+            else
+              raise NotImplementedError
+            end
+          else
+            raise NotImplementedError # to Seq?
+          end
+        end
+      end
     end
 
     class Union
       include Utils::StructuralEquality
 
       def initialize(*tys)
-        @types = tys
+        @types = tys.uniq
       end
 
       attr_reader :types
@@ -267,7 +363,7 @@ module TypeProfiler
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:bool]))
       when ::Array
         ty = Type::Instance.new(Type::Builtin[:ary])
-        Type::Array.new(obj.map {|arg| Union.new(guess_literal_type(arg)) }, ty)
+        Type::Array.tuple(obj.map {|arg| Union.new(guess_literal_type(arg)) }, ty)
       when ::String
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:str]))
       when ::Regexp

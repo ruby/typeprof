@@ -93,7 +93,7 @@ module TypeProfiler
       if idx
         elem = elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
       else
-        elem = Type::Union.new(*elems.flat_map {|union| union.types }.uniq)
+        elem = Type::Union.new(*elems.types)
       end
       return elem.types.map do |ty|
         nlenv = lenv.push(ty).next
@@ -120,7 +120,7 @@ module TypeProfiler
     def array_each(state, flags, recv, mid, args, blk, lenv, genv, scratch)
       raise NotImplementedError if args.size != 0
       elems = lenv.get_array_elem_types(recv.id)
-      elems = elems.flat_map {|union| union.types }.uniq # Is this okay?
+      elems = elems.types
       return elems.flat_map do |ty|
         blk_nil = Type::Instance.new(Type::Builtin[:nil])
         State.do_invoke_block(false, blk, [ty], blk_nil, lenv, genv, scratch) do |ret_ty, lenv, genv|
@@ -128,6 +128,22 @@ module TypeProfiler
           State.new(nlenv, genv)
         end
       end + [State.new(lenv.push(recv).next, genv)]
+    end
+
+    def array_plus(state, flags, recv, mid, args, blk, lenv, genv, scratch)
+      raise NotImplementedError if args.size != 1
+      ary = args.first
+      elems1 = lenv.get_array_elem_types(recv.id)
+      if ary.is_a?(Type::LocalArray)
+        elems2 = lenv.get_array_elem_types(ary.id)
+        elems = Type::Array::Seq.new(Type::Union.new(*(elems1.types | elems2.types)))
+        id = 0
+        lenv, ty, = lenv.deploy_array_type(recv.base_type, elems, id)
+        return [State.new(lenv.push(ty).next, genv)]
+      else
+        # warn??
+        return [State.new(lenv.push(Type::Any.new).next, genv)]
+      end
     end
 
     def require_relative(state, flags, recv, mid, args, blk, lenv, genv, scratch)
@@ -204,6 +220,7 @@ module TypeProfiler
     genv = genv.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
     genv = genv.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
     genv = genv.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
+    genv = genv.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
 
     i = -> t { Type::Instance.new(t) }
 
