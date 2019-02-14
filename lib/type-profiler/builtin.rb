@@ -117,6 +117,19 @@ module TypeProfiler
       return [State.new(lenv, genv)]
     end
 
+    def array_each(state, flags, recv, mid, args, blk, lenv, genv, scratch)
+      raise NotImplementedError if args.size != 0
+      elems = lenv.get_array_elem_types(recv.id)
+      elems = elems.flatten(1).uniq # Is this okay?
+      return elems.flat_map do |ty|
+        blk_nil = Type::Instance.new(Type::Builtin[:nil])
+        State.do_invoke_block(false, blk, [ty], blk_nil, lenv, genv, scratch) do |ret_ty, lenv, genv|
+          nlenv = lenv.push(recv).next
+          State.new(nlenv, genv)
+        end
+      end + [State.new(lenv.push(recv).next, genv)]
+    end
+
     def require_relative(state, flags, recv, mid, args, blk, lenv, genv, scratch)
       raise NotImplementedError if args.size != 1
       feature = args.first
@@ -190,6 +203,7 @@ module TypeProfiler
     genv = genv.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
     genv = genv.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
     genv = genv.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
+    genv = genv.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
 
     i = -> t { Type::Instance.new(t) }
 
