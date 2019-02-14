@@ -92,10 +92,10 @@ module TypeProfiler
         else
           lenv = self
           elems = ty.elems.map do |elem|
-            elem.map do |ty|
+            Type::Union.new(*elem.types.map do |ty|
               lenv, ty, id = lenv.deploy_type(ty, id)
               ty
-            end
+            end)
           end
           return lenv.deploy_array_type(ty.base_type, elems, id)
         end
@@ -116,10 +116,11 @@ module TypeProfiler
 
     def update_array_elem_types(id, idx, ty)
       if idx
-        elems = Utils.array_update(@type_params[id], idx, [ty])
+        elems = Utils.array_update(@type_params[id], idx, Type::Union.new(ty))
       else
-        elems = elems.map {|elem| elem | [ty] }
+        elems = elems.map {|elem| elem | Type::Union.new(ty) }
       end
+      elems = elems
       type_params = @type_params.merge({ id => elems })
       LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
     end
@@ -601,7 +602,7 @@ module TypeProfiler
       when :newarray
         len, = operands
         lenv, elems = lenv.pop(len)
-        ty = Type::Array.new(elems.map {|elem| [elem] }, Type::Instance.new(Type::Builtin[:ary]))
+        ty = Type::Array.new(elems.map {|elem| Type::Union.new(elem) }, Type::Instance.new(Type::Builtin[:ary]))
         lenv, ty, = lenv.deploy_type(ty, 0)
         lenv = lenv.push(ty)
       when :newhash
@@ -882,17 +883,17 @@ module TypeProfiler
               lenv = lenv.push(ty)
             end
             lenvs = [lenv]
-            elems[0, num].reverse_each do |tys|
+            elems[0, num].reverse_each do |union|
               lenvs = lenvs.flat_map do |le|
-                tys.map {|ty| le.push(ty) }
+                union.types.map {|ty| le.push(ty) }
               end
             end
           else
             # fetch num elements from the tail
             lenvs = [lenv]
-            elems[-num..-1].reverse_each do |tys|
+            elems[-num..-1].reverse_each do |union|
               lenvs = lenvs.flat_map do |le|
-                tys.map {|ty| le.push(ty) }
+                union.types.map {|ty| le.push(ty) }
               end
             end
             if splat

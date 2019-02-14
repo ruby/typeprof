@@ -91,11 +91,11 @@ module TypeProfiler
       # assumes that recv is LocalArray
       elems = lenv.get_array_elem_types(recv.id)
       if idx
-        elem = elems[idx] || [Type::Instance.new(Type::Builtin[:nil])]
+        elem = elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
       else
-        elem = elems.flatten(1).uniq
+        elem = Type::Union.new(*elems.flat_map {|union| union.types }.uniq)
       end
-      return elem.map do |ty|
+      return elem.types.map do |ty|
         nlenv = lenv.push(ty).next
         State.new(nlenv, genv)
       end
@@ -120,7 +120,7 @@ module TypeProfiler
     def array_each(state, flags, recv, mid, args, blk, lenv, genv, scratch)
       raise NotImplementedError if args.size != 0
       elems = lenv.get_array_elem_types(recv.id)
-      elems = elems.flatten(1).uniq # Is this okay?
+      elems = elems.flat_map {|union| union.types }.uniq # Is this okay?
       return elems.flat_map do |ty|
         blk_nil = Type::Instance.new(Type::Builtin[:nil])
         State.do_invoke_block(false, blk, [ty], blk_nil, lenv, genv, scratch) do |ret_ty, lenv, genv|

@@ -197,7 +197,9 @@ module TypeProfiler
         else
           visited[self] = true
           elems = lenv.get_array_elem_types(@id)
-          elems = elems.map {|elem| elem.map {|ty| ty.strip_local_info_core(lenv, visited) } }
+          elems = elems.map do |elem|
+            Union.new(*elem.types.map {|ty| ty.strip_local_info_core(lenv, visited) })
+          end
           Array.new(elems, @base_type)
         end
       end
@@ -223,9 +225,7 @@ module TypeProfiler
 
       def screen_name(genv)
         "[" + @elems.map do |elem|
-          elem.map do |ty|
-            ty.screen_name(genv)
-          end.join(" | ")
+          elem.screen_name(genv)
         end.join(", ") + "]"
       end
 
@@ -235,6 +235,22 @@ module TypeProfiler
 
       def get_method(mid, genv)
         raise
+      end
+    end
+
+    class Union
+      include Utils::StructuralEquality
+
+      def initialize(*tys)
+        @types = tys
+      end
+
+      attr_reader :types
+
+      def screen_name(genv)
+        @types.map do |ty|
+          ty.screen_name(genv)
+        end.join(" | ")
       end
     end
 
@@ -251,7 +267,7 @@ module TypeProfiler
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:bool]))
       when ::Array
         ty = Type::Instance.new(Type::Builtin[:ary])
-        Type::Array.new(obj.map {|arg| [guess_literal_type(arg)] }, ty)
+        Type::Array.new(obj.map {|arg| Union.new(guess_literal_type(arg)) }, ty)
       when ::String
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:str]))
       when ::Regexp
