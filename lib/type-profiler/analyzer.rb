@@ -87,7 +87,7 @@ module TypeProfiler
       case ty
       when Type::Array
         if @type_params[site]
-          local_ty = Type::LocalArray.new(site, ty.type)
+          local_ty = Type::LocalArray.new(site, ty.base_type)
           return self, local_ty, id
         else
           lenv = self
@@ -97,15 +97,15 @@ module TypeProfiler
               ty
             end
           end
-          return lenv.deploy_array_type(ty, elems, id)
+          return lenv.deploy_array_type(ty.base_type, elems, id)
         end
       else
         return self, ty, id
       end
     end
 
-    def deploy_array_type(ty, elems, id)
-      local_ty = Type::LocalArray.new([site, id], ty.type)
+    def deploy_array_type(base_ty, elems, id)
+      local_ty = Type::LocalArray.new([site, id], base_ty)
       type_params = @type_params.merge({ [site, id] => elems })
       return LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer), local_ty, id + 1
     end

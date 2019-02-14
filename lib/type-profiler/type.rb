@@ -176,12 +176,12 @@ module TypeProfiler
     end
 
     class LocalArray < Type
-      def initialize(id, type)
+      def initialize(id, base_type)
         @id = id
-        @type = type
+        @base_type = base_type
       end
 
-      attr_reader :id, :type
+      attr_reader :id, :base_type
 
       def inspect
         "Type::LocalArray[#{ @id }]"
@@ -198,27 +198,27 @@ module TypeProfiler
           visited[self] = true
           elems = lenv.get_array_elem_types(@id)
           elems = elems.map {|elem| elem.map {|ty| ty.strip_local_info_core(lenv, visited) } }
-          Array.new(elems, @type)
+          Array.new(elems, @base_type)
         end
       end
 
       def get_method(mid, genv)
-        @type.get_method(mid, genv)
+        @base_type.get_method(mid, genv)
       end
     end
 
     class Array < Type
-      def initialize(elems, type)
+      def initialize(elems, base_type)
         @elems = elems
-        @type = type
+        @base_type = base_type
         # XXX: need infinite recursion
       end
 
-      attr_reader :elems, :type
+      attr_reader :elems, :base_type
 
       def inspect
         #"Type::Array#{ @elems.inspect }"
-        @type.inspect
+        @base_type.inspect
       end
 
       def screen_name(genv)
