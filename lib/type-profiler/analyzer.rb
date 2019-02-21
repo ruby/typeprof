@@ -527,9 +527,19 @@ module TypeProfiler
       end
       if ENV["TP_STAT"]
         puts "statistics:"
-        puts "  %d states" % stat_states
+        puts "  %d states" % stat_states.size
         puts "  %d classes" % stat_classes.size
         puts "  %d methods (in total)" % stat_methods.size
+      end
+      if ENV["TP_COVERAGE"]
+        coverage = {}
+        stat_states.each_key do |s|
+          path = s.lenv.ctx.iseq.path
+          lineno = s.lenv.ctx.iseq.linenos[s.lenv.pc] - 1
+          (coverage[path] ||= [])[lineno] ||= 0
+          (coverage[path] ||= [])[lineno] += 1
+        end
+        File.binwrite("coverage.dump", Marshal.dump(coverage))
       end
       out
     end
@@ -561,7 +571,7 @@ module TypeProfiler
           states += new_states
         end
       end
-      visited.size
+      visited
     end
 
     def run(scratch)
