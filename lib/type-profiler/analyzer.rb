@@ -457,7 +457,7 @@ module TypeProfiler
       [path, lineno]
     end
 
-    def show
+    def show(stat_states)
       out = []
       @errors.each do |state, msg|
         if ENV["TYPE_PROFILER_DETAIL"]
@@ -498,6 +498,8 @@ module TypeProfiler
         out << "#{ ivar_name } :: #{ tys.keys.join(" | ") }"
       end
       h = {}
+      stat_classes = {}
+      stat_methods = {}
       @signatures.each do |ctx, sigs|
         next unless ctx.sig.mid
         next unless ctx.iseq
@@ -505,7 +507,9 @@ module TypeProfiler
           recv = ctx.cref.klass
           recv = Type::Instance.new(recv) unless ctx.sig.singleton
           recv = recv.screen_name(genv)
+          stat_classes[recv] = true
           method_name = "#{ recv }##{ ctx.sig.mid }"
+          stat_methods[method_name] = true
           args = ctx.sig.arg_tys.map {|ty| ty.screen_name(genv) }
           if @yields[ctx]
             args << show_block(ctx, genv)
@@ -520,6 +524,12 @@ module TypeProfiler
         sigs.each do |args, rets|
           out << "#{ method_name } :: #{ show_signature(args, rets.keys) }"
         end
+      end
+      if ENV["TP_STAT"]
+        puts "statistics:"
+        puts "  %d states" % stat_states
+        puts "  %d classes" % stat_classes.size
+        puts "  %d methods (in total)" % stat_methods.size
       end
       out
     end
@@ -551,7 +561,7 @@ module TypeProfiler
           states += new_states
         end
       end
-      #p visited.size # visited state count # TODO: debug output
+      visited.size
     end
 
     def run(scratch)

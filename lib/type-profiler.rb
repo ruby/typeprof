@@ -18,8 +18,7 @@ module TypeProfiler
       #p :genv
       nil
     end
-    State.run(state, scratch)
-    scratch.show
+    scratch.show(State.run(state, scratch))
   end
 
   def self.starting_state(iseq, genv)
