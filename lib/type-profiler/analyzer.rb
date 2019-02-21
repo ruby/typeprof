@@ -613,7 +613,9 @@ module TypeProfiler
       when :newhashfromarray
         raise NotImplementedError, "newhashfromarray"
       when :newrange
-        raise NotImplementedError, "newrange"
+        lenv, tys = lenv.pop(2)
+        # XXX: need generics
+        lenv = lenv.push(Type::Instance.new(Type::Builtin[:range]))
 
       when :concatstrings
         num, = operands

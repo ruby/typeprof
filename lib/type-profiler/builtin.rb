@@ -193,6 +193,7 @@ module TypeProfiler
     genv, klass_nil  = genv.new_class(klass_obj, :NilClass, klass_obj)
     genv, klass_ary  = genv.new_class(klass_obj, :Array, klass_obj)
     genv, klass_proc = genv.new_class(klass_obj, :Proc, klass_obj)
+    genv, klass_range     = genv.new_class(klass_obj, :Range, klass_obj)
     genv, klass_regexp    = genv.new_class(klass_obj, :Regexp, klass_obj)
     genv, klass_matchdata = genv.new_class(klass_obj, :MatchData, klass_obj)
 
@@ -205,6 +206,7 @@ module TypeProfiler
     Type::Builtin[:nil]  = klass_nil
     Type::Builtin[:ary]  = klass_ary
     Type::Builtin[:proc] = klass_proc
+    Type::Builtin[:range]     = klass_range
     Type::Builtin[:regexp]    = klass_regexp
     Type::Builtin[:matchdata] = klass_matchdata
 

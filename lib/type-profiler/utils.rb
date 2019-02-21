@@ -1,8 +1,6 @@
 module TypeProfiler
   module Utils
-    module_function
-
-    def array_update(ary, idx, elem)
+    def self.array_update(ary, idx, elem)
       idx %= ary.size
       ary[0...idx] + [elem] + ary[idx+1..-1]
     end
