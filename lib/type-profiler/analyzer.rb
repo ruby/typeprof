@@ -866,7 +866,20 @@ module TypeProfiler
       when :defined
         raise NotImplementedError, "defined"
       when :checkmatch
-        raise NotImplementedError, "checkmatch"
+        flag, = operands
+        array = flag & 4 != 0
+        case flag & 3
+        when 1
+          raise NotImplementedError
+        when 2 # VM_CHECKMATCH_TYPE_CASE
+          raise NotImplementedError if array
+          lenv, = lenv.pop(2)
+          lenv = lenv.push(Type::Instance.new(Type::Builtin[:bool]))
+        when 3
+          raise NotImplementedError
+        else
+          raise "unknown checkmatch flag"
+        end
       when :checkkeyword
         raise NotImplementedError, "checkkeyword"
       when :adjuststack
