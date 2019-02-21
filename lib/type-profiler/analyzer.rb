@@ -639,7 +639,9 @@ module TypeProfiler
       when :toregexp
         raise NotImplementedError, "toregexp"
       when :intern
-        raise NotImplementedError, "intern"
+        lenv, (ty,) = lenv.pop(1)
+        # XXX check if ty is String
+        lenv = lenv.push(Type::Instance.new(Type::Builtin[:sym]))
 
       when :defineclass
         id, iseq, flags = operands
