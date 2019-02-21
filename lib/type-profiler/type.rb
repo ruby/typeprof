@@ -43,14 +43,15 @@ module TypeProfiler
     end
 
     class Class < Type
-      def initialize(idx)
+      def initialize(idx, name)
         @idx = idx
+        @_name = name
       end
 
       attr_reader :idx
 
       def inspect
-        "Type::Class[#{ @idx }]"
+        "Type::Class[#{ @idx }]#{ @_name ? "(#@_name)": "" }"
       end
 
       def screen_name(genv)

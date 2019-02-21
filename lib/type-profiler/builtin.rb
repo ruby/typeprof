@@ -181,7 +181,7 @@ module TypeProfiler
   end
 
   def self.setup_initial_global_env
-    klass_obj = Type::Class.new(0)
+    klass_obj = Type::Class.new(0, :Object)
     class_def_obj = ClassDef.new("Object", nil, { :Object => klass_obj }, {}, {})
     genv = GlobalEnv.new([class_def_obj])
 

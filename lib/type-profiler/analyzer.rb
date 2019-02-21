@@ -171,7 +171,7 @@ module TypeProfiler
         class_name = name.to_s
       end
       idx = @class_defs.size
-      nklass = Type::Class.new(idx)
+      nklass = Type::Class.new(idx, name)
       nclass_defs = @class_defs + [ClassDef.new(class_name, superclass.idx, {}, {}, {})]
       ngenv = GlobalEnv.new(nclass_defs).add_constant(klass, name, nklass)
       return ngenv, nklass
