@@ -146,6 +146,17 @@ module TypeProfiler
       end
     end
 
+    def array_pop(state, flags, recv, mid, args, blk, lenv, genv, scratch)
+      if args.size != 0
+        return [State.new(lenv.push(Type::Any.new).next, genv)]
+      end
+
+      elems = lenv.get_array_elem_types(recv.id)
+      return elems.types.map do |ty|
+        State.new(lenv.push(ty).next, genv)
+      end
+    end
+
     def require_relative(state, flags, recv, mid, args, blk, lenv, genv, scratch)
       raise NotImplementedError if args.size != 1
       feature = args.first
@@ -223,6 +234,7 @@ module TypeProfiler
     genv = genv.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
     genv = genv.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
     genv = genv.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
+    genv = genv.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
 
     i = -> t { Type::Instance.new(t) }
 
