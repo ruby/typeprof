@@ -6,31 +6,32 @@ WARNING: This implementation is very preliminary.
 ## Demo
 
 ```
+# test.rb
 def foo(x)
-  if x
-    42
+  if x > 10
+    x.to_s
   else
-    "str"
+    x.boo()
+    x + 42
   end
 end
 
-foo(true)
-foo(false)
-
-# Object#foo :: (Boolean) -> (String | Integer)
+foo(42)
 ```
 
-## Idea
-
-This is a type profiler based on abstract interpretation.
-It virtually executes a Ruby program with only type-level information, without value-level one.
-...
+```
+$ exe/type-profiler test.rb
+test.rb:6: [error] undefined method: Integer#boo
+test.rb:7: [error] failed to resolve overload: Integer#+
+Object#foo :: (Integer) -> String
+```
 
 ## TODO
 
-There are many features that are not supported yet, including:
+There are many features that are not supported yet or incompletely:
 
 * some instructions of RubyVM
+* container types (generics)
 * modules
 * break/next/redo
 * exception
