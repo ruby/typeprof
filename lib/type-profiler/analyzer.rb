@@ -565,7 +565,7 @@ module TypeProfiler
         end
         File.binwrite("coverage.dump", Marshal.dump(coverage))
       end
-      out
+      puts out
     end
   end
 
