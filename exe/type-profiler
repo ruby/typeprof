@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+
+require_relative "../lib/type-profiler"
+
+if ARGV[0]
+  iseq = TypeProfiler::ISeq.compile(ARGV[0])
+else
+  iseq = TypeProfiler::ISeq.compile_str($<.read)
+end
+
+TypeProfiler.type_profile(iseq)
