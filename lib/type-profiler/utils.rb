@@ -17,17 +17,13 @@ module TypeProfiler
           end
       end
 
-      def eql?(other)
-        ivs1 = instance_variables.sort.reject {|v| v == :@_hash }
-        ivs2 = other.instance_variables.sort.reject {|v| v == :@_hash }
-        self.class == other.class &&
-          ivs1 == ivs2 &&
-          ivs1.all? do |v|
-            instance_variable_get(v).eql?(other.instance_variable_get(v))
-          end
-      end
+      TABLE = {}
 
-      alias == eql?
+      def self.included(klass)
+        def klass.new(*args)
+          TABLE[[self] + args] ||= super
+        end
+      end
     end
   end
 end
