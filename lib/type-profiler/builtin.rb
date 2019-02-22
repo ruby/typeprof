@@ -201,6 +201,8 @@ module TypeProfiler
     genv, klass_sym  = genv.new_class(klass_obj, :Symbol, klass_obj)
     genv, klass_str  = genv.new_class(klass_obj, :String, klass_obj)
     genv, klass_bool = genv.new_class(klass_obj, :Boolean, klass_obj)
+    #genv, klass_klass  = genv.new_class(klass_obj, :Class, klass_obj)
+    #genv, klass_nil  = genv.new_class(klass_obj, :NilClass, klass_klass)
     genv, klass_nil  = genv.new_class(klass_obj, :NilClass, klass_obj)
     genv, klass_ary  = genv.new_class(klass_obj, :Array, klass_obj)
     genv, klass_proc = genv.new_class(klass_obj, :Proc, klass_obj)

@@ -121,7 +121,7 @@ module TypeProfiler
     end
 
     def get_constant(name)
-      @consts[name]
+      @consts[name] || Type::Any.new # XXX: warn?
     end
 
     def add_constant(name, ty)

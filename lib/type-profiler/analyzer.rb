@@ -130,7 +130,11 @@ module TypeProfiler
     end
 
     def get_class_name(klass)
-      @class_defs[klass.idx].name
+      if klass == Type::Any.new
+        "???"
+      else
+        @class_defs[klass.idx].name
+      end
     end
 
     def get_method(klass, mid)
@@ -178,13 +182,17 @@ module TypeProfiler
     end
 
     def get_constant(klass, name)
-      @class_defs[klass.idx].get_constant(name)
+      if klass == Type::Any.new
+        Type::Any.new
+      else
+        @class_defs[klass.idx].get_constant(name)
+      end
     end
 
     def search_constant(cref, name)
       while cref != :bottom
         val = get_constant(cref.klass, name)
-        return val if val
+        return val if val != Type::Any.new
         cref = cref.outer
       end
 
@@ -192,20 +200,32 @@ module TypeProfiler
     end
 
     def add_constant(klass, name, value)
-      update_class(klass.idx) do |klass_def|
-        klass_def.add_constant(name, value)
+      if klass == Type::Any.new
+        self
+      else
+        update_class(klass.idx) do |klass_def|
+          klass_def.add_constant(name, value)
+        end
       end
     end
 
     def add_method(klass, mid, mdef)
-      update_class(klass.idx) do |klass_def|
-        klass_def.add_method(mid, mdef)
+      if klass == Type::Any.new
+        self # XXX warn
+      else
+        update_class(klass.idx) do |klass_def|
+          klass_def.add_method(mid, mdef)
+        end
       end
     end
 
     def add_singleton_method(klass, mid, mdef)
-      update_class(klass.idx) do |klass_def|
-        klass_def.add_singleton_method(mid, mdef)
+      if klass == Type::Any.new
+        self # XXX warn
+      else
+        update_class(klass.idx) do |klass_def|
+          klass_def.add_singleton_method(mid, mdef)
+        end
       end
     end
 
@@ -239,8 +259,12 @@ module TypeProfiler
     end
 
     def alias_method(klass, new, old)
-      update_class(klass.idx) do |klass_def|
-        klass_def.add_method(new, klass_def.get_method(old))
+      if klass == Type::Any.new
+        self
+      else
+        update_class(klass.idx) do |klass_def|
+          klass_def.add_method(new, klass_def.get_method(old))
+        end
       end
     end
   end
@@ -558,7 +582,12 @@ module TypeProfiler
     def self.run(state, scratch)
       visited = {}
       states = [state]
+      counter = 0
       until states.empty?
+        counter += 1
+        if counter % 1000 == 0
+          puts "iter %d, visited: %d, remain: %d" % [counter, visited.size, states.size]
+        end
         state = states.pop
         next if !state
         unless visited[state]
@@ -653,12 +682,12 @@ module TypeProfiler
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
           else
-            if existing_klass
-              scratch.error(self, "#{ existing_klass.screen_name(genv) } is not a class")
+            if existing_klass != Type::Any.new
+              scratch.error(self, "the class \"#{ id }\" is #{ existing_klass.screen_name(genv) }")
               id = :"#{ id }(dummy)"
             end
             existing_klass = genv.get_constant(cbase, id)
-            if existing_klass
+            if existing_klass != Type::Any.new
               klass = existing_klass
             else
               if superclass.eql?(Type::Instance.new(Type::Builtin[:nil]))
@@ -811,13 +840,15 @@ module TypeProfiler
         elsif cbase.eql?(Type::Any.new)
           lenv = lenv.push(Type::Any.new) # XXX: warning needed?
         else
+          #puts
+          #p cbase, name
           lenv = lenv.push(genv.get_constant(cbase, name))
         end
       when :setconstant
         name, = operands
         lenv, (val, cbase) = lenv.pop(2)
         existing_val = genv.get_constant(cbase, name)
-        if existing_val
+        if existing_val != Type::Any.new # XXX???
           scratch.warn(self, "already initialized constant #{ Type::Instance.new(cbase).screen_name(genv) }::#{ name }")
         end
         genv = genv.add_constant(cbase, name, val)
