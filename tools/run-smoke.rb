@@ -1,11 +1,27 @@
 require_relative "../lib/type-profiler"
 
+alias original_puts puts
+def puts(*s)
+  if $output
+    s.each {|l| $output << l.chomp }
+  else
+    original_puts(s)
+  end
+end
+def run(f)
+  $output = []
+  TypeProfiler.type_profile(TypeProfiler::ISeq.compile(f))
+  output = $output
+  $output = nil
+  output
+end
+
 files = ARGV
 files = Dir.glob("smoke/*.rb").sort if files.empty?
 files.each do |f|
   begin
     exp = File.foreach(f).drop_while {|s| s.chomp != "__END__" }.drop(1).map {|s| s.chomp }
-    act = TypeProfiler.type_profile(TypeProfiler::ISeq.compile(f))
+    act = run(f)
   rescue RuntimeError, NotImplementedError
     puts "# NG: #{ f }"
     puts $!.inspect
