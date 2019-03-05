@@ -1,3 +1,3 @@
 #!/bin/bash
 
-ruby exe/type-profiler.rb $@
+ruby exe/type-profiler $@
