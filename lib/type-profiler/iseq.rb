@@ -87,5 +87,37 @@ module TypeProfiler
     end
 
     attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :args, :insns, :linenos
+
+    def pretty_print(q)
+      q.text "ISeq["
+      q.group do
+        q.nest(1) do
+          q.breakable ""
+          q.text "@type=          #{ @type }"
+          q.breakable ", "
+          q.text "@name=          #{ @name }"
+          q.breakable ", "
+          q.text "@path=          #{ @path }"
+          q.breakable ", "
+          q.text "@absolute_path= #{ @absolute_path }"
+          q.breakable ", "
+          q.text "@start_lineno=  #{ @start_lineno }"
+          q.breakable ", "
+          q.text "@args=          #{ @args.inspect }"
+          q.breakable ", "
+          q.text "@insns="
+          q.group(2) do
+            @insns.each do |insn, *operands|
+              q.breakable
+              q.group(2, insn.to_s, "") do
+                q.pp operands
+              end
+            end
+          end
+        end
+        q.breakable
+      end
+      q.text "]"
+    end
   end
 end

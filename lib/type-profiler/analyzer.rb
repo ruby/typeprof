@@ -15,6 +15,12 @@ module TypeProfiler
     end
 
     attr_reader :outer, :klass
+
+    def pretty_print(q)
+      q.text "CRef["
+      q.pp @klass
+      q.text "]"
+    end
   end
 
   class Context

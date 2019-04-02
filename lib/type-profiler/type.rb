@@ -51,7 +51,11 @@ module TypeProfiler
       attr_reader :idx
 
       def inspect
-        "Type::Class[#{ @idx }]#{ @_name ? "(#@_name)": "" }"
+        if @_name
+          "#{ @_name }@#{ @idx }"
+        else
+          "Class[#{ @idx }]"
+        end
       end
 
       def screen_name(genv)
@@ -71,7 +75,7 @@ module TypeProfiler
       attr_reader :klass
 
       def inspect
-        "Type::Instance[#{ @klass.inspect }]"
+        "I[#{ @klass.inspect }]"
       end
 
       def screen_name(genv)
@@ -297,6 +301,14 @@ module TypeProfiler
           Tuple.new(*elems)
         end
 
+        def pretty_print(q)
+          q.group(6, "Tuple[", "]") do
+            q.seplist(@elems) do |elem|
+              q.pp elem
+            end
+          end
+        end
+
         def screen_name(genv)
           "[" + @elems.map do |elem|
             elem.screen_name(genv)
@@ -349,6 +361,14 @@ module TypeProfiler
           ty.screen_name(genv)
         end.join(" | ")
       end
+
+      def pretty_print(q)
+        q.group(1, "{", "}") do
+          q.seplist(@types, -> { q.breakable; q.text("|") }) do |ty|
+            q.pp ty
+          end
+        end
+      end
     end
 
     def self.guess_literal_type(obj)
@@ -392,5 +412,31 @@ module TypeProfiler
     end
 
     attr_reader :recv_ty, :singleton, :mid, :arg_tys, :blk_ty
+
+    def pretty_print(q)
+      q.text "Signature["
+      q.group do
+        q.nest(2) do
+          q.breakable
+          q.pp @recv_ty
+          q.text "##{ @mid }"
+          q.text " ::"
+          q.breakable
+          q.group(2, "(", ")") do
+            q.seplist(@arg_tys) do |ty|
+              q.pp ty
+            end
+            if @blk_ty
+              q.text ","
+              q.breakable
+              q.text "&"
+              q.pp @blk_ty
+            end
+          end
+        end
+        q.breakable
+      end
+      q.text "]"
+    end
   end
 end
