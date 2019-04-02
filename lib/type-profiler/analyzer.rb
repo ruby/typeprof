@@ -114,6 +114,10 @@ module TypeProfiler
       type_params = @type_params.merge({ id => elems })
       LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
     end
+
+    def location
+      @ctx.iseq.source_location(@pc)
+    end
   end
 
   class GlobalEnv
@@ -610,7 +614,7 @@ module TypeProfiler
     def step(lenv, genv, scratch)
       insn, *operands = lenv.ctx.iseq.insns[lenv.pc]
 
-      p [lenv.pc, insn, operands] if ENV["TP_DEBUG"]
+      p [lenv.location, lenv.pc, insn] if ENV["TP_DEBUG"]
 
       case insn
       when :putspecialobject

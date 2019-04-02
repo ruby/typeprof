@@ -123,6 +123,10 @@ module TypeProfiler
       end
     end
 
+    def source_location(pc)
+      "#{ @path }:#{ @linenos[pc] }"
+    end
+
     attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :escaped_locals, :args, :insns, :linenos
   end
 end
