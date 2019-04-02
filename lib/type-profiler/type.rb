@@ -334,12 +334,8 @@ module TypeProfiler
         end
 
         def update(idx, ty)
-          if idx
-            if idx < @elems.size
-              Tuple.new(*Utils.array_update(@elems, idx, Type::Union.new(ty)))
-            else
-              raise NotImplementedError
-            end
+          if idx && idx < @elems.size
+            Tuple.new(*Utils.array_update(@elems, idx, Type::Union.new(ty)))
           else
             Seq.new(Union.new(*types | [ty])) # convert to seq
           end
