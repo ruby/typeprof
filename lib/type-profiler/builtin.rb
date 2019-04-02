@@ -78,6 +78,14 @@ module TypeProfiler
       [State.new(lenv.next, genv)]
     end
 
+    def reveal_type(state, flags, recv, mid, args, blk, lenv, genv, scratch)
+      args.each do |arg|
+        scratch.reveal_type(state, arg.strip_local_info(lenv).screen_name(genv))
+      end
+      lenv = lenv.push(Type::Any.new)
+      [State.new(lenv.next, genv)] # should be fixed?
+    end
+
     def array_aref(state, flags, recv, mid, args, blk, lenv, genv, scratch)
       raise NotImplementedError if args.size != 1
       idx = args.first
@@ -230,6 +238,7 @@ module TypeProfiler
     genv = genv.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_new))
     genv = genv.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
     genv = genv.add_singleton_custom_method(klass_obj, :"attr_reader", Builtin.method(:module_attr_reader))
+    genv = genv.add_custom_method(klass_obj, :p, Builtin.method(:reveal_type))
     genv = genv.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
     genv = genv.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
     genv = genv.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))

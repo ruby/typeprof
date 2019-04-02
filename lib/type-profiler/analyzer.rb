@@ -435,6 +435,11 @@ module TypeProfiler
       @errors << [state, "[warning] " + msg]
     end
 
+    def reveal_type(state, msg)
+      p [show_code_pos(state.lenv), "[p] " + msg] if ENV["TP_DEBUG"]
+      @errors << [state, "[p] " + msg]
+    end
+
     def show_signature(arg_tys, ret_tys)
       s = "(#{ arg_tys.join(", ") }) -> "
       s + (ret_tys.size == 1 ? ret_tys.first : "(#{ ret_tys.join(" | ") })")
