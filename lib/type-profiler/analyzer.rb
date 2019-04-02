@@ -112,13 +112,19 @@ module TypeProfiler
     end
 
     def get_array_elem_types(id)
-      @type_params[id]
+      @type_params[id] || @outer.get_array_elem_types(id)
     end
 
     def update_array_elem_types(id, idx, ty)
-      elems = @type_params[id].update(idx, ty)
-      type_params = @type_params.merge({ id => elems })
-      LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
+      type_param = @type_params[id]
+      if type_param
+        elems = @type_params[id].update(idx, ty)
+        type_params = @type_params.merge({ id => elems })
+        LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
+      else
+        nouter = @outer.update_array_elem_types(id, idx, ty)
+        LocalEnv.new(@ctx, @pc, @locals, @stack, @type_params, nouter)
+      end
     end
 
     def location
@@ -432,17 +438,17 @@ module TypeProfiler
     end
 
     def error(state, msg)
-      p [show_code_pos(state.lenv), "[error] " + msg] if ENV["TP_DEBUG"]
+      p [state.lenv.location, "[error] " + msg] if ENV["TP_DEBUG"]
       @errors << [state, "[error] " + msg]
     end
 
     def warn(state, msg)
-      p [show_code_pos(state.lenv), "[warning] " + msg] if ENV["TP_DEBUG"]
+      p [state.lenv.location, "[warning] " + msg] if ENV["TP_DEBUG"]
       @errors << [state, "[warning] " + msg]
     end
 
     def reveal_type(state, msg)
-      p [show_code_pos(state.lenv), "[p] " + msg] if ENV["TP_DEBUG"]
+      p [state.lenv.location, "[p] " + msg] if ENV["TP_DEBUG"]
       @errors << [state, "[p] " + msg]
     end
 
@@ -490,12 +496,6 @@ module TypeProfiler
       ntrace
     end
 
-    def show_code_pos(lenv)
-      path = lenv.ctx.iseq.path
-      lineno = lenv.ctx.iseq.linenos[lenv.pc]
-      [path, lineno]
-    end
-
     def show(stat_states)
       out = []
       @errors.each do |state, msg|
@@ -504,12 +504,12 @@ module TypeProfiler
         else
           backtrace = [state]
         end
-        (path, lineno), *backtrace = backtrace.map do |state|
-          show_code_pos(state.lenv)
+        loc, *backtrace = backtrace.map do |state|
+          state.lenv.location
         end
-        out << "#{ path }:#{ lineno }: #{ msg }"
-        backtrace.each do |path, lineno|
-          out << "        from #{ path }:#{ lineno }"
+        out << "#{ loc }: #{ msg }"
+        backtrace.each do |loc|
+          out << "        from #{ loc }"
         end
       end
       h = {}
