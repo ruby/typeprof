@@ -694,7 +694,10 @@ module TypeProfiler
             if existing_klass != Type::Any.new
               klass = existing_klass
             else
-              if superclass.eql?(Type::Instance.new(Type::Builtin[:nil]))
+              if superclass == Type::Any.new
+                scratch.warn(self, "superclass is any; Object is used instead")
+                superclass = Type::Builtin[:obj]
+              elsif superclass.eql?(Type::Instance.new(Type::Builtin[:nil]))
                 superclass = Type::Builtin[:obj]
               end
               genv, klass = genv.new_class(cbase, id, superclass)
