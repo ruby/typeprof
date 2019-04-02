@@ -943,73 +943,7 @@ module TypeProfiler
         case ary
         when Type::LocalArray
           elems = lenv.get_array_elem_types(ary.id)
-          if elems.is_a?(Type::Array::Tuple)
-            elems = elems.elems
-            if from_head
-              # fetch num elements from the head
-              if splat
-                ty = Type::Array.tuple(elems[num..-1], Type::Instance.new(Type::Builtin[:ary]))
-                lenv, ty, = lenv.deploy_type(ty, 0)
-                lenv = lenv.push(ty)
-              end
-              lenvs = [lenv]
-              elems[0, num].reverse_each do |union|
-                lenvs = lenvs.flat_map do |le|
-                  union.types.map {|ty| le.push(ty) }
-                end
-              end
-            else
-              # fetch num elements from the tail
-              lenvs = [lenv]
-              elems[-num..-1].reverse_each do |union|
-                lenvs = lenvs.flat_map do |le|
-                  union.types.map {|ty| le.push(ty) }
-                end
-              end
-              if splat
-                ty = Type::Array.tuple(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
-                lenvs = lenvs.map do |le|
-                  id = 0
-                  le, local_ary_ty, id = le.deploy_type(ty, id)
-                  le = le.push(local_ary_ty)
-                end
-              end
-            end
-            return lenvs.map {|le| State.new(le.next, genv) }
-          else
-            if from_head
-              lenvs = [lenv]
-              num.times do
-                lenvs = lenvs.flat_map do |le|
-                  elems.types.map {|ty| le.push(ty) }
-                end
-              end
-              if splat
-                lenvs = lenvs.map do |le|
-                  id = 0
-                  le, local_ary_ty, id = le.deploy_type(ty, id)
-                  le = le.push(local_ary_ty)
-                end
-              end
-              return lenvs.map {|le| State.new(le.next, genv) }
-            else
-              lenvs = [lenv]
-              if splat
-                lenvs = lenvs.map do |le|
-                  id = 0
-                  le, local_ary_ty, id = le.deploy_type(ty, id)
-                  le = le.push(local_ary_ty)
-                end
-              end
-              num.times do
-                lenvs = lenvs.flat_map do |le|
-                  elems.types.map {|ty| le.push(ty) }
-                end
-              end
-              return lenvs.map {|le| State.new(le.next, genv) }
-            end
-            raise NotImplementedError
-          end
+          return do_expand_array(lenv, elems, num, splat, from_head)
         when Type::Any
           splat = flag & 1 == 1
           num += 1 if splat
@@ -1017,7 +951,9 @@ module TypeProfiler
             lenv = lenv.push(Type::Any.new)
           end
         else
-          raise NotImplementedError
+          # TODO: call to_ary (or to_a?)
+          elems = Type::Array::Tuple.new(Type::Union.new(ary.strip_local_info(lenv)))
+          return do_expand_array(lenv, elems, num, splat, from_head)
         end
       when :concatarray
         raise NotImplementedError, "concatarray"
@@ -1035,6 +971,78 @@ module TypeProfiler
       end
 
       [State.new(lenv.next, genv)]
+    end
+
+    def do_expand_array(lenv, elems, num, splat, from_head)
+      if elems.is_a?(Type::Array::Tuple)
+        elems = elems.elems
+        if from_head
+          # fetch num elements from the head
+          if splat
+            ty = Type::Array.tuple(elems[num..-1], Type::Instance.new(Type::Builtin[:ary]))
+            lenv, ty, = lenv.deploy_type(ty, 0)
+            lenv = lenv.push(ty)
+          end
+          lenvs = [lenv]
+          elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
+          elems[0, num].reverse_each do |union|
+            lenvs = lenvs.flat_map do |le|
+              union.types.map {|ty| le.push(ty) }
+            end
+          end
+        else
+          # fetch num elements from the tail
+          lenvs = [lenv]
+          elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
+          elems[-num..-1].reverse_each do |union|
+            lenvs = lenvs.flat_map do |le|
+              union.types.map {|ty| le.push(ty) }
+            end
+          end
+          if splat
+            ty = Type::Array.tuple(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
+            lenvs = lenvs.map do |le|
+              id = 0
+              le, local_ary_ty, id = le.deploy_type(ty, id)
+              le = le.push(local_ary_ty)
+            end
+          end
+        end
+        return lenvs.map {|le| State.new(le.next, genv) }
+      else
+        if from_head
+          lenvs = [lenv]
+          num.times do
+            lenvs = lenvs.flat_map do |le|
+              elems.types.map {|ty| le.push(ty) }
+            end
+          end
+          if splat
+            lenvs = lenvs.map do |le|
+              id = 0
+              le, local_ary_ty, id = le.deploy_type(ty, id)
+              le = le.push(local_ary_ty)
+            end
+          end
+          return lenvs.map {|le| State.new(le.next, genv) }
+        else
+          lenvs = [lenv]
+          if splat
+            lenvs = lenvs.map do |le|
+              id = 0
+              le, local_ary_ty, id = le.deploy_type(ty, id)
+              le = le.push(local_ary_ty)
+            end
+          end
+          num.times do
+            lenvs = lenvs.flat_map do |le|
+              elems.types.map {|ty| le.push(ty) }
+            end
+          end
+          return lenvs.map {|le| State.new(le.next, genv) }
+        end
+        raise NotImplementedError
+      end
     end
 
     def self.do_invoke_block(given_block, blk, args, arg_blk, lenv, genv, scratch, &ctn)
