@@ -371,6 +371,8 @@ module TypeProfiler
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:regexp]))
       when ::NilClass
         Type::Builtin[:nil]
+      when ::Range
+        Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:range]))
       else
         raise "unknown object: #{ obj.inspect }"
       end

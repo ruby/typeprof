@@ -889,6 +889,8 @@ module TypeProfiler
       when :dup
         lenv, (ty,) = lenv.pop(1)
         lenv = lenv.push(ty).push(ty)
+      when :duphash
+        lenv = lenv.push(Type::Any.new) # TODO: implement hash
       when :dupn
         n, = operands
         _, tys = lenv.pop(n)
