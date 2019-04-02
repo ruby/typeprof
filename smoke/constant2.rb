@@ -18,7 +18,7 @@ end
 log(BAR)
 
 __END__
-smoke/constant2.rb:8: [error] the class "C" is String<"dummy">
+smoke/constant2.rb:8: [error] the class "C" is String
 smoke/constant2.rb:15: [warning] already initialized constant Object::BAR
 Object#foo :: (any) -> NilClass
 Object#foo :: (Integer) -> NilClass

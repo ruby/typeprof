@@ -329,7 +329,7 @@ module TypeProfiler
               raise NotImplementedError
             end
           else
-            raise NotImplementedError # to Seq?
+            Seq.new(Union.new(*types | [ty])) # convert to seq
           end
         end
       end

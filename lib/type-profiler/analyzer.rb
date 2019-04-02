@@ -843,13 +843,15 @@ module TypeProfiler
         name, = operands
         lenv, (cbase,) = lenv.pop(1)
         if cbase.eql?(Type::Instance.new(Type::Builtin[:nil]))
-          lenv = lenv.push(genv.search_constant(lenv.ctx.cref, name))
+          lenv, ty, = lenv.deploy_type(genv.search_constant(lenv.ctx.cref, name), 0)
+          lenv = lenv.push(ty)
         elsif cbase.eql?(Type::Any.new)
           lenv = lenv.push(Type::Any.new) # XXX: warning needed?
         else
           #puts
           #p cbase, name
-          lenv = lenv.push(genv.get_constant(cbase, name))
+          lenv, ty, = lenv.deploy_type(genv.get_constant(cbase, name), 0)
+          lenv = lenv.push(ty)
         end
       when :setconstant
         name, = operands
@@ -858,7 +860,7 @@ module TypeProfiler
         if existing_val != Type::Any.new # XXX???
           scratch.warn(self, "already initialized constant #{ Type::Instance.new(cbase).screen_name(genv) }::#{ name }")
         end
-        genv = genv.add_constant(cbase, name, val)
+        genv = genv.add_constant(cbase, name, val.strip_local_info(lenv))
 
       when :getspecial
         key, type = operands
