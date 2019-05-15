@@ -29,7 +29,8 @@ module TypeProfiler
       argc = @iseq.args[:lead_num]
       if argc && argc != args.size
         scratch.error(state, "wrong number of arguments (given #{ args.size }, expected #{ argc })")
-        return []
+        nlenv = lenv.push(Type::Any.new)
+        return [State.new(nlenv.next, genv)]
       end
 
       case
