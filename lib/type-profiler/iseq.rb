@@ -107,9 +107,9 @@ module TypeProfiler
           q.breakable ", "
           q.text "@insns="
           q.group(2) do
-            @insns.each do |insn, *operands|
+            @insns.each_with_index do |(insn, *operands), i|
               q.breakable
-              q.group(2, insn.to_s, "") do
+              q.group(2, "#{ i }: #{ insn.to_s }", "") do
                 q.pp operands
               end
             end

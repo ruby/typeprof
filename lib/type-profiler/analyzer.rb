@@ -77,7 +77,7 @@ module TypeProfiler
     end
 
     def setn(i, ty)
-      stack = Utils.array_update(@stack, -i+0, ty)
+      stack = Utils.array_update(@stack, -i, ty)
       LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @outer)
     end
 
@@ -111,8 +111,11 @@ module TypeProfiler
 
     def deploy_array_type(base_ty, elems, id)
       local_ty = Type::LocalArray.new([site, id], base_ty)
+
       type_params = @type_params.merge({ [site, id] => elems })
-      return LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer), local_ty, id + 1
+      nlenv = LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
+      #p [location, @pc, :merge, self.hash, nlenv.hash, @type_params[[site, id]]]
+      return nlenv, local_ty, id + 1
     end
 
     def get_array_elem_types(id)
@@ -143,6 +146,8 @@ module TypeProfiler
     def initialize(class_defs)
       @class_defs = class_defs
     end
+
+    attr_reader :class_defs
 
     def update_class(idx)
       klass = yield @class_defs[idx]
@@ -547,6 +552,12 @@ module TypeProfiler
         next unless ctx.sig.mid
         next unless ctx.iseq
         sigs.each_key do |ret_ty, genv|
+          method_count = 0
+          genv.class_defs.each do |class_def|
+            #p [class_def.name, class_def.methods.keys.size]
+            method_count += class_def.methods.size
+          end
+          #p method_count
           recv = ctx.cref.klass
           recv = Type::Instance.new(recv) unless ctx.sig.singleton
           recv = recv.screen_name(genv)
@@ -629,7 +640,7 @@ module TypeProfiler
     def step(lenv, genv, scratch)
       insn, *operands = lenv.ctx.iseq.insns[lenv.pc]
 
-      p [lenv.location, lenv.pc, insn] if ENV["TP_DEBUG"]
+      p [lenv.location, lenv.pc, insn, lenv.stack.size] if ENV["TP_DEBUG"]
 
       case insn
       when :putspecialobject

@@ -144,6 +144,6 @@ module TypeProfiler
       ClassDef.new(@name, @superclass, @consts, @methods, @singleton_methods.merge({ mid => mdef }))
     end
 
-    attr_reader :name, :superclass
+    attr_reader :name, :methods, :superclass
   end
 end
