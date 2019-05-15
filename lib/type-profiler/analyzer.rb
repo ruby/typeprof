@@ -1112,7 +1112,23 @@ module TypeProfiler
       mid = opt[:mid]
       argc = opt[:orig_argc]
       argc += 1 # receiver
-      if flags & 2 != 0 # VM_CALL_ARGS_BLOCKARG
+      # 1061     VM_CALL_ARGS_SPLAT_bit,     /* m(*args) */
+      # 1062     VM_CALL_ARGS_BLOCKARG_bit,  /* m(&block) */
+      # 1063     VM_CALL_FCALL_bit,          /* m(...) */
+      # 1064     VM_CALL_VCALL_bit,          /* m */
+      # 1065     VM_CALL_ARGS_SIMPLE_bit,    /* (ci->flag & (SPLAT|BLOCKARG)) && blockiseq == NULL && ci->kw_arg == NULL */
+      # 1066     VM_CALL_BLOCKISEQ_bit,      /* has blockiseq */
+      # 1067     VM_CALL_KWARG_bit,          /* has kwarg */
+      # 1068     VM_CALL_KW_SPLAT_bit,       /* m(**opts) */
+      # 1069     VM_CALL_TAILCALL_bit,       /* located at tail position */
+      # 1070     VM_CALL_SUPER_bit,          /* super */
+      # 1071     VM_CALL_ZSUPER_bit,         /* zsuper */
+      # 1072     VM_CALL_OPT_SEND_bit,       /* internal flag */
+      # 1073     VM_CALL__END
+
+      #raise "call with splat is not supported yet" if flags[0] != 0
+      #raise "call with splat is not supported yet" if flags[2] != 0
+      if flags[1] != 0 # VM_CALL_ARGS_BLOCKARG
         lenv, (recv, *args, blk) = lenv.pop(argc + 1)
         raise "both block arg and actual block given" if blk_iseq
       else
