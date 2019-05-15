@@ -81,6 +81,10 @@ module TypeProfiler
       LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @outer)
     end
 
+    def topn(i)
+      push(@stack[-i - 1])
+    end
+
     def local_update(idx, scope, ty)
       if scope == 0
         LocalEnv.new(@ctx, @pc, Utils.array_update(@locals, idx, ty), @stack, @type_params, @outer)
@@ -914,8 +918,6 @@ module TypeProfiler
         raise NotImplementedError, "swap"
       when :reverse
         raise NotImplementedError, "reverse"
-      when :topn
-        raise NotImplementedError, "topn"
       when :defined
         raise NotImplementedError, "defined"
       when :checkmatch
@@ -943,6 +945,9 @@ module TypeProfiler
         idx, = operands
         lenv, (ty,) = lenv.pop(1)
         lenv = lenv.setn(idx, ty).push(ty)
+      when :topn
+        idx, = operands
+        lenv = lenv.topn(idx)
 
       when :splatarray
         lenv, (ty,) = lenv.pop(1)
