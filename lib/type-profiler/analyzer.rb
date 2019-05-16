@@ -142,16 +142,80 @@ module TypeProfiler
   class GlobalEnv
     include Utils::StructuralEquality
 
-    # [Class]
-    def initialize(class_defs)
-      @class_defs = class_defs
+  end
+
+  class Scratch
+    def initialize
+      @class_defs = {}
+
+      @callsites = {}
+      @signatures = {}
+      @call_restarts = {}
+      @ivar_sites = {}
+      @ivar_types = {}
+      @gvar_sites = {}
+      @gvar_types = {}
+      @yields = {}
+      @new_states = []
+      @next_state_table = {}
+      @errors = []
+      @backward_edges = {}
     end
 
     attr_reader :class_defs
 
-    def update_class(idx)
-      klass = yield @class_defs[idx]
-      GlobalEnv.new(Utils.array_update(@class_defs, idx, klass))
+    class ClassDef
+      def initialize(name, superclass)
+        @superclass = superclass
+        @name = name
+        @consts = {}
+        @methods = {}
+        @singleton_methods = {}
+      end
+
+      def get_constant(name)
+        @consts[name] || Type::Any.new # XXX: warn?
+      end
+
+      def add_constant(name, ty)
+        if @consts[name]
+          # XXX: warn!
+        end
+        @consts[name] = ty
+      end
+
+      def get_method(mid)
+        # TODO: support multiple methods?
+        @methods[mid]
+      end
+
+      def add_method(mid, mdef)
+        @methods[mid] = mdef
+      end
+
+      def get_singleton_method(mid)
+        @singleton_methods[mid]
+      end
+
+      def add_singleton_method(mid, mdef)
+        @singleton_methods[mid] = mdef
+      end
+
+      attr_reader :name, :methods, :superclass
+    end
+
+    def new_class(cbase, name, superclass)
+      if cbase && cbase.idx != 0
+        class_name = "#{ @class_defs[cbase.idx].name }::#{ name }"
+      else
+        class_name = name.to_s
+      end
+      idx = @class_defs.size
+      @class_defs[idx] = ClassDef.new(class_name, superclass && superclass.idx)
+      klass = Type::Class.new(idx, name)
+      cbase ||= klass # for bootstrap
+      add_constant(cbase, name, klass)
+      return klass
     end
 
     def get_class_name(klass)
@@ -193,19 +257,6 @@ module TypeProfiler
       nil
     end
 
-    def new_class(klass, name, superclass)
-      if klass.idx != 0
-        class_name = "#{ @class_defs[klass.idx].name }::#{ name }"
-      else
-        class_name = name.to_s
-      end
-      idx = @class_defs.size
-      nklass = Type::Class.new(idx, name)
-      nclass_defs = @class_defs + [ClassDef.new(class_name, superclass.idx, {}, {}, {})]
-      ngenv = GlobalEnv.new(nclass_defs).add_constant(klass, name, nklass)
-      return ngenv, nklass
-    end
-
     def get_constant(klass, name)
       if klass == Type::Any.new
         Type::Any.new
@@ -228,9 +279,7 @@ module TypeProfiler
       if klass == Type::Any.new
         self
       else
-        update_class(klass.idx) do |klass_def|
-          klass_def.add_constant(name, value)
-        end
+        @class_defs[klass.idx].add_constant(name, value)
       end
     end
 
@@ -238,9 +287,7 @@ module TypeProfiler
       if klass == Type::Any.new
         self # XXX warn
       else
-        update_class(klass.idx) do |klass_def|
-          klass_def.add_method(mid, mdef)
-        end
+        @class_defs[klass.idx].add_method(mid, mdef)
       end
     end
 
@@ -248,9 +295,7 @@ module TypeProfiler
       if klass == Type::Any.new
         self # XXX warn
       else
-        update_class(klass.idx) do |klass_def|
-          klass_def.add_singleton_method(mid, mdef)
-        end
+        @class_defs[klass.idx].add_singleton_method(mid, mdef)
       end
     end
 
@@ -278,36 +323,15 @@ module TypeProfiler
 
     def add_singleton_custom_method(klass, mid, impl)
       add_singleton_method(klass, mid, CustomMethodDef.new(impl))
-      update_class(klass.idx) do |klass_def|
-        klass_def.add_singleton_method(mid, CustomMethodDef.new(impl))
-      end
     end
 
     def alias_method(klass, new, old)
       if klass == Type::Any.new
         self
       else
-        update_class(klass.idx) do |klass_def|
-          klass_def.add_method(new, klass_def.get_method(old))
-        end
+        klass_def = @class_defs[klass.idx]
+        klass_def.add_method(new, klass_def.get_method(old))
       end
-    end
-  end
-
-  class Scratch
-    def initialize
-      @callsites = {}
-      @signatures = {}
-      @call_restarts = {}
-      @ivar_sites = {}
-      @ivar_types = {}
-      @gvar_sites = {}
-      @gvar_types = {}
-      @yields = {}
-      @new_states = []
-      @next_state_table = {}
-      @errors = []
-      @backward_edges = {}
     end
 
     def add_edge(state, nstate)
@@ -322,30 +346,30 @@ module TypeProfiler
         @return_types = {}
       end
 
-      def add_continuation(ctn, genv)
+      def add_continuation(ctn)
         @restart_lenvs.each_key do |lenv|
           @return_types.each_key do |ret_ty|
-            @new_states << ctn[ret_ty, lenv, genv]
+            @new_states << ctn[ret_ty, lenv]
           end
         end
         @continuations << ctn
       end
 
-      def add_restart_lenv(lenv, genv)
+      def add_restart_lenv(lenv)
         return if @restart_lenvs[lenv]
         @continuations.each do |ctn|
           @return_types.each_key do |ret_ty|
-            @new_states << ctn[ret_ty, lenv, genv]
+            @new_states << ctn[ret_ty, lenv]
           end
         end
         @restart_lenvs[lenv] = true
       end
 
-      def add_return_type(ret_ty, genv)
+      def add_return_type(ret_ty)
         return if @return_types[ret_ty]
         @continuations.each do |ctn|
           @restart_lenvs.each_key do |lenv|
-            @new_states << ctn[ret_ty, lenv, genv]
+            @new_states << ctn[ret_ty, lenv]
           end
         end
         @return_types[ret_ty] = true
@@ -354,23 +378,23 @@ module TypeProfiler
 
     attr_reader :next_state_table, :new_states
 
-    def add_callsite!(callee_ctx, caller_lenv, genv, &ctn)
+    def add_callsite!(callee_ctx, caller_lenv, &ctn)
       @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx][caller_lenv.site] = true
 
       restart = @call_restarts[caller_lenv.site] ||= Restart.new(@new_states)
-      restart.add_continuation(ctn, genv)
-      restart.add_restart_lenv(caller_lenv, genv)
+      restart.add_continuation(ctn)
+      restart.add_restart_lenv(caller_lenv)
 
       @signatures[callee_ctx] ||= {}
       @signatures[callee_ctx].each_key do |ret_ty,|
-        restart.add_return_type(ret_ty, genv)
+        restart.add_return_type(ret_ty)
       end
     end
 
-    def add_return_lenv!(lenv, genv)
+    def add_return_lenv!(lenv)
       restart = @call_restarts[lenv.site] ||= Restart.new(@new_states)
-      restart.add_restart_lenv(lenv, genv)
+      restart.add_restart_lenv(lenv)
     end
 
     def add_yield!(call_ctx, blk_ctx)
@@ -378,70 +402,68 @@ module TypeProfiler
       @yields[call_ctx][blk_ctx] = true
     end
 
-    def add_return_type!(callee_ctx, ret_ty, genv)
+    def add_return_type!(callee_ctx, ret_ty)
       @callsites[callee_ctx] ||= {}
 
-      key = [ret_ty, genv]
+      key = ret_ty
       @signatures[callee_ctx] ||= {}
       @signatures[callee_ctx][key] = true
       @callsites[callee_ctx].each_key do |lenv_site|
         restart = @call_restarts[lenv_site]
-        restart.add_return_type(ret_ty, genv)
+        restart.add_return_type(ret_ty)
       end
     end
 
-    def add_ivar_site!(recv, var, lenv, genv, &ctn)
+    def add_ivar_site!(recv, var, lenv, &ctn)
       site = [recv, var]
       @ivar_sites[site] ||= {}
       unless @ivar_sites[site][lenv]
         @ivar_sites[site][lenv] = ctn
         if @ivar_types[site]
           @ivar_types[site].each_key do |ty,|
-            @new_states << ctn[ty, genv]
+            @new_states << ctn[ty]
           end
         else
-          @new_states << ctn[Type::Instance.new(Type::Builtin[:nil]), genv]
+          @new_states << ctn[Type::Instance.new(Type::Builtin[:nil])]
         end
       end
     end
 
-    def add_ivar_type!(recv, var, ty, genv, &ctn)
+    def add_ivar_type!(recv, var, ty, &ctn)
       site = [recv, var]
       @ivar_sites[site] ||= {}
       @ivar_types[site] ||= {}
-      key = [ty, genv]
-      unless @ivar_types[site][key]
-        @ivar_types[site][key] = true
+      unless @ivar_types[site][ty]
+        @ivar_types[site][ty] = true
         @ivar_sites[site].each do |lenv, ctn|
-          @new_states << ctn[ty, genv]
+          @new_states << ctn[ty]
         end
       end
     end
 
-    def add_gvar_site!(var, lenv, genv, &ctn)
+    def add_gvar_site!(var, lenv, &ctn)
       site = var
       @gvar_sites[site] ||= {}
       unless @gvar_sites[site][lenv]
         @gvar_sites[site][lenv] = ctn
         if @gvar_types[site]
           @gvar_types[site].each_key do |ty,|
-            @new_states << ctn[ty, genv]
+            @new_states << ctn[ty]
           end
         else
-          @new_states << ctn[Type::Instance.new(Type::Builtin[:nil]), genv]
+          @new_states << ctn[Type::Instance.new(Type::Builtin[:nil])]
         end
       end
     end
 
-    def add_gvar_type!(var, ty, genv, &ctn)
+    def add_gvar_type!(var, ty, &ctn)
       site = var
       @gvar_sites[site] ||= {}
       @gvar_types[site] ||= {}
-      key = [ty, genv]
-      unless @gvar_types[site][key]
-        @gvar_types[site][key] = true
+      unless @gvar_types[site][ty]
+        @gvar_types[site][ty] = true
         @gvar_sites[site].each do |lenv, ctn|
-          @new_states << ctn[ty, genv]
+          @new_states << ctn[ty]
         end
       end
     end
@@ -466,16 +488,16 @@ module TypeProfiler
       s + (ret_tys.size == 1 ? ret_tys.first : "(#{ ret_tys.join(" | ") })")
     end
 
-    def show_block(ctx, genv)
+    def show_block(ctx)
       blk_tys = {}
       @yields[ctx].each_key do |blk_ctx|
-        blk_args = blk_ctx.sig.arg_tys.map {|ty| ty.screen_name(genv) }
+        blk_args = blk_ctx.sig.arg_tys.map {|ty| ty.screen_name(self) }
         if @yields[blk_ctx]
-          blk_args << show_block(blk_ctx, genv)
+          blk_args << show_block(blk_ctx)
         end
         blk_rets = {}
-        @signatures[blk_ctx].each_key do |blk_ret_ty, |
-          blk_rets[blk_ret_ty.screen_name(genv)] = true
+        @signatures[blk_ctx].each_key do |blk_ret_ty|
+          blk_rets[blk_ret_ty.screen_name(self)] = true
         end
         blk_tys["Proc[#{ show_signature(blk_args, blk_rets.keys) }]"] = true
       end
@@ -523,9 +545,9 @@ module TypeProfiler
       end
       h = {}
       @gvar_types.each do |var, tys|
-        tys.each_key do |ty, genv|
+        tys.each_key do |ty|
           gvar_name = var
-          ret = ty.screen_name(genv)
+          ret = ty.screen_name(self)
           h[gvar_name] ||= {}
           h[gvar_name][ret] ||= {}
         end
@@ -535,9 +557,9 @@ module TypeProfiler
       end
       h = {}
       @ivar_types.each do |(recv, var), tys|
-        tys.each_key do |ty, genv|
-          ivar_name = "#{ recv.screen_name(genv) }##{ var }"
-          ret = ty.screen_name(genv)
+        tys.each_key do |ty|
+          ivar_name = "#{ recv.screen_name(self) }##{ var }"
+          ret = ty.screen_name(self)
           h[ivar_name] ||= {}
           h[ivar_name][ret] ||= {}
         end
@@ -551,24 +573,24 @@ module TypeProfiler
       @signatures.each do |ctx, sigs|
         next unless ctx.sig.mid
         next unless ctx.iseq
-        sigs.each_key do |ret_ty, genv|
+        sigs.each_key do |ret_ty|
           method_count = 0
-          genv.class_defs.each do |class_def|
+          @class_defs.each do |class_def|
             #p [class_def.name, class_def.methods.keys.size]
             method_count += class_def.methods.size
           end
           #p method_count
           recv = ctx.cref.klass
           recv = Type::Instance.new(recv) unless ctx.sig.singleton
-          recv = recv.screen_name(genv)
+          recv = recv.screen_name(self)
           stat_classes[recv] = true
           method_name = "#{ recv }##{ ctx.sig.mid }"
           stat_methods[method_name] = true
-          args = ctx.sig.arg_tys.map {|ty| ty.screen_name(genv) }
+          args = ctx.sig.arg_tys.map {|ty| ty.screen_name(self) }
           if @yields[ctx]
-            args << show_block(ctx, genv)
+            args << show_block(ctx)
           end
-          ret = ret_ty.screen_name(genv)
+          ret = ret_ty.screen_name(self)
           h[method_name] ||= {}
           h[method_name][args] ||= {}
           h[method_name][args][ret] = true
@@ -602,12 +624,11 @@ module TypeProfiler
   class State
     include Utils::StructuralEquality
 
-    def initialize(lenv, genv)
+    def initialize(lenv)
       @lenv = lenv
-      @genv = genv
     end
 
-    attr_reader :lenv, :genv
+    attr_reader :lenv
 
     def self.run(state, scratch)
       visited = {}
@@ -634,10 +655,10 @@ module TypeProfiler
     end
 
     def run(scratch)
-      scratch.next_state_table[self] ||= step(@lenv, @genv, scratch)
+      scratch.next_state_table[self] ||= step(@lenv, scratch)
     end
 
-    def step(lenv, genv, scratch)
+    def step(lenv, scratch)
       insn, *operands = lenv.ctx.iseq.insns[lenv.pc]
 
       p [lenv.location, lenv.pc, insn, lenv.stack.size] if ENV["TP_DEBUG"]
@@ -708,15 +729,15 @@ module TypeProfiler
         case flags & 7
         when 0, 2 # CLASS / MODULE
           scratch.warn(self, "module is not supported yet") if flags & 7 == 2
-          existing_klass = genv.get_constant(cbase, id)
+          existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
           else
             if existing_klass != Type::Any.new
-              scratch.error(self, "the class \"#{ id }\" is #{ existing_klass.screen_name(genv) }")
+              scratch.error(self, "the class \"#{ id }\" is #{ existing_klass.screen_name(scratch) }")
               id = :"#{ id }(dummy)"
             end
-            existing_klass = genv.get_constant(cbase, id)
+            existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
             if existing_klass != Type::Any.new
               klass = existing_klass
             else
@@ -726,7 +747,7 @@ module TypeProfiler
               elsif superclass.eql?(Type::Instance.new(Type::Builtin[:nil]))
                 superclass = Type::Builtin[:obj]
               end
-              genv, klass = genv.new_class(cbase, id, superclass)
+              klass = scratch.new_class(cbase, id, superclass)
             end
           end
         when 1 # SINGLETON_CLASS
@@ -739,20 +760,20 @@ module TypeProfiler
         blk = lenv.ctx.sig.blk_ty
         ctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, [], blk))
         nlenv = LocalEnv.new(ctx, 0, nil, [], {}, nil)
-        state = State.new(nlenv, genv)
-        scratch.add_callsite!(nlenv.ctx, lenv, genv) do |ret_ty, lenv, genv|
+        state = State.new(nlenv)
+        scratch.add_callsite!(nlenv.ctx, lenv) do |ret_ty, lenv|
           nlenv = lenv.push(ret_ty).next
-          State.new(nlenv, genv)
+          State.new(nlenv)
         end
         return [state]
       when :send
         lenv, recv, mid, args, blk = State.setup_arguments(operands, lenv)
-        meth = recv.get_method(mid, genv)
+        meth = recv.get_method(mid, scratch)
         if meth
-          return meth.do_send(self, flags, recv, mid, args, blk, lenv, genv, scratch)
+          return meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
         else
           if recv != Type::Any.new # XXX: should be configurable
-            scratch.error(self, "undefined method: #{ recv.strip_local_info(lenv).screen_name(genv) }##{ mid }")
+            scratch.error(self, "undefined method: #{ recv.strip_local_info(lenv).screen_name(scratch) }##{ mid }")
           end
           lenv = lenv.push(Type::Any.new)
         end
@@ -772,7 +793,7 @@ module TypeProfiler
           orig_argc = opt[:orig_argc]
           lenv, args = lenv.pop(orig_argc)
           blk_nil = Type::Instance.new(Type::Builtin[:nil])
-          return State.do_invoke_block(true, lenv.ctx.sig.blk_ty, args, blk_nil, lenv, genv, scratch)
+          return State.do_invoke_block(true, lenv.ctx.sig.blk_ty, args, blk_nil, lenv, scratch)
         end
       when :invokesuper
         lenv, recv, _, args, blk = State.setup_arguments(operands, lenv)
@@ -780,11 +801,11 @@ module TypeProfiler
         recv = lenv.ctx.sig.recv_ty
         mid  = lenv.ctx.sig.mid
         # XXX: need to support included module...
-        meth = genv.get_super_method(lenv.ctx.cref.klass, mid)
+        meth = scratch.get_super_method(lenv.ctx.cref.klass, mid) # TODO: multiple return values
         if meth
-          return meth.do_send(self, flags, recv, mid, args, blk, lenv, genv, scratch)
+          return meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
         else
-          scratch.error(self, "no superclass method: #{ lenv.ctx.sig.recv_ty.screen_name(genv) }##{ mid }")
+          scratch.error(self, "no superclass method: #{ lenv.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
           lenv = lenv.push(Type::Any.new)
         end
       when :leave
@@ -796,9 +817,9 @@ module TypeProfiler
         tmp_lenv = lenv
         while tmp_lenv.outer
           tmp_lenv = tmp_lenv.outer
-          scratch.add_return_lenv!(tmp_lenv, genv)
+          scratch.add_return_lenv!(tmp_lenv)
         end
-        scratch.add_return_type!(lenv.ctx, ty, genv)
+        scratch.add_return_type!(lenv.ctx, ty)
         return []
       when :throw
         raise NotImplementedError, "throw"
@@ -811,27 +832,27 @@ module TypeProfiler
         lenv_t = lenv.next
         lenv_f = lenv.jump(target)
         return [
-          State.new(lenv_t, genv),
-          State.new(lenv_f, genv),
+          State.new(lenv_t),
+          State.new(lenv_f),
         ]
       when :jump
         target, = operands
-        return [State.new(lenv.jump(target), genv)]
+        return [State.new(lenv.jump(target))]
 
       when :setinstancevariable
         var, = operands
         lenv, (ty,) = lenv.pop(1)
         recv = lenv.ctx.sig.recv_ty
         ty = ty.strip_local_info(lenv)
-        scratch.add_ivar_type!(recv, var, ty, genv)
+        scratch.add_ivar_type!(recv, var, ty)
 
       when :getinstancevariable
         var, = operands
         recv = lenv.ctx.sig.recv_ty
-        scratch.add_ivar_site!(recv, var, lenv, genv) do |ty, genv|
+        scratch.add_ivar_site!(recv, var, lenv) do |ty|
           nlenv, ty, = lenv.deploy_type(ty, 0)
           nlenv = nlenv.push(ty).next
-          State.new(nlenv, genv)
+          State.new(nlenv)
         end
         return []
 
@@ -844,13 +865,13 @@ module TypeProfiler
         var, = operands
         lenv, (ty,) = lenv.pop(1)
         ty = ty.strip_local_info(lenv)
-        scratch.add_gvar_type!(var, ty, genv)
+        scratch.add_gvar_type!(var, ty)
 
       when :getglobal
         var, = operands
-        scratch.add_gvar_site!(var, lenv, genv) do |ty, genv|
+        scratch.add_gvar_site!(var, lenv) do |ty|
           nlenv = lenv.push(ty).next
-          State.new(nlenv, genv)
+          State.new(nlenv)
         end
         return []
 
@@ -869,24 +890,24 @@ module TypeProfiler
         name, = operands
         lenv, (cbase,) = lenv.pop(1)
         if cbase.eql?(Type::Instance.new(Type::Builtin[:nil]))
-          lenv, ty, = lenv.deploy_type(genv.search_constant(lenv.ctx.cref, name), 0)
+          lenv, ty, = lenv.deploy_type(scratch.search_constant(lenv.ctx.cref, name), 0) # TODO: multiple return arguments
           lenv = lenv.push(ty)
         elsif cbase.eql?(Type::Any.new)
           lenv = lenv.push(Type::Any.new) # XXX: warning needed?
         else
           #puts
           #p cbase, name
-          lenv, ty, = lenv.deploy_type(genv.get_constant(cbase, name), 0)
+          lenv, ty, = lenv.deploy_type(scratch.get_constant(cbase, name), 0) # TODO: multiple return arguments
           lenv = lenv.push(ty)
         end
       when :setconstant
         name, = operands
         lenv, (val, cbase) = lenv.pop(2)
-        existing_val = genv.get_constant(cbase, name)
+        existing_val = scratch.get_constant(cbase, name) # TODO: multiple return arguments
         if existing_val != Type::Any.new # XXX???
-          scratch.warn(self, "already initialized constant #{ Type::Instance.new(cbase).screen_name(genv) }::#{ name }")
+          scratch.warn(self, "already initialized constant #{ Type::Instance.new(cbase).screen_name(scratch) }::#{ name }")
         end
-        genv = genv.add_constant(cbase, name, val.strip_local_info(lenv))
+        scratch.add_constant(cbase, name, val.strip_local_info(lenv))
 
       when :getspecial
         key, type = operands
@@ -897,8 +918,8 @@ module TypeProfiler
             lenv = lenv.push(Type::Any.new) # or String | NilClass only?
           when 1 # VM_SVAR_BACKREF ($~)
             return [
-              State.new(lenv.push(Type::Instance.new(Type::Builtin[:matchdata])).next, genv),
-              State.new(lenv.push(Type::Instance.new(Type::Builtin[:nil])).next, genv),
+              State.new(lenv.push(Type::Instance.new(Type::Builtin[:matchdata])).next),
+              State.new(lenv.push(Type::Instance.new(Type::Builtin[:nil])).next),
             ]
           else # flip-flop
             lenv = lenv.push(Type::Instance.new(Type::Builtin[:bool]))
@@ -906,8 +927,8 @@ module TypeProfiler
         else
           # NTH_REF ($1, $2, ...) / BACK_REF ($&, $+, ...)
           return [
-            State.new(lenv.push(Type::Instance.new(Type::Builtin[:str])).next, genv),
-            State.new(lenv.push(Type::Instance.new(Type::Builtin[:nil])).next, genv),
+            State.new(lenv.push(Type::Instance.new(Type::Builtin[:str])).next),
+            State.new(lenv.push(Type::Instance.new(Type::Builtin[:nil])).next),
           ]
         end
       when :setspecial
@@ -999,7 +1020,7 @@ module TypeProfiler
         raise NotImplementedError, "unknown insn: #{ insn }"
       end
 
-      [State.new(lenv.next, genv)]
+      [State.new(lenv.next)]
     end
 
     def do_expand_array(lenv, elems, num, splat, from_head)
@@ -1037,7 +1058,7 @@ module TypeProfiler
             end
           end
         end
-        return lenvs.map {|le| State.new(le.next, genv) }
+        return lenvs.map {|le| State.new(le.next) }
       else
         if from_head
           lenvs = [lenv]
@@ -1053,7 +1074,7 @@ module TypeProfiler
               le = le.push(local_ary_ty)
             end
           end
-          return lenvs.map {|le| State.new(le.next, genv) }
+          return lenvs.map {|le| State.new(le.next) }
         else
           lenvs = [lenv]
           if splat
@@ -1068,24 +1089,24 @@ module TypeProfiler
               elems.types.map {|ty| le.push(ty) }
             end
           end
-          return lenvs.map {|le| State.new(le.next, genv) }
+          return lenvs.map {|le| State.new(le.next) }
         end
         raise NotImplementedError
       end
     end
 
-    def self.do_invoke_block(given_block, blk, args, arg_blk, lenv, genv, scratch, &ctn)
+    def self.do_invoke_block(given_block, blk, args, arg_blk, lenv, scratch, &ctn)
       if ctn
-        do_invoke_block_core(given_block, blk, args, arg_blk, lenv, genv, scratch, &ctn)
+        do_invoke_block_core(given_block, blk, args, arg_blk, lenv, scratch, &ctn)
       else
-        do_invoke_block_core(given_block, blk, args, arg_blk, lenv, genv, scratch) do |ret_ty, lenv, genv|
+        do_invoke_block_core(given_block, blk, args, arg_blk, lenv, scratch) do |ret_ty, lenv|
           nlenv = lenv.push(ret_ty).next
-          State.new(nlenv, genv)
+          State.new(nlenv)
         end
       end
     end
 
-    def self.do_invoke_block_core(given_block, blk, args, arg_blk, lenv, genv, scratch, &ctn)
+    def self.do_invoke_block_core(given_block, blk, args, arg_blk, lenv, scratch, &ctn)
       blk_iseq = blk.iseq
       blk_lenv = blk.lenv
       args = args.map {|arg| arg.strip_local_info(lenv) }
@@ -1097,7 +1118,7 @@ module TypeProfiler
       lenv_blk = blk_lenv.ctx.sig.blk_ty
       nctx = Context.new(blk_iseq, blk_lenv.ctx.cref, Signature.new(recv, nil, nil, args, lenv_blk))
       nlenv = LocalEnv.new(nctx, 0, locals, [], {}, blk_lenv)
-      state = State.new(nlenv, genv)
+      state = State.new(nlenv)
 
       # caution: given_block flag is not complete
       #
@@ -1113,7 +1134,7 @@ module TypeProfiler
       # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
 
       scratch.add_yield!(lenv.ctx, nlenv.ctx) if given_block
-      scratch.add_callsite!(nlenv.ctx, lenv, genv, &ctn)
+      scratch.add_callsite!(nlenv.ctx, lenv, &ctn)
       return [state]
     end
 

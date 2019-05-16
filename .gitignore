@@ -2,3 +2,4 @@ coverage.dump
 coverage.info
 coverage/
 stackprof.dump
+*.log

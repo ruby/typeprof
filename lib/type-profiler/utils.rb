@@ -25,5 +25,50 @@ module TypeProfiler
         end
       end
     end
+
+    class Set
+      include StructuralEquality
+
+      def self.[](*values)
+        hash = {}
+        values.each {|v| hash[v] = v }
+        new(hash)
+      end
+
+      def initialize(hash)
+        @hash = hash
+      end
+
+      def each(&blk)
+        @hash.each_key(&blk)
+      end
+
+      include Enumerable
+
+      def +(set)
+        raise NotImplementedError
+      end
+    end
+
+    class MutableSet
+      def initialize(*values)
+        @hash = {}
+        values.each_key {|v| @hash[v] = v }
+      end
+
+      def each(&blk)
+        @hash.each_key(&blk)
+      end
+
+      def <<(v)
+        @hash[v]
+      end
+
+      def inspect
+        s = []
+        each {|v| s << v.inspect }
+        "{#{ s.join(", ") }}"
+      end
+    end
   end
 end

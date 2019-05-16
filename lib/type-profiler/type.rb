@@ -29,11 +29,11 @@ module TypeProfiler
         "Type::Any"
       end
 
-      def screen_name(genv)
+      def screen_name(scratch)
         "any"
       end
 
-      def get_method(mid, genv)
+      def get_method(mid, scratch)
         nil
       end
 
@@ -58,12 +58,12 @@ module TypeProfiler
         end
       end
 
-      def screen_name(genv)
-        "#{ genv.get_class_name(self) }.class"
+      def screen_name(scratch)
+        "#{ scratch.get_class_name(self) }.class"
       end
 
-      def get_method(mid, genv)
-        genv.get_singleton_method(self, mid)
+      def get_method(mid, scratch)
+        scratch.get_singleton_method(self, mid)
       end
     end
 
@@ -78,29 +78,12 @@ module TypeProfiler
         "I[#{ @klass.inspect }]"
       end
 
-      def screen_name(genv)
-        genv.get_class_name(@klass)
+      def screen_name(scratch)
+        scratch.get_class_name(@klass)
       end
 
-      def get_method(mid, genv)
-        genv.get_method(@klass, mid)
-      end
-    end
-
-    # not used?
-    class Symbol < Type
-      def initialize(sym)
-        @sym = sym
-      end
-
-      attr_reader :sym
-
-      def inspect
-        "Type::Symbol[#{ @sym.inspect }]"
-      end
-
-      def screen_name(_genv)
-        @sym.inspect
+      def get_method(mid, scratch)
+        scratch.get_method(@klass, mid)
       end
     end
 
@@ -115,7 +98,7 @@ module TypeProfiler
         "Type::ISeq[#{ @iseq }]"
       end
 
-      def screen_name(_genv)
+      def screen_name(_scratch)
         raise NotImplementedError
       end
     end
@@ -133,12 +116,12 @@ module TypeProfiler
         "#<ISeqProc>"
       end
 
-      def screen_name(genv)
+      def screen_name(_scratch)
         "??ISeqProc??"
       end
 
-      def get_method(mid, genv)
-        @type.get_method(mid, genv)
+      def get_method(mid, scratch)
+        @type.get_method(mid, scratch)
       end
     end
 
@@ -167,16 +150,16 @@ module TypeProfiler
         "Type::Literal[#{ @lit.inspect }, #{ @type.inspect }]"
       end
 
-      def screen_name(genv)
-        @type.screen_name(genv) + "<#{ @lit.inspect }>"
+      def screen_name(scratch)
+        @type.screen_name(scratch) + "<#{ @lit.inspect }>"
       end
 
       def strip_local_info_core(lenv, visited)
         @type
       end
 
-      def get_method(mid, genv)
-        @type.get_method(mid, genv)
+      def get_method(mid, scratch)
+        @type.get_method(mid, scratch)
       end
     end
 
@@ -192,7 +175,7 @@ module TypeProfiler
         "Type::LocalArray[#{ @id }]"
       end
 
-      def screen_name(genv)
+      def screen_name(scratch)
         raise "LocalArray must not be included in signature"
       end
 
@@ -207,8 +190,8 @@ module TypeProfiler
         end
       end
 
-      def get_method(mid, genv)
-        @base_type.get_method(mid, genv)
+      def get_method(mid, scratch)
+        @base_type.get_method(mid, scratch)
       end
     end
 
@@ -226,15 +209,15 @@ module TypeProfiler
         @base_type.inspect
       end
 
-      def screen_name(genv)
-        @elems.screen_name(genv)
+      def screen_name(scratch)
+        @elems.screen_name(scratch)
       end
 
       def strip_local_info_core(lenv, visited)
         self
       end
 
-      def get_method(mid, genv)
+      def get_method(mid, scratch)
         raise
       end
 
@@ -260,8 +243,8 @@ module TypeProfiler
           Seq.new(Union.new(*@elems.types.map {|ty| ty.strip_local_info_core(lenv, visited) }))
         end
 
-        def screen_name(genv)
-          "Array[" + @elems.screen_name(genv) + "]"
+        def screen_name(scratch)
+          "Array[" + @elems.screen_name(scratch) + "]"
         end
 
         def deploy_type(lenv, id)
@@ -309,9 +292,9 @@ module TypeProfiler
           end
         end
 
-        def screen_name(genv)
+        def screen_name(scratch)
           "[" + @elems.map do |elem|
-            elem.screen_name(genv)
+            elem.screen_name(scratch)
           end.join(", ") + "]"
         end
 
@@ -352,9 +335,9 @@ module TypeProfiler
 
       attr_reader :types
 
-      def screen_name(genv)
+      def screen_name(scratch)
         @types.map do |ty|
-          ty.screen_name(genv)
+          ty.screen_name(scratch)
         end.join(" | ")
       end
 
