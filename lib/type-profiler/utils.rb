@@ -53,15 +53,17 @@ module TypeProfiler
     class MutableSet
       def initialize(*values)
         @hash = {}
-        values.each_key {|v| @hash[v] = v }
+        values.each {|v| @hash[v] = v }
       end
 
       def each(&blk)
         @hash.each_key(&blk)
       end
 
+      include Enumerable
+
       def <<(v)
-        @hash[v]
+        @hash[v] = true
       end
 
       def inspect

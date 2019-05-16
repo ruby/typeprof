@@ -45,10 +45,12 @@ module TypeProfiler
 
     def object_new(state, flags, recv, mid, args, blk, lenv, scratch)
       ty = Type::Instance.new(recv)
-      meth = scratch.get_method(recv, :initialize)
-      meth.do_send(state, 0, ty, :initialize, args, blk, lenv, scratch) do |ret_ty, lenv|
-        nlenv = lenv.push(Type::Instance.new(recv)).next
-        State.new(nlenv)
+      meths = scratch.get_method(recv, :initialize)
+      meths.flat_map do |meth|
+        meth.do_send(state, 0, ty, :initialize, args, blk, lenv, scratch) do |ret_ty, lenv|
+          nlenv = lenv.push(Type::Instance.new(recv)).next
+          State.new(nlenv)
+        end
       end
     end
 

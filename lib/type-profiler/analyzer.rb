@@ -139,11 +139,6 @@ module TypeProfiler
     end
   end
 
-  class GlobalEnv
-    include Utils::StructuralEquality
-
-  end
-
   class Scratch
     def initialize
       @class_defs = {}
@@ -190,7 +185,9 @@ module TypeProfiler
       end
 
       def add_method(mid, mdef)
-        @methods[mid] = mdef
+        @methods[mid] ||= Utils::MutableSet.new
+        @methods[mid] << mdef
+        # Need to restart...?
       end
 
       def get_singleton_method(mid)
@@ -198,7 +195,8 @@ module TypeProfiler
       end
 
       def add_singleton_method(mid, mdef)
-        @singleton_methods[mid] = mdef
+        @singleton_methods[mid] ||= Utils::MutableSet.new
+        @singleton_methods[mid] << mdef
       end
 
       attr_reader :name, :methods, :superclass
@@ -230,6 +228,7 @@ module TypeProfiler
       idx = klass.idx
       while idx
         mthd = @class_defs[idx].get_method(mid)
+        # Need to be conservative to include all super candidates...?
         return mthd if mthd
         idx = @class_defs[idx].superclass
       end
@@ -240,6 +239,7 @@ module TypeProfiler
       idx = klass.idx
       while idx
         mthd = @class_defs[idx].get_singleton_method(mid)
+        # Need to be conservative to include all super candidates...?
         return mthd if mthd
         idx = @class_defs[idx].superclass
       end
@@ -330,7 +330,9 @@ module TypeProfiler
         self
       else
         klass_def = @class_defs[klass.idx]
-        klass_def.add_method(new, klass_def.get_method(old))
+        klass_def.get_method(old).each do |mdef|
+          klass_def.add_method(new, mdef)
+        end
       end
     end
 
@@ -768,9 +770,11 @@ module TypeProfiler
         return [state]
       when :send
         lenv, recv, mid, args, blk = State.setup_arguments(operands, lenv)
-        meth = recv.get_method(mid, scratch)
-        if meth
-          return meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
+        meths = recv.get_method(mid, scratch)
+        if meths
+          return meths.flat_map do |meth|
+            meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
+          end
         else
           if recv != Type::Any.new # XXX: should be configurable
             scratch.error(self, "undefined method: #{ recv.strip_local_info(lenv).screen_name(scratch) }##{ mid }")
@@ -801,9 +805,11 @@ module TypeProfiler
         recv = lenv.ctx.sig.recv_ty
         mid  = lenv.ctx.sig.mid
         # XXX: need to support included module...
-        meth = scratch.get_super_method(lenv.ctx.cref.klass, mid) # TODO: multiple return values
-        if meth
-          return meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
+        meths = scratch.get_super_method(lenv.ctx.cref.klass, mid) # TODO: multiple return values
+        if meths
+          return meths.flat_map do |meth|
+            meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
+          end
         else
           scratch.error(self, "no superclass method: #{ lenv.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
           lenv = lenv.push(Type::Any.new)
