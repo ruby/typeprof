@@ -38,15 +38,16 @@ module TypeProfiler
   class ExecutionPoint
     include Utils::StructuralEquality
 
-    def initialize(ctx, pc)
+    def initialize(ctx, pc, outer)
       @ctx = ctx
       @pc = pc
+      @outer = outer
     end
 
-    attr_reader :ctx, :pc
+    attr_reader :ctx, :pc, :outer
 
     def jump(pc)
-      ExecutionPoint.new(@ctx, pc)
+      ExecutionPoint.new(@ctx, pc, @outer)
     end
 
     def source_location
@@ -775,7 +776,7 @@ module TypeProfiler
         recv = klass
         blk = lenv.ep.ctx.sig.blk_ty
         ctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, [], blk))
-        ep = ExecutionPoint.new(ctx, 0)
+        ep = ExecutionPoint.new(ctx, 0, nil)
         nlenv = LocalEnv.new(ep, nil, [], {}, nil)
         state = State.new(nlenv)
         scratch.add_callsite!(nlenv.ep.ctx, lenv) do |ret_ty, lenv|
@@ -1138,7 +1139,7 @@ module TypeProfiler
       recv = blk_lenv.ep.ctx.sig.recv_ty
       lenv_blk = blk_lenv.ep.ctx.sig.blk_ty
       nctx = Context.new(blk_iseq, blk_lenv.ep.ctx.cref, Signature.new(recv, nil, nil, args, lenv_blk))
-      nep = ExecutionPoint.new(nctx, 0)
+      nep = ExecutionPoint.new(nctx, 0, blk_lenv.ep)
       nlenv = LocalEnv.new(nep, locals, [], {}, blk_lenv)
       state = State.new(nlenv)
 

@@ -46,7 +46,7 @@ module TypeProfiler
       locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (@iseq.locals.size - args.size)
       locals[@iseq.args[:block_start]] = blk if @iseq.args[:block_start]
 
-      nep = ExecutionPoint.new(ctx, 0)
+      nep = ExecutionPoint.new(ctx, 0, nil)
       nlenv = LocalEnv.new(nep, [nil] * locals.size, [], {}, nil)
       id = 0
       locals.each_with_index do |ty, idx|
@@ -73,7 +73,7 @@ module TypeProfiler
         recv = recv.strip_local_info(lenv)
         args = args.map {|arg| arg.strip_local_info(lenv) }
         dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, args, blk))
-        dummy_ep = ExecutionPoint.new(dummy_ctx, -1)
+        dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
         dummy_lenv = LocalEnv.new(dummy_ep, [], [], {}, nil)
         # XXX: check blk type
         next if args.size != sig.arg_tys.size

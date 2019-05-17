@@ -13,7 +13,7 @@ module TypeProfiler
     setup_initial_global_env(scratch)
     state = starting_state(iseq)
     dummy_ctx = Context.new(nil, nil, Signature.new(:top, nil, nil, [], nil))
-    dummy_ep = ExecutionPoint.new(dummy_ctx, -1)
+    dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
     dummy_lenv = LocalEnv.new(dummy_ep, [], [], {}, nil)
     scratch.add_callsite!(state.lenv.ep.ctx, dummy_lenv) do |ret_ty, lenv|
       nil
@@ -27,7 +27,7 @@ module TypeProfiler
     _nil = Type::Instance.new(Type::Builtin[:nil])
     ctx = Context.new(iseq, cref, Signature.new(recv, nil, nil, [], _nil))
     locals = [_nil] * (iseq.locals.size + 1)
-    ep = ExecutionPoint.new(ctx, 0)
+    ep = ExecutionPoint.new(ctx, 0, nil)
     lenv = LocalEnv.new(ep, locals, [], {}, nil)
 
     State.new(lenv)
