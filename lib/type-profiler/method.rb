@@ -46,7 +46,8 @@ module TypeProfiler
       locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (@iseq.locals.size - args.size)
       locals[@iseq.args[:block_start]] = blk if @iseq.args[:block_start]
 
-      nlenv = LocalEnv.new(ctx, 0, [nil] * locals.size, [], {}, nil)
+      nep = ExecutionPoint.new(ctx, 0)
+      nlenv = LocalEnv.new(nep, [nil] * locals.size, [], {}, nil)
       id = 0
       locals.each_with_index do |ty, idx|
         nlenv, ty, id = nlenv.deploy_type(ty, id)
@@ -56,7 +57,7 @@ module TypeProfiler
       # XXX: need to jump option argument
       state = State.new(nlenv)
 
-      scratch.add_callsite!(nlenv.ctx, lenv, &ctn)
+      scratch.add_callsite!(nlenv.ep.ctx, lenv, &ctn)
 
       return [state]
     end
@@ -72,7 +73,8 @@ module TypeProfiler
         recv = recv.strip_local_info(lenv)
         args = args.map {|arg| arg.strip_local_info(lenv) }
         dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, args, blk))
-        dummy_lenv = LocalEnv.new(dummy_ctx, -1, [], [], {}, nil)
+        dummy_ep = ExecutionPoint.new(dummy_ctx, -1)
+        dummy_lenv = LocalEnv.new(dummy_ep, [], [], {}, nil)
         # XXX: check blk type
         next if args.size != sig.arg_tys.size
         next unless args.zip(sig.arg_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }

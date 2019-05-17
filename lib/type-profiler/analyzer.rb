@@ -35,30 +35,44 @@ module TypeProfiler
     attr_reader :iseq, :cref, :sig
   end
 
+  class ExecutionPoint
+    include Utils::StructuralEquality
+
+    def initialize(ctx, pc)
+      @ctx = ctx
+      @pc = pc
+    end
+
+    attr_reader :ctx, :pc
+
+    def jump(pc)
+      ExecutionPoint.new(@ctx, pc)
+    end
+
+    def source_location
+      @ctx.iseq.source_location(@pc)
+    end
+  end
+
   class LocalEnv
     include Utils::StructuralEquality
 
-    def initialize(ctx, pc, locals, stack, type_params, outer)
-      @ctx = ctx
-      @pc = pc
+    def initialize(ep, locals, stack, type_params, outer)
+      @ep = ep
       @locals = locals
       @stack = stack
       @type_params = type_params
       @outer = outer
     end
 
-    def site
-      [@ctx, @pc]
-    end
-
-    attr_reader :ctx, :pc, :locals, :stack, :type_params, :outer
+    attr_reader :ep, :locals, :stack, :type_params, :outer
 
     def jump(pc)
-      LocalEnv.new(@ctx, pc, @locals, @stack, @type_params, @outer)
+      LocalEnv.new(@ep.jump(pc), @locals, @stack, @type_params, @outer)
     end
 
     def next
-      jump(@pc + 1)
+      jump(@ep.pc + 1)
     end
 
     def push(*tys)
@@ -66,19 +80,19 @@ module TypeProfiler
         raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         raise "nil cannot be pushed to the stack" if ty.nil?
       end
-      LocalEnv.new(@ctx, @pc, @locals, @stack + tys, @type_params, @outer)
+      LocalEnv.new(@ep, @locals, @stack + tys, @type_params, @outer)
     end
 
     def pop(n)
       stack = @stack.dup
       tys = stack.pop(n)
-      nlenv = LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @outer)
+      nlenv = LocalEnv.new(@ep, @locals, stack, @type_params, @outer)
       return nlenv, tys
     end
 
     def setn(i, ty)
       stack = Utils.array_update(@stack, -i, ty)
-      LocalEnv.new(@ctx, @pc, @locals, stack, @type_params, @outer)
+      LocalEnv.new(@ep, @locals, stack, @type_params, @outer)
     end
 
     def topn(i)
@@ -87,17 +101,17 @@ module TypeProfiler
 
     def local_update(idx, scope, ty)
       if scope == 0
-        LocalEnv.new(@ctx, @pc, Utils.array_update(@locals, idx, ty), @stack, @type_params, @outer)
+        LocalEnv.new(@ep, Utils.array_update(@locals, idx, ty), @stack, @type_params, @outer)
       else
-        LocalEnv.new(@ctx, @pc, @locals, @stack, @type_params, @outer.local_update(idx, scope - 1, ty))
+        LocalEnv.new(@ep, @locals, @stack, @type_params, @outer.local_update(idx, scope - 1, ty))
       end
     end
 
     def deploy_type(ty, id)
       case ty
       when Type::Array
-        if @type_params[site]
-          local_ty = Type::LocalArray.new(site, ty.base_type)
+        if @type_params[@ep]
+          local_ty = Type::LocalArray.new(@ep, ty.base_type)
           return self, local_ty, id
         else
           lenv = self
@@ -110,11 +124,11 @@ module TypeProfiler
     end
 
     def deploy_array_type(base_ty, elems, id)
-      local_ty = Type::LocalArray.new([site, id], base_ty)
+      local_ty = Type::LocalArray.new([@ep, id], base_ty)
 
-      type_params = @type_params.merge({ [site, id] => elems })
-      nlenv = LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
-      #p [location, @pc, :merge, self.hash, nlenv.hash, @type_params[[site, id]]]
+      type_params = @type_params.merge({ [@ep, id] => elems })
+      nlenv = LocalEnv.new(@ep, @locals, @stack, type_params, @outer)
+      #p [location, @ep.pc, :merge, self.hash, nlenv.hash, @type_params[[@ep, id]]]
       return nlenv, local_ty, id + 1
     end
 
@@ -127,15 +141,15 @@ module TypeProfiler
       if type_param
         elems = @type_params[id].update(idx, ty)
         type_params = @type_params.merge({ id => elems })
-        LocalEnv.new(@ctx, @pc, @locals, @stack, type_params, @outer)
+        LocalEnv.new(@ep, @locals, @stack, type_params, @outer)
       else
         nouter = @outer.update_array_elem_types(id, idx, ty)
-        LocalEnv.new(@ctx, @pc, @locals, @stack, @type_params, nouter)
+        LocalEnv.new(@ep, @locals, @stack, @type_params, nouter)
       end
     end
 
     def location
-      @ctx.iseq.source_location(@pc)
+      @ep.source_location
     end
   end
 
@@ -382,9 +396,9 @@ module TypeProfiler
 
     def add_callsite!(callee_ctx, caller_lenv, &ctn)
       @callsites[callee_ctx] ||= {}
-      @callsites[callee_ctx][caller_lenv.site] = true
+      @callsites[callee_ctx][caller_lenv.ep] = true
 
-      restart = @call_restarts[caller_lenv.site] ||= Restart.new(@new_states)
+      restart = @call_restarts[caller_lenv.ep] ||= Restart.new(@new_states)
       restart.add_continuation(ctn)
       restart.add_restart_lenv(caller_lenv)
 
@@ -395,7 +409,7 @@ module TypeProfiler
     end
 
     def add_return_lenv!(lenv)
-      restart = @call_restarts[lenv.site] ||= Restart.new(@new_states)
+      restart = @call_restarts[lenv.ep] ||= Restart.new(@new_states)
       restart.add_restart_lenv(lenv)
     end
 
@@ -524,7 +538,7 @@ module TypeProfiler
     def filter_backtrace(trace)
       ntrace = [trace.first]
       trace.each_cons(2) do |state1, state2|
-        ntrace << state2 if state1.lenv.ctx != state2.lenv.ctx
+        ntrace << state2 if state1.lenv.ep.ctx != state2.lenv.ep.ctx
       end
       ntrace
     end
@@ -612,8 +626,8 @@ module TypeProfiler
       if ENV["TP_COVERAGE"]
         coverage = {}
         stat_states.each_key do |s|
-          path = s.lenv.ctx.iseq.path
-          lineno = s.lenv.ctx.iseq.linenos[s.lenv.pc] - 1
+          path = s.lenv.ep.ctx.iseq.path
+          lineno = s.lenv.ep.ctx.iseq.linenos[s.lenv.pc] - 1
           (coverage[path] ||= [])[lineno] ||= 0
           (coverage[path] ||= [])[lineno] += 1
         end
@@ -661,9 +675,9 @@ module TypeProfiler
     end
 
     def step(lenv, scratch)
-      insn, *operands = lenv.ctx.iseq.insns[lenv.pc]
+      insn, *operands = lenv.ep.ctx.iseq.insns[lenv.ep.pc]
 
-      p [lenv.location, lenv.pc, insn, lenv.stack.size] if ENV["TP_DEBUG"]
+      p [lenv.location, lenv.ep.pc, insn, lenv.stack.size] if ENV["TP_DEBUG"]
 
       case insn
       when :putspecialobject
@@ -671,7 +685,7 @@ module TypeProfiler
         ty = case type
         when 1 then Type::Instance.new(Type::Builtin[:vmcore])
         when 2, 3 # CBASE / CONSTBASE
-          lenv.ctx.cref.klass
+          lenv.ep.ctx.cref.klass
         else
           raise NotImplementedError, "unknown special object: #{ type }"
         end
@@ -690,7 +704,7 @@ module TypeProfiler
         iseq, = operands
         lenv = lenv.push(Type::ISeq.new(iseq))
       when :putself
-        lenv = lenv.push(lenv.ctx.sig.recv_ty)
+        lenv = lenv.push(lenv.ep.ctx.sig.recv_ty)
       when :newarray
         len, = operands
         lenv, elems = lenv.pop(len)
@@ -757,13 +771,14 @@ module TypeProfiler
         else
           raise NotImplementedError, "unknown defineclass flag: #{ flags }"
         end
-        ncref = lenv.ctx.cref.extend(klass)
+        ncref = lenv.ep.ctx.cref.extend(klass)
         recv = klass
-        blk = lenv.ctx.sig.blk_ty
+        blk = lenv.ep.ctx.sig.blk_ty
         ctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, [], blk))
-        nlenv = LocalEnv.new(ctx, 0, nil, [], {}, nil)
+        ep = ExecutionPoint.new(ctx, 0)
+        nlenv = LocalEnv.new(ep, nil, [], {}, nil)
         state = State.new(nlenv)
-        scratch.add_callsite!(nlenv.ctx, lenv) do |ret_ty, lenv|
+        scratch.add_callsite!(nlenv.ep.ctx, lenv) do |ret_ty, lenv|
           nlenv = lenv.push(ret_ty).next
           State.new(nlenv)
         end
@@ -783,7 +798,7 @@ module TypeProfiler
         end
       when :invokeblock
         # XXX: need block parameter, unknown block, etc.
-        blk = lenv.ctx.sig.blk_ty
+        blk = lenv.ep.ctx.sig.blk_ty
         case
         when blk.eql?(Type::Instance.new(Type::Builtin[:nil]))
           scratch.error(self, "no block given")
@@ -797,21 +812,21 @@ module TypeProfiler
           orig_argc = opt[:orig_argc]
           lenv, args = lenv.pop(orig_argc)
           blk_nil = Type::Instance.new(Type::Builtin[:nil])
-          return State.do_invoke_block(true, lenv.ctx.sig.blk_ty, args, blk_nil, lenv, scratch)
+          return State.do_invoke_block(true, lenv.ep.ctx.sig.blk_ty, args, blk_nil, lenv, scratch)
         end
       when :invokesuper
         lenv, recv, _, args, blk = State.setup_arguments(operands, lenv)
 
-        recv = lenv.ctx.sig.recv_ty
-        mid  = lenv.ctx.sig.mid
+        recv = lenv.ep.ctx.sig.recv_ty
+        mid  = lenv.ep.ctx.sig.mid
         # XXX: need to support included module...
-        meths = scratch.get_super_method(lenv.ctx.cref.klass, mid) # TODO: multiple return values
+        meths = scratch.get_super_method(lenv.ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
           return meths.flat_map do |meth|
             meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
           end
         else
-          scratch.error(self, "no superclass method: #{ lenv.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
+          scratch.error(self, "no superclass method: #{ lenv.ep.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
           lenv = lenv.push(Type::Any.new)
         end
       when :leave
@@ -825,7 +840,7 @@ module TypeProfiler
           tmp_lenv = tmp_lenv.outer
           scratch.add_return_lenv!(tmp_lenv)
         end
-        scratch.add_return_type!(lenv.ctx, ty)
+        scratch.add_return_type!(lenv.ep.ctx, ty)
         return []
       when :throw
         raise NotImplementedError, "throw"
@@ -848,13 +863,13 @@ module TypeProfiler
       when :setinstancevariable
         var, = operands
         lenv, (ty,) = lenv.pop(1)
-        recv = lenv.ctx.sig.recv_ty
+        recv = lenv.ep.ctx.sig.recv_ty
         ty = ty.strip_local_info(lenv)
         scratch.add_ivar_type!(recv, var, ty)
 
       when :getinstancevariable
         var, = operands
-        recv = lenv.ctx.sig.recv_ty
+        recv = lenv.ep.ctx.sig.recv_ty
         scratch.add_ivar_site!(recv, var, lenv) do |ty|
           nlenv, ty, = lenv.deploy_type(ty, 0)
           nlenv = nlenv.push(ty).next
@@ -896,7 +911,7 @@ module TypeProfiler
         name, = operands
         lenv, (cbase,) = lenv.pop(1)
         if cbase.eql?(Type::Instance.new(Type::Builtin[:nil]))
-          lenv, ty, = lenv.deploy_type(scratch.search_constant(lenv.ctx.cref, name), 0) # TODO: multiple return arguments
+          lenv, ty, = lenv.deploy_type(scratch.search_constant(lenv.ep.ctx.cref, name), 0) # TODO: multiple return arguments
           lenv = lenv.push(ty)
         elsif cbase.eql?(Type::Any.new)
           lenv = lenv.push(Type::Any.new) # XXX: warning needed?
@@ -1120,10 +1135,11 @@ module TypeProfiler
       raise "complex parameter passing of block is not implemented" if argc != args.size
       locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (blk_iseq.locals.size - args.size)
       locals[blk_iseq.args[:block_start]] = arg_blk if blk_iseq.args[:block_start]
-      recv = blk_lenv.ctx.sig.recv_ty
-      lenv_blk = blk_lenv.ctx.sig.blk_ty
-      nctx = Context.new(blk_iseq, blk_lenv.ctx.cref, Signature.new(recv, nil, nil, args, lenv_blk))
-      nlenv = LocalEnv.new(nctx, 0, locals, [], {}, blk_lenv)
+      recv = blk_lenv.ep.ctx.sig.recv_ty
+      lenv_blk = blk_lenv.ep.ctx.sig.blk_ty
+      nctx = Context.new(blk_iseq, blk_lenv.ep.ctx.cref, Signature.new(recv, nil, nil, args, lenv_blk))
+      nep = ExecutionPoint.new(nctx, 0)
+      nlenv = LocalEnv.new(nep, locals, [], {}, blk_lenv)
       state = State.new(nlenv)
 
       # caution: given_block flag is not complete
@@ -1139,8 +1155,8 @@ module TypeProfiler
       # So, a context can have two blocks.
       # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
 
-      scratch.add_yield!(lenv.ctx, nlenv.ctx) if given_block
-      scratch.add_callsite!(nlenv.ctx, lenv, &ctn)
+      scratch.add_yield!(lenv.ep.ctx, nlenv.ep.ctx) if given_block
+      scratch.add_callsite!(nlenv.ep.ctx, lenv, &ctn)
       return [state]
     end
 

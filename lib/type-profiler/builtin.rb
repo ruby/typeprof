@@ -4,7 +4,7 @@ module TypeProfiler
 
     def vmcore_define_method(state, flags, recv, mid, args, blk, lenv, scratch)
       mid, iseq = args
-      cref = lenv.ctx.cref
+      cref = lenv.ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
       scratch.add_iseq_method(cref.klass, sym, iseq.iseq, cref)
@@ -14,7 +14,7 @@ module TypeProfiler
 
     def vmcore_define_singleton_method(state, flags, recv, mid, args, blk, lenv, scratch)
       recv_ty, mid, iseq = args
-      cref = lenv.ctx.cref
+      cref = lenv.ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
       scratch.add_singleton_iseq_method(recv_ty, sym, iseq.iseq, cref)
@@ -39,7 +39,7 @@ module TypeProfiler
     end
 
     def proc_call(state, flags, recv, mid, args, blk, lenv, scratch)
-      given_block = lenv.ctx.sig.blk_ty == recv
+      given_block = lenv.ep.ctx.sig.blk_ty == recv
       return State.do_invoke_block(given_block, recv, args, blk, lenv, scratch)
     end
 
@@ -57,7 +57,7 @@ module TypeProfiler
     def module_attr_accessor(state, flags, recv, mid, args, blk, lenv, scratch)
       args.each do |arg|
         sym = arg.lit
-        cref = lenv.ctx.cref
+        cref = lenv.ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
         iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
         iseq_setter = ISeq.compile_str("def #{ sym }=(x); @#{ sym } = x; end").insns[2][1]
@@ -71,7 +71,7 @@ module TypeProfiler
     def module_attr_reader(state, flags, recv, mid, args, blk, lenv, scratch)
       args.each do |arg|
         sym = arg.lit
-        cref = lenv.ctx.cref
+        cref = lenv.ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
         iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
         scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
@@ -173,12 +173,12 @@ module TypeProfiler
       if feature.is_a?(Type::Literal)
         feature = feature.lit
 
-        path = File.join(File.dirname(state.lenv.ctx.iseq.path), feature) + ".rb" # XXX
+        path = File.join(File.dirname(state.lenv.ep.ctx.iseq.path), feature) + ".rb" # XXX
         if File.readable?(path)
           iseq = TypeProfiler::ISeq.compile(path)
           nstate = TypeProfiler.starting_state(iseq)
 
-          scratch.add_callsite!(nstate.lenv.ctx, lenv) do |_ret_ty, lenv|
+          scratch.add_callsite!(nstate.lenv.ep.ctx, lenv) do |_ret_ty, lenv|
             result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
             nlenv = lenv.push(result).next
             State.new(nlenv)
