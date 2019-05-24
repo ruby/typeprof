@@ -321,6 +321,10 @@ module TypeProfiler
         def update(idx, ty)
           Seq.new(Type::Union.new(*(@elems.types | [ty])))
         end
+
+        def sum(other)
+          Seq.new(Union.new(*types | other.types))
+        end
       end
 
       class Tuple
@@ -377,6 +381,10 @@ module TypeProfiler
           else
             Seq.new(Union.new(*types | [ty])) # convert to seq
           end
+        end
+
+        def sum(other)
+          Seq.new(Union.new(*types | other.types))
         end
       end
     end

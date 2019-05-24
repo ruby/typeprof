@@ -599,7 +599,12 @@ module TypeProfiler
     end
 
     def type_profile
+      counter = 0
       until @worklist.empty?
+        counter += 1
+        if counter % 1000 == 0
+          puts "iter %d, remain: %d" % [counter, @worklist.size]
+        end
         @ep = @worklist.shift # TODO: deletemin
         @env = @ep2env[@ep]
         step(@ep) # TODO: deletemin
@@ -965,8 +970,7 @@ module TypeProfiler
         case ary
         when Type::LocalArray
           elems = env.get_array_elem_types(ary.id)
-          do_expand_array(env, elems, num, splat, from_head)
-          raise NotImplementedError
+          Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         when Type::Any
           splat = flag & 1 == 1
@@ -977,8 +981,7 @@ module TypeProfiler
         else
           # TODO: call to_ary (or to_a?)
           elems = Type::Array::Tuple.new(Type::Union.new(ary.strip_local_info(env)))
-          do_expand_array(env, elems, num, splat, from_head)
-          raise NotImplementedError
+          Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         end
       when :concatarray
@@ -1003,7 +1006,7 @@ module TypeProfiler
     module Aux
       module_function
 
-      def do_expand_array(env, elems, num, splat, from_head)
+      def do_expand_array(scratch, ep, env, elems, num, splat, from_head)
         if elems.is_a?(Type::Array::Tuple)
           elems = elems.elems
           if from_head
@@ -1038,7 +1041,9 @@ module TypeProfiler
               end
             end
           end
-          return envs.map {|le| State.new(le.next) }
+          envs.each do |env|
+            scratch.merge_env(ep.next, env)
+          end
         else
           if from_head
             envs = [env]
@@ -1054,7 +1059,6 @@ module TypeProfiler
                 le = le.push(local_ary_ty)
               end
             end
-            return envs.map {|le| State.new(le.next) }
           else
             envs = [env]
             if splat
@@ -1069,9 +1073,10 @@ module TypeProfiler
                 elems.types.map {|ty| le.push(ty) }
               end
             end
-            return envs.map {|le| State.new(le.next) }
           end
-          raise NotImplementedError
+          envs.each do |env|
+            scratch.merge_env(ep.next, env)
+          end
         end
       end
 

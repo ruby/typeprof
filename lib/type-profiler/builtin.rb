@@ -82,7 +82,7 @@ module TypeProfiler
 
     def reveal_type(state, flags, recv, mid, args, blk, ep, env, scratch)
       args.each do |arg|
-        scratch.reveal_type(state, arg.strip_local_info(env).screen_name(scratch))
+        scratch.reveal_type(ep, arg.strip_local_info(env).screen_name(scratch))
       end
       env = env.push(Type::Any.new)
       scratch.merge_env(ep.next, env)
@@ -132,12 +132,12 @@ module TypeProfiler
       elems = elems.types
       elems.each do |ty| # TODO: use Sum type?
         blk_nil = Type::Instance.new(Type::Builtin[:nil])
-        State.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|
+        Scratch::Aux.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|
           nenv = env.push(recv).next
           scratch.merge_env(ep.next, nenv)
         end
       end
-      scratch.merge_env(ep.next, nenv)
+      scratch.merge_env(ep.next, env)
     end
 
     def array_plus(state, flags, recv, mid, args, blk, ep, env, scratch)
