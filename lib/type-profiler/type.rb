@@ -1,5 +1,5 @@
 module TypeProfiler
-  class Type
+  class Type # or Value?
     include Utils::StructuralEquality
 
     def initialize
@@ -8,17 +8,29 @@ module TypeProfiler
 
     Builtin = {}
 
-    def strip_local_info(lenv)
-      strip_local_info_core(lenv, {})
+    def strip_local_info(env)
+      strip_local_info_core(env, {})
     end
 
-    def strip_local_info_core(lenv, visited)
+    def strip_local_info_core(env, visited)
       self
     end
 
     def consistent?(other)
       return true if other == Type::Any.new
       self == other
+    end
+
+    def each
+      yield self
+    end
+
+    def sum(other)
+      if other.is_a?(Type::Sum)
+        Type::Sum.new(other.types + Utils::Set[self]).normalize
+      else
+        Type::Sum.new(Utils::Set[self, other]).normalize
+      end
     end
 
     class Any < Type
@@ -39,6 +51,48 @@ module TypeProfiler
 
       def consistent?(other)
         true
+      end
+    end
+
+    class Sum < Type
+      def initialize(tys)
+        @types = tys # Set
+      end
+
+      def sum(other)
+        if other.is_a?(Type::Sum)
+          Type::Sum.new(@types + other.types).normalize
+        else
+          Type::Sum.new(@types + Utils::Set[other]).normalize
+        end
+      end
+
+      def normalize
+        if @types.size == 1
+          @types.each {|ty| return ty }
+        else
+          self
+        end
+      end
+
+      attr_reader :types
+
+      def each(&blk)
+        @types.each(&blk)
+      end
+
+      def inspect
+        "Type::Sum{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }}"
+      end
+
+      def screen_name(scratch)
+        @types.to_a.map do |ty|
+          ty.screen_name(scratch)
+        end.join (" | ")
+      end
+
+      def strip_local_info_core(env, visited)
+        Type::Sum.new(@types.map {|ty| ty.strip_local_info_core(env, visited) }).normalize
       end
     end
 
@@ -104,13 +158,14 @@ module TypeProfiler
     end
 
     class ISeqProc < Type
-      def initialize(iseq, lenv, type)
+      def initialize(iseq, ep, env, type)
         @iseq = iseq
-        @lenv = lenv
+        @ep = ep
+        @env = env
         @type = type
       end
 
-      attr_reader :iseq, :lenv
+      attr_reader :iseq, :ep, :env
 
       def inspect
         "#<ISeqProc>"
@@ -154,7 +209,7 @@ module TypeProfiler
         @type.screen_name(scratch) + "<#{ @lit.inspect }>"
       end
 
-      def strip_local_info_core(lenv, visited)
+      def strip_local_info_core(env, visited)
         @type
       end
 
@@ -179,13 +234,13 @@ module TypeProfiler
         raise "LocalArray must not be included in signature"
       end
 
-      def strip_local_info_core(lenv, visited)
+      def strip_local_info_core(env, visited)
         if visited[self]
           Type::Any.new
         else
           visited[self] = true
-          elems = lenv.get_array_elem_types(@id)
-          elems = elems.strip_local_info_core(lenv, visited)
+          elems = env.get_array_elem_types(@id)
+          elems = elems.strip_local_info_core(env, visited)
           Array.new(elems, @base_type)
         end
       end
@@ -213,7 +268,7 @@ module TypeProfiler
         @elems.screen_name(scratch)
       end
 
-      def strip_local_info_core(lenv, visited)
+      def strip_local_info_core(env, visited)
         self
       end
 
@@ -239,20 +294,20 @@ module TypeProfiler
 
         attr_reader :elems
 
-        def strip_local_info_core(lenv, visited)
-          Seq.new(Union.new(*@elems.types.map {|ty| ty.strip_local_info_core(lenv, visited) }))
+        def strip_local_info_core(env, visited)
+          Seq.new(Union.new(*@elems.types.map {|ty| ty.strip_local_info_core(env, visited) }))
         end
 
         def screen_name(scratch)
           "Array[" + @elems.screen_name(scratch) + "]"
         end
 
-        def deploy_type(lenv, id)
+        def deploy_type(ep, env, id)
           elems = Type::Union.new(*@elems.types.map do |ty|
-            lenv, ty, id = lenv.deploy_type(ty, id)
+            env, ty, id = env.deploy_type(ep, ty, id)
             ty
           end)
-          return lenv, Seq.new(elems), id
+          return env, Seq.new(elems), id
         end
 
         def types
@@ -277,9 +332,9 @@ module TypeProfiler
 
         attr_reader :elems
 
-        def strip_local_info_core(lenv, visited)
+        def strip_local_info_core(env, visited)
           elems = @elems.map do |elem|
-            Union.new(*elem.types.map {|ty| ty.strip_local_info_core(lenv, visited) })
+            Union.new(*elem.types.map {|ty| ty.strip_local_info_core(env, visited) })
           end
           Tuple.new(*elems)
         end
@@ -298,14 +353,14 @@ module TypeProfiler
           end.join(", ") + "]"
         end
 
-        def deploy_type(lenv, id)
+        def deploy_type(ep, env, id)
           elems = @elems.map do |elem|
             Type::Union.new(*elem.types.map do |ty|
-              lenv, ty, id = lenv.deploy_type(ty, id)
+              env, ty, id = env.deploy_type(ep, ty, id)
               ty
             end)
           end
-          return lenv, Tuple.new(*elems), id
+          return env, Tuple.new(*elems), id
         end
 
         def types

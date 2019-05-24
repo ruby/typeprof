@@ -11,14 +11,14 @@ module TypeProfiler
     # TODO: resolve file path
     scratch = Scratch.new
     setup_initial_global_env(scratch)
-    state = starting_state(iseq)
-    dummy_ctx = Context.new(nil, nil, Signature.new(:top, nil, nil, [], nil))
-    dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
-    dummy_lenv = LocalEnv.new(dummy_ep, [], [], {}, nil)
-    scratch.add_callsite!(state.lenv.ep.ctx, dummy_lenv) do |ret_ty, lenv|
-      nil
-    end
-    scratch.show(State.run(state, scratch))
+    main_ep, main_env = starting_state(iseq)
+    scratch.merge_env(main_ep, main_env)
+
+    prologue_ctx = Context.new(nil, nil, Signature.new(:top, nil, nil, [], nil))
+    prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
+    prologue_env = Env.new([], [], {})
+    scratch.add_callsite!(main_ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
+    scratch.type_profile
   end
 
   def self.starting_state(iseq)
@@ -26,10 +26,10 @@ module TypeProfiler
     recv = Type::Instance.new(Type::Builtin[:obj])
     _nil = Type::Instance.new(Type::Builtin[:nil])
     ctx = Context.new(iseq, cref, Signature.new(recv, nil, nil, [], _nil))
-    locals = [_nil] * (iseq.locals.size + 1)
     ep = ExecutionPoint.new(ctx, 0, nil)
-    lenv = LocalEnv.new(ep, locals, [], {}, nil)
+    locals = [Type::Instance.new(Type::Builtin[:nil])] * iseq.locals.size
+    env = Env.new(locals, [], {})
 
-    State.new(lenv)
+    return ep, env
   end
 end

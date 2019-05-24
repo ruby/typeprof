@@ -2,93 +2,93 @@ module TypeProfiler
   module Builtin
     module_function
 
-    def vmcore_define_method(state, flags, recv, mid, args, blk, lenv, scratch)
+    def vmcore_define_method(state, flags, recv, mid, args, blk, ep, env, scratch)
       mid, iseq = args
-      cref = lenv.ep.ctx.cref
+      cref = ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
       scratch.add_iseq_method(cref.klass, sym, iseq.iseq, cref)
-      lenv = lenv.push(mid)
-      [State.new(lenv.next)]
+      env = env.push(mid)
+      scratch.merge_env(ep.next, env)
     end
 
-    def vmcore_define_singleton_method(state, flags, recv, mid, args, blk, lenv, scratch)
+    def vmcore_define_singleton_method(state, flags, recv, mid, args, blk, ep, env, scratch)
       recv_ty, mid, iseq = args
-      cref = lenv.ep.ctx.cref
+      cref = ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
       scratch.add_singleton_iseq_method(recv_ty, sym, iseq.iseq, cref)
-      lenv = lenv.push(mid)
-      [State.new(lenv.next)]
+      env = env.push(mid)
+      scratch.merge_env(ep.next, env)
     end
 
-    def vmcore_set_method_alias(state, flags, recv, mid, args, blk, lenv, scratch)
+    def vmcore_set_method_alias(state, flags, recv, mid, args, blk, ep, env, scratch)
       klass, new_mid, old_mid = args
       new_sym = new_mid.lit
       raise "symbol expected" unless new_sym.is_a?(Symbol)
       old_sym = old_mid.lit
       raise "symbol expected" unless old_sym.is_a?(Symbol)
       scratch.alias_method(klass, new_sym, old_sym)
-      lenv = lenv.push(Type::Instance.new(Type::Builtin[:nil]))
-      [State.new(lenv.next)]
+      env = env.push(Type::Instance.new(Type::Builtin[:nil]))
+      scratch.merge_env(ep.next, env)
     end
 
-    def lambda(state, flags, recv, mid, args, blk, lenv, scratch)
-      lenv = lenv.push(blk)
-      [State.new(lenv.next)]
+    def lambda(state, flags, recv, mid, args, blk, ep, env, scratch)
+      env = env.push(blk)
+      scratch.merge_env(ep.next, env)
     end
 
-    def proc_call(state, flags, recv, mid, args, blk, lenv, scratch)
-      given_block = lenv.ep.ctx.sig.blk_ty == recv
-      return State.do_invoke_block(given_block, recv, args, blk, lenv, scratch)
+    def proc_call(state, flags, recv, mid, args, blk, ep, env, scratch)
+      given_block = ep.ctx.sig.blk_ty == recv
+      Scratch::Aux.do_invoke_block(given_block, recv, args, blk, ep, env, scratch)
     end
 
-    def object_new(state, flags, recv, mid, args, blk, lenv, scratch)
+    def object_new(state, flags, recv, mid, args, blk, ep, env, scratch)
       ty = Type::Instance.new(recv)
       meths = scratch.get_method(recv, :initialize)
       meths.flat_map do |meth|
-        meth.do_send(state, 0, ty, :initialize, args, blk, lenv, scratch) do |ret_ty, lenv|
-          nlenv = lenv.push(Type::Instance.new(recv)).next
-          State.new(nlenv)
+        meth.do_send(state, 0, ty, :initialize, args, blk, ep, env, scratch) do |ret_ty, ep|
+          nenv = env.push(Type::Instance.new(recv))
+          scratch.merge_env(ep.next, nenv)
         end
       end
     end
 
-    def module_attr_accessor(state, flags, recv, mid, args, blk, lenv, scratch)
+    def module_attr_accessor(state, flags, recv, mid, args, blk, ep, env, scratch)
       args.each do |arg|
         sym = arg.lit
-        cref = lenv.ep.ctx.cref
+        cref = ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
         iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
         iseq_setter = ISeq.compile_str("def #{ sym }=(x); @#{ sym } = x; end").insns[2][1]
         scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
         scratch.add_iseq_method(cref.klass, :"#{ sym }=", iseq_setter, cref)
       end
-      lenv = lenv.push(Type::Instance.new(Type::Builtin[:nil]))
-      [State.new(lenv.next)]
+      env = env.push(Type::Instance.new(Type::Builtin[:nil]))
+      scratch.merge_env(ep.next, env)
     end
 
-    def module_attr_reader(state, flags, recv, mid, args, blk, lenv, scratch)
+    def module_attr_reader(state, flags, recv, mid, args, blk, ep, env, scratch)
       args.each do |arg|
         sym = arg.lit
-        cref = lenv.ep.ctx.cref
+        cref = ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
         iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
         scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
       end
-      lenv = lenv.push(Type::Instance.new(Type::Builtin[:nil]))
-      [State.new(lenv.next)]
+      env = env.push(Type::Instance.new(Type::Builtin[:nil]))
+      scratch.merge_env(ep.next, env)
     end
 
-    def reveal_type(state, flags, recv, mid, args, blk, lenv, scratch)
+    def reveal_type(state, flags, recv, mid, args, blk, ep, env, scratch)
       args.each do |arg|
-        scratch.reveal_type(state, arg.strip_local_info(lenv).screen_name(scratch))
+        scratch.reveal_type(state, arg.strip_local_info(env).screen_name(scratch))
       end
-      lenv = lenv.push(Type::Any.new)
-      [State.new(lenv.next)] # should be fixed?
+      env = env.push(Type::Any.new)
+      scratch.merge_env(ep.next, env)
     end
 
-    def array_aref(state, flags, recv, mid, args, blk, lenv, scratch)
+    def array_aref(state, flags, recv, mid, args, blk, ep, env, scratch)
       raise NotImplementedError if args.size != 1
       idx = args.first
       if idx.is_a?(Type::Literal)
@@ -99,19 +99,18 @@ module TypeProfiler
       end
 
       # assumes that recv is LocalArray
-      elems = lenv.get_array_elem_types(recv.id)
+      elems = env.get_array_elem_types(recv.id)
       if idx
         elem = elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
       else
         elem = Type::Union.new(*elems.types)
       end
-      return elem.types.map do |ty|
-        nlenv = lenv.push(ty).next
-        State.new(nlenv)
+      elem.types.each do |ty| # TODO: Use Sum type
+        scratch.merge_env(ep.next, env.push(ty))
       end
     end
 
-    def array_aset(state, flags, recv, mid, args, blk, lenv, scratch)
+    def array_aset(state, flags, recv, mid, args, blk, ep, env, scratch)
       raise NotImplementedError if args.size != 2
       idx = args.first
       if idx.is_a?(Type::Literal)
@@ -122,82 +121,81 @@ module TypeProfiler
       end
 
       ty = args.last
-      lenv = lenv.update_array_elem_types(recv.id, idx, ty)
-      lenv = lenv.push(ty).next
-      return [State.new(lenv)]
+      env = env.update_array_elem_types(recv.id, idx, ty)
+      env = env.push(ty)
+      scratch.merge_env(ep.next, env)
     end
 
-    def array_each(state, flags, recv, mid, args, blk, lenv, scratch)
+    def array_each(state, flags, recv, mid, args, blk, ep, env, scratch)
       raise NotImplementedError if args.size != 0
-      elems = lenv.get_array_elem_types(recv.id)
+      elems = env.get_array_elem_types(recv.id)
       elems = elems.types
-      return elems.flat_map do |ty|
+      elems.each do |ty| # TODO: use Sum type?
         blk_nil = Type::Instance.new(Type::Builtin[:nil])
-        State.do_invoke_block(false, blk, [ty], blk_nil, lenv, scratch) do |ret_ty, lenv|
-          nlenv = lenv.push(recv).next
-          State.new(nlenv)
+        State.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|
+          nenv = env.push(recv).next
+          scratch.merge_env(ep.next, nenv)
         end
-      end + [State.new(lenv.push(recv).next)]
+      end
+      scratch.merge_env(ep.next, nenv)
     end
 
-    def array_plus(state, flags, recv, mid, args, blk, lenv, scratch)
+    def array_plus(state, flags, recv, mid, args, blk, ep, env, scratch)
       raise NotImplementedError if args.size != 1
       ary = args.first
-      elems1 = lenv.get_array_elem_types(recv.id)
+      elems1 = env.get_array_elem_types(recv.id)
       if ary.is_a?(Type::LocalArray)
-        elems2 = lenv.get_array_elem_types(ary.id)
+        elems2 = env.get_array_elem_types(ary.id)
         elems = Type::Array::Seq.new(Type::Union.new(*(elems1.types | elems2.types)))
         id = 0
-        lenv, ty, = lenv.deploy_array_type(recv.base_type, elems, id)
-        return [State.new(lenv.push(ty).next)]
+        env, ty, = env.deploy_array_type(recv.base_type, elems, id)
+        scratch.merge_env(ep.next, env)
       else
         # warn??
-        return [State.new(lenv.push(Type::Any.new).next)]
+        scratch.merge_env(ep.next, env.push(Type::Any.new))
       end
     end
 
-    def array_pop(state, flags, recv, mid, args, blk, lenv, scratch)
+    def array_pop(state, flags, recv, mid, args, blk, ep, env, scratch)
       if args.size != 0
-        return [State.new(lenv.push(Type::Any.new).next)]
+        scratch.merge_env(ep.next, env.push(Type::Any.new))
       end
 
-      elems = lenv.get_array_elem_types(recv.id)
-      return elems.types.map do |ty|
-        State.new(lenv.push(ty).next)
+      elems = env.get_array_elem_types(recv.id)
+      elems.types.each do |ty| # TODO: use Sum type
+        scratch.merge_env(ep.next, env.push(ty))
       end
     end
 
-    def require_relative(state, flags, recv, mid, args, blk, lenv, scratch)
+    def require_relative(state, flags, recv, mid, args, blk, ep, env, scratch)
       raise NotImplementedError if args.size != 1
       feature = args.first
       if feature.is_a?(Type::Literal)
         feature = feature.lit
 
-        path = File.join(File.dirname(state.lenv.ep.ctx.iseq.path), feature) + ".rb" # XXX
+        path = File.join(File.dirname(ep.ctx.iseq.path), feature) + ".rb" # XXX
         if File.readable?(path)
-          iseq = TypeProfiler::ISeq.compile(path)
-          nstate = TypeProfiler.starting_state(iseq)
+          iseq = ISeq.compile(path)
+          callee_ep, callee_env = TypeProfiler.starting_state(iseq)
+          scratch.merge_env(callee_ep, callee_env)
 
-          scratch.add_callsite!(nstate.lenv.ep.ctx, lenv) do |_ret_ty, lenv|
+          scratch.add_callsite!(callee_ep.ctx, ep, env) do |_ret_ty, ep|
             result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
-            nlenv = lenv.push(result).next
-            State.new(nlenv)
+            nenv = env.push(result)
+            scratch.merge_env(ep.next, nenv)
           end
-
-          return [nstate]
+          return
         else
-          scratch.warn(state, "failed to read: #{ path }")
+          scratch.warn(ep, "failed to read: #{ path }")
         end
-
-        feature
       else
-        scratch.warn(state, "require target cannot be identified statically")
+        scratch.warn(ep, "require target cannot be identified statically")
         feature = nil
       end
 
       result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
-      lenv = lenv.push(result).next
-      return [State.new(lenv)]
+      env = env.push(result)
+      scratch.merge_env(ep.next, env)
     end
   end
 

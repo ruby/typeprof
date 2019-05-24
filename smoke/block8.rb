@@ -19,6 +19,6 @@ end
 foo
 
 __END__
-Object#foo :: () -> (String | Integer)
+Object#foo :: () -> (Integer | String)
 Object#bar :: () -> String
 Object#baz :: (&Proc[(&Proc[() -> String]) -> String]) -> String

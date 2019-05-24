@@ -31,7 +31,7 @@ module TypeProfiler
 
       def self.[](*values)
         hash = {}
-        values.each {|v| hash[v] = v }
+        values.each {|v| hash[v] = true }
         new(hash)
       end
 
@@ -45,8 +45,20 @@ module TypeProfiler
 
       include Enumerable
 
-      def +(set)
-        raise NotImplementedError
+      def +(other)
+        hash = @hash
+        other.each {|elem| hash[elem] = true }
+        Set.new(hash)
+      end
+
+      def size
+        @hash.size
+      end
+
+      def map(&blk)
+        nhash = {}
+        each {|elem| nhash[yield(elem)] = true }
+        Set.new(nhash)
       end
     end
 

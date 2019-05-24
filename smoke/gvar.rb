@@ -5,5 +5,5 @@ log($foo)
 
 __END__
 $foo :: Integer | String
-Object#log :: (String) -> NilClass
 Object#log :: (Integer) -> NilClass
+Object#log :: (String) -> NilClass

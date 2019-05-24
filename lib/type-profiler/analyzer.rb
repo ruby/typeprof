@@ -50,30 +50,40 @@ module TypeProfiler
       ExecutionPoint.new(@ctx, pc, @outer)
     end
 
+    def next
+      ExecutionPoint.new(@ctx, @pc + 1, @outer)
+    end
+
     def source_location
       @ctx.iseq.source_location(@pc)
     end
   end
 
-  class LocalEnv
+  class Env
     include Utils::StructuralEquality
 
-    def initialize(ep, locals, stack, type_params, outer)
-      @ep = ep
+    def initialize(locals, stack, type_params)
       @locals = locals
       @stack = stack
       @type_params = type_params
-      @outer = outer
     end
 
-    attr_reader :ep, :locals, :stack, :type_params, :outer
+    attr_reader :locals, :stack, :type_params
 
-    def jump(pc)
-      LocalEnv.new(@ep.jump(pc), @locals, @stack, @type_params, @outer)
-    end
-
-    def next
-      jump(@ep.pc + 1)
+    def merge(other)
+      raise if @locals.size != other.locals.size
+      raise if @stack.size != other.stack.size
+      locals = @locals.zip(other.locals).map {|ty1, ty2| ty1.sum(ty2) }
+      stack = @stack.zip(other.stack).map {|ty1, ty2| ty1.sum(ty2) }
+      type_params = @type_params.dup
+      other.type_params.each do |id, elems|
+        if type_params[id]
+          type_params[id] = type_params[id].sum(elems)
+        else
+          type_params[id] = elems
+        end
+      end
+      Env.new(locals, stack, type_params)
     end
 
     def push(*tys)
@@ -81,95 +91,105 @@ module TypeProfiler
         raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         raise "nil cannot be pushed to the stack" if ty.nil?
       end
-      LocalEnv.new(@ep, @locals, @stack + tys, @type_params, @outer)
+      Env.new(@locals, @stack + tys, @type_params)
     end
 
     def pop(n)
       stack = @stack.dup
       tys = stack.pop(n)
-      nlenv = LocalEnv.new(@ep, @locals, stack, @type_params, @outer)
-      return nlenv, tys
+      nenv = Env.new(@locals, stack, @type_params)
+      return nenv, tys
     end
 
     def setn(i, ty)
       stack = Utils.array_update(@stack, -i, ty)
-      LocalEnv.new(@ep, @locals, stack, @type_params, @outer)
+      Env.new(@locals, stack, @type_params)
     end
 
     def topn(i)
       push(@stack[-i - 1])
     end
 
-    def local_update(idx, scope, ty)
-      if scope == 0
-        LocalEnv.new(@ep, Utils.array_update(@locals, idx, ty), @stack, @type_params, @outer)
-      else
-        LocalEnv.new(@ep, @locals, @stack, @type_params, @outer.local_update(idx, scope - 1, ty))
-      end
+    def get_local(idx)
+      @locals[idx]
     end
 
-    def deploy_type(ty, id)
+    def local_update(idx, scope, ty)
+      raise if scope != 0 # need to resolve the scope in the caller side
+      Env.new(Utils.array_update(@locals, idx, ty), @stack, @type_params)
+    end
+
+    def deploy_type(ep, ty, id)
+      # need to check this in the caller side
+      # if @type_params[@ep]
+      #   local_ty = Type::LocalArray.new(@ep, ty.base_type)
+      #   return self, local_ty, id
+      # else
       case ty
       when Type::Array
-        if @type_params[@ep]
-          local_ty = Type::LocalArray.new(@ep, ty.base_type)
-          return self, local_ty, id
-        else
-          lenv = self
-          lenv, elems, id = ty.elems.deploy_type(lenv, id)
-          return lenv.deploy_array_type(ty.base_type, elems, id)
-        end
+        env, elems, id = ty.elems.deploy_type(ep, self, id)
+        return env.deploy_array_type(ep, elems, id, ty.base_type)
       else
         return self, ty, id
       end
     end
 
-    def deploy_array_type(base_ty, elems, id)
-      local_ty = Type::LocalArray.new([@ep, id], base_ty)
+    def deploy_array_type(ep, elems, id, base_ty)
+      local_ty = Type::LocalArray.new([ep, id], base_ty)
 
-      type_params = @type_params.merge({ [@ep, id] => elems })
-      nlenv = LocalEnv.new(@ep, @locals, @stack, type_params, @outer)
-      #p [location, @ep.pc, :merge, self.hash, nlenv.hash, @type_params[[@ep, id]]]
-      return nlenv, local_ty, id + 1
+      type_params = @type_params.merge({ [ep, id] => elems })
+      nenv = Env.new(@locals, @stack, type_params)
+      return nenv, local_ty, id + 1
     end
 
     def get_array_elem_types(id)
-      @type_params[id] || @outer.get_array_elem_types(id)
+      # need to check this in the caller side
+      @type_params[id]# || @outer.get_array_elem_types(id)
     end
 
     def update_array_elem_types(id, idx, ty)
-      type_param = @type_params[id]
-      if type_param
-        elems = @type_params[id].update(idx, ty)
-        type_params = @type_params.merge({ id => elems })
-        LocalEnv.new(@ep, @locals, @stack, type_params, @outer)
-      else
-        nouter = @outer.update_array_elem_types(id, idx, ty)
-        LocalEnv.new(@ep, @locals, @stack, @type_params, nouter)
-      end
+      elems = @type_params[id].update(idx, ty)
+      type_params = @type_params.merge({ id => elems })
+      Env.new(@locals, @stack, type_params)
     end
 
-    def location
-      @ep.source_location
+    def inspect
+      "Env[locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.inspect }]"
     end
   end
 
   class Scratch
     def initialize
+      @worklist = [] # TODO: priority queue
+
+      @ep2env = {}
+
       @class_defs = {}
 
-      @callsites = {}
-      @signatures = {}
-      @call_restarts = {}
-      @ivar_sites = {}
-      @ivar_types = {}
-      @gvar_sites = {}
-      @gvar_types = {}
-      @yields = {}
-      @new_states = []
-      @next_state_table = {}
+      @callsites, @return_envs, @signatures, @yields = {}, {}, {}, {}
+      @ivar_read, @ivar_write = {}, {}
+      @gvar_read, @gvar_write = {}, {}
+
       @errors = []
       @backward_edges = {}
+    end
+
+    def get_env(ep)
+      @ep2env[ep]
+    end
+
+    def merge_env(ep, env)
+      # TODO: this is wrong; it include not only proceeds but also indirect propagation like out-of-block variable modification
+      #add_edge(ep, @ep)
+      env2 = @ep2env[ep]
+      if env2
+        nenv = env2.merge(env)
+        @worklist << ep if !nenv.eql?(env2) && !@worklist.include?(ep)
+        @ep2env[ep] = nenv
+      else
+        @worklist << ep
+        @ep2env[ep] = env
+      end
     end
 
     attr_reader :class_defs
@@ -351,153 +371,94 @@ module TypeProfiler
       end
     end
 
-    def add_edge(state, nstate)
-      (@backward_edges[nstate] ||= {})[state] = true
+    def add_edge(ep, next_ep)
+      (@backward_edges[next_ep] ||= {})[ep] = true
     end
 
-    class Restart
-      def initialize(new_states)
-        @new_states = new_states
-        @continuations = []
-        @restart_lenvs = {}
-        @return_types = {}
-      end
-
-      def add_continuation(ctn)
-        @restart_lenvs.each_key do |lenv|
-          @return_types.each_key do |ret_ty|
-            @new_states << ctn[ret_ty, lenv]
-          end
-        end
-        @continuations << ctn
-      end
-
-      def add_restart_lenv(lenv)
-        return if @restart_lenvs[lenv]
-        @continuations.each do |ctn|
-          @return_types.each_key do |ret_ty|
-            @new_states << ctn[ret_ty, lenv]
-          end
-        end
-        @restart_lenvs[lenv] = true
-      end
-
-      def add_return_type(ret_ty)
-        return if @return_types[ret_ty]
-        @continuations.each do |ctn|
-          @restart_lenvs.each_key do |lenv|
-            @new_states << ctn[ret_ty, lenv]
-          end
-        end
-        @return_types[ret_ty] = true
-      end
-    end
-
-    attr_reader :next_state_table, :new_states
-
-    def add_callsite!(callee_ctx, caller_lenv, &ctn)
+    def add_callsite!(callee_ctx, caller_ep, caller_env, &ctn)
       @callsites[callee_ctx] ||= {}
-      @callsites[callee_ctx][caller_lenv.ep] = true
+      @callsites[callee_ctx][caller_ep] = ctn
+      merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
 
-      restart = @call_restarts[caller_lenv.ep] ||= Restart.new(@new_states)
-      restart.add_continuation(ctn)
-      restart.add_restart_lenv(caller_lenv)
-
-      @signatures[callee_ctx] ||= {}
-      @signatures[callee_ctx].each_key do |ret_ty,|
-        restart.add_return_type(ret_ty)
+      @signatures[callee_ctx] ||= Utils::MutableSet.new
+      @signatures[callee_ctx].each do |ret_ty|
+        ctn[ret_ty, caller_ep, caller_env] # TODO: use Sum type
       end
     end
 
-    def add_return_lenv!(lenv)
-      restart = @call_restarts[lenv.ep] ||= Restart.new(@new_states)
-      restart.add_restart_lenv(lenv)
-    end
-
-    def add_yield!(call_ctx, blk_ctx)
-      @yields[call_ctx] ||= {}
-      @yields[call_ctx][blk_ctx] = true
+    def merge_return_env(ep)
+      @return_envs[ep] = yield @return_envs[ep]
     end
 
     def add_return_type!(callee_ctx, ret_ty)
-      @callsites[callee_ctx] ||= {}
+      @signatures[callee_ctx] ||= Utils::MutableSet.new
+      ret_ty.each do |ty|
+        @signatures[callee_ctx] << ty
+      end
+      #raise NotImplementedError if ret_ty.is_a?(Type::Sum)
 
-      key = ret_ty
-      @signatures[callee_ctx] ||= {}
-      @signatures[callee_ctx][key] = true
-      @callsites[callee_ctx].each_key do |lenv_site|
-        restart = @call_restarts[lenv_site]
-        restart.add_return_type(ret_ty)
+      #@callsites[callee_ctx] ||= {} # needed?
+      @callsites[callee_ctx].each do |caller_ep, ctn|
+        ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
       end
     end
 
-    def add_ivar_site!(recv, var, lenv, &ctn)
+    def add_yield!(caller_ctx, blk_ctx)
+      @yields[caller_ctx] ||= Utils::MutableSet.new
+      @yields[caller_ctx] << blk_ctx
+    end
+
+    def add_ivar_read!(recv, var, ep, &ctn)
       site = [recv, var]
-      @ivar_sites[site] ||= {}
-      unless @ivar_sites[site][lenv]
-        @ivar_sites[site][lenv] = ctn
-        if @ivar_types[site]
-          @ivar_types[site].each_key do |ty,|
-            @new_states << ctn[ty]
-          end
-        else
-          @new_states << ctn[Type::Instance.new(Type::Builtin[:nil])]
-        end
+      @ivar_read[site] ||= {}
+      @ivar_read[site][ep] = ctn
+      @ivar_write[site] ||= Utils::MutableSet.new
+      @ivar_write[site].each do |ty|
+        ctn[ty, ep] # TODO: use Sum type
       end
     end
 
-    def add_ivar_type!(recv, var, ty, &ctn)
+    def add_ivar_write!(recv, var, ty, &ctn)
       site = [recv, var]
-      @ivar_sites[site] ||= {}
-      @ivar_types[site] ||= {}
-      unless @ivar_types[site][ty]
-        @ivar_types[site][ty] = true
-        @ivar_sites[site].each do |lenv, ctn|
-          @new_states << ctn[ty]
-        end
+      @ivar_write[site] ||= Utils::MutableSet.new
+      @ivar_write[site] << ty
+      @ivar_read[site] ||= {}
+      @ivar_read[site].each do |ep, ctn|
+        ctn[ty, ep] # TODO: use Sum type
       end
     end
 
-    def add_gvar_site!(var, lenv, &ctn)
-      site = var
-      @gvar_sites[site] ||= {}
-      unless @gvar_sites[site][lenv]
-        @gvar_sites[site][lenv] = ctn
-        if @gvar_types[site]
-          @gvar_types[site].each_key do |ty,|
-            @new_states << ctn[ty]
-          end
-        else
-          @new_states << ctn[Type::Instance.new(Type::Builtin[:nil])]
-        end
+    def add_gvar_read!(var, ep, &ctn)
+      @gvar_read[var] ||= {}
+      @gvar_read[var][ep] = ctn
+      @gvar_write[var] ||= Utils::MutableSet.new
+      @gvar_write[var].each do |ty|
+        ctn[ty, ep] # TODO: use Sum type
       end
     end
 
-    def add_gvar_type!(var, ty, &ctn)
-      site = var
-      @gvar_sites[site] ||= {}
-      @gvar_types[site] ||= {}
-      unless @gvar_types[site][ty]
-        @gvar_types[site][ty] = true
-        @gvar_sites[site].each do |lenv, ctn|
-          @new_states << ctn[ty]
-        end
+    def add_gvar_write!(var, ty, &ctn)
+      @gvar_write[var] ||= Utils::MutableSet.new
+      @gvar_write[var] << ty
+      @gvar_read[var] ||= {}
+      @gvar_read[var].each do |ep, ctn|
+        ctn[ty, ep]
       end
     end
 
-    def error(state, msg)
-      p [state.lenv.location, "[error] " + msg] if ENV["TP_DEBUG"]
-      @errors << [state, "[error] " + msg]
+    def error(ep, msg)
+      p [ep.source_location, "[error] " + msg] if ENV["TP_DEBUG"]
+      @errors << [ep, "[error] " + msg]
     end
 
-    def warn(state, msg)
-      p [state.lenv.location, "[warning] " + msg] if ENV["TP_DEBUG"]
-      @errors << [state, "[warning] " + msg]
+    def warn(ep, msg)
+      p [ep.source_location, "[warning] " + msg] if ENV["TP_DEBUG"]
+      @errors << [ep, "[warning] " + msg]
     end
 
-    def reveal_type(state, msg)
-      p [state.lenv.location, "[p] " + msg] if ENV["TP_DEBUG"]
-      @errors << [state, "[p] " + msg]
+    def reveal_type(ep, msg)
+      p [ep.source_location, "[p] " + msg] if ENV["TP_DEBUG"]
+      @errors << [ep, "[p] " + msg]
     end
 
     def show_signature(arg_tys, ret_tys)
@@ -507,13 +468,13 @@ module TypeProfiler
 
     def show_block(ctx)
       blk_tys = {}
-      @yields[ctx].each_key do |blk_ctx|
+      @yields[ctx].each do |blk_ctx|
         blk_args = blk_ctx.sig.arg_tys.map {|ty| ty.screen_name(self) }
         if @yields[blk_ctx]
           blk_args << show_block(blk_ctx)
         end
         blk_rets = {}
-        @signatures[blk_ctx].each_key do |blk_ret_ty|
+        @signatures[blk_ctx].each do |blk_ret_ty|
           blk_rets[blk_ret_ty.screen_name(self)] = true
         end
         blk_tys["Proc[#{ show_signature(blk_args, blk_rets.keys) }]"] = true
@@ -538,22 +499,22 @@ module TypeProfiler
 
     def filter_backtrace(trace)
       ntrace = [trace.first]
-      trace.each_cons(2) do |state1, state2|
-        ntrace << state2 if state1.lenv.ep.ctx != state2.lenv.ep.ctx
+      trace.each_cons(2) do |ep1, ep2|
+        ntrace << ep2 if ep1.ctx != ep2.ctx
       end
       ntrace
     end
 
     def show(stat_states)
       out = []
-      @errors.each do |state, msg|
+      @errors.each do |ep, msg|
         if ENV["TYPE_PROFILER_DETAIL"]
-          backtrace = filter_backtrace(generate_analysis_trace(state, {}))
+          backtrace = filter_backtrace(generate_analysis_trace(ep, {}))
         else
-          backtrace = [state]
+          backtrace = [ep]
         end
-        loc, *backtrace = backtrace.map do |state|
-          state.lenv.location
+        loc, *backtrace = backtrace.map do |ep|
+          ep.source_location
         end
         out << "#{ loc }: #{ msg }"
         backtrace.each do |loc|
@@ -561,8 +522,8 @@ module TypeProfiler
         end
       end
       h = {}
-      @gvar_types.each do |var, tys|
-        tys.each_key do |ty|
+      @gvar_write.each do |var, tys|
+        tys.each do |ty|
           gvar_name = var
           ret = ty.screen_name(self)
           h[gvar_name] ||= {}
@@ -573,8 +534,8 @@ module TypeProfiler
         out << "#{ gvar_name } :: #{ tys.keys.join(" | ") }"
       end
       h = {}
-      @ivar_types.each do |(recv, var), tys|
-        tys.each_key do |ty|
+      @ivar_write.each do |(recv, var), tys|
+        tys.each do |ty|
           ivar_name = "#{ recv.screen_name(self) }##{ var }"
           ret = ty.screen_name(self)
           h[ivar_name] ||= {}
@@ -590,7 +551,7 @@ module TypeProfiler
       @signatures.each do |ctx, sigs|
         next unless ctx.sig.mid
         next unless ctx.iseq
-        sigs.each_key do |ret_ty|
+        sigs.each do |ret_ty|
           method_count = 0
           @class_defs.each do |class_def|
             #p [class_def.name, class_def.methods.keys.size]
@@ -626,9 +587,9 @@ module TypeProfiler
       end
       if ENV["TP_COVERAGE"]
         coverage = {}
-        stat_states.each_key do |s|
-          path = s.lenv.ep.ctx.iseq.path
-          lineno = s.lenv.ep.ctx.iseq.linenos[s.lenv.pc] - 1
+        stat_states.each_key do |ep|
+          path = ep.ctx.iseq.path
+          lineno = ep.ctx.iseq.linenos[ep.pc] - 1
           (coverage[path] ||= [])[lineno] ||= 0
           (coverage[path] ||= [])[lineno] += 1
         end
@@ -636,122 +597,100 @@ module TypeProfiler
       end
       puts(*out)
     end
-  end
 
-  class State
-    include Utils::StructuralEquality
-
-    def initialize(lenv)
-      @lenv = lenv
-    end
-
-    attr_reader :lenv
-
-    def self.run(state, scratch)
-      visited = {}
-      states = [state]
-      counter = 0
-      until states.empty?
-        counter += 1
-        if counter % 1000 == 0
-          puts "iter %d, visited: %d, remain: %d" % [counter, visited.size, states.size]
-        end
-        state = states.pop
-        next if !state
-        unless visited[state]
-          visited[state] = true
-          new_states = scratch.new_states + state.run(scratch)
-          scratch.new_states.clear
-          new_states.each do |nstate|
-            scratch.add_edge(state, nstate)
-          end
-          states += new_states
-        end
+    def type_profile
+      until @worklist.empty?
+        @ep = @worklist.shift # TODO: deletemin
+        @env = @ep2env[@ep]
+        step(@ep) # TODO: deletemin
       end
-      visited
+      show(nil)
     end
 
-    def run(scratch)
-      scratch.next_state_table[self] ||= step(@lenv, scratch)
-    end
+    def step(ep)
+      orig_ep = ep
+      env = @ep2env[ep]
+      scratch = self
+      raise "nil env" unless env
 
-    def step(lenv, scratch)
-      insn, *operands = lenv.ep.ctx.iseq.insns[lenv.ep.pc]
+      insn, *operands = ep.ctx.iseq.insns[ep.pc]
 
-      p [lenv.location, lenv.ep.pc, insn, lenv.stack.size] if ENV["TP_DEBUG"]
+      if ENV["TP_DEBUG"]
+        p [ep.pc, ep.ctx.iseq.name, ep.source_location, insn, env]
+      end
 
       case insn
       when :putspecialobject
-        type, = operands
-        ty = case type
+        kind, = operands
+        ty = case kind
         when 1 then Type::Instance.new(Type::Builtin[:vmcore])
         when 2, 3 # CBASE / CONSTBASE
-          lenv.ep.ctx.cref.klass
+          ep.ctx.cref.klass
         else
           raise NotImplementedError, "unknown special object: #{ type }"
         end
-        lenv = lenv.push(ty)
+        env = env.push(ty)
       when :putnil
-        lenv = lenv.push(Type::Instance.new(Type::Builtin[:nil]))
+        env = env.push(Type::Instance.new(Type::Builtin[:nil]))
       when :putobject, :duparray
         obj, = operands
-        lenv, ty, = lenv.deploy_type(Type.guess_literal_type(obj), 0)
-        lenv = lenv.push(ty)
+        env, ty, = env.deploy_type(ep, Type.guess_literal_type(obj), 0)
+        env = env.push(ty)
       when :putstring
         str, = operands
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
-        lenv = lenv.push(ty)
+        env = env.push(ty)
       when :putiseq
         iseq, = operands
-        lenv = lenv.push(Type::ISeq.new(iseq))
+        env = env.push(Type::ISeq.new(iseq))
       when :putself
-        lenv = lenv.push(lenv.ep.ctx.sig.recv_ty)
+        env = env.push(ep.ctx.sig.recv_ty)
       when :newarray
         len, = operands
-        lenv, elems = lenv.pop(len)
+        env, elems = env.pop(len)
         ty = Type::Array.tuple(elems.map {|elem| Type::Union.new(elem) }, Type::Instance.new(Type::Builtin[:ary]))
-        lenv, ty, = lenv.deploy_type(ty, 0)
-        lenv = lenv.push(ty)
+        env, ty, = env.deploy_type(ep, ty, 0)
+        env = env.push(ty)
       when :newhash
         # XXX
         num, = operands
-        lenv, = lenv.pop(num)
-        lenv = lenv.push(Type::Any.new)
+        env, = env.pop(num)
+        env = env.push(Type::Any.new)
       when :newhashfromarray
         raise NotImplementedError, "newhashfromarray"
       when :newrange
-        lenv, tys = lenv.pop(2)
+        env, tys = env.pop(2)
         # XXX: need generics
-        lenv = lenv.push(Type::Instance.new(Type::Builtin[:range]))
+        env = env.push(Type::Instance.new(Type::Builtin[:range]))
 
       when :concatstrings
         num, = operands
-        lenv, = lenv.pop(num)
-        lenv = lenv.push(Type::Instance.new(Type::Builtin[:str]))
+        env, = env.pop(num)
+        env = env.push(Type::Instance.new(Type::Builtin[:str]))
       when :tostring
-        lenv, (_ty1, _ty2,) = lenv.pop(2)
-        lenv = lenv.push(Type::Instance.new(Type::Builtin[:str]))
+        env, (_ty1, _ty2,) = env.pop(2)
+        env = env.push(Type::Instance.new(Type::Builtin[:str]))
       when :freezestring
         raise NotImplementedError, "freezestring"
       when :toregexp
         raise NotImplementedError, "toregexp"
       when :intern
-        lenv, (ty,) = lenv.pop(1)
+        env, (ty,) = env.pop(1)
         # XXX check if ty is String
-        lenv = lenv.push(Type::Instance.new(Type::Builtin[:sym]))
+        env = env.push(Type::Instance.new(Type::Builtin[:sym]))
 
       when :defineclass
         id, iseq, flags = operands
-        lenv, (cbase, superclass) = lenv.pop(2)
+        env, (cbase, superclass) = env.pop(2)
         case flags & 7
         when 0, 2 # CLASS / MODULE
-          scratch.warn(self, "module is not supported yet") if flags & 7 == 2
+          scratch.warn(ep, "module is not supported yet") if flags & 7 == 2
           existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
           else
             if existing_klass != Type::Any.new
-              scratch.error(self, "the class \"#{ id }\" is #{ existing_klass.screen_name(scratch) }")
+              scratch.error(ep, "the class \"#{ id }\" is #{ existing_klass.screen_name(scratch) }")
               id = :"#{ id }(dummy)"
             end
             existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
@@ -759,7 +698,7 @@ module TypeProfiler
               klass = existing_klass
             else
               if superclass == Type::Any.new
-                scratch.warn(self, "superclass is any; Object is used instead")
+                scratch.warn(ep, "superclass is any; Object is used instead")
                 superclass = Type::Builtin[:obj]
               elsif superclass.eql?(Type::Instance.new(Type::Builtin[:nil]))
                 superclass = Type::Builtin[:obj]
@@ -772,77 +711,77 @@ module TypeProfiler
         else
           raise NotImplementedError, "unknown defineclass flag: #{ flags }"
         end
-        ncref = lenv.ep.ctx.cref.extend(klass)
+        ncref = ep.ctx.cref.extend(klass)
         recv = klass
-        blk = lenv.ep.ctx.sig.blk_ty
-        ctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, [], blk))
-        ep = ExecutionPoint.new(ctx, 0, nil)
-        nlenv = LocalEnv.new(ep, nil, [], {}, nil)
-        state = State.new(nlenv)
-        scratch.add_callsite!(nlenv.ep.ctx, lenv) do |ret_ty, lenv|
-          nlenv = lenv.push(ret_ty).next
-          State.new(nlenv)
+        blk = ep.ctx.sig.blk_ty
+        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, [], blk))
+        nep = ExecutionPoint.new(nctx, 0, nil)
+        nenv = Env.new([], [], {})
+        merge_env(nep, nenv)
+        scratch.add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
+          merge_env(ep.next, env.push(ret_ty))
         end
-        return [state]
+        return
       when :send
-        lenv, recv, mid, args, blk = State.setup_arguments(operands, lenv)
-        meths = recv.get_method(mid, scratch)
-        if meths
-          return meths.flat_map do |meth|
-            meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
+        env, recvs, mid, args, blk = Aux.setup_arguments(operands, ep, env)
+        recvs.each do |recv|
+          meths = recv.get_method(mid, scratch)
+          if meths
+            meths.each do |meth|
+              meth.do_send(self, flags, recv, mid, args, blk, ep, env, scratch) # TODO: check if do_send modifies worklist
+            end
+          else
+            if recv != Type::Any.new # XXX: should be configurable
+              scratch.error(ep, "undefined method: #{ recv.strip_local_info(env).screen_name(scratch) }##{ mid }")
+            end
+            nenv = env.push(Type::Any.new)
+            merge_env(ep.next, nenv)
           end
-        else
-          if recv != Type::Any.new # XXX: should be configurable
-            scratch.error(self, "undefined method: #{ recv.strip_local_info(lenv).screen_name(scratch) }##{ mid }")
-          end
-          lenv = lenv.push(Type::Any.new)
         end
+        return
       when :invokeblock
         # XXX: need block parameter, unknown block, etc.
-        blk = lenv.ep.ctx.sig.blk_ty
+        blk = ep.ctx.sig.blk_ty
         case
         when blk.eql?(Type::Instance.new(Type::Builtin[:nil]))
-          scratch.error(self, "no block given")
-          lenv = lenv.push(Type::Any.new)
+          scratch.error(ep, "no block given")
+          env = env.push(Type::Any.new)
         when blk.eql?(Type::Any.new)
-          scratch.warn(self, "block is any")
-          lenv = lenv.push(Type::Any.new)
+          scratch.warn(ep, "block is any")
+          env = env.push(Type::Any.new)
         else # Proc
           opt, = operands
           _flags = opt[:flag]
           orig_argc = opt[:orig_argc]
-          lenv, args = lenv.pop(orig_argc)
+          env, args = env.pop(orig_argc)
           blk_nil = Type::Instance.new(Type::Builtin[:nil])
-          return State.do_invoke_block(true, lenv.ep.ctx.sig.blk_ty, args, blk_nil, lenv, scratch)
+          Aux.do_invoke_block(true, ep.ctx.sig.blk_ty, args, blk_nil, ep, env, scratch)
+          return
         end
       when :invokesuper
-        lenv, recv, _, args, blk = State.setup_arguments(operands, lenv)
+        env, recv, _, args, blk = Aux.setup_arguments(operands, ep, env)
 
-        recv = lenv.ep.ctx.sig.recv_ty
-        mid  = lenv.ep.ctx.sig.mid
+        recv = ep.ctx.sig.recv_ty
+        mid  = ep.ctx.sig.mid
         # XXX: need to support included module...
-        meths = scratch.get_super_method(lenv.ep.ctx.cref.klass, mid) # TODO: multiple return values
+        meths = scratch.get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
-          return meths.flat_map do |meth|
-            meth.do_send(self, flags, recv, mid, args, blk, lenv, scratch)
+          meths.each do |meth|
+            meth.do_send(self, flags, recv, mid, args, blk, ep, env, scratch)
           end
+          return
         else
-          scratch.error(self, "no superclass method: #{ lenv.ep.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
-          lenv = lenv.push(Type::Any.new)
+          scratch.error(ep, "no superclass method: #{ ep.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
+          env = env.push(Type::Any.new)
         end
       when :leave
-        if lenv.stack.size != 1
-          raise "stack inconsistency error: #{ lenv.stack.inspect }"
+        if env.stack.size != 1
+          raise "stack inconsistency error: #{ env.stack.inspect }"
         end
-        lenv, (ty,) = lenv.pop(1)
-        ty = ty.strip_local_info(lenv)
-        tmp_lenv = lenv
-        while tmp_lenv.outer
-          tmp_lenv = tmp_lenv.outer
-          scratch.add_return_lenv!(tmp_lenv)
-        end
-        scratch.add_return_type!(lenv.ep.ctx, ty)
-        return []
+        env, (ty,) = env.pop(1)
+        ty = ty.strip_local_info(env)
+        scratch.add_return_type!(ep.ctx, ty)
+        return
       when :throw
         raise NotImplementedError, "throw"
       when :once
@@ -850,33 +789,34 @@ module TypeProfiler
 
       when :branchif, :branchunless, :branchnil # TODO: check how branchnil is used
         target, = operands
-        lenv, = lenv.pop(1)
-        lenv_t = lenv.next
-        lenv_f = lenv.jump(target)
-        return [
-          State.new(lenv_t),
-          State.new(lenv_f),
-        ]
+        env, = env.pop(1)
+        ep_then = ep.next
+        ep_else = ep.jump(target)
+
+        merge_env(ep_then, env)
+        merge_env(ep_else, env)
+        return
       when :jump
         target, = operands
-        return [State.new(lenv.jump(target))]
+        merge_env(ep.jump(target), env)
+        return
 
       when :setinstancevariable
         var, = operands
-        lenv, (ty,) = lenv.pop(1)
-        recv = lenv.ep.ctx.sig.recv_ty
-        ty = ty.strip_local_info(lenv)
-        scratch.add_ivar_type!(recv, var, ty)
+        env, (ty,) = env.pop(1)
+        recv = ep.ctx.sig.recv_ty
+        ty = ty.strip_local_info(env)
+        scratch.add_ivar_write!(recv, var, ty)
 
       when :getinstancevariable
         var, = operands
-        recv = lenv.ep.ctx.sig.recv_ty
-        scratch.add_ivar_site!(recv, var, lenv) do |ty|
-          nlenv, ty, = lenv.deploy_type(ty, 0)
-          nlenv = nlenv.push(ty).next
-          State.new(nlenv)
+        recv = ep.ctx.sig.recv_ty
+        # TODO: deal with inheritance?
+        scratch.add_ivar_read!(recv, var, ep) do |ty, ep|
+          nenv, ty, = env.deploy_type(ep, ty, 0)
+          merge_env(ep.next, nenv.push(ty))
         end
-        return []
+        return
 
       when :getclassvariable
         raise NotImplementedError, "getclassvariable"
@@ -885,51 +825,63 @@ module TypeProfiler
 
       when :setglobal
         var, = operands
-        lenv, (ty,) = lenv.pop(1)
-        ty = ty.strip_local_info(lenv)
-        scratch.add_gvar_type!(var, ty)
+        env, (ty,) = env.pop(1)
+        ty = ty.strip_local_info(env)
+        scratch.add_gvar_write!(var, ty)
 
       when :getglobal
         var, = operands
-        scratch.add_gvar_site!(var, lenv) do |ty|
-          nlenv = lenv.push(ty).next
-          State.new(nlenv)
+        scratch.add_gvar_read!(var, ep) do |ty, ep|
+          nenv, ty, = env.deploy_type(ep, ty, 0)
+          merge_env(ep.next, nenv.push(ty))
         end
-        return []
+        # need to return default nil of global variables
+        return
 
       when :getlocal, :getblockparam, :getblockparamproxy
         var_idx, scope_idx, _escaped = operands
-        tmp_lenv = lenv
+        tmp_ep = ep
         scope_idx.times do
-          tmp_lenv = tmp_lenv.outer
+          tmp_ep = tmp_ep.outer
         end
-        lenv = lenv.push(tmp_lenv.locals[-var_idx+2])
+        ty = @ep2env[tmp_ep].get_local(-var_idx+2)
+        env = env.push(ty)
       when :setlocal, :setblockparam
         var_idx, scope_idx, _escaped = operands
-        lenv, (ty,) = lenv.pop(1)
-        lenv = lenv.local_update(-var_idx+2, scope_idx, ty)
+        env, (ty,) = env.pop(1)
+        if scope_idx == 0
+          env = env.local_update(-var_idx+2, 0, ty)
+        else
+          tmp_ep = ep
+          scope_idx.times do
+            tmp_ep = tmp_ep.outer
+          end
+          merge_return_env(tmp_ep) do |env|
+            env.merge(env.local_update(-var_idx+2, 0, ty))
+          end
+        end
       when :getconstant
         name, = operands
-        lenv, (cbase,) = lenv.pop(1)
+        env, (cbase,) = env.pop(1)
         if cbase.eql?(Type::Instance.new(Type::Builtin[:nil]))
-          lenv, ty, = lenv.deploy_type(scratch.search_constant(lenv.ep.ctx.cref, name), 0) # TODO: multiple return arguments
-          lenv = lenv.push(ty)
+          ty = scratch.search_constant(ep.ctx.cref, name)
+          env, ty, = env.deploy_type(ep, ty, 0) # TODO: multiple return arguments
+          env = env.push(ty)
         elsif cbase.eql?(Type::Any.new)
-          lenv = lenv.push(Type::Any.new) # XXX: warning needed?
+          env = env.push(Type::Any.new) # XXX: warning needed?
         else
-          #puts
-          #p cbase, name
-          lenv, ty, = lenv.deploy_type(scratch.get_constant(cbase, name), 0) # TODO: multiple return arguments
-          lenv = lenv.push(ty)
+          ty = scratch.get_constant(cbase, name)
+          env, ty, = env.deploy_type(ep, ty, 0) # TODO: multiple return arguments
+          env = env.push(ty)
         end
       when :setconstant
         name, = operands
-        lenv, (val, cbase) = lenv.pop(2)
-        existing_val = scratch.get_constant(cbase, name) # TODO: multiple return arguments
-        if existing_val != Type::Any.new # XXX???
-          scratch.warn(self, "already initialized constant #{ Type::Instance.new(cbase).screen_name(scratch) }::#{ name }")
+        env, (ty, cbase) = env.pop(2)
+        old_ty = scratch.get_constant(cbase, name) # TODO: multiple return arguments
+        if old_ty != Type::Any.new # XXX???
+          scratch.warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(scratch) }::#{ name }")
         end
-        scratch.add_constant(cbase, name, val.strip_local_info(lenv))
+        scratch.add_constant(cbase, name, ty.strip_local_info(env))
 
       when :getspecial
         key, type = operands
@@ -937,37 +889,35 @@ module TypeProfiler
           raise NotImplementedError
           case key
           when 0 # VM_SVAR_LASTLINE
-            lenv = lenv.push(Type::Any.new) # or String | NilClass only?
+            env = env.push(Type::Any.new) # or String | NilClass only?
           when 1 # VM_SVAR_BACKREF ($~)
-            return [
-              State.new(lenv.push(Type::Instance.new(Type::Builtin[:matchdata])).next),
-              State.new(lenv.push(Type::Instance.new(Type::Builtin[:nil])).next),
-            ]
+            merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:matchdata])))
+            merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:nil])))
+            return
           else # flip-flop
-            lenv = lenv.push(Type::Instance.new(Type::Builtin[:bool]))
+            env = env.push(Type::Instance.new(Type::Builtin[:bool]))
           end
         else
           # NTH_REF ($1, $2, ...) / BACK_REF ($&, $+, ...)
-          return [
-            State.new(lenv.push(Type::Instance.new(Type::Builtin[:str])).next),
-            State.new(lenv.push(Type::Instance.new(Type::Builtin[:nil])).next),
-          ]
+          merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:str])))
+          merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:nil])))
+          return
         end
       when :setspecial
         # flip-flop
         raise NotImplementedError, "setspecial"
 
       when :dup
-        lenv, (ty,) = lenv.pop(1)
-        lenv = lenv.push(ty).push(ty)
+        env, (ty,) = env.pop(1)
+        env = env.push(ty).push(ty)
       when :duphash
-        lenv = lenv.push(Type::Any.new) # TODO: implement hash
+        env = env.push(Type::Any.new) # TODO: implement hash
       when :dupn
         n, = operands
-        _, tys = lenv.pop(n)
-        tys.each {|ty| lenv = lenv.push(ty) }
+        _, tys = env.pop(n)
+        tys.each {|ty| env = env.push(ty) }
       when :pop
-        lenv, = lenv.pop(1)
+        env, = env.pop(1)
       when :swap
         raise NotImplementedError, "swap"
       when :reverse
@@ -982,8 +932,8 @@ module TypeProfiler
           raise NotImplementedError
         when 2 # VM_CHECKMATCH_TYPE_CASE
           raise NotImplementedError if array
-          lenv, = lenv.pop(2)
-          lenv = lenv.push(Type::Instance.new(Type::Builtin[:bool]))
+          env, = env.pop(2)
+          env = env.push(Type::Instance.new(Type::Builtin[:bool]))
         when 3
           raise NotImplementedError
         else
@@ -993,39 +943,43 @@ module TypeProfiler
         raise NotImplementedError, "checkkeyword"
       when :adjuststack
         n, = operands
-        lenv, _ = lenv.pop(n)
+        env, _ = env.pop(n)
       when :nop
       when :setn
         idx, = operands
-        lenv, (ty,) = lenv.pop(1)
-        lenv = lenv.setn(idx, ty).push(ty)
+        env, (ty,) = env.pop(1)
+        env = env.setn(idx, ty).push(ty)
       when :topn
         idx, = operands
-        lenv = lenv.topn(idx)
+        env = env.topn(idx)
 
       when :splatarray
-        lenv, (ty,) = lenv.pop(1)
+        env, (ty,) = env.pop(1)
         # XXX: vm_splat_array
-        lenv = lenv.push(ty)
+        env = env.push(ty)
       when :expandarray
         num, flag = operands
-        lenv, (ary,) = lenv.pop(1)
+        env, (ary,) = env.pop(1)
         splat = flag & 1 == 1
         from_head = flag & 2 == 0
         case ary
         when Type::LocalArray
-          elems = lenv.get_array_elem_types(ary.id)
-          return do_expand_array(lenv, elems, num, splat, from_head)
+          elems = env.get_array_elem_types(ary.id)
+          do_expand_array(env, elems, num, splat, from_head)
+          raise NotImplementedError
+          return
         when Type::Any
           splat = flag & 1 == 1
           num += 1 if splat
           num.times do
-            lenv = lenv.push(Type::Any.new)
+            env = env.push(Type::Any.new)
           end
         else
           # TODO: call to_ary (or to_a?)
-          elems = Type::Array::Tuple.new(Type::Union.new(ary.strip_local_info(lenv)))
-          return do_expand_array(lenv, elems, num, splat, from_head)
+          elems = Type::Array::Tuple.new(Type::Union.new(ary.strip_local_info(env)))
+          do_expand_array(env, elems, num, splat, from_head)
+          raise NotImplementedError
+          return
         end
       when :concatarray
         raise NotImplementedError, "concatarray"
@@ -1034,168 +988,172 @@ module TypeProfiler
         type, = operands
         raise NotImplementedError if type != 5 # T_STRING
         # XXX: is_a?
-        lenv, (val,) = lenv.pop(1)
-        res = val.strip_local_info(lenv) == Type::Instance.new(Type::Builtin[:str])
+        env, (val,) = env.pop(1)
+        res = val.strip_local_info(env) == Type::Instance.new(Type::Builtin[:str])
         ty = Type::Literal.new(res, Type::Instance.new(Type::Builtin[:bool]))
-        lenv = lenv.push(ty)
+        env = env.push(ty)
       else
-        raise NotImplementedError, "unknown insn: #{ insn }"
+        raise "Unknown insn"
       end
 
-      [State.new(lenv.next)]
+      add_edge(ep, ep)
+      merge_env(ep.next, env)
     end
 
-    def do_expand_array(lenv, elems, num, splat, from_head)
-      if elems.is_a?(Type::Array::Tuple)
-        elems = elems.elems
-        if from_head
-          # fetch num elements from the head
-          if splat
-            ty = Type::Array.tuple(elems[num..-1], Type::Instance.new(Type::Builtin[:ary]))
-            lenv, ty, = lenv.deploy_type(ty, 0)
-            lenv = lenv.push(ty)
-          end
-          lenvs = [lenv]
-          elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
-          elems[0, num].reverse_each do |union|
-            lenvs = lenvs.flat_map do |le|
-              union.types.map {|ty| le.push(ty) }
+    module Aux
+      module_function
+
+      def do_expand_array(env, elems, num, splat, from_head)
+        if elems.is_a?(Type::Array::Tuple)
+          elems = elems.elems
+          if from_head
+            # fetch num elements from the head
+            if splat
+              ty = Type::Array.tuple(elems[num..-1], Type::Instance.new(Type::Builtin[:ary]))
+              env, ty, = env.deploy_type(ep, ty, 0)
+              env = env.push(ty)
+            end
+            envs = [env]
+            elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
+            elems[0, num].reverse_each do |union|
+              envs = envs.flat_map do |le|
+                union.types.map {|ty| le.push(ty) }
+              end
+            end
+          else
+            # fetch num elements from the tail
+            envs = [env]
+            elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
+            elems[-num..-1].reverse_each do |union|
+              envs = envs.flat_map do |le|
+                union.types.map {|ty| le.push(ty) }
+              end
+            end
+            if splat
+              ty = Type::Array.tuple(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
+              envs = envs.map do |le|
+                id = 0
+                le, local_ary_ty, id = le.deploy_type(ep, ty, id)
+                le = le.push(local_ary_ty)
+              end
             end
           end
+          return envs.map {|le| State.new(le.next) }
         else
-          # fetch num elements from the tail
-          lenvs = [lenv]
-          elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
-          elems[-num..-1].reverse_each do |union|
-            lenvs = lenvs.flat_map do |le|
-              union.types.map {|ty| le.push(ty) }
+          if from_head
+            envs = [env]
+            num.times do
+              envs = envs.flat_map do |le|
+                elems.types.map {|ty| le.push(ty) }
+              end
             end
-          end
-          if splat
-            ty = Type::Array.tuple(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
-            lenvs = lenvs.map do |le|
-              id = 0
-              le, local_ary_ty, id = le.deploy_type(ty, id)
-              le = le.push(local_ary_ty)
+            if splat
+              envs = envs.map do |le|
+                id = 0
+                le, local_ary_ty, id = le.deploy_type(ep, ty, id)
+                le = le.push(local_ary_ty)
+              end
             end
+            return envs.map {|le| State.new(le.next) }
+          else
+            envs = [env]
+            if splat
+              envs = envs.map do |le|
+                id = 0
+                le, local_ary_ty, id = le.deploy_type(ep, ty, id)
+                le = le.push(local_ary_ty)
+              end
+            end
+            num.times do
+              envs = envs.flat_map do |le|
+                elems.types.map {|ty| le.push(ty) }
+              end
+            end
+            return envs.map {|le| State.new(le.next) }
           end
+          raise NotImplementedError
         end
-        return lenvs.map {|le| State.new(le.next) }
-      else
-        if from_head
-          lenvs = [lenv]
-          num.times do
-            lenvs = lenvs.flat_map do |le|
-              elems.types.map {|ty| le.push(ty) }
-            end
-          end
-          if splat
-            lenvs = lenvs.map do |le|
-              id = 0
-              le, local_ary_ty, id = le.deploy_type(ty, id)
-              le = le.push(local_ary_ty)
-            end
-          end
-          return lenvs.map {|le| State.new(le.next) }
+      end
+
+      def do_invoke_block(given_block, blk, args, arg_blk, ep, env, scratch, &ctn)
+        if ctn
+          do_invoke_block_core(given_block, blk, args, arg_blk, ep, env, scratch, &ctn)
         else
-          lenvs = [lenv]
-          if splat
-            lenvs = lenvs.map do |le|
-              id = 0
-              le, local_ary_ty, id = le.deploy_type(ty, id)
-              le = le.push(local_ary_ty)
-            end
+          do_invoke_block_core(given_block, blk, args, arg_blk, ep, env, scratch) do |ret_ty, ep, env|
+            scratch.merge_env(ep.next, env.push(ret_ty))
           end
-          num.times do
-            lenvs = lenvs.flat_map do |le|
-              elems.types.map {|ty| le.push(ty) }
-            end
-          end
-          return lenvs.map {|le| State.new(le.next) }
-        end
-        raise NotImplementedError
-      end
-    end
-
-    def self.do_invoke_block(given_block, blk, args, arg_blk, lenv, scratch, &ctn)
-      if ctn
-        do_invoke_block_core(given_block, blk, args, arg_blk, lenv, scratch, &ctn)
-      else
-        do_invoke_block_core(given_block, blk, args, arg_blk, lenv, scratch) do |ret_ty, lenv|
-          nlenv = lenv.push(ret_ty).next
-          State.new(nlenv)
         end
       end
-    end
 
-    def self.do_invoke_block_core(given_block, blk, args, arg_blk, lenv, scratch, &ctn)
-      blk_iseq = blk.iseq
-      blk_lenv = blk.lenv
-      args = args.map {|arg| arg.strip_local_info(lenv) }
-      argc = blk_iseq.args[:lead_num] || 0
-      raise "complex parameter passing of block is not implemented" if argc != args.size
-      locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (blk_iseq.locals.size - args.size)
-      locals[blk_iseq.args[:block_start]] = arg_blk if blk_iseq.args[:block_start]
-      recv = blk_lenv.ep.ctx.sig.recv_ty
-      lenv_blk = blk_lenv.ep.ctx.sig.blk_ty
-      nctx = Context.new(blk_iseq, blk_lenv.ep.ctx.cref, Signature.new(recv, nil, nil, args, lenv_blk))
-      nep = ExecutionPoint.new(nctx, 0, blk_lenv.ep)
-      nlenv = LocalEnv.new(nep, locals, [], {}, blk_lenv)
-      state = State.new(nlenv)
+      def do_invoke_block_core(given_block, blk, args, arg_blk, ep, env, scratch, &ctn)
+        blk_iseq = blk.iseq
+        blk_ep = blk.ep
+        blk_env = blk.env
+        args = args.map {|arg| arg.strip_local_info(env) }
+        argc = blk_iseq.args[:lead_num] || 0
+        raise "complex parameter passing of block is not implemented" if argc != args.size
+        locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (blk_iseq.locals.size - args.size)
+        locals[blk_iseq.args[:block_start]] = arg_blk if blk_iseq.args[:block_start]
+        recv = blk_ep.ctx.sig.recv_ty
+        env_blk = blk_ep.ctx.sig.blk_ty
+        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, Signature.new(recv, nil, nil, args, env_blk))
+        nep = ExecutionPoint.new(nctx, 0, blk_ep)
+        nenv = Env.new(locals, [], {})
+        scratch.merge_env(nep, nenv)
 
-      # caution: given_block flag is not complete
-      #
-      # def foo
-      #   bar do |&blk|
-      #     yield
-      #     blk.call
-      #   end
-      # end
-      #
-      # yield and blk.call call different blocks.
-      # So, a context can have two blocks.
-      # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
+        # caution: given_block flag is not complete
+        #
+        # def foo
+        #   bar do |&blk|
+        #     yield
+        #     blk.call
+        #   end
+        # end
+        #
+        # yield and blk.call call different blocks.
+        # So, a context can have two blocks.
+        # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
 
-      scratch.add_yield!(lenv.ep.ctx, nlenv.ep.ctx) if given_block
-      scratch.add_callsite!(nlenv.ep.ctx, lenv, &ctn)
-      return [state]
-    end
+        scratch.add_yield!(ep.ctx, nep.ctx) if given_block
+        scratch.add_callsite!(nep.ctx, ep, env, &ctn)
+      end
 
-    def State.setup_arguments(operands, lenv)
-      opt, _, blk_iseq = operands
-      flags = opt[:flag]
-      mid = opt[:mid]
-      argc = opt[:orig_argc]
-      argc += 1 # receiver
-      # 1061     VM_CALL_ARGS_SPLAT_bit,     /* m(*args) */
-      # 1062     VM_CALL_ARGS_BLOCKARG_bit,  /* m(&block) */
-      # 1063     VM_CALL_FCALL_bit,          /* m(...) */
-      # 1064     VM_CALL_VCALL_bit,          /* m */
-      # 1065     VM_CALL_ARGS_SIMPLE_bit,    /* (ci->flag & (SPLAT|BLOCKARG)) && blockiseq == NULL && ci->kw_arg == NULL */
-      # 1066     VM_CALL_BLOCKISEQ_bit,      /* has blockiseq */
-      # 1067     VM_CALL_KWARG_bit,          /* has kwarg */
-      # 1068     VM_CALL_KW_SPLAT_bit,       /* m(**opts) */
-      # 1069     VM_CALL_TAILCALL_bit,       /* located at tail position */
-      # 1070     VM_CALL_SUPER_bit,          /* super */
-      # 1071     VM_CALL_ZSUPER_bit,         /* zsuper */
-      # 1072     VM_CALL_OPT_SEND_bit,       /* internal flag */
-      # 1073     VM_CALL__END
+      def setup_arguments(operands, ep, env)
+        opt, _, blk_iseq = operands
+        flags = opt[:flag]
+        mid = opt[:mid]
+        argc = opt[:orig_argc]
+        argc += 1 # receiver
+        # 1061     VM_CALL_ARGS_SPLAT_bit,     /* m(*args) */
+        # 1062     VM_CALL_ARGS_BLOCKARG_bit,  /* m(&block) */
+        # 1063     VM_CALL_FCALL_bit,          /* m(...) */
+        # 1064     VM_CALL_VCALL_bit,          /* m */
+        # 1065     VM_CALL_ARGS_SIMPLE_bit,    /* (ci->flag & (SPLAT|BLOCKARG)) && blockiseq == NULL && ci->kw_arg == NULL */
+        # 1066     VM_CALL_BLOCKISEQ_bit,      /* has blockiseq */
+        # 1067     VM_CALL_KWARG_bit,          /* has kwarg */
+        # 1068     VM_CALL_KW_SPLAT_bit,       /* m(**opts) */
+        # 1069     VM_CALL_TAILCALL_bit,       /* located at tail position */
+        # 1070     VM_CALL_SUPER_bit,          /* super */
+        # 1071     VM_CALL_ZSUPER_bit,         /* zsuper */
+        # 1072     VM_CALL_OPT_SEND_bit,       /* internal flag */
+        # 1073     VM_CALL__END
 
-      #raise "call with splat is not supported yet" if flags[0] != 0
-      #raise "call with splat is not supported yet" if flags[2] != 0
-      if flags[1] != 0 # VM_CALL_ARGS_BLOCKARG
-        lenv, (recv, *args, blk) = lenv.pop(argc + 1)
-        raise "both block arg and actual block given" if blk_iseq
-      else
-        lenv, (recv, *args) = lenv.pop(argc)
-        if blk_iseq
-          # check
-          blk = Type::ISeqProc.new(blk_iseq, lenv, Type::Instance.new(Type::Builtin[:proc]))
+        #raise "call with splat is not supported yet" if flags[0] != 0
+        #raise "call with splat is not supported yet" if flags[2] != 0
+        if flags[1] != 0 # VM_CALL_ARGS_BLOCKARG
+          env, (recv, *args, blk) = env.pop(argc + 1)
+          raise "both block arg and actual block given" if blk_iseq
         else
-          blk = Type::Instance.new(Type::Builtin[:nil])
+          env, (recv, *args) = env.pop(argc)
+          if blk_iseq
+            # check
+            blk = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
+          else
+            blk = Type::Instance.new(Type::Builtin[:nil])
+          end
         end
+        return env, recv, mid, args, blk
       end
-      return lenv, recv, mid, args, blk
     end
   end
 end

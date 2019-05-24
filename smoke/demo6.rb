@@ -16,4 +16,4 @@ __END__
 Foo#@foo :: Integer | String
 Foo#foo= :: (Integer) -> Integer
 Foo#foo= :: (String) -> String
-Foo#foo :: () -> (String | Integer)
+Foo#foo :: () -> (Integer | String)
