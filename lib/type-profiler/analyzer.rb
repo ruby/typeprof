@@ -845,11 +845,15 @@ module TypeProfiler
 
       when :getlocal, :getblockparam, :getblockparamproxy
         var_idx, scope_idx, _escaped = operands
-        tmp_ep = ep
-        scope_idx.times do
-          tmp_ep = tmp_ep.outer
+        if scope_idx == 0
+          ty = env.get_local(-var_idx+2)
+        else
+          tmp_ep = ep
+          scope_idx.times do
+            tmp_ep = tmp_ep.outer
+          end
+          ty = @return_envs[tmp_ep].get_local(-var_idx+2)
         end
-        ty = @ep2env[tmp_ep].get_local(-var_idx+2)
         env = env.push(ty)
       when :setlocal, :setblockparam
         var_idx, scope_idx, _escaped = operands
