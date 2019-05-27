@@ -20,5 +20,5 @@ Object#foo :: ([Integer, String]) -> Integer
 Object#bar :: (Integer) -> NilClass
 Object#baz :: (String) -> NilClass
 Object#qux :: (NilClass) -> NilClass
-Object#quux :: (String) -> NilClass
 Object#quux :: (Integer) -> NilClass
+Object#quux :: (String) -> NilClass

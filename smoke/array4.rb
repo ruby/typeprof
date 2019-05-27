@@ -8,4 +8,4 @@ end
 foo
 
 __END__
-Object#foo :: () -> (NilClass | [Integer])
+Object#foo :: () -> (NilClass | Array[Integer])

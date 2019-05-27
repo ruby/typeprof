@@ -621,7 +621,7 @@ module TypeProfiler
       insn, *operands = ep.ctx.iseq.insns[ep.pc]
 
       if ENV["TP_DEBUG"]
-        p [ep.pc, ep.ctx.iseq.name, ep.source_location, insn, env]
+        p [ep.pc, ep.ctx.iseq.name, ep.source_location, insn, operands]
       end
 
       case insn

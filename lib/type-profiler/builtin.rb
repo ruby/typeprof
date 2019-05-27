@@ -133,11 +133,12 @@ module TypeProfiler
       elems.each do |ty| # TODO: use Sum type?
         blk_nil = Type::Instance.new(Type::Builtin[:nil])
         Scratch::Aux.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|
-          nenv = env.push(recv).next
+          nenv = env.push(recv)
           scratch.merge_env(ep.next, nenv)
         end
       end
-      scratch.merge_env(ep.next, env)
+      nenv = env.push(recv)
+      scratch.merge_env(ep.next, nenv)
     end
 
     def array_plus(state, flags, recv, mid, args, blk, ep, env, scratch)
