@@ -54,6 +54,18 @@ module TypeProfiler
       end
     end
 
+    def object_is_a?(state, flags, recv, mid, args, blk, ep, env, scratch)
+      raise unless args.size != 0
+      if recv.klass == args[0] # XXX: inheritance
+        true_val = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
+        env = env.push(true_val)
+      else
+        false_val = Type::Literal.new(false, Type::Instance.new(Type::Builtin[:bool]))
+        env = env.push(false_val)
+      end
+      scratch.merge_env(ep.next, env)
+    end
+
     def module_attr_accessor(state, flags, recv, mid, args, blk, ep, env, scratch)
       args.each do |arg|
         sym = arg.lit
@@ -241,6 +253,7 @@ module TypeProfiler
     scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
     scratch.add_singleton_custom_method(klass_obj, :"attr_reader", Builtin.method(:module_attr_reader))
     scratch.add_custom_method(klass_obj, :p, Builtin.method(:reveal_type))
+    scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
     scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
     scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
     scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
@@ -266,6 +279,7 @@ module TypeProfiler
     scratch.add_typed_method(i[klass_str], :to_s, [], i[klass_nil], i[klass_str])
     scratch.add_typed_method(i[klass_sym], :to_s, [], i[klass_nil], i[klass_str])
     scratch.add_typed_method(i[klass_str], :to_sym, [], i[klass_nil], i[klass_sym])
+    scratch.add_typed_method(i[klass_str], :+ , [i[klass_str]], i[klass_nil], i[klass_str])
 
     sig1 = Signature.new(i[klass_obj], false, :Integer, [i[klass_int]], i[klass_nil])
     sig2 = Signature.new(i[klass_obj], false, :Integer, [i[klass_str]], i[klass_nil])
