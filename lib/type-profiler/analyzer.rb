@@ -792,8 +792,9 @@ module TypeProfiler
       when :once
         raise NotImplementedError, "once"
 
-      when :branchif, :branchunless, :branchnil # TODO: check how branchnil is used
-        target, = operands
+      when :branch # TODO: check how branchnil is used
+        type, target, = operands
+        # type: :if or :unless or :nil
         env, = env.pop(1)
         ep_then = ep.next
         ep_else = ep.jump(target)

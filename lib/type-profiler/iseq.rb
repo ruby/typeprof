@@ -27,6 +27,17 @@ module TypeProfiler
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @args, _catch_table, insns = *iseq
 
+      @args[:opt] = @args[:opt].map {|l| labels[l] } if @args[:opt]
+
+      @insns = []
+      @linenos = []
+
+      setup_iseq(insns)
+
+      translate_insns
+    end
+
+    def setup_iseq(insns)
       i = 0
       labels = {}
       insns.each do |e|
@@ -36,11 +47,6 @@ module TypeProfiler
           i += 1
         end
       end
-
-      @args[:opt] = @args[:opt].map {|l| labels[l] } if @args[:opt]
-
-      @insns = []
-      @linenos = []
 
       lineno = 0
       insns.each do |e|
@@ -55,11 +61,7 @@ module TypeProfiler
             case type
             when "ISEQ"
               operand && ISeq.new(operand)
-            when "lindex_t", "rb_num_t", "VALUE"
-              operand
-            when "ID", "GENTRY"
-              operand
-            when "CALL_INFO"
+            when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_INFO"
               operand
             when "OFFSET"
               labels[operand] || raise("unknown label: #{ operand }")
@@ -78,6 +80,20 @@ module TypeProfiler
           @linenos << lineno
         else
           raise "unknown iseq entry: #{ e }"
+        end
+      end
+    end
+
+    def translate_insns
+      @insns.size.times do |i|
+        insn, *operands = @insns[i]
+        case insn
+        when :branchif
+          @insns[i] = [insn, :if] + operands
+        when :branchunless
+          @insns[i] = [insn, :unless] + operands
+        when :branchnil
+          @insns[i] = [insn, :nil] + operands
         end
       end
     end
