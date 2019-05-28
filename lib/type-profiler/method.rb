@@ -105,7 +105,7 @@ module TypeProfiler
       end
 
       scratch.error(caller_ep, "failed to resolve overload: #{ recv.screen_name(scratch) }##{ mid }")
-      return []
+      ctn[Type::Any.new, caller_ep, caller_env]
     end
   end
 
