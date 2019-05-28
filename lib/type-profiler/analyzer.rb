@@ -974,6 +974,7 @@ module TypeProfiler
         case ary
         when Type::LocalArray
           elems = env.get_array_elem_types(ary.id)
+          elems ||= Type::Array::Seq.new(Type::Union.new(Type::Any.new)) # XXX
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         when Type::Any
@@ -1024,7 +1025,10 @@ module TypeProfiler
             elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
             elems[0, num].reverse_each do |union|
               envs = envs.flat_map do |le|
-                union.types.map {|ty| le.push(ty) }
+                union.types.map do |ty|
+                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  le.push(ty)
+                end
               end
             end
           else
@@ -1033,7 +1037,10 @@ module TypeProfiler
             elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
             elems[-num..-1].reverse_each do |union|
               envs = envs.flat_map do |le|
-                union.types.map {|ty| le.push(ty) }
+                union.types.map do |ty|
+                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  le.push(ty)
+                end
               end
             end
             if splat
@@ -1053,7 +1060,10 @@ module TypeProfiler
             envs = [env]
             num.times do
               envs = envs.flat_map do |le|
-                elems.types.map {|ty| le.push(ty) }
+                elems.types.map do |ty|
+                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  le.push(ty)
+                end
               end
             end
             if splat
@@ -1074,7 +1084,10 @@ module TypeProfiler
             end
             num.times do
               envs = envs.flat_map do |le|
-                elems.types.map {|ty| le.push(ty) }
+                elems.types.map do |ty|
+                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  le.push(ty)
+                end
               end
             end
           end

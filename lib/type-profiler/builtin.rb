@@ -100,10 +100,14 @@ module TypeProfiler
 
       # assumes that recv is LocalArray
       elems = env.get_array_elem_types(recv.id)
-      if idx
-        elem = elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
+      if elems
+        if idx
+          elem = elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
+        else
+          elem = Type::Union.new(*elems.types)
+        end
       else
-        elem = Type::Union.new(*elems.types)
+        elem = Type::Union.new(Type::Any.new) # XXX
       end
       elem.types.each do |ty| # TODO: Use Sum type
         scratch.merge_env(ep.next, env.push(ty))
@@ -129,7 +133,7 @@ module TypeProfiler
     def array_each(state, flags, recv, mid, args, blk, ep, env, scratch)
       raise NotImplementedError if args.size != 0
       elems = env.get_array_elem_types(recv.id)
-      elems = elems.types
+      elems = elems ? elems.types : [Type::Any.new]
       elems.each do |ty| # TODO: use Sum type?
         blk_nil = Type::Instance.new(Type::Builtin[:nil])
         Scratch::Aux.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|

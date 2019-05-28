@@ -240,7 +240,12 @@ module TypeProfiler
         else
           visited[self] = true
           elems = env.get_array_elem_types(@id)
-          elems = elems.strip_local_info_core(env, visited)
+          if elems
+            elems = elems.strip_local_info_core(env, visited)
+          else
+            # TODO: currently out-of-scope array cannot be accessed
+            elems = Array::Seq.new(Union.new(Type::Any.new))
+          end
           Array.new(elems, @base_type)
         end
       end
