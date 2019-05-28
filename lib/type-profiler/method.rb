@@ -42,8 +42,7 @@ module TypeProfiler
         argc = @iseq.args[:lead_num]
         if argc && argc != args.size
           scratch.error(caller_ep, "wrong number of arguments (given #{ args.size }, expected #{ argc })")
-          nenv = caller_env.push(Type::Any.new)
-          scratch.merge_env(caller_ep.next, nenv)
+          ctn[Type::Any.new, caller_ep, caller_env]
         end
 
         case
@@ -117,7 +116,7 @@ module TypeProfiler
 
     def do_send_core(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       # XXX: ctn?
-      @impl[state, flags, recv, mid, args, blk, ep, env, scratch]
+      @impl[state, flags, recv, mid, args, blk, ep, env, scratch, &ctn]
     end
   end
 end

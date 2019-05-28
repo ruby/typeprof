@@ -2,71 +2,71 @@ module TypeProfiler
   module Builtin
     module_function
 
-    def vmcore_define_method(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def vmcore_define_method(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       mid, iseq = args
       cref = ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
       scratch.add_iseq_method(cref.klass, sym, iseq.iseq, cref)
-      env = env.push(mid)
-      scratch.merge_env(ep.next, env)
+      ctn[mid, ep, env]
     end
 
-    def vmcore_define_singleton_method(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def vmcore_define_singleton_method(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       recv_ty, mid, iseq = args
       cref = ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
       scratch.add_singleton_iseq_method(recv_ty, sym, iseq.iseq, cref)
-      env = env.push(mid)
-      scratch.merge_env(ep.next, env)
+      ctn[mid, ep, env]
     end
 
-    def vmcore_set_method_alias(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def vmcore_set_method_alias(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       klass, new_mid, old_mid = args
       new_sym = new_mid.lit
       raise "symbol expected" unless new_sym.is_a?(Symbol)
       old_sym = old_mid.lit
       raise "symbol expected" unless old_sym.is_a?(Symbol)
       scratch.alias_method(klass, new_sym, old_sym)
-      env = env.push(Type::Instance.new(Type::Builtin[:nil]))
-      scratch.merge_env(ep.next, env)
+      ty = Type::Instance.new(Type::Builtin[:nil])
+      ctn[ty, ep, env]
     end
 
-    def lambda(state, flags, recv, mid, args, blk, ep, env, scratch)
-      env = env.push(blk)
-      scratch.merge_env(ep.next, env)
+    def lambda(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
+      ctn[blk, ep, env]
     end
 
-    def proc_call(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def proc_call(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       given_block = ep.ctx.sig.blk_ty == recv
-      Scratch::Aux.do_invoke_block(given_block, recv, args, blk, ep, env, scratch)
+      Scratch::Aux.do_invoke_block(given_block, recv, args, blk, ep, env, scratch, &ctn)
     end
 
-    def object_new(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def object_new(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       ty = Type::Instance.new(recv)
       meths = scratch.get_method(recv, :initialize)
       meths.flat_map do |meth|
-        meth.do_send(state, 0, ty, :initialize, args, blk, ep, env, scratch) do |ret_ty, ep|
-          nenv = env.push(Type::Instance.new(recv))
-          scratch.merge_env(ep.next, nenv)
+        meth.do_send(state, 0, ty, :initialize, args, blk, ep, env, scratch) do |ret_ty, ep, env|
+          ctn[Type::Instance.new(recv), ep, env]
         end
       end
     end
 
-    def object_is_a?(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def object_is_a?(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       raise unless args.size != 0
-      if recv.klass == args[0] # XXX: inheritance
-        true_val = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
-        env = env.push(true_val)
+      if recv.is_a?(Type::Instance)
+        if recv.klass == args[0] # XXX: inheritance
+          true_val = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
+          ctn[true_val, ep, env]
+        else
+          false_val = Type::Literal.new(false, Type::Instance.new(Type::Builtin[:bool]))
+          ctn[false_val, ep, env]
+        end
       else
-        false_val = Type::Literal.new(false, Type::Instance.new(Type::Builtin[:bool]))
-        env = env.push(false_val)
+        bool = Type::Instance.new(Type::Builtin[:bool])
+        ctn[bool, ep, env]
       end
-      scratch.merge_env(ep.next, env)
     end
 
-    def module_attr_accessor(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def module_attr_accessor(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       args.each do |arg|
         sym = arg.lit
         cref = ep.ctx.cref
@@ -76,11 +76,11 @@ module TypeProfiler
         scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
         scratch.add_iseq_method(cref.klass, :"#{ sym }=", iseq_setter, cref)
       end
-      env = env.push(Type::Instance.new(Type::Builtin[:nil]))
-      scratch.merge_env(ep.next, env)
+      ty = Type::Instance.new(Type::Builtin[:nil])
+      ctn[ty, ep, env]
     end
 
-    def module_attr_reader(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def module_attr_reader(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       args.each do |arg|
         sym = arg.lit
         cref = ep.ctx.cref
@@ -88,19 +88,18 @@ module TypeProfiler
         iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
         scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
       end
-      env = env.push(Type::Instance.new(Type::Builtin[:nil]))
-      scratch.merge_env(ep.next, env)
+      ty = Type::Instance.new(Type::Builtin[:nil])
+      ctn[ty, ep, env]
     end
 
-    def reveal_type(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def reveal_type(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       args.each do |arg|
         scratch.reveal_type(ep, arg.strip_local_info(env).screen_name(scratch))
       end
-      env = env.push(Type::Any.new)
-      scratch.merge_env(ep.next, env)
+      ctn[Type::Any.new, ep, env]
     end
 
-    def array_aref(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def array_aref(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       raise NotImplementedError if args.size != 1
       idx = args.first
       if idx.is_a?(Type::Literal)
@@ -122,11 +121,11 @@ module TypeProfiler
         elem = Type::Union.new(Type::Any.new) # XXX
       end
       elem.types.each do |ty| # TODO: Use Sum type
-        scratch.merge_env(ep.next, env.push(ty))
+        ctn[ty, ep, env]
       end
     end
 
-    def array_aset(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def array_aset(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       raise NotImplementedError if args.size != 2
       idx = args.first
       if idx.is_a?(Type::Literal)
@@ -138,26 +137,23 @@ module TypeProfiler
 
       ty = args.last
       env = env.update_array_elem_types(recv.id, idx, ty)
-      env = env.push(ty)
-      scratch.merge_env(ep.next, env)
+      ctn[ty, ep, env]
     end
 
-    def array_each(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def array_each(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       raise NotImplementedError if args.size != 0
       elems = env.get_array_elem_types(recv.id)
       elems = elems ? elems.types : [Type::Any.new]
       elems.each do |ty| # TODO: use Sum type?
         blk_nil = Type::Instance.new(Type::Builtin[:nil])
         Scratch::Aux.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|
-          nenv = env.push(recv)
-          scratch.merge_env(ep.next, nenv)
+          #ctn[recv, ep, env]
         end
       end
-      nenv = env.push(recv)
-      scratch.merge_env(ep.next, nenv)
+      ctn[recv, ep, env]
     end
 
-    def array_plus(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def array_plus(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       raise NotImplementedError if args.size != 1
       ary = args.first
       elems1 = env.get_array_elem_types(recv.id)
@@ -166,25 +162,25 @@ module TypeProfiler
         elems = Type::Array::Seq.new(Type::Union.new(*(elems1.types | elems2.types)))
         id = 0
         env, ty, = env.deploy_array_type(recv.base_type, elems, id)
-        scratch.merge_env(ep.next, env)
+        env[ty, ep, env]
       else
         # warn??
-        scratch.merge_env(ep.next, env.push(Type::Any.new))
+        env[Type::Any.new, ep, env]
       end
     end
 
-    def array_pop(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def array_pop(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       if args.size != 0
-        scratch.merge_env(ep.next, env.push(Type::Any.new))
+        env[Type::Any.new, ep, env]
       end
 
       elems = env.get_array_elem_types(recv.id)
       elems.types.each do |ty| # TODO: use Sum type
-        scratch.merge_env(ep.next, env.push(ty))
+        env[ty, ep, env]
       end
     end
 
-    def require_relative(state, flags, recv, mid, args, blk, ep, env, scratch)
+    def require_relative(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
       raise NotImplementedError if args.size != 1
       feature = args.first
       if feature.is_a?(Type::Literal)
@@ -198,8 +194,7 @@ module TypeProfiler
 
           scratch.add_callsite!(callee_ep.ctx, ep, env) do |_ret_ty, ep|
             result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
-            nenv = env.push(result)
-            scratch.merge_env(ep.next, nenv)
+            ctn[result, ep, env]
           end
           return
         else
@@ -211,8 +206,7 @@ module TypeProfiler
       end
 
       result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
-      env = env.push(result)
-      scratch.merge_env(ep.next, env)
+      scratch[result, ep, env]
     end
   end
 
