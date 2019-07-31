@@ -1169,14 +1169,24 @@ module TypeProfiler
         blk_env = blk.env
         args = args.map {|arg| arg.strip_local_info(env) }
         argc = blk_iseq.args[:lead_num] || 0
-        raise "complex parameter passing of block is not implemented" if argc != args.size
-        locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (blk_iseq.locals.size - args.size)
+        if argc != args.size
+          warn "complex parameter passing of block is not implemented"
+          args.pop while argc < args.size
+          args << Type::Any.new while argc > args.size
+        end
+        locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
         locals[blk_iseq.args[:block_start]] = arg_blk if blk_iseq.args[:block_start]
         recv = blk_ep.ctx.sig.recv_ty
         env_blk = blk_ep.ctx.sig.blk_ty
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, Signature.new(recv, nil, nil, args, env_blk))
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(locals, [], {})
+        id = 0
+        args.each_with_index do |ty, i|
+          nenv, ty, id = nenv.deploy_type(nep, ty, id)
+          nenv = nenv.local_update(i, 0, ty)
+        end
+
         scratch.merge_env(nep, nenv)
 
         # caution: given_block flag is not complete
