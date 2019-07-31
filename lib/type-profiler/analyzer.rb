@@ -389,12 +389,14 @@ module TypeProfiler
 
       @signatures[callee_ctx] ||= Utils::MutableSet.new
       @signatures[callee_ctx].each do |ret_ty|
-        ctn[ret_ty, caller_ep, caller_env] # TODO: use Sum type
+        @callsites[callee_ctx].each do |caller_ep, ctn|
+          ctn[ret_ty, caller_ep, @returns_envs[caller_ep]] # TODO: use Sum type
+        end
       end
     end
 
-    def merge_return_env(ep)
-      @return_envs[ep] = yield @return_envs[ep]
+    def merge_return_env(caller_ep)
+      @return_envs[caller_ep] = yield @return_envs[caller_ep]
     end
 
     def add_return_type!(callee_ctx, ret_ty)
