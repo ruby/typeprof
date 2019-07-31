@@ -27,8 +27,6 @@ module TypeProfiler
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @args, _catch_table, insns = *iseq
 
-      @args[:opt] = @args[:opt].map {|l| labels[l] } if @args[:opt]
-
       @insns = []
       @linenos = []
 
@@ -82,6 +80,8 @@ module TypeProfiler
           raise "unknown iseq entry: #{ e }"
         end
       end
+
+      @args[:opt] = @args[:opt].map {|l| labels[l] } if @args[:opt]
     end
 
     def translate_insns
