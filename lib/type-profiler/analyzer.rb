@@ -129,6 +129,13 @@ module TypeProfiler
       when Type::Array
         env, elems, id = ty.elems.deploy_type(ep, self, id)
         return env.deploy_array_type(ep, elems, id, ty.base_type)
+      when Type::Sum
+        env = self
+        ty = Type::Sum.new(ty.types.map do |elem| # XXX: id and Set#each
+          env, elem2, id = env.deploy_type(ep, elem, id)
+          elem2
+        end)
+        return env, ty, id
       else
         return self, ty, id
       end
