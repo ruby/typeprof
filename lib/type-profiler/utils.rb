@@ -60,6 +60,12 @@ module TypeProfiler
         each {|elem| nhash[yield(elem)] = true }
         Set.new(nhash)
       end
+
+      def inspect
+        s = []
+        each {|v| s << v.inspect }
+        "{#{ s.join(", ") }}"
+      end
     end
 
     class MutableSet

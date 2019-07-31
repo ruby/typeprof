@@ -266,8 +266,8 @@ module TypeProfiler
       attr_reader :elems, :base_type
 
       def inspect
-        #"Type::Array#{ @elems.inspect }"
-        @base_type.inspect
+        "Type::Array#{ @elems.inspect }"
+        #@base_type.inspect
       end
 
       def screen_name(scratch)
