@@ -113,14 +113,14 @@ module TypeProfiler
       elems = env.get_array_elem_types(recv.id)
       if elems
         if idx
-          elem = elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
+          elem = elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
         else
-          elem = Type::Union.new(*elems.types)
+          elem = elems.types
         end
       else
-        elem = Type::Union.new(Type::Any.new) # XXX
+        elem = Utils::Set[Type::Any.new] # XXX
       end
-      elem.types.each do |ty| # TODO: Use Sum type
+      elem.each do |ty| # TODO: Use Sum type
         ctn[ty, ep, env]
       end
     end
@@ -159,13 +159,13 @@ module TypeProfiler
       elems1 = env.get_array_elem_types(recv.id)
       if ary.is_a?(Type::LocalArray)
         elems2 = env.get_array_elem_types(ary.id)
-        elems = Type::Array::Seq.new(Type::Union.new(*(elems1.types | elems2.types)))
+        elems = Type::Array::Seq.new(elems1.types + elems2.types.map {|ty| ty.strip_local_info(env) })
         id = 0
-        env, ty, = env.deploy_array_type(recv.base_type, elems, id)
-        env[ty, ep, env]
+        env, ty, = env.deploy_array_type(recv.base_type, elems, id, recv.base_type)
+        ctn[ty, ep, env]
       else
         # warn??
-        env[Type::Any.new, ep, env]
+        ctn[Type::Any.new, ep, env]
       end
     end
 

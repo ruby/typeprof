@@ -244,7 +244,7 @@ module TypeProfiler
             elems = elems.strip_local_info_core(env, visited)
           else
             # TODO: currently out-of-scope array cannot be accessed
-            elems = Array::Seq.new(Union.new(Type::Any.new))
+            elems = Array::Seq.new(Utils::Set[Type::Any.new])
           end
           Array.new(elems, @base_type)
         end
@@ -293,42 +293,44 @@ module TypeProfiler
         include Utils::StructuralEquality
 
         def initialize(elems)
-          raise if !elems.is_a?(Union)
+          raise if !elems.is_a?(Utils::Set)
           @elems = elems
         end
 
         attr_reader :elems
 
         def strip_local_info_core(env, visited)
-          Seq.new(Union.new(*@elems.types.map {|ty| ty.strip_local_info_core(env, visited) }))
+          Seq.new(@elems.map {|ty| ty.strip_local_info_core(env, visited) })
         end
 
         def screen_name(scratch)
-          "Array[" + @elems.screen_name(scratch) + "]"
+          s = []
+          @elems.each {|ty| s << ty.screen_name(scratch) }
+          "Array[" + s.sort.join(" | ") + "]"
         end
 
         def deploy_type(ep, env, id)
-          elems = Type::Union.new(*@elems.types.map do |ty|
+          elems = @elems.map do |ty|
             env, ty, id = env.deploy_type(ep, ty, id)
             ty
-          end)
+          end
           return env, Seq.new(elems), id
         end
 
         def types
-          @elems.types
+          @elems
         end
 
         def [](idx)
           @elems
         end
 
-        def update(idx, ty)
-          Seq.new(Type::Union.new(*(@elems.types | [ty])))
+        def update(_idx, ty)
+          Seq.new(@elems + Utils::Set[ty])
         end
 
         def sum(other)
-          Seq.new(Union.new(*types | other.types))
+          Seq.new(@elems + other.types)
         end
       end
 
@@ -343,7 +345,7 @@ module TypeProfiler
 
         def strip_local_info_core(env, visited)
           elems = @elems.map do |elem|
-            Union.new(*elem.types.map {|ty| ty.strip_local_info_core(env, visited) })
+            elem.map {|ty| ty.strip_local_info_core(env, visited) }
           end
           Tuple.new(*elems)
         end
@@ -358,38 +360,40 @@ module TypeProfiler
 
         def screen_name(scratch)
           "[" + @elems.map do |elem|
-            elem.screen_name(scratch)
+            s = []
+            elem.each {|ty| s << ty.screen_name(scratch) }
+            s.join(" | ")
           end.join(", ") + "]"
         end
 
         def deploy_type(ep, env, id)
           elems = @elems.map do |elem|
-            Type::Union.new(*elem.types.map do |ty|
+            elem.map do |ty|
               env, ty, id = env.deploy_type(ep, ty, id)
               ty
-            end)
+            end
           end
           return env, Tuple.new(*elems), id
         end
 
         def types
-          @elems.flat_map {|union| union.types }.uniq # Is this okay?
+          @elems.inject(&:+) || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # Is this okay?
         end
 
         def [](idx)
-          @elems[idx] || Type::Union.new(Type::Instance.new(Type::Builtin[:nil])) # HACK
+          @elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
         end
 
         def update(idx, ty)
           if idx && idx < @elems.size
-            Tuple.new(*Utils.array_update(@elems, idx, Type::Union.new(ty)))
+            Tuple.new(*Utils.array_update(@elems, idx, Utils::Set[ty]))
           else
-            Seq.new(Union.new(*types | [ty])) # convert to seq
+            Seq.new(types + Utils::Set[ty]) # converted to Seq
           end
         end
 
         def sum(other)
-          Seq.new(Union.new(*types | other.types))
+          Seq.new(types + other.types)
         end
       end
     end
@@ -431,7 +435,7 @@ module TypeProfiler
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:bool]))
       when ::Array
         ty = Type::Instance.new(Type::Builtin[:ary])
-        Type::Array.tuple(obj.map {|arg| Union.new(guess_literal_type(arg)) }, ty)
+        Type::Array.tuple(obj.map {|arg| Utils::Set[guess_literal_type(arg)] }, ty)
       when ::String
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:str]))
       when ::Regexp

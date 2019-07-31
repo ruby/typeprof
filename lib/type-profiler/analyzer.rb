@@ -662,7 +662,7 @@ module TypeProfiler
       when :newarray
         len, = operands
         env, elems = env.pop(len)
-        ty = Type::Array.tuple(elems.map {|elem| Type::Union.new(elem) }, Type::Instance.new(Type::Builtin[:ary]))
+        ty = Type::Array.tuple(elems.map {|elem| Utils::Set[elem] }, Type::Instance.new(Type::Builtin[:ary]))
         env, ty, = env.deploy_type(ep, ty, 0)
         env = env.push(ty)
       when :newhash
@@ -1019,7 +1019,7 @@ module TypeProfiler
         case ary
         when Type::LocalArray
           elems = env.get_array_elem_types(ary.id)
-          elems ||= Type::Array::Seq.new(Type::Union.new(Type::Any.new)) # XXX
+          elems ||= Type::Array::Seq.new(Utils::Set[Type::Any.new]) # XXX
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         when Type::Any
@@ -1030,12 +1030,23 @@ module TypeProfiler
           end
         else
           # TODO: call to_ary (or to_a?)
-          elems = Type::Array::Tuple.new(Type::Union.new(ary.strip_local_info(env)))
+          elems = Type::Array::Tuple.new(Utils::Set[ary.strip_local_info(env)])
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         end
       when :concatarray
-        raise NotImplementedError, "concatarray"
+        env, (ary1, ary2) = env.pop(2)
+        if ary1.is_a?(Type::LocalArray)
+          elems1 = env.get_array_elem_types(ary.id)
+          if ary2.is_a?(Type::LocalArray)
+            elems2 = env.get_array_elem_types(ary.id)
+            env = env.push(Type::Array::Seq.new(elems1.types + elems2.types))
+          else
+            env = env.push(Type::Array::Seq.new(Utils::Set[Type::Any.new])) # XXX
+          end
+        else
+          env = env.push(Type::Array::Seq.new(Utils::Set[Type::Any.new])) # XXX
+        end
 
       when :checktype
         type, = operands
@@ -1067,10 +1078,10 @@ module TypeProfiler
               env = env.push(ty)
             end
             envs = [env]
-            elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
+            elems += [Utils::Set[Type::Instance.new(Type::Builtin[:nil])]] * (num - elems.size) if elems.size < num
             elems[0, num].reverse_each do |union|
               envs = envs.flat_map do |le|
-                union.types.map do |ty|
+                union.to_a.map do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   le.push(ty)
                 end
@@ -1079,10 +1090,10 @@ module TypeProfiler
           else
             # fetch num elements from the tail
             envs = [env]
-            elems += [Type::Union.new(Type::Instance.new(Type::Builtin[:nil]))] * (num - elems.size) if elems.size < num
+            elems += [Utils::Set[Type::Instance.new(Type::Builtin[:nil])]] * (num - elems.size) if elems.size < num
             elems[-num..-1].reverse_each do |union|
               envs = envs.flat_map do |le|
-                union.types.map do |ty|
+                union.to_a.map do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   le.push(ty)
                 end
@@ -1105,7 +1116,7 @@ module TypeProfiler
             envs = [env]
             num.times do
               envs = envs.flat_map do |le|
-                elems.types.map do |ty|
+                elems.types.to_a.map do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   le.push(ty)
                 end
