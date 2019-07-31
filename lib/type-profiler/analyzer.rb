@@ -181,6 +181,8 @@ module TypeProfiler
       @backward_edges = {}
     end
 
+    attr_reader :return_envs
+
     def get_env(ep)
       @ep2env[ep]
     end

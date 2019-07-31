@@ -144,13 +144,11 @@ module TypeProfiler
       raise NotImplementedError if args.size != 0
       elems = env.get_array_elem_types(recv.id)
       elems = elems ? elems.types : [Type::Any.new]
-      elems.each do |ty| # TODO: use Sum type?
-        blk_nil = Type::Instance.new(Type::Builtin[:nil])
-        Scratch::Aux.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|
-          #ctn[recv, ep, env]
-        end
+      ty = Type::Sum.new(elems)
+      blk_nil = Type::Instance.new(Type::Builtin[:nil])
+      Scratch::Aux.do_invoke_block(false, blk, [ty], blk_nil, ep, env, scratch) do |_ret_ty, ep|
+        ctn[recv, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
       end
-      ctn[recv, ep, env]
     end
 
     def array_plus(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
