@@ -7,4 +7,4 @@ foo
 
 __END__
 smoke/svar1.rb:2: [error] undefined method: String#=~
-Object#foo :: () -> [String | NilClass, String | NilClass]
+Object#foo :: () -> [NilClass | String, NilClass | String]

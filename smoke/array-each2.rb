@@ -9,4 +9,4 @@ end
 foo
 
 __END__
-Object#foo :: () -> (NilClass | String | Integer)
+Object#foo :: () -> (Integer | String | NilClass)

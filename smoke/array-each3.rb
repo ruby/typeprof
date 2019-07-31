@@ -6,3 +6,4 @@ end
 end
 
 __END__
+Object#log :: (NilClass) -> NilClass
