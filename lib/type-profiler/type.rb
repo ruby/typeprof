@@ -231,7 +231,8 @@ module TypeProfiler
       end
 
       def screen_name(scratch)
-        raise "LocalArray must not be included in signature"
+        #raise "LocalArray must not be included in signature"
+        "LocalArray!"
       end
 
       def strip_local_info_core(env, visited)
