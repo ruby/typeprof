@@ -392,7 +392,7 @@ module TypeProfiler
       @signatures[callee_ctx] ||= Utils::MutableSet.new
       @signatures[callee_ctx].each do |ret_ty|
         @callsites[callee_ctx].each do |caller_ep, ctn|
-          ctn[ret_ty, caller_ep, @returns_envs[caller_ep]] # TODO: use Sum type
+          ctn[ret_ty, caller_ep, @return_envs[caller_ep]] # TODO: use Sum type
         end
       end
     end
