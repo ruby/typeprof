@@ -758,16 +758,15 @@ module TypeProfiler
         end
         return
       when :send_is_a_and_branch
-        send_operands, branch_operands = *operands
+        send_operands, (branch_type, target,) = *operands
         env, recvs, mid, args, blk = Aux.setup_arguments(send_operands, ep, env)
         recvs.each do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
               meth.do_send(self, flags, recv, mid, args, blk, ep, env, scratch) do |ret_ty, ep, env|
-                type, target, = branch_operands
-                if type != :nil && ret_ty.is_a?(Type::Literal)
-                  if !!ret_ty.lit == (type == :if)
+                if branch_type != :nil && ret_ty.is_a?(Type::Literal)
+                  if !!ret_ty.lit == (branch_type == :if)
                     nep = ep.jump(target)
                     merge_env(nep, env)
                   else
@@ -787,8 +786,10 @@ module TypeProfiler
             if recv != Type::Any.new # XXX: should be configurable
               scratch.error(ep, "undefined method: #{ recv.strip_local_info(env).screen_name(scratch) }##{ mid }")
             end
-            nenv = env.push(Type::Any.new)
-            merge_env(ep.next, nenv)
+            ep_then = ep.next
+            ep_else = ep.jump(target)
+            merge_env(ep_then, env)
+            merge_env(ep_else, env)
           end
         end
         return

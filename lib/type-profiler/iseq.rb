@@ -96,7 +96,6 @@ module TypeProfiler
           @insns[i] = [:branch, :nil] + operands
         end
       end
-      return # XXX: flow-sensitive analysis breaks self-profiling; need to debug
 
       (@insns.size - 1).times do |i|
         insn, *operands = @insns[i]
