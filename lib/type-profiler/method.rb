@@ -57,13 +57,13 @@ module TypeProfiler
         ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, args, blk))
         callee_ep = ExecutionPoint.new(ctx, 0, nil)
 
-        locals = args + [Type::Instance.new(Type::Builtin[:nil])] * (@iseq.locals.size - args.size)
+        locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
         locals[@iseq.args[:block_start]] = blk if @iseq.args[:block_start]
-        nenv = Env.new([nil] * locals.size, [], {}) # Is this okay? [nil] * locals.size -> locals?
+        nenv = Env.new(locals, [], {})
         id = 0
-        locals.each_with_index do |ty, idx|
-          nenv, ty, id = nenv.deploy_type(caller_ep, ty, id)
-          nenv = nenv.local_update(idx, 0, ty)
+        args.each_with_index do |ty, i|
+          nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+          nenv = nenv.local_update(i, 0, ty)
         end
 
         # XXX: need to jump option argument
