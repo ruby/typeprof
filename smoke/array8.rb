@@ -5,3 +5,6 @@ class Foo
 
   foo([])
 end
+
+__END__
+Foo.class#foo :: ([]) -> []
