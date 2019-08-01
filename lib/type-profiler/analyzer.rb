@@ -735,7 +735,9 @@ module TypeProfiler
         nenv = Env.new([], [], {})
         merge_env(nep, nenv)
         scratch.add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
-          merge_env(ep.next, env.push(ret_ty))
+          nenv, ret_ty, = env.deploy_type(ep, ret_ty, 0)
+          nenv = nenv.push(ret_ty)
+          merge_env(ep.next, nenv)
         end
         return
       when :send
