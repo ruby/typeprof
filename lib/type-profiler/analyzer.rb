@@ -114,8 +114,7 @@ module TypeProfiler
       @locals[idx]
     end
 
-    def local_update(idx, scope, ty)
-      raise if scope != 0 # need to resolve the scope in the caller side
+    def local_update(idx, ty)
       Env.new(Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
@@ -909,14 +908,14 @@ module TypeProfiler
         var_idx, scope_idx, _escaped = operands
         env, (ty,) = env.pop(1)
         if scope_idx == 0
-          env = env.local_update(-var_idx+2, 0, ty)
+          env = env.local_update(-var_idx+2, ty)
         else
           tmp_ep = ep
           scope_idx.times do
             tmp_ep = tmp_ep.outer
           end
           merge_return_env(tmp_ep) do |env|
-            env.merge(env.local_update(-var_idx+2, 0, ty))
+            env.merge(env.local_update(-var_idx+2, ty))
           end
         end
       when :getconstant
@@ -1189,7 +1188,7 @@ module TypeProfiler
         id = 0
         args.each_with_index do |ty, i|
           nenv, ty, id = nenv.deploy_type(nep, ty, id)
-          nenv = nenv.local_update(i, 0, ty)
+          nenv = nenv.local_update(i, ty)
         end
 
         scratch.merge_env(nep, nenv)

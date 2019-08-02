@@ -63,7 +63,7 @@ module TypeProfiler
         id = 0
         args.each_with_index do |ty, i|
           nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
-          nenv = nenv.local_update(i, 0, ty)
+          nenv = nenv.local_update(i, ty)
         end
 
         # XXX: need to jump option argument
