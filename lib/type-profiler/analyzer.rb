@@ -515,7 +515,7 @@ module TypeProfiler
       ntrace
     end
 
-    def show(stat_states)
+    def show(stat_eps)
       out = []
       @errors.each do |ep, msg|
         if ENV["TYPE_PROFILER_DETAIL"]
@@ -591,13 +591,13 @@ module TypeProfiler
       end
       if ENV["TP_STAT"]
         puts "statistics:"
-        puts "  %d states" % stat_states.size
+        puts "  %d execution points" % stat_eps.size
         puts "  %d classes" % stat_classes.size
         puts "  %d methods (in total)" % stat_methods.size
       end
       if ENV["TP_COVERAGE"]
         coverage = {}
-        stat_states.each_key do |ep|
+        stat_eps.each do |ep|
           path = ep.ctx.iseq.path
           lineno = ep.ctx.iseq.linenos[ep.pc] - 1
           (coverage[path] ||= [])[lineno] ||= 0
@@ -610,6 +610,7 @@ module TypeProfiler
 
     def type_profile
       counter = 0
+      stat_eps = Utils::MutableSet.new
       until @worklist.empty?
         counter += 1
         if counter % 1000 == 0
@@ -617,9 +618,10 @@ module TypeProfiler
         end
         @ep = @worklist.shift # TODO: deletemin
         @env = @ep2env[@ep]
+        stat_eps << @ep
         step(@ep) # TODO: deletemin
       end
-      show(nil)
+      show(stat_eps)
     end
 
     def step(ep)

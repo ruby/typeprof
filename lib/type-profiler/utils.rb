@@ -89,6 +89,10 @@ module TypeProfiler
         each {|v| s << v.inspect }
         "{#{ s.join(", ") }}"
       end
+
+      def size
+        @hash.size
+      end
     end
   end
 end
