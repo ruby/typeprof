@@ -333,6 +333,10 @@ module TypeProfiler
         def sum(other)
           Seq.new(@elems + other.types)
         end
+
+        def each
+          yield self
+        end
       end
 
       class Tuple
