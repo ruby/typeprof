@@ -37,12 +37,39 @@ module TypeProfiler
     def do_send_core(state, flags, recv, mid, args, blk, caller_ep, caller_env, scratch, &ctn)
       recv = recv.strip_local_info(caller_env)
       args = args.map {|arg| arg.strip_local_info(caller_env) }
+      # XXX: args may be splat, but not implemented yet...
       expand_sum_types(args, []) do |args|
         # XXX: need to translate arguments to parameters
-        argc = @iseq.args[:lead_num]
-        if argc && argc != args.size
-          scratch.error(caller_ep, "wrong number of arguments (given #{ args.size }, expected #{ argc })")
+        lead_num = @iseq.args[:lead_num] || 0
+        post_num = @iseq.args[:post_num] || 0
+        post_start = @iseq.args[:post_start]
+        rest_start = @iseq.args[:rest_start]
+        block_start = @iseq.args[:block_start]
+        opt = @iseq.args[:opt]
+
+        # Currently assumes args is fixed-length
+        if lead_num + post_num > args.size
+          scratch.error(caller_ep, "wrong number of arguments (given #{ args.size }, expected #{ lead_num+post_num }..)")
           ctn[Type::Any.new, caller_ep, caller_env]
+          return
+        elsif args.size > lead_num + post_num
+          if rest_start
+            # OK
+            args2 = {}
+            lead_num.times {|i| args2[i] = args[i] }
+            post_num.times {|i| args2[post_start + i] = args[i - post_num] }
+            rest = Type::Array.seq(Utils::Set[*args[lead_num...-post_num]])
+            args2[rest_start] = rest
+          elsif opt
+            raise NotImplementedError
+          else
+            scratch.error(caller_ep, "wrong number of arguments (given #{ args.size }, expected #{ lead_num+post_num })")
+            ctn[Type::Any.new, caller_ep, caller_env]
+            return
+          end
+        else
+          args2 = {}
+          args.each_with_index {|ty, i| args2[i] = ty }
         end
 
         case
@@ -54,14 +81,14 @@ module TypeProfiler
           blk = Type::Any.new
         end
 
-        ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, args, blk))
+        ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, args, blk)) # XXX: to support opts, rest, etc
         callee_ep = ExecutionPoint.new(ctx, 0, nil)
 
         locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
-        locals[@iseq.args[:block_start]] = blk if @iseq.args[:block_start]
+        locals[block_start] = blk if block_start
         nenv = Env.new(locals, [], {})
         id = 0
-        args.each_with_index do |ty, i|
+        args2.each do |i, ty|
           nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
           nenv = nenv.local_update(i, ty)
         end
