@@ -36,7 +36,7 @@ module TypeProfiler
     end
 
     def proc_call(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      given_block = ep.ctx.sig.blk_ty == recv
+      given_block = ep.ctx.sig.args.blk_ty == recv
       Scratch::Aux.do_invoke_block(given_block, recv, args, blk, ep, env, scratch, &ctn)
     end
 

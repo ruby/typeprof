@@ -479,7 +479,7 @@ module TypeProfiler
     def show_block(ctx)
       blk_tys = {}
       @yields[ctx].each do |blk_ctx|
-        blk_args = blk_ctx.sig.arg_tys.map {|ty| ty.screen_name(self) }
+        blk_args = blk_ctx.sig.args.lead_tys.map {|ty| ty.screen_name(self) } # XXX: other arguments but lead_tys?
         if @yields[blk_ctx]
           blk_args << show_block(blk_ctx)
         end
@@ -1184,7 +1184,8 @@ module TypeProfiler
         locals[blk_iseq.args[:block_start]] = arg_blk if blk_iseq.args[:block_start]
         recv = blk_ep.ctx.sig.recv_ty
         env_blk = blk_ep.ctx.sig.args.blk_ty
-        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, Signature.new(recv, nil, nil, args, env_blk))
+        nsig = Signature.new(recv, nil, nil, Arguments.new(args, nil, nil, nil, nil, env_blk))
+        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(locals, [], {})
         id = 0

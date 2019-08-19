@@ -140,7 +140,7 @@ module TypeProfiler
         next unless args.consistent?(sig.args)
         scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
         if sig.args.blk_ty.is_a?(Type::TypedProc)
-          args = sig.blk_ty.arg_tys
+          args = sig.args.blk_ty.args
           blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
           # XXX: do_invoke_block expects caller's env
           Scratch::Aux.do_invoke_block(false, blk, args, blk_nil, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
