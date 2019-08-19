@@ -350,13 +350,13 @@ module TypeProfiler
       add_singleton_method(klass, mid, ISeqMethodDef.new(iseq, cref, true))
     end
 
-    def add_typed_method(recv_ty, mid, arg_tys, blk_ty, ret_ty)
-      sig = Signature.new(recv_ty, false, mid, arg_tys, blk_ty)
+    def add_typed_method(recv_ty, mid, args, ret_ty)
+      sig = Signature.new(recv_ty, false, mid, args)
       add_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
     end
 
-    def add_singleton_typed_method(recv_ty, mid, arg_tys, blk_ty, ret_ty)
-      sig = Signature.new(recv_ty, true, mid, arg_tys, blk_ty)
+    def add_singleton_typed_method(recv_ty, mid, args, ret_ty)
+      sig = Signature.new(recv_ty, true, mid, args)
       add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
     end
 
@@ -574,7 +574,7 @@ module TypeProfiler
           stat_classes[recv] = true
           method_name = "#{ recv }##{ ctx.sig.mid }"
           stat_methods[method_name] = true
-          args = ctx.sig.arg_tys.map {|ty| ty.screen_name(self) }
+          args = ctx.sig.args.screen_name(self)
           if @yields[ctx]
             args << show_block(ctx)
           end
@@ -730,8 +730,8 @@ module TypeProfiler
         end
         ncref = ep.ctx.cref.extend(klass)
         recv = klass
-        blk = ep.ctx.sig.blk_ty
-        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, [], blk))
+        blk = ep.ctx.sig.args.blk_ty
+        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, Arguments.new([], nil, nil, nil, nil, blk)))
         nep = ExecutionPoint.new(nctx, 0, nil)
         nenv = Env.new([], [], {})
         merge_env(nep, nenv)
@@ -796,7 +796,7 @@ module TypeProfiler
         return
       when :invokeblock
         # XXX: need block parameter, unknown block, etc.
-        blk = ep.ctx.sig.blk_ty
+        blk = ep.ctx.sig.args.blk_ty
         case
         when blk.eql?(Type::Instance.new(Type::Builtin[:nil]))
           scratch.error(ep, "no block given")
@@ -810,7 +810,7 @@ module TypeProfiler
           orig_argc = opt[:orig_argc]
           env, args = env.pop(orig_argc)
           blk_nil = Type::Instance.new(Type::Builtin[:nil])
-          Aux.do_invoke_block(true, ep.ctx.sig.blk_ty, args, blk_nil, ep, env, scratch)
+          Aux.do_invoke_block(true, ep.ctx.sig.args.blk_ty, args, blk_nil, ep, env, scratch)
           return
         end
       when :invokesuper
@@ -1183,7 +1183,7 @@ module TypeProfiler
         locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
         locals[blk_iseq.args[:block_start]] = arg_blk if blk_iseq.args[:block_start]
         recv = blk_ep.ctx.sig.recv_ty
-        env_blk = blk_ep.ctx.sig.blk_ty
+        env_blk = blk_ep.ctx.sig.args.blk_ty
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, Signature.new(recv, nil, nil, args, env_blk))
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(locals, [], {})

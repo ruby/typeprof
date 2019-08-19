@@ -54,12 +54,10 @@ module TypeProfiler
           return
         elsif args.size > lead_num + post_num
           if rest_start
-            # OK
-            args2 = {}
-            lead_num.times {|i| args2[i] = args[i] }
-            post_num.times {|i| args2[post_start + i] = args[i - post_num] }
-            rest = Type::Array.seq(Utils::Set[*args[lead_num...-post_num]])
-            args2[rest_start] = rest
+            lead_tys = args[0, lead_num]
+            post_tys = args[-post_num, post_num]
+            rest_ty = Type::Array.seq(Utils::Set[*args[lead_num...-post_num]])
+            # TODO: opt_tys, keyword_tys
           elsif opt
             raise NotImplementedError
           else
@@ -68,8 +66,7 @@ module TypeProfiler
             return
           end
         else
-          args2 = {}
-          args.each_with_index {|ty, i| args2[i] = ty }
+          lead_tys = args
         end
 
         case
@@ -81,17 +78,30 @@ module TypeProfiler
           blk = Type::Any.new
         end
 
-        ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, args, blk)) # XXX: to support opts, rest, etc
+        args = Arguments.new(lead_tys, nil, rest_ty, post_tys, nil, blk)
+        ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, args)) # XXX: to support opts, rest, etc
         callee_ep = ExecutionPoint.new(ctx, 0, nil)
 
         locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
-        locals[block_start] = blk if block_start
         nenv = Env.new(locals, [], {})
         id = 0
-        args2.each do |i, ty|
+        lead_tys.each_with_index do |ty, i|
           nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
           nenv = nenv.local_update(i, ty)
         end
+        # opts_ty
+        if rest_ty
+          nenv, rest_ty, id = nenv.deploy_type(callee_ep, rest_ty, id)
+          nenv = nenv.local_update(rest_start, rest_ty)
+        end
+        if post_tys
+          post_tys.each_with_index do |ty, i|
+            nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+            nenv = nenv.local_update(post_start + i, ty)
+          end
+        end
+        # keyword_tys
+        nenv = nenv.local_update(block_start, blk) if block_start
 
         # XXX: need to jump option argument
         scratch.merge_env(callee_ep, nenv)
@@ -108,15 +118,16 @@ module TypeProfiler
     def do_send_core(state, _flags, recv, mid, args, blk, caller_ep, caller_env, scratch, &ctn)
       @sigs.each do |sig, ret_ty|
         recv = recv.strip_local_info(caller_env)
-        args = args.map {|arg| arg.strip_local_info(caller_env) }
-        dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, args, blk))
+        # need to interpret args more correctly
+        lead_tys = args.map {|arg| arg.strip_local_info(caller_env) }
+        args = Arguments.new(lead_tys, nil, nil, nil, nil, blk)
+        dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, args))
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
         dummy_env = Env.new([], [], {})
         # XXX: check blk type
-        next if args.size != sig.arg_tys.size
-        next unless args.zip(sig.arg_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
+        next unless args.consistent?(sig.args)
         scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
-        if sig.blk_ty.is_a?(Type::TypedProc)
+        if sig.args.blk_ty.is_a?(Type::TypedProc)
           args = sig.blk_ty.arg_tys
           blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
           # XXX: do_invoke_block expects caller's env
