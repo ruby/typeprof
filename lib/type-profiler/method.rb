@@ -38,6 +38,7 @@ module TypeProfiler
       recv = recv.strip_local_info(caller_env)
       args = args.map {|arg| arg.strip_local_info(caller_env) }
       # XXX: args may be splat, but not implemented yet...
+      start_pc = 0
       expand_sum_types(args, []) do |args|
         # XXX: need to translate arguments to parameters
         lead_num = @iseq.args[:lead_num] || 0
@@ -52,21 +53,27 @@ module TypeProfiler
           scratch.error(caller_ep, "wrong number of arguments (given #{ args.size }, expected #{ lead_num+post_num }..)")
           ctn[Type::Any.new, caller_ep, caller_env]
           return
-        elsif args.size > lead_num + post_num
-          if rest_start
-            lead_tys = args[0, lead_num]
-            post_tys = args[-post_num, post_num]
-            rest_ty = Type::Array.seq(Utils::Set[*args[lead_num...-post_num]])
-            # TODO: opt_tys, keyword_tys
-          elsif opt
-            raise NotImplementedError
-          else
-            scratch.error(caller_ep, "wrong number of arguments (given #{ args.size }, expected #{ lead_num+post_num })")
-            ctn[Type::Any.new, caller_ep, caller_env]
-            return
+        end
+        args_orig = args
+        args = args.dup
+        lead_tys = args.shift(lead_num)
+        post_tys = args.pop(post_num)
+        if opt
+          opt = opt[1..]
+          opt_tys = []
+          until args.empty? || opt.empty?
+            opt_tys << args.shift
+            start_pc = opt.shift
           end
-        else
-          lead_tys = args
+        end
+        if rest_start
+          rest_ty = Type::Array.seq(Utils::Set[*args])
+          args.clear
+        end
+        if !args.empty?
+          scratch.error(caller_ep, "wrong number of arguments (given #{ args_orig.size }, expected #{ lead_num+post_num })")
+          ctn[Type::Any.new, caller_ep, caller_env]
+          return
         end
 
         case
@@ -78,9 +85,9 @@ module TypeProfiler
           blk = Type::Any.new
         end
 
-        args = Arguments.new(lead_tys, nil, rest_ty, post_tys, nil, blk)
+        args = Arguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, blk)
         ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, args)) # XXX: to support opts, rest, etc
-        callee_ep = ExecutionPoint.new(ctx, 0, nil)
+        callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
         locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
         nenv = Env.new(locals, [], {})
@@ -89,7 +96,12 @@ module TypeProfiler
           nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
           nenv = nenv.local_update(i, ty)
         end
-        # opts_ty
+        if opt_tys
+          opt_tys.each_with_index do |ty, i|
+            nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+            nenv = nenv.local_update(lead_num + i, ty)
+          end
+        end
         if rest_ty
           nenv, rest_ty, id = nenv.deploy_type(callee_ep, rest_ty, id)
           nenv = nenv.local_update(rest_start, rest_ty)

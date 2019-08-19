@@ -290,6 +290,10 @@ module TypeProfiler
         new(Seq.new(elems), base_type)
       end
 
+      def sum(other)
+        raise NotImplementedError
+      end
+
       class Seq
         include Utils::StructuralEquality
 
@@ -487,6 +491,9 @@ module TypeProfiler
 
     def screen_name(scratch)
       args = @lead_tys.map {|ty| ty.screen_name(scratch) }
+      if @opt_tys
+        args += @opt_tys.map {|ty| ty.screen_name(scratch) }
+      end
       # opt_tys
       if @rest_ty
         args << ("*" + @rest_ty.screen_name(scratch))
@@ -522,9 +529,7 @@ module TypeProfiler
           q.text " ::"
           q.breakable
           q.group(2, "(", ")") do
-            q.seplist(@args) do |ty|
-              q.pp ty
-            end
+            q.pp @args
             if @blk_ty
               q.text ","
               q.breakable
