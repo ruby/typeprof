@@ -37,6 +37,7 @@ module TypeProfiler
 
       def initialize(hash)
         @hash = hash
+        @hash.freeze
       end
 
       def each(&blk)
@@ -46,7 +47,7 @@ module TypeProfiler
       include Enumerable
 
       def +(other)
-        hash = @hash
+        hash = @hash.dup
         other.each {|elem| hash[elem] = true }
         Set.new(hash)
       end
