@@ -3,11 +3,11 @@ module TypeProfiler
     include Utils::StructuralEquality
 
     # TODO: state is no longer needed
-    def do_send(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
+    def do_send(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
       if ctn
-        do_send_core(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
+        do_send_core(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
       else
-        do_send_core(state, flags, recv, mid, args, blk, ep, env, scratch) do |ret_ty, ep, env|
+        do_send_core(state, flags, recv, mid, aargs, blk, ep, env, scratch) do |ret_ty, ep, env|
           nenv, ret_ty, = env.deploy_type(ep, ret_ty, 0)
           nenv = nenv.push(ret_ty)
           scratch.merge_env(ep.next, nenv)
@@ -34,44 +34,44 @@ module TypeProfiler
       end
     end
 
-    def do_send_core(state, flags, recv, mid, args, blk, caller_ep, caller_env, scratch, &ctn)
+    def do_send_core(state, flags, recv, mid, aargs, blk, caller_ep, caller_env, scratch, &ctn)
       recv = recv.strip_local_info(caller_env)
-      args = args.map {|arg| arg.strip_local_info(caller_env) }
-      # XXX: args may be splat, but not implemented yet...
+      aargs = aargs.map {|aarg| aarg.strip_local_info(caller_env) }
+      # XXX: aargs may be splat, but not implemented yet...
       start_pc = 0
-      expand_sum_types(args, []) do |args|
+      expand_sum_types(aargs, []) do |aargs|
         # XXX: need to translate arguments to parameters
-        lead_num = @iseq.args[:lead_num] || 0
-        post_num = @iseq.args[:post_num] || 0
-        post_start = @iseq.args[:post_start]
-        rest_start = @iseq.args[:rest_start]
-        block_start = @iseq.args[:block_start]
-        opt = @iseq.args[:opt]
+        lead_num = @iseq.fargs[:lead_num] || 0
+        post_num = @iseq.fargs[:post_num] || 0
+        post_start = @iseq.fargs[:post_start]
+        rest_start = @iseq.fargs[:rest_start]
+        block_start = @iseq.fargs[:block_start]
+        opt = @iseq.fargs[:opt]
 
         # Currently assumes args is fixed-length
-        if lead_num + post_num > args.size
-          scratch.error(caller_ep, "wrong number of arguments (given #{ args.size }, expected #{ lead_num+post_num }..)")
+        if lead_num + post_num > aargs.size
+          scratch.error(caller_ep, "wrong number of arguments (given #{ aargs.size }, expected #{ lead_num+post_num }..)")
           ctn[Type::Any.new, caller_ep, caller_env]
           return
         end
-        args_orig = args
-        args = args.dup
-        lead_tys = args.shift(lead_num)
-        post_tys = args.pop(post_num)
+        aargs_orig = aargs
+        aargs = aargs.dup
+        lead_tys = aargs.shift(lead_num)
+        post_tys = aargs.pop(post_num)
         if opt
           opt = opt[1..]
           opt_tys = []
-          until args.empty? || opt.empty?
-            opt_tys << args.shift
+          until aargs.empty? || opt.empty?
+            opt_tys << aargs.shift
             start_pc = opt.shift
           end
         end
         if rest_start
-          rest_ty = Type::Array.seq(Utils::Set[*args])
-          args.clear
+          rest_ty = Type::Array.seq(Utils::Set[*aargs])
+          aargs.clear
         end
-        if !args.empty?
-          scratch.error(caller_ep, "wrong number of arguments (given #{ args_orig.size }, expected #{ lead_num+post_num })")
+        if !aargs.empty?
+          scratch.error(caller_ep, "wrong number of arguments (given #{ aargs_orig.size }, expected #{ lead_num+post_num })")
           ctn[Type::Any.new, caller_ep, caller_env]
           return
         end
@@ -85,8 +85,8 @@ module TypeProfiler
           blk = Type::Any.new
         end
 
-        args = Arguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, blk)
-        ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, args)) # XXX: to support opts, rest, etc
+        aargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, blk)
+        ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, aargs)) # XXX: to support opts, rest, etc
         callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
         locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
@@ -127,23 +127,23 @@ module TypeProfiler
       @sigs = sigs
     end
 
-    def do_send_core(state, _flags, recv, mid, args, blk, caller_ep, caller_env, scratch, &ctn)
+    def do_send_core(state, _flags, recv, mid, aargs, blk, caller_ep, caller_env, scratch, &ctn)
       @sigs.each do |sig, ret_ty|
         recv = recv.strip_local_info(caller_env)
         # need to interpret args more correctly
-        lead_tys = args.map {|arg| arg.strip_local_info(caller_env) }
-        args = Arguments.new(lead_tys, nil, nil, nil, nil, blk)
-        dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, args))
+        lead_tys = aargs.map {|aarg| aarg.strip_local_info(caller_env) }
+        fargs = FormalArguments.new(lead_tys, nil, nil, nil, nil, blk) # aargs -> fargs
+        dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, fargs))
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
         dummy_env = Env.new([], [], {})
         # XXX: check blk type
-        next unless args.consistent?(sig.args)
+        next unless fargs.consistent?(sig.fargs)
         scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
-        if sig.args.blk_ty.is_a?(Type::TypedProc)
-          args = sig.args.blk_ty.args
+        if sig.fargs.blk_ty.is_a?(Type::TypedProc)
+          fargs = sig.fargs.blk_ty.fargs
           blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
           # XXX: do_invoke_block expects caller's env
-          Scratch::Aux.do_invoke_block(false, blk, args, blk_nil, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
+          Scratch::Aux.do_invoke_block(false, blk, fargs, blk_nil, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
             # XXX: check the return type from the block
             # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
             scratch.add_return_type!(dummy_ctx, ret_ty)
@@ -164,9 +164,9 @@ module TypeProfiler
       @impl = impl
     end
 
-    def do_send_core(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
+    def do_send_core(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
       # XXX: ctn?
-      @impl[state, flags, recv, mid, args, blk, ep, env, scratch, &ctn]
+      @impl[state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn]
     end
   end
 end

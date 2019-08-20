@@ -181,15 +181,15 @@ module TypeProfiler
     end
 
     class TypedProc < Type
-      def initialize(args, ret_ty, type)
+      def initialize(fargs, ret_ty, type)
         # XXX: need to receive blk_ty?
         # XXX: may refactor "arguments = arg_tys * blk_ty" out
-        @args = args
+        @fargs = fargs
         @ret_ty = ret_ty
         @type = type
       end
 
-      attr_reader :args, :ret_ty
+      attr_reader :fargs, :ret_ty
     end
 
     # local info
@@ -459,7 +459,8 @@ module TypeProfiler
     end
   end
 
-  class Arguments
+  # Arguments from callee side
+  class FormalArguments
     include Utils::StructuralEquality
 
     def initialize(lead_tys, opt_tys, rest_ty, post_tys, keyword_tys, blk_ty)
@@ -473,51 +474,51 @@ module TypeProfiler
 
     attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :keyword_tys, :blk_ty
 
-    def consistent?(args)
-      return false if @lead_tys.size != args.lead_tys.size
-      return false unless @lead_tys.zip(args.lead_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
-      return false if @opt_tys != args.opt_tys # ??
+    def consistent?(fargs)
+      return false if @lead_tys.size != fargs.lead_tys.size
+      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
+      return false if @opt_tys != fargs.opt_tys # ??
       if @rest_ty
-        return false unless @rest_ty.consistent?(args.rest_ty)
+        return false unless @rest_ty.consistent?(fargs.rest_ty)
       end
       if @post_tys
-        return false if @post_tys.size != args.post_tys.size
-        return false unless @post_tys.zip(args.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
+        return false if @post_tys.size != fargs.post_tys.size
+        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
       end
-      return false if @keyword_tys != args.keyword_tys # ??
+      return false if @keyword_tys != fargs.keyword_tys # ??
       # intentionally skip blk_ty
       true
     end
 
     def screen_name(scratch)
-      args = @lead_tys.map {|ty| ty.screen_name(scratch) }
+      fargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
       if @opt_tys
-        args += @opt_tys.map {|ty| ty.screen_name(scratch) }
+        fargs += @opt_tys.map {|ty| ty.screen_name(scratch) }
       end
       # opt_tys
       if @rest_ty
-        args << ("*" + @rest_ty.screen_name(scratch))
+        fargs << ("*" + @rest_ty.screen_name(scratch))
       end
       if @post_tys
-        args += @post_tys.map {|ty| ty.screen_name(scratch) }
+        fargs += @post_tys.map {|ty| ty.screen_name(scratch) }
       end
       # keyword_tys
       # intentionally skip blk_ty
-      args
+      fargs
     end
   end
 
   class Signature
     include Utils::StructuralEquality
 
-    def initialize(recv_ty, singleton, mid, args)
+    def initialize(recv_ty, singleton, mid, fargs)
       @recv_ty = recv_ty
       @singleton = singleton
       @mid = mid
-      @args = args
+      @fargs = fargs
     end
 
-    attr_reader :recv_ty, :singleton, :mid, :args
+    attr_reader :recv_ty, :singleton, :mid, :fargs
 
     def pretty_print(q)
       q.text "Signature["
@@ -529,7 +530,7 @@ module TypeProfiler
           q.text " ::"
           q.breakable
           q.group(2, "(", ")") do
-            q.pp @args
+            q.pp @fargs
             if @blk_ty
               q.text ","
               q.breakable

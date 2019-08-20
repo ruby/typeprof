@@ -25,7 +25,7 @@ module TypeProfiler
     def initialize(iseq)
       _magic, _major_version, _minor_version, _format_type, _misc,
         @name, @path, @absolute_path, @start_lineno, @type,
-        @locals, @args, _catch_table, insns = *iseq
+        @locals, @fargs, _catch_table, insns = *iseq
 
       @insns = []
       @linenos = []
@@ -81,7 +81,7 @@ module TypeProfiler
         end
       end
 
-      @args[:opt] = @args[:opt].map {|l| labels[l] } if @args[:opt]
+      @fargs[:opt] = @fargs[:opt].map {|l| labels[l] } if @fargs[:opt]
     end
 
     def translate_insns
@@ -113,7 +113,7 @@ module TypeProfiler
       "#{ @path }:#{ @linenos[pc] }"
     end
 
-    attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :args, :insns, :linenos
+    attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :fargs, :insns, :linenos
 
     def pretty_print(q)
       q.text "ISeq["
@@ -130,7 +130,7 @@ module TypeProfiler
           q.breakable ", "
           q.text "@start_lineno=  #{ @start_lineno }"
           q.breakable ", "
-          q.text "@args=          #{ @args.inspect }"
+          q.text "@fargs=         #{ @fargs.inspect }"
           q.breakable ", "
           q.text "@insns="
           q.group(2) do

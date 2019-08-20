@@ -350,13 +350,13 @@ module TypeProfiler
       add_singleton_method(klass, mid, ISeqMethodDef.new(iseq, cref, true))
     end
 
-    def add_typed_method(recv_ty, mid, args, ret_ty)
-      sig = Signature.new(recv_ty, false, mid, args)
+    def add_typed_method(recv_ty, mid, fargs, ret_ty)
+      sig = Signature.new(recv_ty, false, mid, fargs)
       add_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
     end
 
-    def add_singleton_typed_method(recv_ty, mid, args, ret_ty)
-      sig = Signature.new(recv_ty, true, mid, args)
+    def add_singleton_typed_method(recv_ty, mid, fargs, ret_ty)
+      sig = Signature.new(recv_ty, true, mid, fargs)
       add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
     end
 
@@ -471,23 +471,23 @@ module TypeProfiler
       @errors << [ep, "[p] " + msg]
     end
 
-    def show_signature(arg_tys, ret_tys)
-      s = "(#{ arg_tys.join(", ") }) -> "
+    def show_signature(farg_tys, ret_tys)
+      s = "(#{ farg_tys.join(", ") }) -> "
       s + (ret_tys.size == 1 ? ret_tys.first : "(#{ ret_tys.join(" | ") })")
     end
 
     def show_block(ctx)
       blk_tys = {}
       @yields[ctx].each do |blk_ctx|
-        blk_args = blk_ctx.sig.args.lead_tys.map {|ty| ty.screen_name(self) } # XXX: other arguments but lead_tys?
+        blk_fargs = blk_ctx.sig.fargs.lead_tys.map {|ty| ty.screen_name(self) } # XXX: other arguments but lead_tys?
         if @yields[blk_ctx]
-          blk_args << show_block(blk_ctx)
+          blk_fargs << show_block(blk_ctx)
         end
         blk_rets = {}
         @signatures[blk_ctx].each do |blk_ret_ty|
           blk_rets[blk_ret_ty.screen_name(self)] = true
         end
-        blk_tys["Proc[#{ show_signature(blk_args, blk_rets.keys) }]"] = true
+        blk_tys["Proc[#{ show_signature(blk_fargs, blk_rets.keys) }]"] = true
       end
       blk_tys.size == 1 ? "&#{ blk_tys.keys.first }" : "&(#{ blk_tys.keys.join(" & ") })"
     end
@@ -574,19 +574,19 @@ module TypeProfiler
           stat_classes[recv] = true
           method_name = "#{ recv }##{ ctx.sig.mid }"
           stat_methods[method_name] = true
-          args = ctx.sig.args.screen_name(self)
+          fargs = ctx.sig.fargs.screen_name(self)
           if @yields[ctx]
-            args << show_block(ctx)
+            fargs << show_block(ctx)
           end
           ret = ret_ty.screen_name(self)
           h[method_name] ||= {}
-          h[method_name][args] ||= {}
-          h[method_name][args][ret] = true
+          h[method_name][fargs] ||= {}
+          h[method_name][fargs][ret] = true
         end
       end
       h.each do |method_name, sigs|
-        sigs.each do |args, rets|
-          out << "#{ method_name } :: #{ show_signature(args, rets.keys) }"
+        sigs.each do |fargs, rets|
+          out << "#{ method_name } :: #{ show_signature(fargs, rets.keys) }"
         end
       end
       if ENV["TP_STAT"]
@@ -730,8 +730,8 @@ module TypeProfiler
         end
         ncref = ep.ctx.cref.extend(klass)
         recv = klass
-        blk = ep.ctx.sig.args.blk_ty
-        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, Arguments.new([], nil, nil, nil, nil, blk)))
+        blk = ep.ctx.sig.fargs.blk_ty
+        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, FormalArguments.new([], nil, nil, nil, nil, blk)))
         nep = ExecutionPoint.new(nctx, 0, nil)
         nenv = Env.new([], [], {})
         merge_env(nep, nenv)
@@ -742,12 +742,12 @@ module TypeProfiler
         end
         return
       when :send
-        env, recvs, mid, args, blk = Aux.setup_arguments(operands, ep, env)
+        env, recvs, mid, aargs, blk = Aux.setup_actual_arguments(operands, ep, env)
         recvs.each do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
-              meth.do_send(self, flags, recv, mid, args, blk, ep, env, scratch)
+              meth.do_send(self, flags, recv, mid, aargs, blk, ep, env, scratch)
             end
           else
             if recv != Type::Any.new # XXX: should be configurable
@@ -760,12 +760,12 @@ module TypeProfiler
         return
       when :send_is_a_and_branch
         send_operands, (branch_type, target,) = *operands
-        env, recvs, mid, args, blk = Aux.setup_arguments(send_operands, ep, env)
+        env, recvs, mid, aargs, blk = Aux.setup_actual_arguments(send_operands, ep, env)
         recvs.each do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
-              meth.do_send(self, flags, recv, mid, args, blk, ep, env, scratch) do |ret_ty, ep, env|
+              meth.do_send(self, flags, recv, mid, aargs, blk, ep, env, scratch) do |ret_ty, ep, env|
                 if branch_type != :nil && ret_ty.is_a?(Type::Literal)
                   if !!ret_ty.lit == (branch_type == :if)
                     nep = ep.jump(target)
@@ -796,7 +796,7 @@ module TypeProfiler
         return
       when :invokeblock
         # XXX: need block parameter, unknown block, etc.
-        blk = ep.ctx.sig.args.blk_ty
+        blk = ep.ctx.sig.fargs.blk_ty
         case
         when blk.eql?(Type::Instance.new(Type::Builtin[:nil]))
           scratch.error(ep, "no block given")
@@ -808,13 +808,13 @@ module TypeProfiler
           opt, = operands
           _flags = opt[:flag]
           orig_argc = opt[:orig_argc]
-          env, args = env.pop(orig_argc)
+          env, aargs = env.pop(orig_argc)
           blk_nil = Type::Instance.new(Type::Builtin[:nil])
-          Aux.do_invoke_block(true, ep.ctx.sig.args.blk_ty, args, blk_nil, ep, env, scratch)
+          Aux.do_invoke_block(true, ep.ctx.sig.fargs.blk_ty, aargs, blk_nil, ep, env, scratch)
           return
         end
       when :invokesuper
-        env, recv, _, args, blk = Aux.setup_arguments(operands, ep, env)
+        env, recv, _, aargs, blk = Aux.setup_actual_arguments(operands, ep, env)
 
         recv = ep.ctx.sig.recv_ty
         mid  = ep.ctx.sig.mid
@@ -822,7 +822,7 @@ module TypeProfiler
         meths = scratch.get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
           meths.each do |meth|
-            meth.do_send(self, flags, recv, mid, args, blk, ep, env, scratch)
+            meth.do_send(self, flags, recv, mid, aargs, blk, ep, env, scratch)
           end
           return
         else
@@ -1159,37 +1159,38 @@ module TypeProfiler
         end
       end
 
-      def do_invoke_block(given_block, blk, args, arg_blk, ep, env, scratch, &ctn)
+      def do_invoke_block(given_block, blk, aargs, arg_blk, ep, env, scratch, &ctn)
         if ctn
-          do_invoke_block_core(given_block, blk, args, arg_blk, ep, env, scratch, &ctn)
+          do_invoke_block_core(given_block, blk, aargs, arg_blk, ep, env, scratch, &ctn)
         else
-          do_invoke_block_core(given_block, blk, args, arg_blk, ep, env, scratch) do |ret_ty, ep, env|
+          do_invoke_block_core(given_block, blk, aargs, arg_blk, ep, env, scratch) do |ret_ty, ep, env|
             scratch.merge_env(ep.next, env.push(ret_ty))
           end
         end
       end
 
-      def do_invoke_block_core(given_block, blk, args, arg_blk, ep, env, scratch, &ctn)
+      def do_invoke_block_core(given_block, blk, aargs, arg_blk, ep, env, scratch, &ctn)
         blk_iseq = blk.iseq
         blk_ep = blk.ep
         blk_env = blk.env
-        args = args.map {|arg| arg.strip_local_info(env) }
+        aargs = aargs.map {|aarg| aarg.strip_local_info(env) }
         argc = blk_iseq.args[:lead_num] || 0
-        if argc != args.size
+        if argc != aargs.size
           warn "complex parameter passing of block is not implemented"
-          args.pop while argc < args.size
-          args << Type::Any.new while argc > args.size
+          aargs.pop while argc < aargs.size
+          aargs << Type::Any.new while argc > aargs.size
         end
         locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
-        locals[blk_iseq.args[:block_start]] = arg_blk if blk_iseq.args[:block_start]
+        locals[blk_iseq.fargs[:block_start]] = arg_blk if blk_iseq.fargs[:block_start]
         recv = blk_ep.ctx.sig.recv_ty
-        env_blk = blk_ep.ctx.sig.args.blk_ty
-        nsig = Signature.new(recv, nil, nil, Arguments.new(args, nil, nil, nil, nil, env_blk))
+        env_blk = blk_ep.ctx.sig.fargs.blk_ty
+        nfargs = FormalArguments.new(aargs, nil, nil, nil, nil, env_blk) # XXX: aargs -> fargs
+        nsig = Signature.new(recv, nil, nil, fargs)
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(locals, [], {})
         id = 0
-        args.each_with_index do |ty, i|
+        aargs.each_with_index do |ty, i|
           nenv, ty, id = nenv.deploy_type(nep, ty, id)
           nenv = nenv.local_update(i, ty)
         end
@@ -1213,7 +1214,7 @@ module TypeProfiler
         scratch.add_callsite!(nep.ctx, ep, env, &ctn)
       end
 
-      def setup_arguments(operands, ep, env)
+      def setup_actual_arguments(operands, ep, env)
         opt, _, blk_iseq = operands
         flags = opt[:flag]
         mid = opt[:mid]
@@ -1235,11 +1236,12 @@ module TypeProfiler
 
         #raise "call with splat is not supported yet" if flags[0] != 0
         #raise "call with splat is not supported yet" if flags[2] != 0
+        splat = flags[0] != 0
         if flags[1] != 0 # VM_CALL_ARGS_BLOCKARG
-          env, (recv, *args, blk) = env.pop(argc + 1)
+          env, (recv, *aargs, blk) = env.pop(argc + 1)
           raise "both block arg and actual block given" if blk_iseq
         else
-          env, (recv, *args) = env.pop(argc)
+          env, (recv, *aargs) = env.pop(argc)
           if blk_iseq
             # check
             blk = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
@@ -1247,7 +1249,7 @@ module TypeProfiler
             blk = Type::Instance.new(Type::Builtin[:nil])
           end
         end
-        return env, recv, mid, args, blk
+        return env, recv, mid, aargs, blk
       end
     end
   end

@@ -2,8 +2,8 @@ module TypeProfiler
   module Builtin
     module_function
 
-    def vmcore_define_method(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      mid, iseq = args
+    def vmcore_define_method(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      mid, iseq = aargs
       cref = ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
@@ -11,8 +11,8 @@ module TypeProfiler
       ctn[mid, ep, env]
     end
 
-    def vmcore_define_singleton_method(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      recv_ty, mid, iseq = args
+    def vmcore_define_singleton_method(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      recv_ty, mid, iseq = aargs
       cref = ep.ctx.cref
       sym = mid.lit
       raise "symbol expected" unless sym.is_a?(Symbol)
@@ -20,8 +20,8 @@ module TypeProfiler
       ctn[mid, ep, env]
     end
 
-    def vmcore_set_method_alias(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      klass, new_mid, old_mid = args
+    def vmcore_set_method_alias(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      klass, new_mid, old_mid = aargs
       new_sym = new_mid.lit
       raise "symbol expected" unless new_sym.is_a?(Symbol)
       old_sym = old_mid.lit
@@ -31,29 +31,29 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def lambda(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
+    def lambda(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
       ctn[blk, ep, env]
     end
 
-    def proc_call(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      given_block = ep.ctx.sig.args.blk_ty == recv
-      Scratch::Aux.do_invoke_block(given_block, recv, args, blk, ep, env, scratch, &ctn)
+    def proc_call(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      given_block = ep.ctx.sig.fargs.blk_ty == recv
+      Scratch::Aux.do_invoke_block(given_block, recv, aargs, blk, ep, env, scratch, &ctn)
     end
 
-    def object_new(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
+    def object_new(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
       ty = Type::Instance.new(recv)
       meths = scratch.get_method(recv, :initialize)
       meths.flat_map do |meth|
-        meth.do_send(state, 0, ty, :initialize, args, blk, ep, env, scratch) do |ret_ty, ep, env|
+        meth.do_send(state, 0, ty, :initialize, aargs, blk, ep, env, scratch) do |ret_ty, ep, env|
           ctn[Type::Instance.new(recv), ep, env]
         end
       end
     end
 
-    def object_is_a?(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      raise unless args.size != 0
+    def object_is_a?(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      raise unless aargs.size != 0
       if recv.is_a?(Type::Instance)
-        if recv.klass == args[0] # XXX: inheritance
+        if recv.klass == aargs[0] # XXX: inheritance
           true_val = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
           ctn[true_val, ep, env]
         else
@@ -66,9 +66,9 @@ module TypeProfiler
       end
     end
 
-    def module_attr_accessor(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      args.each do |arg|
-        sym = arg.lit
+    def module_attr_accessor(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      aargs.each do |aarg|
+        sym = aarg.lit
         cref = ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
         iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
@@ -80,9 +80,9 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def module_attr_reader(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      args.each do |arg|
-        sym = arg.lit
+    def module_attr_reader(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      aargs.each do |aarg|
+        sym = aarg.lit
         cref = ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
         iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
@@ -92,16 +92,16 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def reveal_type(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      args.each do |arg|
-        scratch.reveal_type(ep, arg.strip_local_info(env).screen_name(scratch))
+    def reveal_type(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      aargs.each do |aarg|
+        scratch.reveal_type(ep, aarg.strip_local_info(env).screen_name(scratch))
       end
       ctn[Type::Any.new, ep, env]
     end
 
-    def array_aref(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      raise NotImplementedError if args.size != 1
-      idx = args.first
+    def array_aref(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.size != 1
+      idx = aargs.first
       if idx.is_a?(Type::Literal)
         idx = idx.lit
         raise NotImplementedError if !idx.is_a?(Integer)
@@ -125,9 +125,9 @@ module TypeProfiler
       end
     end
 
-    def array_aset(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      raise NotImplementedError if args.size != 2
-      idx = args.first
+    def array_aset(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.size != 2
+      idx = aargs.first
       if idx.is_a?(Type::Literal)
         idx = idx.lit
         raise NotImplementedError if !idx.is_a?(Integer)
@@ -135,13 +135,13 @@ module TypeProfiler
         idx = nil
       end
 
-      ty = args.last
+      ty = aargs.last
       env = env.update_array_elem_types(recv.id, idx, ty)
       ctn[ty, ep, env]
     end
 
-    def array_each(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      raise NotImplementedError if args.size != 0
+    def array_each(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.size != 0
       elems = env.get_array_elem_types(recv.id)
       elems = elems ? elems.types : [Type::Any.new]
       ty = Type::Sum.new(elems)
@@ -151,9 +151,9 @@ module TypeProfiler
       end
     end
 
-    def array_plus(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      raise NotImplementedError if args.size != 1
-      ary = args.first
+    def array_plus(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.size != 1
+      ary = aargs.first
       elems1 = env.get_array_elem_types(recv.id)
       if ary.is_a?(Type::LocalArray)
         elems2 = env.get_array_elem_types(ary.id)
@@ -167,8 +167,8 @@ module TypeProfiler
       end
     end
 
-    def array_pop(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      if args.size != 0
+    def array_pop(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      if aargs.size != 0
         env[Type::Any.new, ep, env]
       end
 
@@ -178,9 +178,9 @@ module TypeProfiler
       end
     end
 
-    def require_relative(state, flags, recv, mid, args, blk, ep, env, scratch, &ctn)
-      raise NotImplementedError if args.size != 1
-      feature = args.first
+    def require_relative(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.size != 1
+      feature = aargs.first
       if feature.is_a?(Type::Literal)
         feature = feature.lit
 
@@ -256,25 +256,25 @@ module TypeProfiler
 
     i = -> t { Type::Instance.new(t) }
 
-    scratch.add_typed_method(i[klass_obj], :==, Arguments.new([Type::Any.new], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_obj], :!=, Arguments.new([Type::Any.new], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_obj], :initialize, Arguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_nil])
-    scratch.add_typed_method(i[klass_int], :< , Arguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :<=, Arguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :>=, Arguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :> , Arguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :+ , Arguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
-    scratch.add_typed_method(i[klass_int], :- , Arguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
+    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type::Any.new], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type::Any.new], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_nil])
+    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :+ , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
+    scratch.add_typed_method(i[klass_int], :- , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
     int_times_blk = Type::TypedProc.new([i[klass_int]], Type::Any.new, Type::Builtin[:proc])
-    scratch.add_typed_method(i[klass_int], :times, Arguments.new([], nil, nil, nil, nil, int_times_blk), i[klass_int])
-    scratch.add_typed_method(i[klass_int], :to_s, Arguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_str], :to_s, Arguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_sym], :to_s, Arguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_str], :to_sym, Arguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_sym])
-    scratch.add_typed_method(i[klass_str], :+ , Arguments.new([i[klass_str]], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_int], :times, FormalArguments.new([], nil, nil, nil, nil, int_times_blk), i[klass_int])
+    scratch.add_typed_method(i[klass_int], :to_s, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_str], :to_s, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_sym], :to_s, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_sym])
+    scratch.add_typed_method(i[klass_str], :+ , FormalArguments.new([i[klass_str]], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
 
-    sig1 = Signature.new(i[klass_obj], false, :Integer, Arguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]))
-    sig2 = Signature.new(i[klass_obj], false, :Integer, Arguments.new([i[klass_str]], nil, nil, nil, nil, i[klass_nil]))
+    sig1 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]))
+    sig2 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_str]], nil, nil, nil, nil, i[klass_nil]))
     mdef = TypedMethodDef.new([[sig1, i[klass_int]], [sig2, i[klass_int]]])
     scratch.add_method(klass_obj, :Integer, mdef)
 
