@@ -88,7 +88,7 @@ module TypeProfiler
       def screen_name(scratch)
         @types.to_a.map do |ty|
           ty.screen_name(scratch)
-        end.join (" | ")
+        end.sort.join (" | ")
       end
 
       def strip_local_info_core(env, visited)
@@ -459,7 +459,7 @@ module TypeProfiler
     end
   end
 
-  # Arguments from callee side
+  # Arguments for callee side
   class FormalArguments
     include Utils::StructuralEquality
 
@@ -506,6 +506,17 @@ module TypeProfiler
       # intentionally skip blk_ty
       fargs
     end
+  end
+
+  # Arguments from caller side
+  class ActualArguments
+    def initialize(lead_tys, rest_ty, blk_ty)
+      @lead_tys = lead_tys
+      @rest_ty = rest_ty
+      @blk_ty = blk_ty
+    end
+
+    attr_reader :lead_tys, :rest_ty, :blk_ty
   end
 
   class Signature

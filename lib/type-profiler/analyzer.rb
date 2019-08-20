@@ -742,12 +742,12 @@ module TypeProfiler
         end
         return
       when :send
-        env, recvs, mid, aargs, blk = Aux.setup_actual_arguments(operands, ep, env)
+        env, recvs, mid, aargs = Aux.setup_actual_arguments(operands, ep, env)
         recvs.each do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
-              meth.do_send(self, flags, recv, mid, aargs, blk, ep, env, scratch)
+              meth.do_send(self, flags, recv, mid, aargs, ep, env, scratch)
             end
           else
             if recv != Type::Any.new # XXX: should be configurable
@@ -760,12 +760,12 @@ module TypeProfiler
         return
       when :send_is_a_and_branch
         send_operands, (branch_type, target,) = *operands
-        env, recvs, mid, aargs, blk = Aux.setup_actual_arguments(send_operands, ep, env)
+        env, recvs, mid, aargs = Aux.setup_actual_arguments(send_operands, ep, env)
         recvs.each do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
-              meth.do_send(self, flags, recv, mid, aargs, blk, ep, env, scratch) do |ret_ty, ep, env|
+              meth.do_send(self, flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
                 if branch_type != :nil && ret_ty.is_a?(Type::Literal)
                   if !!ret_ty.lit == (branch_type == :if)
                     nep = ep.jump(target)
@@ -810,11 +810,12 @@ module TypeProfiler
           orig_argc = opt[:orig_argc]
           env, aargs = env.pop(orig_argc)
           blk_nil = Type::Instance.new(Type::Builtin[:nil])
-          Aux.do_invoke_block(true, ep.ctx.sig.fargs.blk_ty, aargs, blk_nil, ep, env, scratch)
+          aargs = ActualArguments.new(aargs, nil, blk_nil)
+          Aux.do_invoke_block(true, ep.ctx.sig.fargs.blk_ty, aargs, ep, env, scratch)
           return
         end
       when :invokesuper
-        env, recv, _, aargs, blk = Aux.setup_actual_arguments(operands, ep, env)
+        env, recv, _, aargs = Aux.setup_actual_arguments(operands, ep, env)
 
         recv = ep.ctx.sig.recv_ty
         mid  = ep.ctx.sig.mid
@@ -822,7 +823,7 @@ module TypeProfiler
         meths = scratch.get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
           meths.each do |meth|
-            meth.do_send(self, flags, recv, mid, aargs, blk, ep, env, scratch)
+            meth.do_send(self, flags, recv, mid, aargs, ep, env, scratch)
           end
           return
         else
@@ -1159,22 +1160,23 @@ module TypeProfiler
         end
       end
 
-      def do_invoke_block(given_block, blk, aargs, arg_blk, ep, env, scratch, &ctn)
+      def do_invoke_block(given_block, blk, aargs, ep, env, scratch, &ctn)
         if ctn
-          do_invoke_block_core(given_block, blk, aargs, arg_blk, ep, env, scratch, &ctn)
+          do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
         else
-          do_invoke_block_core(given_block, blk, aargs, arg_blk, ep, env, scratch) do |ret_ty, ep, env|
+          do_invoke_block_core(given_block, blk, aargs, ep, env, scratch) do |ret_ty, ep, env|
             scratch.merge_env(ep.next, env.push(ret_ty))
           end
         end
       end
 
-      def do_invoke_block_core(given_block, blk, aargs, arg_blk, ep, env, scratch, &ctn)
+      def do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
         blk_iseq = blk.iseq
         blk_ep = blk.ep
         blk_env = blk.env
-        aargs = aargs.map {|aarg| aarg.strip_local_info(env) }
-        argc = blk_iseq.args[:lead_num] || 0
+        arg_blk = aargs.blk_ty
+        aargs = aargs.lead_tys.map {|aarg| aarg.strip_local_info(env) }
+        argc = blk_iseq.fargs[:lead_num] || 0
         if argc != aargs.size
           warn "complex parameter passing of block is not implemented"
           aargs.pop while argc < aargs.size
@@ -1185,7 +1187,7 @@ module TypeProfiler
         recv = blk_ep.ctx.sig.recv_ty
         env_blk = blk_ep.ctx.sig.fargs.blk_ty
         nfargs = FormalArguments.new(aargs, nil, nil, nil, nil, env_blk) # XXX: aargs -> fargs
-        nsig = Signature.new(recv, nil, nil, fargs)
+        nsig = Signature.new(recv, nil, nil, nfargs)
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(locals, [], {})
@@ -1238,18 +1240,23 @@ module TypeProfiler
         #raise "call with splat is not supported yet" if flags[2] != 0
         splat = flags[0] != 0
         if flags[1] != 0 # VM_CALL_ARGS_BLOCKARG
-          env, (recv, *aargs, blk) = env.pop(argc + 1)
+          env, (recv, *aargs, blk_ty) = env.pop(argc + 1)
           raise "both block arg and actual block given" if blk_iseq
         else
           env, (recv, *aargs) = env.pop(argc)
           if blk_iseq
             # check
-            blk = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
+            blk_ty = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
           else
-            blk = Type::Instance.new(Type::Builtin[:nil])
+            blk_ty = Type::Instance.new(Type::Builtin[:nil])
           end
         end
-        return env, recv, mid, aargs, blk
+        if flags[0] != 0 # VM_CALL_ARGS_SPLAT_bit
+          aargs = ActualArguments.new(aargs[0..-2], aargs.last, blk_ty)
+        else
+          aargs = ActualArguments.new(aargs, nil, blk_ty)
+        end
+        return env, recv, mid, aargs
       end
     end
   end

@@ -3,11 +3,11 @@ module TypeProfiler
     include Utils::StructuralEquality
 
     # TODO: state is no longer needed
-    def do_send(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+    def do_send(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       if ctn
-        do_send_core(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+        do_send_core(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       else
-        do_send_core(state, flags, recv, mid, aargs, blk, ep, env, scratch) do |ret_ty, ep, env|
+        do_send_core(state, flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
           nenv, ret_ty, = env.deploy_type(ep, ret_ty, 0)
           nenv = nenv.push(ret_ty)
           scratch.merge_env(ep.next, nenv)
@@ -34,7 +34,8 @@ module TypeProfiler
       end
     end
 
-    def do_send_core(state, flags, recv, mid, aargs, blk, caller_ep, caller_env, scratch, &ctn)
+    def do_send_core(state, flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      aargs, blk = aargs.lead_tys, aargs.blk_ty
       recv = recv.strip_local_info(caller_env)
       aargs = aargs.map {|aarg| aarg.strip_local_info(caller_env) }
       # XXX: aargs may be splat, but not implemented yet...
@@ -127,7 +128,8 @@ module TypeProfiler
       @sigs = sigs
     end
 
-    def do_send_core(state, _flags, recv, mid, aargs, blk, caller_ep, caller_env, scratch, &ctn)
+    def do_send_core(state, _flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      aargs, blk = aargs.lead_tys, aargs.blk_ty
       @sigs.each do |sig, ret_ty|
         recv = recv.strip_local_info(caller_env)
         # need to interpret args more correctly
@@ -140,10 +142,11 @@ module TypeProfiler
         next unless fargs.consistent?(sig.fargs)
         scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
         if sig.fargs.blk_ty.is_a?(Type::TypedProc)
-          fargs = sig.fargs.blk_ty.fargs
+          nfargs = sig.fargs.blk_ty.fargs
           blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
+          naargs = ActualArguments.new(nfargs, nil, blk_nil)
           # XXX: do_invoke_block expects caller's env
-          Scratch::Aux.do_invoke_block(false, blk, fargs, blk_nil, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
+          Scratch::Aux.do_invoke_block(false, blk, naargs, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
             # XXX: check the return type from the block
             # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
             scratch.add_return_type!(dummy_ctx, ret_ty)
@@ -164,9 +167,9 @@ module TypeProfiler
       @impl = impl
     end
 
-    def do_send_core(state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn)
+    def do_send_core(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       # XXX: ctn?
-      @impl[state, flags, recv, mid, aargs, blk, ep, env, scratch, &ctn]
+      @impl[state, flags, recv, mid, aargs, ep, env, scratch, &ctn]
     end
   end
 end
