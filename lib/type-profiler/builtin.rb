@@ -136,7 +136,7 @@ module TypeProfiler
       end
 
       ty = aargs.lead_tys.last
-      env = env.update_array_elem_types(recv.id, idx, ty)
+      env = env.poke_array_elem_types(recv.id, idx, ty)
       ctn[ty, ep, env]
     end
 

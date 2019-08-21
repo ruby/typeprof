@@ -153,7 +153,12 @@ module TypeProfiler
       @type_params[id]# || @outer.get_array_elem_types(id)
     end
 
-    def update_array_elem_types(id, idx, ty)
+    def update_array_elem_types(id, elems)
+      type_params = @type_params.merge({ id => elems })
+      Env.new(@locals, @stack, type_params)
+    end
+
+    def poke_array_elem_types(id, idx, ty)
       elems = @type_params[id].update(idx, ty)
       type_params = @type_params.merge({ id => elems })
       Env.new(@locals, @stack, type_params)
@@ -1044,15 +1049,21 @@ module TypeProfiler
       when :concatarray
         env, (ary1, ary2) = env.pop(2)
         if ary1.is_a?(Type::LocalArray)
-          elems1 = env.get_array_elem_types(ary.id)
+          elems1 = env.get_array_elem_types(ary1.id)
           if ary2.is_a?(Type::LocalArray)
-            elems2 = env.get_array_elem_types(ary.id)
-            env = env.push(Type::Array::Seq.new(elems1.types + elems2.types))
+            elems2 = env.get_array_elem_types(ary2.id)
+            elems = Type::Array::Seq.new(elems1.types + elems2.types)
+            env = env.update_array_elem_types(ary1.id, elems)
+            env = env.push(ary1)
           else
-            env = env.push(Type::Array::Seq.new(Utils::Set[Type::Any.new])) # XXX
+            elems = Type::Array::Seq.new(Utils::Set[Type::Any.new])
+            env = env.update_array_elem_types(ary1.id, elems)
+            env = env.push(ary1)
           end
         else
-          env = env.push(Type::Array::Seq.new(Utils::Set[Type::Any.new])) # XXX
+          ty = Type::Array.seq(Utils::Set[Type::Any.new])
+          env, ty, = env.deploy_type(ep, ty, 0)
+          env = env.push(ty)
         end
 
       when :checktype

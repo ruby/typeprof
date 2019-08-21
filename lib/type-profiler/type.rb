@@ -506,6 +506,34 @@ module TypeProfiler
       # intentionally skip blk_ty
       fargs
     end
+
+    def each_concrete_formal_arguments
+      expand_sum_types(@lead_tys) do |lead_tys|
+        expand_sum_types(@opt_tys) do |opt_tys|
+          expand_sum_types([@rest_ty]) do |rest_ty,|
+            expand_sum_types(@post_tys) do |post_tys|
+              #expand_sum_types(@keyword_tys)
+              yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, @keyword_tys, @blk_ty)
+            end
+          end
+        end
+      end
+    end
+
+    private
+
+    def expand_sum_types(sum_types, types = [], &blk)
+      if !sum_types || sum_types == [nil]
+        yield nil
+      elsif sum_types.empty?
+        yield types
+      else
+        rest = sum_types[1..]
+        sum_types.first.each do |ty|
+          expand_sum_types(rest, types + [ty], &blk)
+        end
+      end
+    end
   end
 
   # Arguments from caller side
@@ -524,19 +552,7 @@ module TypeProfiler
       ActualArguments.new(lead_tys, rest_ty, blk_ty)
     end
 
-    def each_concrete_actual_arguments
-      expand_sum_types(@lead_tys) do |lead_tys|
-        if @rest_ty
-          @rest_ty.each do |rest_ty|
-            yield ActualArguments.new(lead_tys, rest_ty, @blk_ty)
-          end
-        else
-          yield ActualArguments.new(lead_tys, rest_ty, @blk_ty)
-        end
-      end
-    end
-
-    def get_formal_arguments(fargs_format)
+    def each_formal_arguments(fargs_format)
       lead_num = fargs_format[:lead_num] || 0
       post_num = fargs_format[:post_num] || 0
       post_start = fargs_format[:post_start]
@@ -544,46 +560,64 @@ module TypeProfiler
       block_start = fargs_format[:block_start]
       opt = fargs_format[:opt]
 
-      start_pc = 0
+      # TODO: expand tuples to normal arguments
+
+      # check number of arguments
+      if !@rest_ty && lead_num + post_num > @lead_tys.size
+        # too less
+        yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
+        return
+      end
+      if !rest_start
+        # too many
+        if opt
+          if lead_num + post_num + opt.size - 1 < @lead_tys.size
+            yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num }..#{ lead_num + post_num + opt.size - 1})"
+            return
+          end
+        else
+          if lead_num + post_num < @lead_tys.size
+            yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
+            return
+          end
+        end
+      end
 
       if @rest_ty
-        raise
+        lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
+        upper_bound = lead_num + post_num + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
+        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : Type::Sum.new(@rest_ty.elems.types)
       else
-        if lead_num + post_num > @lead_tys.size
-          return "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
-        end
-        aargs = @lead_tys.dup
+        lower_bound = upper_bound = 0
+      end
+
+      (lower_bound .. upper_bound).each do |rest_len|
+        aargs = @lead_tys + [rest_elem] * rest_len
         lead_tys = aargs.shift(lead_num)
+        lead_tys << rest_elem until lead_tys.size == lead_num
         post_tys = aargs.pop(post_num)
+        post_tys.unshift(rest_elem) until post_tys.size == post_num
+        start_pc = 0
         if opt
-          opt = opt[1..]
+          tmp_opt = opt[1..]
           opt_tys = []
-          until aargs.empty? || opt.empty?
+          until aargs.empty? || tmp_opt.empty?
             opt_tys << aargs.shift
-            start_pc = opt.shift
+            start_pc = tmp_opt.shift
           end
         end
         if rest_start
-          rest_ty = Type::Array.seq(Utils::Set[*aargs])
+          acc = aargs.inject {|acc, ty| acc.sum(ty) }
+          acc = acc ? acc.sum(rest_elem) : rest_elem if rest_elem
+          elem = acc.is_a?(Type::Sum) ? acc.types : acc ? Utils::Set[acc] : Utils::Set[]
+          rest_ty = Type::Array.seq(elem)
           aargs.clear
         end
         if !aargs.empty?
-          return "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
+          yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
+          return
         end
-        return FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, @blk_ty), start_pc
-      end
-    end
-
-    private
-
-    def expand_sum_types(sum_types, types = [], &blk)
-      if sum_types.empty?
-        yield types
-      else
-        rest = sum_types[1..]
-        sum_types.first.each do |ty|
-          expand_sum_types(rest, types + [ty], &blk)
-        end
+        yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, @blk_ty), start_pc
       end
     end
 

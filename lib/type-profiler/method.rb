@@ -24,54 +24,55 @@ module TypeProfiler
     end
 
     def do_send_core(state, flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      lead_num = @iseq.fargs[:lead_num] || 0
+      post_start = @iseq.fargs[:post_start]
+      rest_start = @iseq.fargs[:rest_start]
+      block_start = @iseq.fargs[:block_start]
+
       recv = recv.strip_local_info(caller_env)
       aargs = aargs.strip_local_info(caller_env)
 
-      aargs.each_concrete_actual_arguments do |aargs|
-        lead_num = @iseq.fargs[:lead_num] || 0
-        post_start = @iseq.fargs[:post_start]
-        rest_start = @iseq.fargs[:rest_start]
-        block_start = @iseq.fargs[:block_start]
-
-        fargs, start_pc = aargs.get_formal_arguments(@iseq.fargs)
+      aargs.each_formal_arguments(@iseq.fargs) do |fargs, start_pc|
         if fargs.is_a?(String)
           scratch.error(caller_ep, fargs)
           ctn[Type::Any.new, caller_ep, caller_env]
-          return
+          next
         end
 
-        ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, fargs)) # XXX: to support opts, rest, etc
-        callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
+        fargs.each_concrete_formal_arguments do |fargs|
+          ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, fargs)) # XXX: to support opts, rest, etc
+          callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
-        locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
-        nenv = Env.new(locals, [], {})
-        id = 0
-        fargs.lead_tys.each_with_index do |ty, i|
-          nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
-          nenv = nenv.local_update(i, ty)
-        end
-        if fargs.opt_tys
-          fargs.opt_tys.each_with_index do |ty, i|
+          locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
+          nenv = Env.new(locals, [], {})
+          id = 0
+          fargs.lead_tys.each_with_index do |ty, i|
             nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
-            nenv = nenv.local_update(lead_num + i, ty)
+            nenv = nenv.local_update(i, ty)
           end
-        end
-        if fargs.rest_ty
-          nenv, rest_ty, id = nenv.deploy_type(callee_ep, fargs.rest_ty, id)
-          nenv = nenv.local_update(rest_start, rest_ty)
-        end
-        if fargs.post_tys
-          fargs.post_tys.each_with_index do |ty, i|
-            nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
-            nenv = nenv.local_update(post_start + i, ty)
+          if fargs.opt_tys
+            fargs.opt_tys.each_with_index do |ty, i|
+              nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+              nenv = nenv.local_update(lead_num + i, ty)
+            end
           end
-        end
-        # keyword_tys
-        nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
+          if fargs.rest_ty
+            nenv, rest_ty, id = nenv.deploy_type(callee_ep, fargs.rest_ty, id)
+            nenv = nenv.local_update(rest_start, rest_ty)
+          end
+          if fargs.post_tys
+            fargs.post_tys.each_with_index do |ty, i|
+              nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+              nenv = nenv.local_update(post_start + i, ty)
+            end
+          end
+          # keyword_tys
+          nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
 
-        # XXX: need to jump option argument
-        scratch.merge_env(callee_ep, nenv)
-        scratch.add_callsite!(callee_ep.ctx, caller_ep, caller_env, &ctn)
+          # XXX: need to jump option argument
+          scratch.merge_env(callee_ep, nenv)
+          scratch.add_callsite!(callee_ep.ctx, caller_ep, caller_env, &ctn)
+        end
       end
     end
   end
