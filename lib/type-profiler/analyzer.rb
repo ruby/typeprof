@@ -1251,6 +1251,14 @@ module TypeProfiler
             blk_ty = Type::Instance.new(Type::Builtin[:nil])
           end
         end
+        case
+        when blk_ty.eql?(Type::Instance.new(Type::Builtin[:nil]))
+        when blk_ty.eql?(Type::Any.new)
+        when blk_ty.is_a?(Type::ISeqProc)
+        else
+          scratch.error(caller_ep, "wrong argument type #{ blk.screen_name(scratch) } (expected Proc)")
+          blk_ty = Type::Any.new
+        end
         if flags[0] != 0 # VM_CALL_ARGS_SPLAT_bit
           aargs = ActualArguments.new(aargs[0..-2], aargs.last, blk_ty)
         else

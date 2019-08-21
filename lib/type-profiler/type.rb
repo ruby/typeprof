@@ -517,6 +517,86 @@ module TypeProfiler
     end
 
     attr_reader :lead_tys, :rest_ty, :blk_ty
+
+    def strip_local_info(caller_env)
+      lead_tys = @lead_tys.map {|ty| ty.strip_local_info(caller_env) }
+      rest_ty = @rest_ty.strip_local_info(caller_env) if @rest_ty
+      ActualArguments.new(lead_tys, rest_ty, blk_ty)
+    end
+
+    def each_concrete_actual_arguments
+      expand_sum_types(@lead_tys) do |lead_tys|
+        if @rest_ty
+          @rest_ty.each do |rest_ty|
+            yield ActualArguments.new(lead_tys, rest_ty, @blk_ty)
+          end
+        else
+          yield ActualArguments.new(lead_tys, rest_ty, @blk_ty)
+        end
+      end
+    end
+
+    def get_formal_arguments(fargs_format)
+      lead_num = fargs_format[:lead_num] || 0
+      post_num = fargs_format[:post_num] || 0
+      post_start = fargs_format[:post_start]
+      rest_start = fargs_format[:rest_start]
+      block_start = fargs_format[:block_start]
+      opt = fargs_format[:opt]
+
+      start_pc = 0
+
+      if @rest_ty
+        raise
+      else
+        if lead_num + post_num > @lead_tys.size
+          return "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
+        end
+        aargs = @lead_tys.dup
+        lead_tys = aargs.shift(lead_num)
+        post_tys = aargs.pop(post_num)
+        if opt
+          opt = opt[1..]
+          opt_tys = []
+          until aargs.empty? || opt.empty?
+            opt_tys << aargs.shift
+            start_pc = opt.shift
+          end
+        end
+        if rest_start
+          rest_ty = Type::Array.seq(Utils::Set[*aargs])
+          aargs.clear
+        end
+        if !aargs.empty?
+          return "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
+        end
+        return FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, @blk_ty), start_pc
+      end
+    end
+
+    private
+
+    def expand_sum_types(sum_types, types = [], &blk)
+      if sum_types.empty?
+        yield types
+      else
+        rest = sum_types[1..]
+        sum_types.first.each do |ty|
+          expand_sum_types(rest, types + [ty], &blk)
+        end
+      end
+    end
+
+    def each_type(sum_types, types, &blk)
+      if sum_types.empty?
+        yield types
+      else
+        rest = sum_types[1..]
+        sum_types.first.each do |ty|
+          expand_sum_types(rest, types + [ty], &blk)
+        end
+      end
+    end
   end
 
   class Signature
