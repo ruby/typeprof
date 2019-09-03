@@ -16,6 +16,14 @@ module TypeProfiler
       self
     end
 
+    def deploy_local(env, ep)
+      deploy_local_core(env, AllocationSite.new(ep))
+    end
+
+    def deploy_local_core(env, _alloc_site)
+      return env, self
+    end
+
     def consistent?(other)
       return true if other == Type::Any.new
       self == other
@@ -93,6 +101,15 @@ module TypeProfiler
 
       def strip_local_info_core(env, visited)
         Type::Sum.new(@types.map {|ty| ty.strip_local_info_core(env, visited) }).normalize
+      end
+
+      def deploy_local_core(env, alloc_site)
+        ty = Sum.new(@types.map do |ty|
+          alloc_site2 = alloc_site.add_id(ty)
+          env, ty2 = ty.deploy_local_core(env, alloc_site2)
+          ty2
+        end)
+        return env, ty
       end
     end
 
@@ -278,6 +295,12 @@ module TypeProfiler
         self
       end
 
+      def deploy_local_core(env, alloc_site)
+        #alloc_site = alloc_site.add_id(:array)
+        env, elems = @elems.deploy_local_core(env, alloc_site)
+        env, ty = env.deploy_array_type(alloc_site, elems, @base_type)
+      end
+
       def get_method(mid, scratch)
         raise
       end
@@ -314,12 +337,13 @@ module TypeProfiler
           "Array[" + s.sort.join(" | ") + "]"
         end
 
-        def deploy_type(ep, env, id)
+        def deploy_local_core(env, alloc_site)
           elems = @elems.map do |ty|
-            env, ty, id = env.deploy_type(ep, ty, id)
-            ty
+            alloc_site2 = alloc_site.add_id(ty)
+            env, ty2 = ty.deploy_local_core(env, alloc_site2)
+            ty2
           end
-          return env, Seq.new(elems), id
+          return env, Seq.new(elems)
         end
 
         def types
@@ -375,14 +399,16 @@ module TypeProfiler
           end.join(", ") + "]"
         end
 
-        def deploy_type(ep, env, id)
-          elems = @elems.map do |elem|
+        def deploy_local_core(env, alloc_site)
+          elems = @elems.map.with_index do |elem, i|
+            alloc_site2 = alloc_site.add_id(i)
             elem.map do |ty|
-              env, ty, id = env.deploy_type(ep, ty, id)
-              ty
+              alloc_site3 = alloc_site2.add_id(ty)
+              env, ty2 = ty.deploy_local_core(env, alloc_site2)
+              ty2
             end
           end
-          return env, Tuple.new(*elems), id
+          return env, Tuple.new(*elems)
         end
 
         def types
@@ -630,6 +656,22 @@ module TypeProfiler
           expand_sum_types(rest, types + [ty], &blk)
         end
       end
+    end
+  end
+
+  class AllocationSite
+    include Utils::StructuralEquality
+
+    def initialize(val, parent = nil)
+      raise if !val.is_a?(Utils::StructuralEquality) && !val.is_a?(Integer) && !val.is_a?(Symbol)
+      @val = val
+      @parent = parent
+    end
+
+    attr_reader :val, :parent
+
+    def add_id(val)
+      AllocationSite.new(val, self)
     end
   end
 

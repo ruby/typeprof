@@ -90,6 +90,9 @@ module TypeProfiler
       tys.each do |ty|
         raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         raise "nil cannot be pushed to the stack" if ty.nil?
+        if ty.is_a?(Type::Sum) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
+          raise "Array (in Sum type) cannot be pushed to the stack"
+        end
       end
       Env.new(@locals, @stack + tys, @type_params)
     end
@@ -118,34 +121,11 @@ module TypeProfiler
       Env.new(Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
-    def deploy_type(ep, ty, id)
-      # need to check this in the caller side
-      # if @type_params[@ep]
-      #   local_ty = Type::LocalArray.new(@ep, ty.base_type)
-      #   return self, local_ty, id
-      # else
-      case ty
-      when Type::Array
-        env, elems, id = ty.elems.deploy_type(ep, self, id)
-        return env.deploy_array_type(ep, elems, id, ty.base_type)
-      when Type::Sum
-        env = self
-        ty = Type::Sum.new(ty.types.map do |elem| # XXX: id and Set#each
-          env, elem2, id = env.deploy_type(ep, elem, id)
-          elem2
-        end)
-        return env, ty, id
-      else
-        return self, ty, id
-      end
-    end
-
-    def deploy_array_type(ep, elems, id, base_ty)
-      local_ty = Type::LocalArray.new([ep, id], base_ty)
-
-      type_params = @type_params.merge({ [ep, id] => elems })
+    def deploy_array_type(alloc_site, elems, base_ty)
+      local_ty = Type::LocalArray.new(alloc_site, base_ty)
+      type_params = @type_params.merge({ alloc_site => elems })
       nenv = Env.new(@locals, @stack, type_params)
-      return nenv, local_ty, id + 1
+      return nenv, local_ty
     end
 
     def get_array_elem_types(id)
@@ -656,7 +636,7 @@ module TypeProfiler
         env = env.push(Type::Instance.new(Type::Builtin[:nil]))
       when :putobject, :duparray
         obj, = operands
-        env, ty, = env.deploy_type(ep, Type.guess_literal_type(obj), 0)
+        env, ty = Type.guess_literal_type(obj).deploy_local(env, ep)
         env = env.push(ty)
       when :putstring
         str, = operands
@@ -671,7 +651,7 @@ module TypeProfiler
         len, = operands
         env, elems = env.pop(len)
         ty = Type::Array.tuple(elems.map {|elem| Utils::Set[elem] }, Type::Instance.new(Type::Builtin[:ary]))
-        env, ty, = env.deploy_type(ep, ty, 0)
+        env, ty = ty.deploy_local(env, ep)
         env = env.push(ty)
       when :newhash
         # XXX
@@ -741,7 +721,7 @@ module TypeProfiler
         nenv = Env.new([], [], {})
         merge_env(nep, nenv)
         scratch.add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
-          nenv, ret_ty, = env.deploy_type(ep, ret_ty, 0)
+          nenv, ret_ty = ret_ty.deploy_local(env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
         end
@@ -875,7 +855,7 @@ module TypeProfiler
         recv = ep.ctx.sig.recv_ty
         # TODO: deal with inheritance?
         scratch.add_ivar_read!(recv, var, ep) do |ty, ep|
-          nenv, ty, = env.deploy_type(ep, ty, 0)
+          nenv, ty = ty.deploy_local(env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
         return
@@ -894,7 +874,7 @@ module TypeProfiler
       when :getglobal
         var, = operands
         scratch.add_gvar_read!(var, ep) do |ty, ep|
-          nenv, ty, = env.deploy_type(ep, ty, 0)
+          nenv, ty = ty.deploy_local(env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
         # need to return default nil of global variables
@@ -931,13 +911,13 @@ module TypeProfiler
         env, (cbase,) = env.pop(1)
         if cbase.eql?(Type::Instance.new(Type::Builtin[:nil]))
           ty = scratch.search_constant(ep.ctx.cref, name)
-          env, ty, = env.deploy_type(ep, ty, 0) # TODO: multiple return arguments
+          env, ty = ty.deploy_local(env, ep) # TODO: multiple return arguments
           env = env.push(ty)
         elsif cbase.eql?(Type::Any.new)
           env = env.push(Type::Any.new) # XXX: warning needed?
         else
           ty = scratch.get_constant(cbase, name)
-          env, ty, = env.deploy_type(ep, ty, 0) # TODO: multiple return arguments
+          env, ty = ty.deploy_local(env, ep) # TODO: multiple return arguments
           env = env.push(ty)
         end
       when :setconstant
@@ -1062,7 +1042,7 @@ module TypeProfiler
           end
         else
           ty = Type::Array.seq(Utils::Set[Type::Any.new])
-          env, ty, = env.deploy_type(ep, ty, 0)
+          env, ty = ty.deploy_local(env, ep)
           env = env.push(ty)
         end
 
@@ -1092,7 +1072,7 @@ module TypeProfiler
             # fetch num elements from the head
             if splat
               ty = Type::Array.tuple(elems[num..-1], Type::Instance.new(Type::Builtin[:ary]))
-              env, ty, = env.deploy_type(ep, ty, 0)
+              env, ty = ty.deploy_local(env, ep)
               env = env.push(ty)
             end
             envs = [env]
@@ -1101,6 +1081,9 @@ module TypeProfiler
               envs = envs.flat_map do |le|
                 union.to_a.map do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  if ty.is_a?(Type::Sum) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
+                    ty = Type::Any.new # XXX
+                  end
                   le.push(ty)
                 end
               end
@@ -1113,16 +1096,18 @@ module TypeProfiler
               envs = envs.flat_map do |le|
                 union.to_a.map do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  if ty.is_a?(Type::Sum) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
+                    ty = Type::Any.new # XXX
+                  end
                   le.push(ty)
                 end
               end
             end
             if splat
               ty = Type::Array.tuple(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
-              envs = envs.map do |le|
-                id = 0
-                le, local_ary_ty, id = le.deploy_type(ep, ty, id)
-                le = le.push(local_ary_ty)
+              envs = envs.map do |lenv|
+                lenv, local_ary_ty = ty.deploy_local(lenv, ep)
+                lenv = lenv.push(local_ary_ty)
               end
             end
           end
@@ -1141,19 +1126,17 @@ module TypeProfiler
               end
             end
             if splat
-              envs = envs.map do |le|
-                id = 0
-                le, local_ary_ty, id = le.deploy_type(ep, ty, id)
-                le = le.push(local_ary_ty)
+              envs = envs.map do |lenv|
+                lenv, local_ary_ty = ty.deploy_local(lenv, ep)
+                lenv = lenv.push(local_ary_ty)
               end
             end
           else
             envs = [env]
             if splat
-              envs = envs.map do |le|
-                id = 0
-                le, local_ary_ty, id = le.deploy_type(ep, ty, id)
-                le = le.push(local_ary_ty)
+              envs = envs.map do |lenv|
+                lenv, local_ary_ty = ty.deploy_local(lenv, ep)
+                lenv = lenv.push(local_ary_ty)
               end
             end
             num.times do
@@ -1202,9 +1185,10 @@ module TypeProfiler
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(locals, [], {})
-        id = 0
+        alloc_site = AllocationSite.new(nep)
         aargs.each_with_index do |ty, i|
-          nenv, ty, id = nenv.deploy_type(nep, ty, id)
+          alloc_site2 = alloc_site.add_id(i)
+          nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
           nenv = nenv.local_update(i, ty)
         end
 

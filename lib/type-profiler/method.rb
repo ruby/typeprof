@@ -8,7 +8,7 @@ module TypeProfiler
         do_send_core(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       else
         do_send_core(state, flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
-          nenv, ret_ty, = env.deploy_type(ep, ret_ty, 0)
+          nenv, ret_ty, = ret_ty.deploy_local(env, ep)
           nenv = nenv.push(ret_ty)
           scratch.merge_env(ep.next, nenv)
         end
@@ -45,24 +45,29 @@ module TypeProfiler
 
           locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
           nenv = Env.new(locals, [], {})
-          id = 0
+          alloc_site = AllocationSite.new(callee_ep)
+          idx = 0
           fargs.lead_tys.each_with_index do |ty, i|
-            nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+            alloc_site2 = alloc_site.add_id(idx += 1)
+            nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
             nenv = nenv.local_update(i, ty)
           end
           if fargs.opt_tys
             fargs.opt_tys.each_with_index do |ty, i|
-              nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+              alloc_site2 = alloc_site.add_id(idx += 1)
+              nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
               nenv = nenv.local_update(lead_num + i, ty)
             end
           end
           if fargs.rest_ty
-            nenv, rest_ty, id = nenv.deploy_type(callee_ep, fargs.rest_ty, id)
+            alloc_site2 = alloc_site.add_id(idx += 1)
+            nenv, rest_ty = fargs.rest_ty.deploy_local_core(nenv, alloc_site2)
             nenv = nenv.local_update(rest_start, rest_ty)
           end
           if fargs.post_tys
             fargs.post_tys.each_with_index do |ty, i|
-              nenv, ty, id = nenv.deploy_type(callee_ep, ty, id)
+              alloc_site2 = alloc_site.add_id(idx += 1)
+              nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
               nenv = nenv.local_update(post_start + i, ty)
             end
           end
