@@ -44,6 +44,10 @@ module TypeProfiler
       @outer = outer
     end
 
+    def key
+      [@ctx.iseq.path, @ctx.iseq.name, @pc]
+    end
+
     attr_reader :ctx, :pc, :outer
 
     def jump(pc)
@@ -151,7 +155,7 @@ module TypeProfiler
 
   class Scratch
     def initialize
-      @worklist = [] # TODO: priority queue
+      @worklist = Utils::WorkList.new
 
       @ep2env = {}
 
@@ -177,10 +181,12 @@ module TypeProfiler
       env2 = @ep2env[ep]
       if env2
         nenv = env2.merge(env)
-        @worklist << ep if !nenv.eql?(env2) && !@worklist.include?(ep)
+        if !nenv.eql?(env2) && !@worklist.member?(ep)
+          @worklist.insert(ep.key, ep)
+        end
         @ep2env[ep] = nenv
       else
-        @worklist << ep
+        @worklist.insert(ep.key, ep)
         @ep2env[ep] = env
       end
     end
@@ -601,7 +607,7 @@ module TypeProfiler
         if counter % 1000 == 0
           puts "iter %d, remain: %d" % [counter, @worklist.size]
         end
-        @ep = @worklist.shift # TODO: deletemin
+        @ep = @worklist.deletemin
         @env = @ep2env[@ep]
         stat_eps << @ep
         step(@ep) # TODO: deletemin

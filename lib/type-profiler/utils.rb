@@ -95,5 +95,56 @@ module TypeProfiler
         @hash.size
       end
     end
+
+    class WorkList
+      def initialize
+        @heap = []
+        @map = {}
+      end
+
+      def insert(key, val)
+        i = @heap.size
+        @heap << key
+        while i > 0 && (@heap[i] <=> @heap[i / 2]) < 0
+          @heap[i], @heap[i / 2] = @heap[i / 2], @heap[i]
+          i /= 2
+        end
+        @map[key] = val
+      end
+
+      def member?(key)
+        @map.key?(key)
+      end
+
+      def deletemin
+        return nil if @heap.empty?
+        ret = @map.delete(@heap[0])
+        if @heap.size == 1
+          @heap.pop
+          return ret
+        end
+        @heap[0] = @heap.pop
+        i = 0
+        while (j = i * 2 + 1) < @heap.size
+          j += 1 if j + 1 < @heap.size && (@heap[j] <=> @heap[j + 1]) >= 0
+          break if (@heap[i] <=> @heap[j]) < 0
+          @heap[i], @heap[j] = @heap[j], @heap[i]
+          i = j
+        end
+        return ret
+      end
+
+      def size
+        @heap.size
+      end
+
+      def empty?
+        @heap.empty?
+      end
+
+      def inspect
+        "#<#{ self.class }:#{ @heap.map {|key| @map[key] }.inspect }>"
+      end
+    end
   end
 end
