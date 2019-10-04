@@ -22,7 +22,12 @@ module TypeProfiler
       new(RubyVM::InstructionSequence.compile(str, opt).to_a)
     end
 
+    FRESH_ID = [0]
+
     def initialize(iseq)
+      @id = FRESH_ID[0]
+      FRESH_ID[0] += 1
+
       _magic, _major_version, _minor_version, _format_type, _misc,
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs, _catch_table, insns = *iseq
@@ -33,6 +38,10 @@ module TypeProfiler
       setup_iseq(insns)
 
       translate_insns
+    end
+
+    def <=>(other)
+      @id <=> other.id
     end
 
     def setup_iseq(insns)
@@ -114,6 +123,7 @@ module TypeProfiler
     end
 
     attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :fargs, :insns, :linenos
+    attr_reader :id
 
     def pretty_print(q)
       q.text "ISeq["

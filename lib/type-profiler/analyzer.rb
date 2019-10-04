@@ -45,7 +45,7 @@ module TypeProfiler
     end
 
     def key
-      [@ctx.iseq.path, @ctx.iseq.name, @pc]
+      [@ctx.iseq, @pc, @sig]
     end
 
     attr_reader :ctx, :pc, :outer
@@ -971,7 +971,8 @@ module TypeProfiler
       when :pop
         env, = env.pop(1)
       when :swap
-        raise NotImplementedError, "swap"
+        env, (a, b) = env.pop(2)
+        env = env.push(a).push(b)
       when :reverse
         raise NotImplementedError, "reverse"
       when :defined

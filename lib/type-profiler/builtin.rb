@@ -175,7 +175,7 @@ module TypeProfiler
 
       elems = env.get_array_elem_types(recv.id)
       elems.types.each do |ty| # TODO: use Sum type
-        env[ty, ep, env]
+        ctn[ty, ep, env]
       end
     end
 

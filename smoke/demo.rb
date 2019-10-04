@@ -63,7 +63,7 @@ B.new.foo("str")
 # B#bar :: (String) -> NilClass
 
 __END__
-Object#foo :: (Boolean) -> (String | Integer)
+Object#foo :: (Boolean) -> (Integer | String)
 Object#identity :: (Integer) -> Integer
 Object#identity :: (String) -> String
 Object#identity :: (Symbol) -> Symbol

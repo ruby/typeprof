@@ -85,6 +85,14 @@ module TypeProfiler
         @hash[v] = true
       end
 
+      def [](v)
+        @hash[v]
+      end
+
+      def delete(v)
+        @hash.delete(v)
+      end
+
       def inspect
         s = []
         each {|v| s << v.inspect }
@@ -99,39 +107,40 @@ module TypeProfiler
     class WorkList
       def initialize
         @heap = []
-        @map = {}
+        @set = MutableSet.new
       end
 
       def insert(key, val)
         i = @heap.size
-        @heap << key
-        while i > 0 && (@heap[i] <=> @heap[i / 2]) < 0
+        @heap << [key, val]
+        while i > 0 && (cmp = @heap[i][0] <=> @heap[i / 2][0]; p @heap[i][0], @heap[i/2][0] if !cmp; cmp) < 0
           @heap[i], @heap[i / 2] = @heap[i / 2], @heap[i]
           i /= 2
         end
-        @map[key] = val
+        @set << val
       end
 
-      def member?(key)
-        @map.key?(key)
+      def member?(val)
+        @set[val]
       end
 
       def deletemin
         return nil if @heap.empty?
-        ret = @map.delete(@heap[0])
+        val = @heap[0][1]
+        @set.delete(val)
         if @heap.size == 1
           @heap.pop
-          return ret
+          return val
         end
         @heap[0] = @heap.pop
         i = 0
         while (j = i * 2 + 1) < @heap.size
-          j += 1 if j + 1 < @heap.size && (@heap[j] <=> @heap[j + 1]) >= 0
-          break if (@heap[i] <=> @heap[j]) < 0
+          j += 1 if j + 1 < @heap.size && (@heap[j][0] <=> @heap[j + 1][0]) >= 0
+          break if (@heap[i][0] <=> @heap[j][0]) < 0
           @heap[i], @heap[j] = @heap[j], @heap[i]
           i = j
         end
-        return ret
+        return val
       end
 
       def size
@@ -143,7 +152,7 @@ module TypeProfiler
       end
 
       def inspect
-        "#<#{ self.class }:#{ @heap.map {|key| @map[key] }.inspect }>"
+        "#<#{ self.class }:#{ @heap.map {|_key, val| val }.inspect }>"
       end
     end
   end
