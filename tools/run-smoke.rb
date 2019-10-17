@@ -12,8 +12,9 @@ def run(f)
   $output = []
   TypeProfiler.type_profile(TypeProfiler::ISeq.compile(f))
   output = $output
-  $output = nil
   output
+ensure
+  $output = nil
 end
 
 files = ARGV
