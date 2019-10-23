@@ -213,25 +213,28 @@ module TypeProfiler
     klass_obj = scratch.new_class(nil, :Object, nil) # cbase, name, superclass
     scratch.add_constant(klass_obj, "Object", klass_obj)
 
-    klass_vmcore    = scratch.new_class(klass_obj, :VMCore, klass_obj) # cbase, name, superclass
-    klass_int       = scratch.new_class(klass_obj, :Integer, klass_obj)
-    klass_sym       = scratch.new_class(klass_obj, :Symbol, klass_obj)
-    klass_str       = scratch.new_class(klass_obj, :String, klass_obj)
+    Type::Builtin[:obj] = klass_obj
+
+    TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch)
+
+    klass_nil       = scratch.get_constant(klass_obj, :NilClass)
+    klass_vmcore    = scratch.new_class(klass_obj, :VMCore, klass_obj)
+    klass_int       = scratch.get_constant(klass_obj, :Integer)
+    klass_sym       = scratch.get_constant(klass_obj, :Symbol)
+    klass_str       = scratch.get_constant(klass_obj, :String)
     klass_bool      = scratch.new_class(klass_obj, :Boolean, klass_obj) # ???
-    klass_nil       = scratch.new_class(klass_obj, :NilClass, klass_obj)
-    klass_ary       = scratch.new_class(klass_obj, :Array, klass_obj)
-    klass_proc      = scratch.new_class(klass_obj, :Proc, klass_obj)
-    klass_range     = scratch.new_class(klass_obj, :Range, klass_obj)
-    klass_regexp    = scratch.new_class(klass_obj, :Regexp, klass_obj)
-    klass_matchdata = scratch.new_class(klass_obj, :MatchData, klass_obj)
+    klass_ary       = scratch.get_constant(klass_obj, :Array)
+    klass_proc      = scratch.get_constant(klass_obj, :Proc)
+    klass_range     = scratch.get_constant(klass_obj, :Range)
+    klass_regexp    = scratch.get_constant(klass_obj, :Regexp)
+    klass_matchdata = scratch.get_constant(klass_obj, :MatchData)
 
     Type::Builtin[:vmcore]    = klass_vmcore
-    Type::Builtin[:obj]       = klass_obj
     Type::Builtin[:int]       = klass_int
+    Type::Builtin[:nil]       = klass_nil
     Type::Builtin[:sym]       = klass_sym
     Type::Builtin[:bool]      = klass_bool
     Type::Builtin[:str]       = klass_str
-    Type::Builtin[:nil]       = klass_nil
     Type::Builtin[:ary]       = klass_ary
     Type::Builtin[:proc]      = klass_proc
     Type::Builtin[:range]     = klass_range
@@ -264,7 +267,7 @@ module TypeProfiler
     scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
     scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
     scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :+ , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
+    #scratch.add_typed_method(i[klass_int], :+ , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
     scratch.add_typed_method(i[klass_int], :- , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
     int_times_blk = Type::TypedProc.new([i[klass_int]], Type::Any.new, Type::Builtin[:proc])
     scratch.add_typed_method(i[klass_int], :times, FormalArguments.new([], nil, nil, nil, nil, int_times_blk), i[klass_int])

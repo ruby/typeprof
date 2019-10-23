@@ -4,6 +4,7 @@ require_relative "type-profiler/type"
 require_relative "type-profiler/method"
 require_relative "type-profiler/iseq"
 require_relative "type-profiler/analyzer"
+require_relative "type-profiler/import"
 require_relative "type-profiler/builtin"
 
 module TypeProfiler

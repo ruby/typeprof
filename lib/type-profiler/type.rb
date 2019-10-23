@@ -140,6 +140,7 @@ module TypeProfiler
 
     class Instance < Type
       def initialize(klass)
+        raise unless klass
         @klass = klass
       end
 
