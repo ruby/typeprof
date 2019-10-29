@@ -67,6 +67,16 @@ module TypeProfiler
         each {|v| s << v.inspect }
         "{#{ s.join(", ") }}"
       end
+
+      def include?(elem)
+        @hash[elem]
+      end
+
+      def intersection(other)
+        nhash = {}
+        each {|elem| nhash << elem if other.include?(elem) }
+        Set.new(nhash)
+      end
     end
 
     class MutableSet

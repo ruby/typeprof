@@ -25,8 +25,13 @@ module TypeProfiler
     end
 
     def consistent?(other)
-      return true if other == Type::Any.new
-      self == other
+      case other
+      when Type::Any then true
+      when Type::Sum
+        other.types.include?(self)
+      else
+        self == other
+      end
     end
 
     def each
@@ -110,6 +115,15 @@ module TypeProfiler
           ty2
         end)
         return env, ty
+      end
+
+      def consistent?(other)
+        case other
+        when Type::Sum
+          @types.intersection(other.types).size >= 1
+        else
+          @types.include?(other)
+        end
       end
     end
 
@@ -464,6 +478,8 @@ module TypeProfiler
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:sym]))
       when ::Integer
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:int]))
+      when ::Float
+        Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:float]))
       when ::Class
         raise "unknown class: #{ obj.inspect }" if !obj.equal?(Object)
         Type::Builtin[:obj]

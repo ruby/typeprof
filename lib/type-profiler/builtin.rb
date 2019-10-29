@@ -212,17 +212,19 @@ module TypeProfiler
   def self.setup_initial_global_env(scratch)
     klass_obj = scratch.new_class(nil, :Object, nil) # cbase, name, superclass
     scratch.add_constant(klass_obj, "Object", klass_obj)
+    klass_bool = scratch.new_class(klass_obj, :Boolean, klass_obj) # ???
 
     Type::Builtin[:obj] = klass_obj
+    Type::Builtin[:bool] = klass_bool
 
     TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch)
 
-    klass_nil       = scratch.get_constant(klass_obj, :NilClass)
     klass_vmcore    = scratch.new_class(klass_obj, :VMCore, klass_obj)
+    klass_nil       = scratch.get_constant(klass_obj, :NilClass)
     klass_int       = scratch.get_constant(klass_obj, :Integer)
+    klass_float     = scratch.get_constant(klass_obj, :Float)
     klass_sym       = scratch.get_constant(klass_obj, :Symbol)
     klass_str       = scratch.get_constant(klass_obj, :String)
-    klass_bool      = scratch.new_class(klass_obj, :Boolean, klass_obj) # ???
     klass_ary       = scratch.get_constant(klass_obj, :Array)
     klass_proc      = scratch.get_constant(klass_obj, :Proc)
     klass_range     = scratch.get_constant(klass_obj, :Range)
@@ -231,9 +233,9 @@ module TypeProfiler
 
     Type::Builtin[:vmcore]    = klass_vmcore
     Type::Builtin[:int]       = klass_int
+    Type::Builtin[:float]     = klass_float
     Type::Builtin[:nil]       = klass_nil
     Type::Builtin[:sym]       = klass_sym
-    Type::Builtin[:bool]      = klass_bool
     Type::Builtin[:str]       = klass_str
     Type::Builtin[:ary]       = klass_ary
     Type::Builtin[:proc]      = klass_proc
