@@ -596,7 +596,7 @@ module TypeProfiler
         end
         File.binwrite("coverage.dump", Marshal.dump(coverage))
       end
-      puts(*out)
+      puts(*out.sort)
     end
 
     def type_profile

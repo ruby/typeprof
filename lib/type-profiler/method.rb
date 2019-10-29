@@ -113,7 +113,7 @@ module TypeProfiler
           return
         end
         scratch.add_return_type!(dummy_ctx, ret_ty)
-        return
+        return # XXX
       end
 
       scratch.error(caller_ep, "failed to resolve overload: #{ recv.screen_name(scratch) }##{ mid }")
