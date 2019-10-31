@@ -24,15 +24,15 @@ module TypeProfiler
     end
 
     def do_send_core(state, flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      lead_num = @iseq.fargs[:lead_num] || 0
-      post_start = @iseq.fargs[:post_start]
-      rest_start = @iseq.fargs[:rest_start]
-      block_start = @iseq.fargs[:block_start]
+      lead_num = @iseq.fargs_format[:lead_num] || 0
+      post_start = @iseq.fargs_format[:post_start]
+      rest_start = @iseq.fargs_format[:rest_start]
+      block_start = @iseq.fargs_format[:block_start]
 
       recv = recv.strip_local_info(caller_env)
       aargs = aargs.strip_local_info(caller_env)
 
-      aargs.each_formal_arguments(@iseq.fargs) do |fargs, start_pc|
+      aargs.each_formal_arguments(@iseq.fargs_format) do |fargs, start_pc|
         if fargs.is_a?(String)
           scratch.error(caller_ep, fargs)
           ctn[Type::Any.new, caller_ep, caller_env]
@@ -88,36 +88,38 @@ module TypeProfiler
     end
 
     def do_send_core(state, _flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      aargs, blk = aargs.lead_tys, aargs.blk_ty
+      recv = recv.strip_local_info(caller_env)
+      found = false
       @sigs.each do |sig, ret_ty|
-        recv = recv.strip_local_info(caller_env)
         # need to interpret args more correctly
-        lead_tys = aargs.map {|aarg| aarg.strip_local_info(caller_env) }
-        fargs = FormalArguments.new(lead_tys, nil, nil, nil, nil, blk) # aargs -> fargs
-        dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, fargs))
+        #pp [aargs, sig.fargs]
+        next unless aargs.consistent_with_formal_arguments?(scratch, sig.fargs)
+        found = true
+        dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, sig.fargs))
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
         dummy_env = Env.new([], [], {})
-        # XXX: check blk type
-        next unless fargs.consistent?(sig.fargs)
-        scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
-        if sig.fargs.blk_ty.is_a?(Type::TypedProc)
+        if sig.fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
+          scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
           nfargs = sig.fargs.blk_ty.fargs
           blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
           naargs = ActualArguments.new(nfargs, nil, blk_nil)
           # XXX: do_invoke_block expects caller's env
-          Scratch::Aux.do_invoke_block(false, blk, naargs, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
+          Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
             # XXX: check the return type from the block
             # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
             scratch.add_return_type!(dummy_ctx, ret_ty)
           end
-          return
         end
-        scratch.add_return_type!(dummy_ctx, ret_ty)
-        return # XXX
+        if sig.fargs.blk_ty == Type::Instance.new(Type::Builtin[:nil]) && !aargs.blk_ty.is_a?(Type::ISeqProc)
+          scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
+          scratch.add_return_type!(dummy_ctx, ret_ty)
+        end
       end
 
-      scratch.error(caller_ep, "failed to resolve overload: #{ recv.screen_name(scratch) }##{ mid }")
-      ctn[Type::Any.new, caller_ep, caller_env]
+      unless found
+        scratch.error(caller_ep, "failed to resolve overload: #{ recv.screen_name(scratch) }##{ mid }")
+        ctn[Type::Any.new, caller_ep, caller_env]
+      end
     end
   end
 

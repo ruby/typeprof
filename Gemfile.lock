@@ -1,12 +1,14 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    ruby-signature (0.1.0)
     stackprof (0.2.12)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  ruby-signature
   stackprof
 
 BUNDLED WITH

@@ -159,8 +159,7 @@ module TypeProfiler
       if ary.is_a?(Type::LocalArray)
         elems2 = env.get_array_elem_types(ary.id)
         elems = Type::Array::Seq.new(elems1.types + elems2.types.map {|ty| ty.strip_local_info(env) })
-        id = 0
-        env, ty, = env.deploy_array_type(recv.base_type, elems, id, recv.base_type)
+        env, ty, = env.deploy_array_type(recv.base_type, elems, recv.base_type)
         ctn[ty, ep, env]
       else
         # warn??
@@ -213,14 +212,15 @@ module TypeProfiler
     klass_obj = scratch.new_class(nil, :Object, nil) # cbase, name, superclass
     scratch.add_constant(klass_obj, "Object", klass_obj)
     klass_bool = scratch.new_class(klass_obj, :Boolean, klass_obj) # ???
+    klass_nil = scratch.new_class(klass_obj, :NilClass, klass_obj) # ???
 
-    Type::Builtin[:obj] = klass_obj
+    Type::Builtin[:obj]  = klass_obj
     Type::Builtin[:bool] = klass_bool
+    Type::Builtin[:nil]  = klass_nil
 
     TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch)
 
     klass_vmcore    = scratch.new_class(klass_obj, :VMCore, klass_obj)
-    klass_nil       = scratch.get_constant(klass_obj, :NilClass)
     klass_int       = scratch.get_constant(klass_obj, :Integer)
     klass_float     = scratch.get_constant(klass_obj, :Float)
     klass_sym       = scratch.get_constant(klass_obj, :Symbol)
@@ -234,7 +234,6 @@ module TypeProfiler
     Type::Builtin[:vmcore]    = klass_vmcore
     Type::Builtin[:int]       = klass_int
     Type::Builtin[:float]     = klass_float
-    Type::Builtin[:nil]       = klass_nil
     Type::Builtin[:sym]       = klass_sym
     Type::Builtin[:str]       = klass_str
     Type::Builtin[:ary]       = klass_ary
@@ -262,25 +261,25 @@ module TypeProfiler
 
     i = -> t { Type::Instance.new(t) }
 
-    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type::Any.new], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type::Any.new], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_nil])
-    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_nil])
+    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
     #scratch.add_typed_method(i[klass_int], :+ , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
-    scratch.add_typed_method(i[klass_int], :- , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
+    scratch.add_typed_method(i[klass_int], :- , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_int])
     int_times_blk = Type::TypedProc.new([i[klass_int]], Type::Any.new, Type::Builtin[:proc])
-    scratch.add_typed_method(i[klass_int], :times, FormalArguments.new([], nil, nil, nil, nil, int_times_blk), i[klass_int])
-    scratch.add_typed_method(i[klass_int], :to_s, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_str], :to_s, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_sym], :to_s, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], nil, nil, nil, nil, i[klass_nil]), i[klass_sym])
-    scratch.add_typed_method(i[klass_str], :+ , FormalArguments.new([i[klass_str]], nil, nil, nil, nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_int], :times, FormalArguments.new([], [], nil, [], nil, int_times_blk), i[klass_int])
+    scratch.add_typed_method(i[klass_int], :to_s, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_str], :to_s, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_sym], :to_s, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_str])
+    scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_sym])
+    scratch.add_typed_method(i[klass_str], :+ , FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]), i[klass_str])
 
-    sig1 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]))
-    sig2 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_str]], nil, nil, nil, nil, i[klass_nil]))
+    sig1 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]))
+    sig2 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]))
     mdef = TypedMethodDef.new([[sig1, i[klass_int]], [sig2, i[klass_int]]])
     scratch.add_method(klass_obj, :Integer, mdef)
 

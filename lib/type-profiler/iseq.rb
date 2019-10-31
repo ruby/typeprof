@@ -30,7 +30,7 @@ module TypeProfiler
 
       _magic, _major_version, _minor_version, _format_type, _misc,
         @name, @path, @absolute_path, @start_lineno, @type,
-        @locals, @fargs, _catch_table, insns = *iseq
+        @locals, @fargs_format, _catch_table, insns = *iseq
 
       @insns = []
       @linenos = []
@@ -90,7 +90,7 @@ module TypeProfiler
         end
       end
 
-      @fargs[:opt] = @fargs[:opt].map {|l| labels[l] } if @fargs[:opt]
+      @fargs_format[:opt] = @fargs_format[:opt].map {|l| labels[l] } if @fargs_format[:opt]
     end
 
     def translate_insns
@@ -122,7 +122,7 @@ module TypeProfiler
       "#{ @path }:#{ @linenos[pc] }"
     end
 
-    attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :fargs, :insns, :linenos
+    attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :fargs_format, :insns, :linenos
     attr_reader :id
 
     def pretty_print(q)
@@ -140,7 +140,7 @@ module TypeProfiler
           q.breakable ", "
           q.text "@start_lineno=  #{ @start_lineno }"
           q.breakable ", "
-          q.text "@fargs=         #{ @fargs.inspect }"
+          q.text "@fargs_format=  #{ @fargs_format.inspect }"
           q.breakable ", "
           q.text "@insns="
           q.group(2) do

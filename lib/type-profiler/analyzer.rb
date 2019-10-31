@@ -291,6 +291,12 @@ module TypeProfiler
       nil
     end
 
+    def get_superclass(klass)
+      idx = klass.idx
+      idx = @class_defs[idx].superclass
+      Type::Class.new(idx, nil)
+    end
+
     def get_constant(klass, name)
       if klass == Type::Any.new
         Type::Any.new
@@ -596,7 +602,7 @@ module TypeProfiler
         end
         File.binwrite("coverage.dump", Marshal.dump(coverage))
       end
-      puts(*out.sort)
+      puts(*out)
     end
 
     def type_profile
@@ -722,7 +728,7 @@ module TypeProfiler
         ncref = ep.ctx.cref.extend(klass)
         recv = klass
         blk = ep.ctx.sig.fargs.blk_ty
-        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, FormalArguments.new([], nil, nil, nil, nil, blk)))
+        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, FormalArguments.new([], [], nil, [], nil, blk)))
         nep = ExecutionPoint.new(nctx, 0, nil)
         nenv = Env.new([], [], {})
         merge_env(nep, nenv)
@@ -733,7 +739,7 @@ module TypeProfiler
         end
         return
       when :send
-        env, recvs, mid, aargs = Aux.setup_actual_arguments(operands, ep, env)
+        env, recvs, mid, aargs = Aux.setup_actual_arguments(scratch, operands, ep, env)
         recvs.each do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
@@ -751,7 +757,7 @@ module TypeProfiler
         return
       when :send_is_a_and_branch
         send_operands, (branch_type, target,) = *operands
-        env, recvs, mid, aargs = Aux.setup_actual_arguments(send_operands, ep, env)
+        env, recvs, mid, aargs = Aux.setup_actual_arguments(scratch, send_operands, ep, env)
         recvs.each do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
@@ -806,7 +812,7 @@ module TypeProfiler
           return
         end
       when :invokesuper
-        env, recv, _, aargs = Aux.setup_actual_arguments(operands, ep, env)
+        env, recv, _, aargs = Aux.setup_actual_arguments(scratch, operands, ep, env)
 
         recv = ep.ctx.sig.recv_ty
         mid  = ep.ctx.sig.mid
@@ -1177,17 +1183,17 @@ module TypeProfiler
         blk_env = blk.env
         arg_blk = aargs.blk_ty
         aargs = aargs.lead_tys.map {|aarg| aarg.strip_local_info(env) }
-        argc = blk_iseq.fargs[:lead_num] || 0
+        argc = blk_iseq.fargs_format[:lead_num] || 0
         if argc != aargs.size
           warn "complex parameter passing of block is not implemented"
           aargs.pop while argc < aargs.size
           aargs << Type::Any.new while argc > aargs.size
         end
         locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
-        locals[blk_iseq.fargs[:block_start]] = arg_blk if blk_iseq.fargs[:block_start]
+        locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
         recv = blk_ep.ctx.sig.recv_ty
         env_blk = blk_ep.ctx.sig.fargs.blk_ty
-        nfargs = FormalArguments.new(aargs, nil, nil, nil, nil, env_blk) # XXX: aargs -> fargs
+        nfargs = FormalArguments.new(aargs, [], nil, [], nil, env_blk) # XXX: aargs -> fargs
         nsig = Signature.new(recv, nil, nil, nfargs)
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
@@ -1218,7 +1224,7 @@ module TypeProfiler
         scratch.add_callsite!(nep.ctx, ep, env, &ctn)
       end
 
-      def setup_actual_arguments(operands, ep, env)
+      def setup_actual_arguments(scratch, operands, ep, env)
         opt, _, blk_iseq = operands
         flags = opt[:flag]
         mid = opt[:mid]
@@ -1258,7 +1264,7 @@ module TypeProfiler
         when blk_ty.eql?(Type::Any.new)
         when blk_ty.is_a?(Type::ISeqProc)
         else
-          scratch.error(caller_ep, "wrong argument type #{ blk.screen_name(scratch) } (expected Proc)")
+          scratch.error(ep, "wrong argument type #{ blk_ty.screen_name(scratch) } (expected Proc)")
           blk_ty = Type::Any.new
         end
         if flags[0] != 0 # VM_CALL_ARGS_SPLAT_bit

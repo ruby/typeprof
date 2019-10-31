@@ -24,7 +24,7 @@ module TypeProfiler
       return env, self
     end
 
-    def consistent?(other)
+    def consistent?(scratch, other)
       case other
       when Type::Any then true
       when Type::Sum
@@ -62,7 +62,7 @@ module TypeProfiler
         nil
       end
 
-      def consistent?(other)
+      def consistent?(scratch, other)
         true
       end
     end
@@ -117,12 +117,21 @@ module TypeProfiler
         return env, ty
       end
 
-      def consistent?(other)
+      def consistent?(scratch, other)
         case other
+        when Type::Any then true
         when Type::Sum
-          @types.intersection(other.types).size >= 1
+          @types.each do |ty1|
+            other.types.each do |ty2|
+              return true if ty1.consistent?(scratch, ty2)
+            end
+          end
+          return false
         else
-          @types.include?(other)
+          @types.each do |ty1|
+            return true if ty1.consistent?(scratch, other)
+          end
+          return false
         end
       end
     end
@@ -150,11 +159,32 @@ module TypeProfiler
       def get_method(mid, scratch)
         scratch.get_singleton_method(self, mid)
       end
+
+      def consistent?(scratch, other)
+        case other
+        when Type::Any then true
+        when Type::Sum
+          other.types.each do |ty|
+            return true if consistent?(scratch, ty)
+          end
+          return false
+        when Type::Class
+          ty = self
+          loop do
+            return true if ty.idx == other.idx
+            return false if ty.idx == 0 # Object
+            ty = scratch.get_superclass(ty)
+          end
+        else
+          false
+        end
+      end
     end
 
     class Instance < Type
       def initialize(klass)
         raise unless klass
+        raise if klass == Type::Any.new
         @klass = klass
       end
 
@@ -170,6 +200,21 @@ module TypeProfiler
 
       def get_method(mid, scratch)
         scratch.get_method(@klass, mid)
+      end
+
+      def consistent?(scratch, other)
+        case other
+        when Type::Any then true
+        when Type::Sum
+          other.types.each do |ty|
+            return true if consistent?(scratch, ty)
+          end
+          return false
+        when Type::Instance
+          @klass.consistent?(scratch, other.klass)
+        else
+          false
+        end
       end
     end
 
@@ -248,6 +293,10 @@ module TypeProfiler
       def get_method(mid, scratch)
         @type.get_method(mid, scratch)
       end
+
+      def consistent?(scratch, other)
+        @type.consistent?(scratch, other)
+      end
     end
 
     class LocalArray < Type
@@ -285,6 +334,10 @@ module TypeProfiler
 
       def get_method(mid, scratch)
         @base_type.get_method(mid, scratch)
+      end
+
+      def consistent?(scratch, other)
+        raise "must not be used"
       end
     end
 
@@ -331,6 +384,11 @@ module TypeProfiler
       def sum(other)
         raise NotImplementedError
       end
+
+      # XXX
+      #def consistent?(scratch, other)
+      #  raise "must not be used"
+      #end
 
       class Seq
         include Utils::StructuralEquality
@@ -517,16 +575,17 @@ module TypeProfiler
 
     attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :keyword_tys, :blk_ty
 
-    def consistent?(fargs)
+    def consistent?(scratch, fargs)
+      warn "used?"
       return false if @lead_tys.size != fargs.lead_tys.size
-      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
-      return false if @opt_tys != fargs.opt_tys # ??
+      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(scratch, ty2) }
+      return false if (@opt_tys || []) != (fargs.opt_tys || []) # ??
       if @rest_ty
-        return false unless @rest_ty.consistent?(fargs.rest_ty)
+        return false unless @rest_ty.consistent?(scratch, fargs.rest_ty)
       end
       if @post_tys
         return false if @post_tys.size != fargs.post_tys.size
-        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
+        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(scratch, ty2) }
       end
       return false if @keyword_tys != fargs.keyword_tys # ??
       # intentionally skip blk_ty
@@ -628,7 +687,7 @@ module TypeProfiler
 
       if @rest_ty
         lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
-        upper_bound = lead_num + post_num + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
+        upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
         rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : Type::Sum.new(@rest_ty.elems.types)
       else
         lower_bound = upper_bound = 0
@@ -662,6 +721,30 @@ module TypeProfiler
         end
         yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, @blk_ty), start_pc
       end
+    end
+
+    def consistent_with_formal_arguments?(scratch, fargs)
+      #@lead_tys = lead_tys
+      #@rest_ty = rest_ty
+      #@blk_ty = blk_ty
+      aargs = @lead_tys.dup
+      if @rest_ty
+        raise NotImplementedError
+      else
+        return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
+        return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
+        aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
+          return false unless aarg.consistent?(scratch, farg)
+        end
+        aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
+          return false unless aarg.consistent?(scratch, farg)
+        end
+        aargs.zip(fargs.opt_tys) do |aarg, farg|
+          return false unless aarg.consistent?(scratch, farg)
+        end
+      end
+      # XXX: fargs.keyword_tys
+      true
     end
 
     def each_type(sum_types, types, &blk)
