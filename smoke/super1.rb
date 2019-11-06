@@ -32,7 +32,16 @@ end
 Baz.new.f(A.new)
 
 __END__
-Baz#f :: (A) -> Z
-Bar#f :: (B) -> Y
-Foo#f :: (C) -> X
-Object#log :: (Baz) -> NilClass
+# Classes
+class Baz
+  f : (A) -> Z
+end
+class Bar
+  f : (B) -> Y
+end
+class Foo
+  f : (C) -> X
+end
+class Object
+  log : (Baz) -> NilClass
+end

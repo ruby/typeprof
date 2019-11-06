@@ -10,4 +10,7 @@ end
 foo
 
 __END__
-Object#foo :: () -> (NilClass | Integer | Symbol)
+# Classes
+class Object
+  foo : () -> (Integer | NilClass | Symbol)
+end

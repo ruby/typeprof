@@ -7,4 +7,7 @@ end
 foo
 
 __END__
-Object#foo :: () -> Array[Integer | String]
+# Classes
+class Object
+  foo : () -> (Array[Integer | String])
+end

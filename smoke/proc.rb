@@ -12,5 +12,8 @@ foo
 bar
 
 __END__
-Object#foo :: () -> Integer
-Object#bar :: () -> String
+# Classes
+class Object
+  foo : () -> Integer
+  bar : () -> String
+end

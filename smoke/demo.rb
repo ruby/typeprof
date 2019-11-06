@@ -63,12 +63,19 @@ B.new.foo("str")
 # B#bar :: (String) -> NilClass
 
 __END__
-Object#foo :: (Boolean) -> (Integer | String)
-Object#identity :: (Integer) -> Integer
-Object#identity :: (String) -> String
-Object#identity :: (Symbol) -> Symbol
-Object#fib :: (Integer) -> Integer
-A#foo :: (Integer) -> NilClass
-A#foo :: (String) -> NilClass
-A#bar :: (Integer) -> NilClass
-B#bar :: (String) -> NilClass
+# Classes
+class Object
+  foo : (Boolean) -> (Integer | String)
+  identity : (Integer) -> Integer
+           | (String) -> String
+           | (Symbol) -> Symbol
+  fib : (Integer) -> Integer
+end
+class A
+  foo : (Integer) -> NilClass
+      | (String) -> NilClass
+  bar : (Integer) -> NilClass
+end
+class B
+  bar : (String) -> NilClass
+end

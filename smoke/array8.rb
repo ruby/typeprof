@@ -7,4 +7,7 @@ class Foo
 end
 
 __END__
-Foo.class#foo :: ([]) -> []
+# Classes
+class Foo
+  self.foo : ([]) -> []
+end

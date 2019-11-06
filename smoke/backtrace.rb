@@ -21,7 +21,11 @@ baz
 # Object#foo :: () -> any
 
 __END__
+# Errors
 smoke/backtrace.rb:2: [error] undefined method: Object#unknown_method
-Object#baz :: () -> any
-Object#bar :: () -> any
-Object#foo :: () -> any
+# Classes
+class Object
+  baz : () -> any
+  bar : () -> any
+  foo : () -> any
+end

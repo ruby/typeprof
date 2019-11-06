@@ -24,7 +24,14 @@ Foo.new.foo
 Bar.new.bar
 
 __END__
-Foo#foo :: () -> Integer
-Common#func :: (String, &Proc[(Integer) -> Integer]) -> Integer
-Common#func :: (Symbol, &Proc[(Integer) -> Symbol]) -> Symbol
-Bar#bar :: () -> Symbol
+# Classes
+class Foo
+  foo : () -> Integer
+end
+class Common
+  func : (String, &Proc[(Integer) -> Integer]) -> Integer
+       | (Symbol, &Proc[(Integer) -> Symbol]) -> Symbol
+end
+class Bar
+  bar : () -> Symbol
+end

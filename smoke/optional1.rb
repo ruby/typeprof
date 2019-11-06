@@ -7,6 +7,9 @@ foo("A", "B", "Z")
 foo("A", "B", "C", "Z")
 
 __END__
-Object#foo :: (String, String) -> [String, Integer, Integer, String]
-Object#foo :: (String, String, String) -> [String, String, Integer, String]
-Object#foo :: (String, String, String, String) -> [String, String, String, String]
+# Classes
+class Object
+  foo : (String, String) -> [String, Integer, Integer, String]
+      | (String, String, String) -> [String, String, Integer, String]
+      | (String, String, String, String) -> [String, String, String, String]
+end

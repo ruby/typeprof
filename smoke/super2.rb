@@ -7,5 +7,9 @@ end
 Foo.new.f
 
 __END__
+# Errors
 smoke/super2.rb:3: [error] no superclass method: Foo#f
-Foo#f :: () -> any
+# Classes
+class Foo
+  f : () -> any
+end

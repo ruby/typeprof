@@ -16,7 +16,12 @@ A.new.foo(1)
 B.new.foo("str")
 
 __END__
-A#foo :: (Integer) -> NilClass
-A#foo :: (String) -> NilClass
-A#bar :: (Integer) -> NilClass
-B#bar :: (String) -> NilClass
+# Classes
+class A
+  foo : (Integer) -> NilClass
+      | (String) -> NilClass
+  bar : (Integer) -> NilClass
+end
+class B
+  bar : (String) -> NilClass
+end

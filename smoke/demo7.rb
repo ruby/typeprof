@@ -8,4 +8,7 @@ foo(1) do |x|
 end
 
 __END__
-Object#foo :: (Integer, &Proc[(Integer) -> String]) -> String
+# Classes
+class Object
+  foo : (Integer, &Proc[(Integer) -> String]) -> String
+end

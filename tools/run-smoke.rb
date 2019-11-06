@@ -3,7 +3,7 @@ require_relative "../lib/type-profiler"
 alias original_puts puts
 def puts(*s)
   if $output
-    s.each {|l| $output << l.chomp }
+    s.join.split("\n").each {|l| $output << l.chomp }
   else
     original_puts(s)
   end

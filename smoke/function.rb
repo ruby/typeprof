@@ -9,5 +9,8 @@ no_argument
 one_argument(1)
 
 __END__
-Object#no_argument :: () -> String
-Object#one_argument :: (Integer) -> NilClass
+# Classes
+class Object
+  no_argument : () -> String
+  one_argument : (Integer) -> NilClass
+end

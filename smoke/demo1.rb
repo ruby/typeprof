@@ -10,4 +10,7 @@ foo(true)
 foo(false)
 
 __END__
-Object#foo :: (Boolean) -> (Integer | String)
+# Classes
+class Object
+  foo : (Boolean) -> (Integer | String)
+end

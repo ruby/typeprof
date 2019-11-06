@@ -8,4 +8,7 @@ end
 foo(42)
 
 __END__
-Object#foo :: (Integer) -> (Integer | String)
+# Classes
+class Object
+  foo : (Integer) -> (Integer | String)
+end

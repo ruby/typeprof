@@ -4,4 +4,7 @@ foo(Integer(1))
 foo(Integer("str"))
 
 __END__
-Object#foo :: (Integer) -> NilClass
+# Classes
+class Object
+  foo : (Integer) -> NilClass
+end

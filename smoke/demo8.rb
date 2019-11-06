@@ -11,5 +11,8 @@ foo(&blk)
 bar(&blk)
 
 __END__
-Object#foo :: (&Proc[(String) -> String]) -> String
-Object#bar :: (&Proc[(Symbol) -> Symbol]) -> Symbol
+# Classes
+class Object
+  foo : (&Proc[(String) -> String]) -> String
+  bar : (&Proc[(Symbol) -> Symbol]) -> Symbol
+end

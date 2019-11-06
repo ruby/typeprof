@@ -19,6 +19,9 @@ bar(a)
 log(a)
 
 __END__
-Object#foo :: () -> [[String]]
-Object#bar :: ([[Integer]]) -> [[String]]
-Object#log :: ([[Integer]]) -> NilClass
+# Classes
+class Object
+  foo : () -> [[String]]
+  bar : ([[Integer]]) -> [[String]]
+  log : ([[Integer]]) -> NilClass
+end

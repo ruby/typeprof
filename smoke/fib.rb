@@ -21,5 +21,8 @@ Fib.new.fib_loop(42)
 Fib.new.fib_rec(42)
 
 __END__
-Fib#fib_loop :: (Integer) -> Integer
-Fib#fib_rec :: (Integer) -> Integer
+# Classes
+class Fib
+  fib_loop : (Integer) -> Integer
+  fib_rec : (Integer) -> Integer
+end

@@ -10,5 +10,8 @@ foo(42)
 foo("str")
 
 __END__
-Object#foo :: (Integer) -> Integer
-Object#foo :: (String) -> String
+# Classes
+class Object
+  foo : (Integer) -> Integer
+      | (String) -> String
+end

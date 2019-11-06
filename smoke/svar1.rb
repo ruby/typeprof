@@ -6,5 +6,9 @@ end
 foo
 
 __END__
+# Errors
 smoke/svar1.rb:2: [error] undefined method: String#=~
-Object#foo :: () -> [NilClass | String, NilClass | String]
+# Classes
+class Object
+  foo : () -> ([NilClass | String, NilClass | String])
+end

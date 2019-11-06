@@ -190,7 +190,7 @@ end
 
 class Scene
   def initialize
-    @spheres = Array.new
+    @spheres = []
     @spheres[0] = Sphere.new(Vec.new(-2.0, 0.0, -3.5), 0.5)
     @spheres[1] = Sphere.new(Vec.new(-0.5, 0.0, -3.0), 0.5)
     @spheres[2] = Sphere.new(Vec.new(1.0, 0.0, -2.2), 0.5)
@@ -198,7 +198,7 @@ class Scene
   end
 
   def ambient_occlusion(isect)
-    basis = Array.new(3)
+    basis = [0.0, 0.0, 0.0]
     otherBasis(basis, isect.n)
 
     ntheta    = NAO_SAMPLES

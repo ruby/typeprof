@@ -6,4 +6,7 @@ end
 foo { }
 
 __END__
-Object#foo :: () -> Integer
+# Classes
+class Object
+  foo : () -> Integer
+end

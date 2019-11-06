@@ -6,4 +6,7 @@ end
 end
 
 __END__
-Object#log :: (NilClass) -> NilClass
+# Classes
+class Object
+  log : (NilClass) -> NilClass
+end

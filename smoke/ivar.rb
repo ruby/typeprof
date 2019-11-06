@@ -17,9 +17,14 @@ Foo.new.foo = "str"
 log(Foo.new.foo)
 
 __END__
-Foo#@foo :: Integer | String
-Foo#foo= :: (Integer) -> Integer
-Foo#foo= :: (String) -> String
-Foo#foo :: () -> (Integer | String)
-Object#log :: (Integer) -> NilClass
-Object#log :: (String) -> NilClass
+# Classes
+class Foo
+  @foo : Integer | String
+  foo= : (Integer) -> Integer
+       | (String) -> String
+  foo : () -> (Integer | String)
+end
+class Object
+  log : (Integer) -> NilClass
+      | (String) -> NilClass
+end

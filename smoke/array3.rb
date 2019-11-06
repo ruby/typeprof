@@ -16,7 +16,10 @@ Foo.new.foo # bug...
 Foo.new.bar
 
 __END__
-Foo#@ary :: [Integer, String, Symbol]
-Foo#initialize :: () -> [Integer, String, Symbol]
-Foo#foo :: () -> String
-Foo#bar :: () -> NilClass
+# Classes
+class Foo
+  @ary : [Integer, String, Symbol]
+  initialize : () -> [Integer, String, Symbol]
+  foo : () -> String
+  bar : () -> NilClass
+end

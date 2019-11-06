@@ -12,4 +12,7 @@ end
 # Object#foo :: (&Proc[(Symbol, &Proc[(Integer) -> String]) -> String]) -> String
 
 __END__
-Object#foo :: (&Proc[(Symbol) -> String]) -> String
+# Classes
+class Object
+  foo : (&Proc[(Symbol) -> String]) -> String
+end

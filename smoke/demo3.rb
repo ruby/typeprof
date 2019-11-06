@@ -10,4 +10,7 @@ end
 fib(40000)
 
 __END__
-Object#fib :: (Integer) -> Integer
+# Classes
+class Object
+  fib : (Integer) -> Integer
+end

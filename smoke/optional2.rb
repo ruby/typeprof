@@ -9,7 +9,10 @@ foo("A", "B", "C", "D", "Z")
 foo("A", "B", "C", "D", "E", "Z")
 
 __END__
-Object#foo :: (String, *Array[], String) -> [String, Integer, Integer, Array[], String]
-Object#foo :: (String, String, *Array[], String) -> [String, String, Integer, Array[], String]
-Object#foo :: (String, String, String, *Array[], String) -> [String, String, String, Array[], String]
-Object#foo :: (String, String, String, *Array[String], String) -> [String, String, String, Array[String], String]
+# Classes
+class Object
+  foo : (String, *Array[], String) -> [String, Integer, Integer, Array[], String]
+      | (String, String, *Array[], String) -> [String, String, Integer, Array[], String]
+      | (String, String, String, *Array[String], String) -> [String, String, String, Array[String], String]
+      | (String, String, String, *Array[], String) -> [String, String, String, Array[], String]
+end

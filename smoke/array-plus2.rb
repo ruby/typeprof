@@ -8,5 +8,8 @@ end
 Foo.new.foo
 
 __END__
-Foo#@var :: [Integer] | Array[Integer]
-Foo#foo :: () -> Array[Integer]
+# Classes
+class Foo
+  @var : Array[Integer] | [Integer]
+  foo : () -> Array[Integer]
+end

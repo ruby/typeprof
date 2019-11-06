@@ -18,5 +18,8 @@ Test.bar("str")
 # Test#foo: (Integer) -> Integer
 
 __END__
-Test.class#foo :: (Integer) -> Integer
-Test.class#bar :: (String) -> String
+# Classes
+class Test
+  self.foo : (Integer) -> Integer
+  self.bar : (String) -> String
+end

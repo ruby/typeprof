@@ -5,5 +5,9 @@ end
 foo(unknown)
 
 __END__
+# Errors
 smoke/flow2.rb:5: [error] undefined method: Object#unknown
-Object#foo :: (any) -> Integer
+# Classes
+class Object
+  foo : (any) -> Integer
+end

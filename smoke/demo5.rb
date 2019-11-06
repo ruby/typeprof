@@ -7,5 +7,8 @@ A.foo(1)
 B.foo(Integer)
 
 __END__
-A.class#foo :: (Integer) -> String
-A.class#foo :: (Integer.class) -> String
+# Classes
+class A
+  self.foo : (Integer) -> String
+           | (Integer.class) -> String
+end

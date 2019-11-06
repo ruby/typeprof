@@ -13,7 +13,10 @@ Foo.new.foo = "str"
 Foo.new.foo
 
 __END__
-Foo#@foo :: Integer | String
-Foo#foo= :: (Integer) -> Integer
-Foo#foo= :: (String) -> String
-Foo#foo :: () -> (Integer | String)
+# Classes
+class Foo
+  @foo : Integer | String
+  foo= : (Integer) -> Integer
+       | (String) -> String
+  foo : () -> (Integer | String)
+end

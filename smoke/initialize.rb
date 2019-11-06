@@ -13,10 +13,15 @@ A.new("str")
 A.new(nil)
 
 __END__
-A#@int :: Integer
-A#@str :: String
-A#@val :: Integer | String | NilClass
-A#initialize :: (Integer) -> Integer
-A#initialize :: (String) -> String
-A#initialize :: (NilClass) -> NilClass
-Object#log :: (A) -> NilClass
+# Classes
+class A
+  @int : Integer
+  @str : String
+  @val : Integer | NilClass | String
+  initialize : (Integer) -> Integer
+             | (NilClass) -> NilClass
+             | (String) -> String
+end
+class Object
+  log : (A) -> NilClass
+end

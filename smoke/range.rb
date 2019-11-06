@@ -7,4 +7,7 @@ end
 foo(1, 2)
 
 __END__
-Object#foo :: (Integer, Integer) -> Range
+# Classes
+class Object
+  foo : (Integer, Integer) -> Range
+end

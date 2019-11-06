@@ -19,6 +19,9 @@ end
 foo
 
 __END__
-Object#foo :: () -> (Integer | String)
-Object#bar :: () -> String
-Object#baz :: (&Proc[(&Proc[() -> String]) -> String]) -> String
+# Classes
+class Object
+  foo : () -> (Integer | String)
+  bar : () -> String
+  baz : (&Proc[(&Proc[() -> String]) -> String]) -> String
+end

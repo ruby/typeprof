@@ -6,4 +6,7 @@ end
 foo
 
 __END__
-Object#foo :: () -> [Integer, NilClass, NilClass]
+# Classes
+class Object
+  foo : () -> [Integer, NilClass, NilClass]
+end

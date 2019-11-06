@@ -18,7 +18,12 @@ Test.new.baz(1)
 Test.new.qux("str")
 
 __END__
-Object#foo :: (Integer) -> Integer
-Object#bar :: (String) -> String
-Test#baz :: (Integer) -> Integer
-Test#qux :: (String) -> String
+# Classes
+class Object
+  foo : (Integer) -> Integer
+  bar : (String) -> String
+end
+class Test
+  baz : (Integer) -> Integer
+  qux : (String) -> String
+end

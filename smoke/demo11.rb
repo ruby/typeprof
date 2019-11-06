@@ -5,4 +5,7 @@ a = [42, "str"]
 swap(a)
 
 __END__
-Object#swap :: ([Integer, String]) -> [String, Integer]
+# Classes
+class Object
+  swap : ([Integer, String]) -> [String, Integer]
+end

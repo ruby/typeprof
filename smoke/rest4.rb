@@ -11,8 +11,11 @@ a = ["str"] + ["str"]
 bar(1, *a, :s)
 
 __END__
-Object#foo :: (*Array[Integer | String | Symbol]) -> NilClass
-Object#bar :: (Integer, Symbol, Symbol) -> NilClass
-Object#bar :: (Integer, Symbol, String) -> NilClass
-Object#bar :: (Integer, String, Symbol) -> NilClass
-Object#bar :: (Integer, String, String) -> NilClass
+# Classes
+class Object
+  foo : (*Array[Integer | String | Symbol]) -> NilClass
+  bar : (Integer, String, String) -> NilClass
+      | (Integer, String, Symbol) -> NilClass
+      | (Integer, Symbol, String) -> NilClass
+      | (Integer, Symbol, Symbol) -> NilClass
+end

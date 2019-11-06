@@ -5,4 +5,7 @@ end
 foo
 
 __END__
-Object#foo :: () -> (Integer | String | Symbol)
+# Classes
+class Object
+  foo : () -> (Integer | String | Symbol)
+end

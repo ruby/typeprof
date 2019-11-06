@@ -29,10 +29,13 @@ foo
 bar
 
 __END__
-Object#foo :: () -> (NilClass | Integer)
-Object#log1 :: (NilClass) -> NilClass
-Object#log1 :: (Integer) -> NilClass
-Object#bar :: () -> (NilClass | Integer)
-Object#test_yield :: (&Proc[() -> NilClass]) -> NilClass
-Object#log2 :: (NilClass) -> NilClass
-Object#log2 :: (Integer) -> NilClass
+# Classes
+class Object
+  foo : () -> (Integer | NilClass)
+  log1 : (Integer) -> NilClass
+       | (NilClass) -> NilClass
+  bar : () -> (Integer | NilClass)
+  test_yield : (&Proc[() -> NilClass]) -> NilClass
+  log2 : (Integer) -> NilClass
+       | (NilClass) -> NilClass
+end

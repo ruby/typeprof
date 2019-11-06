@@ -16,5 +16,8 @@ foo(:sym) do |x|
 end
 
 __END__
-Object#foo :: (String, &(Proc[(String) -> String] & Proc[(Integer) -> Integer])) -> Integer
-Object#foo :: (Symbol, &(Proc[(Symbol) -> (Symbol | Integer)] & Proc[(Integer) -> Integer])) -> Integer
+# Classes
+class Object
+  foo : (String, &(Proc[(String) -> String] & Proc[(Integer) -> Integer])) -> Integer
+      | (Symbol, &(Proc[(Symbol) -> (Integer | Symbol)] & Proc[(Integer) -> Integer])) -> Integer
+end

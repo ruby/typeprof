@@ -7,4 +7,7 @@ end
 foo
 
 __END__
-Object#foo :: () -> [any]
+# Classes
+class Object
+  foo : () -> [any]
+end

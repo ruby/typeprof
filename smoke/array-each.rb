@@ -8,7 +8,10 @@ end
 log(nil)
 
 __END__
-Object#log :: (Integer) -> NilClass
-Object#log :: (String) -> NilClass
-Object#log :: (Symbol) -> NilClass
-Object#log :: (NilClass) -> NilClass
+# Classes
+class Object
+  log : (Integer) -> NilClass
+      | (NilClass) -> NilClass
+      | (String) -> NilClass
+      | (Symbol) -> NilClass
+end

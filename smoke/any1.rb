@@ -6,5 +6,9 @@ end
 foo
 
 __END__
+# Errors
 smoke/any1.rb:2: [error] undefined method: Integer#undefined_method
-Object#foo :: () -> any
+# Classes
+class Object
+  foo : () -> any
+end

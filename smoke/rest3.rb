@@ -25,11 +25,14 @@ end
 grault(*string_array)
 
 __END__
-Object#foo :: (*Array[String]) -> NilClass
-Object#bar :: (*Array[Integer | String]) -> NilClass
-Object#baz :: (String, *Array[String]) -> NilClass
-Object#qux :: (Integer, *Array[String]) -> NilClass
-Object#corge :: (*Array[String], Integer) -> NilClass
-Object#corge :: (*Array[Integer | String], String) -> NilClass
-Object#grault :: (String, *Array[String], String) -> NilClass
-Object#grault :: (String, String, *Array[String], String) -> NilClass
+# Classes
+class Object
+  foo : (*Array[String]) -> NilClass
+  bar : (*Array[Integer | String]) -> NilClass
+  baz : (String, *Array[String]) -> NilClass
+  qux : (Integer, *Array[String]) -> NilClass
+  corge : (*Array[Integer | String], String) -> NilClass
+        | (*Array[String], Integer) -> NilClass
+  grault : (String, *Array[String], String) -> NilClass
+         | (String, String, *Array[String], String) -> NilClass
+end

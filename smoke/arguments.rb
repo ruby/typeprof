@@ -6,5 +6,9 @@ end
 bar(foo(1, 2))
 
 __END__
+# Errors
 smoke/arguments.rb:6: [error] wrong number of arguments (given 2, expected 1)
-Object#bar :: (any) -> NilClass
+# Classes
+class Object
+  bar : (any) -> NilClass
+end

@@ -29,7 +29,10 @@ Foo::Bar.new.get3 # Integer
 Foo::Bar.new.get4 # Integer
 
 __END__
-Foo::Bar#get1 :: () -> String
-Foo::Bar#get2 :: () -> Integer
-Foo::Bar#get3 :: () -> Integer
-Foo::Bar#get4 :: () -> Integer
+# Classes
+class Foo::Bar
+  get1 : () -> String
+  get2 : () -> Integer
+  get3 : () -> Integer
+  get4 : () -> Integer
+end

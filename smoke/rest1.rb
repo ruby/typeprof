@@ -18,10 +18,13 @@ bar("A", "B", "C", "D", "Z")
 bar("A", "B", "C", "D", "E", "Z")
 
 __END__
-Object#foo :: (Integer, *Array[Integer | String], Integer) -> Array[Integer | String]
-Object#foo :: (Integer, *Array[Integer], Integer) -> Array[Integer]
-Object#foo :: (String, *Array[String], String) -> Array[String]
-Object#foo :: (Symbol, *Array[], Symbol) -> Array[]
-Object#bar :: (String, *Array[], String) -> Array[]
-Object#bar :: (String, String, *Array[], String) -> Array[]
-Object#bar :: (String, String, *Array[String], String) -> Array[String]
+# Classes
+class Object
+  foo : (Integer, *Array[Integer | String], Integer) -> (Array[Integer | String])
+      | (Integer, *Array[Integer], Integer) -> Array[Integer]
+      | (String, *Array[String], String) -> Array[String]
+      | (Symbol, *Array[], Symbol) -> Array[]
+  bar : (String, *Array[], String) -> Array[]
+      | (String, String, *Array[String], String) -> Array[String]
+      | (String, String, *Array[], String) -> Array[]
+end

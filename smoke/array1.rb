@@ -16,9 +16,12 @@ n = 0+0
 quux(a[n])
 
 __END__
-Object#foo :: ([Integer, String]) -> Integer
-Object#bar :: (Integer) -> NilClass
-Object#baz :: (String) -> NilClass
-Object#qux :: (NilClass) -> NilClass
-Object#quux :: (Integer) -> NilClass
-Object#quux :: (String) -> NilClass
+# Classes
+class Object
+  foo : ([Integer, String]) -> Integer
+  bar : (Integer) -> NilClass
+  baz : (String) -> NilClass
+  qux : (NilClass) -> NilClass
+  quux : (Integer) -> NilClass
+       | (String) -> NilClass
+end

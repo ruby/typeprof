@@ -6,4 +6,7 @@ x = 1
 foo(x)
 
 __END__
-Object#foo :: (Integer) -> Integer
+# Classes
+class Object
+  foo : (Integer) -> Integer
+end

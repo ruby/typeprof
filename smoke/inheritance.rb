@@ -22,10 +22,15 @@ A.test(1)
 B.test("str")
 
 __END__
-A#foo :: (Integer) -> NilClass
-A#foo :: (String) -> NilClass
-A#bar :: (Integer) -> NilClass
-B#bar :: (String) -> NilClass
-B#bar :: (NilClass) -> NilClass
-A.class#test :: (Integer) -> NilClass
-A.class#test :: (String) -> NilClass
+# Classes
+class A
+  foo : (Integer) -> NilClass
+      | (String) -> NilClass
+  bar : (Integer) -> NilClass
+  self.test : (Integer) -> NilClass
+            | (String) -> NilClass
+end
+class B
+  bar : (NilClass) -> NilClass
+      | (String) -> NilClass
+end

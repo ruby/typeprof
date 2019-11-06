@@ -8,6 +8,9 @@ my_to_s("str")
 my_to_s(:sym)
 
 __END__
-Object#my_to_s :: (Integer) -> String
-Object#my_to_s :: (String) -> String
-Object#my_to_s :: (Symbol) -> String
+# Classes
+class Object
+  my_to_s : (Integer) -> String
+          | (String) -> String
+          | (Symbol) -> String
+end

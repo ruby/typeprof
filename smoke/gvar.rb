@@ -4,6 +4,10 @@ def log(x); end
 log($foo)
 
 __END__
-$foo :: Integer | String
-Object#log :: (Integer) -> NilClass
-Object#log :: (String) -> NilClass
+# Global variables
+$foo : Integer | String
+# Classes
+class Object
+  log : (Integer) -> NilClass
+      | (String) -> NilClass
+end
