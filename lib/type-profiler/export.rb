@@ -19,9 +19,14 @@ module TypeProfiler
       end
     end
 
-    def show_signature(farg_tys, ret_tys)
+    def show_signature(farg_tys, ret_ty)
       s = "(#{ farg_tys.join(", ") }) -> "
-      ret_tys = show_types(ret_tys)
+      if ret_ty.is_a?(Type::Union)
+        ret_ty = ret_ty.types
+      else
+        ret_ty = [ret_ty]
+      end
+      ret_tys = show_types(ret_ty)
       s + (ret_tys.include?("|") ? "(#{ ret_tys })" : ret_tys)
     end
 

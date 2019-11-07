@@ -112,6 +112,10 @@ module TypeProfiler
       def size
         @hash.size
       end
+
+      def to_set
+        Set[*@hash.keys]
+      end
     end
 
     class WorkList

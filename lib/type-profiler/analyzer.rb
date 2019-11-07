@@ -389,8 +389,8 @@ module TypeProfiler
       @callsites[callee_ctx][caller_ep] = ctn
       merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
 
-      @signatures[callee_ctx] ||= Utils::MutableSet.new
-      @signatures[callee_ctx].each do |ret_ty|
+      ret_ty = @signatures[callee_ctx] ||= Type::Union.new(Utils::Set[])
+      if ret_ty != Type::Union.new(Utils::Set[])
         @callsites[callee_ctx].each do |caller_ep, ctn|
           ctn[ret_ty, caller_ep, @return_envs[caller_ep]] # TODO: use Union type
         end
@@ -402,11 +402,8 @@ module TypeProfiler
     end
 
     def add_return_type!(callee_ctx, ret_ty)
-      @signatures[callee_ctx] ||= Utils::MutableSet.new
-      ret_ty.each do |ty|
-        @signatures[callee_ctx] << ty
-      end
-      #raise NotImplementedError if ret_ty.is_a?(Type::Union)
+      @signatures[callee_ctx] ||= Type::Union.new(Utils::Set.new())
+      @signatures[callee_ctx] = @signatures[callee_ctx].union(ret_ty)
 
       #@callsites[callee_ctx] ||= {} # needed?
       @callsites[callee_ctx].each do |caller_ep, ctn|

@@ -381,9 +381,9 @@ module TypeProfiler
         new(Seq.new(elems), base_type)
       end
 
-      def union(other)
-        raise NotImplementedError
-      end
+      #def union(other)
+      #  raise NotImplementedError
+      #end
 
       # XXX
       #def consistent?(scratch, other)
