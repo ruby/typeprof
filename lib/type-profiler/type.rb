@@ -1,5 +1,5 @@
 module TypeProfiler
-  class Type # or Value?
+  class Type # or AbstractValue
     include Utils::StructuralEquality
 
     def initialize
@@ -502,30 +502,6 @@ module TypeProfiler
 
         def sum(other)
           Seq.new(types + other.types)
-        end
-      end
-    end
-
-    class Union
-      include Utils::StructuralEquality
-
-      def initialize(*tys)
-        @types = tys.uniq
-      end
-
-      attr_reader :types
-
-      def screen_name(scratch)
-        @types.map do |ty|
-          ty.screen_name(scratch)
-        end.join(" | ")
-      end
-
-      def pretty_print(q)
-        q.group(1, "{", "}") do
-          q.seplist(@types, -> { q.breakable; q.text("|") }) do |ty|
-            q.pp ty
-          end
         end
       end
     end
