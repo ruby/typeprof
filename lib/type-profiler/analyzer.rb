@@ -143,9 +143,13 @@ module TypeProfiler
     end
 
     def poke_array_elem_types(id, idx, ty)
-      elems = @type_params[id].update(idx, ty)
-      type_params = @type_params.merge({ id => elems })
-      Env.new(@locals, @stack, type_params)
+      if @type_params[id]
+        elems = @type_params[id].update(idx, ty)
+        type_params = @type_params.merge({ id => elems })
+        Env.new(@locals, @stack, type_params)
+      else
+        nil
+      end
     end
 
     def inspect

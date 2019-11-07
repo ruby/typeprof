@@ -8,4 +8,6 @@ end
 foo([1], ["str"])
 
 __END__
-XXX
+class Object
+  foo : ([Integer], [String]) -> [Integer]
+end

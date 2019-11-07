@@ -136,7 +136,15 @@ module TypeProfiler
       end
 
       ty = aargs.lead_tys.last
-      env = env.poke_array_elem_types(recv.id, idx, ty)
+
+      tmp_ep, tmp_env = ep, env
+      until ntmp_env = tmp_env.poke_array_elem_types(recv.id, idx, ty)
+        tmp_ep = tmp_ep.outer
+        tmp_env = scratch.return_envs[tmp_ep]
+      end
+      scratch.merge_return_env(tmp_ep) do |_env|
+        ntmp_env
+      end
       ctn[ty, ep, env]
     end
 
