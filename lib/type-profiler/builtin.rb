@@ -120,7 +120,7 @@ module TypeProfiler
       else
         elem = Utils::Set[Type::Any.new] # XXX
       end
-      elem.each do |ty| # TODO: Use Sum type
+      elem.each do |ty| # TODO: Use Union type
         ctn[ty, ep, env]
       end
     end
@@ -157,7 +157,7 @@ module TypeProfiler
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
       elems = elems ? elems.types : [Type::Any.new]
-      ty = Type::Sum.new(elems)
+      ty = Type::Union.new(elems)
       blk_nil = Type::Instance.new(Type::Builtin[:nil])
       naargs = ActualArguments.new([ty], nil, blk_nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |_ret_ty, ep|
@@ -186,7 +186,7 @@ module TypeProfiler
       end
 
       elems = env.get_array_elem_types(recv.id)
-      elems.types.each do |ty| # TODO: use Sum type
+      elems.types.each do |ty| # TODO: use Union type
         ctn[ty, ep, env]
       end
     end

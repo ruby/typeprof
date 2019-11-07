@@ -27,7 +27,7 @@ module TypeProfiler
     def consistent?(scratch, other)
       case other
       when Type::Any then true
-      when Type::Sum
+      when Type::Union
         other.types.include?(self)
       else
         self == other
@@ -38,11 +38,11 @@ module TypeProfiler
       yield self
     end
 
-    def sum(other)
-      if other.is_a?(Type::Sum)
-        Type::Sum.new(other.types + Utils::Set[self]).normalize
+    def union(other)
+      if other.is_a?(Type::Union)
+        Type::Union.new(other.types + Utils::Set[self]).normalize
       else
-        Type::Sum.new(Utils::Set[self, other]).normalize
+        Type::Union.new(Utils::Set[self, other]).normalize
       end
     end
 
@@ -67,16 +67,16 @@ module TypeProfiler
       end
     end
 
-    class Sum < Type
+    class Union < Type
       def initialize(tys)
         @types = tys # Set
       end
 
-      def sum(other)
-        if other.is_a?(Type::Sum)
-          Type::Sum.new(@types + other.types).normalize
+      def union(other)
+        if other.is_a?(Type::Union)
+          Type::Union.new(@types + other.types).normalize
         else
-          Type::Sum.new(@types + Utils::Set[other]).normalize
+          Type::Union.new(@types + Utils::Set[other]).normalize
         end
       end
 
@@ -95,7 +95,7 @@ module TypeProfiler
       end
 
       def inspect
-        "Type::Sum{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }}"
+        "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }}"
       end
 
       def screen_name(scratch)
@@ -105,11 +105,11 @@ module TypeProfiler
       end
 
       def strip_local_info_core(env, visited)
-        Type::Sum.new(@types.map {|ty| ty.strip_local_info_core(env, visited) }).normalize
+        Type::Union.new(@types.map {|ty| ty.strip_local_info_core(env, visited) }).normalize
       end
 
       def deploy_local_core(env, alloc_site)
-        ty = Sum.new(@types.map do |ty|
+        ty = Union.new(@types.map do |ty|
           alloc_site2 = alloc_site.add_id(ty)
           env, ty2 = ty.deploy_local_core(env, alloc_site2)
           ty2
@@ -120,7 +120,7 @@ module TypeProfiler
       def consistent?(scratch, other)
         case other
         when Type::Any then true
-        when Type::Sum
+        when Type::Union
           @types.each do |ty1|
             other.types.each do |ty2|
               return true if ty1.consistent?(scratch, ty2)
@@ -163,7 +163,7 @@ module TypeProfiler
       def consistent?(scratch, other)
         case other
         when Type::Any then true
-        when Type::Sum
+        when Type::Union
           other.types.each do |ty|
             return true if consistent?(scratch, ty)
           end
@@ -205,7 +205,7 @@ module TypeProfiler
       def consistent?(scratch, other)
         case other
         when Type::Any then true
-        when Type::Sum
+        when Type::Union
           other.types.each do |ty|
             return true if consistent?(scratch, ty)
           end
@@ -381,7 +381,7 @@ module TypeProfiler
         new(Seq.new(elems), base_type)
       end
 
-      def sum(other)
+      def union(other)
         raise NotImplementedError
       end
 
@@ -431,7 +431,7 @@ module TypeProfiler
           Seq.new(@elems + Utils::Set[ty])
         end
 
-        def sum(other)
+        def union(other)
           Seq.new(@elems + other.types)
         end
 
@@ -500,7 +500,7 @@ module TypeProfiler
           end
         end
 
-        def sum(other)
+        def union(other)
           Seq.new(types + other.types)
         end
       end
@@ -586,11 +586,11 @@ module TypeProfiler
     end
 
     def each_concrete_formal_arguments
-      expand_sum_types(@lead_tys) do |lead_tys|
-        expand_sum_types(@opt_tys) do |opt_tys|
-          expand_sum_types([@rest_ty]) do |rest_ty,|
-            expand_sum_types(@post_tys) do |post_tys|
-              #expand_sum_types(@keyword_tys)
+      expand_union_types(@lead_tys) do |lead_tys|
+        expand_union_types(@opt_tys) do |opt_tys|
+          expand_union_types([@rest_ty]) do |rest_ty,|
+            expand_union_types(@post_tys) do |post_tys|
+              #expand_union_types(@keyword_tys)
               yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, @keyword_tys, @blk_ty)
             end
           end
@@ -600,15 +600,15 @@ module TypeProfiler
 
     private
 
-    def expand_sum_types(sum_types, types = [], &blk)
-      if !sum_types || sum_types == [nil]
+    def expand_union_types(union_types, types = [], &blk)
+      if !union_types || union_types == [nil]
         yield nil
-      elsif sum_types.empty?
+      elsif union_types.empty?
         yield types
       else
-        rest = sum_types[1..]
-        sum_types.first.each do |ty|
-          expand_sum_types(rest, types + [ty], &blk)
+        rest = union_types[1..]
+        union_types.first.each do |ty|
+          expand_union_types(rest, types + [ty], &blk)
         end
       end
     end
@@ -664,7 +664,7 @@ module TypeProfiler
       if @rest_ty
         lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
         upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
-        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : Type::Sum.new(@rest_ty.elems.types)
+        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : Type::Union.new(@rest_ty.elems.types)
       else
         lower_bound = upper_bound = 0
       end
@@ -685,9 +685,9 @@ module TypeProfiler
           end
         end
         if rest_start
-          acc = aargs.inject {|acc, ty| acc.sum(ty) }
-          acc = acc ? acc.sum(rest_elem) : rest_elem if rest_elem
-          elem = acc.is_a?(Type::Sum) ? acc.types : acc ? Utils::Set[acc] : Utils::Set[]
+          acc = aargs.inject {|acc, ty| acc.union(ty) }
+          acc = acc ? acc.union(rest_elem) : rest_elem if rest_elem
+          elem = acc.is_a?(Type::Union) ? acc.types : acc ? Utils::Set[acc] : Utils::Set[]
           rest_ty = Type::Array.seq(elem)
           aargs.clear
         end
@@ -723,13 +723,13 @@ module TypeProfiler
       true
     end
 
-    def each_type(sum_types, types, &blk)
-      if sum_types.empty?
+    def each_type(union_types, types, &blk)
+      if union_types.empty?
         yield types
       else
-        rest = sum_types[1..]
-        sum_types.first.each do |ty|
-          expand_sum_types(rest, types + [ty], &blk)
+        rest = union_types[1..]
+        union_types.first.each do |ty|
+          expand_union_types(rest, types + [ty], &blk)
         end
       end
     end

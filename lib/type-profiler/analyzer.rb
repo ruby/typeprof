@@ -77,12 +77,12 @@ module TypeProfiler
     def merge(other)
       raise if @locals.size != other.locals.size
       raise if @stack.size != other.stack.size
-      locals = @locals.zip(other.locals).map {|ty1, ty2| ty1.sum(ty2) }
-      stack = @stack.zip(other.stack).map {|ty1, ty2| ty1.sum(ty2) }
+      locals = @locals.zip(other.locals).map {|ty1, ty2| ty1.union(ty2) }
+      stack = @stack.zip(other.stack).map {|ty1, ty2| ty1.union(ty2) }
       type_params = @type_params.dup
       other.type_params.each do |id, elems|
         if type_params[id]
-          type_params[id] = type_params[id].sum(elems)
+          type_params[id] = type_params[id].union(elems)
         else
           type_params[id] = elems
         end
@@ -94,8 +94,8 @@ module TypeProfiler
       tys.each do |ty|
         raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         raise "nil cannot be pushed to the stack" if ty.nil?
-        if ty.is_a?(Type::Sum) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
-          raise "Array (in Sum type) cannot be pushed to the stack"
+        if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
+          raise "Array (in Union type) cannot be pushed to the stack"
         end
       end
       Env.new(@locals, @stack + tys, @type_params)
@@ -392,7 +392,7 @@ module TypeProfiler
       @signatures[callee_ctx] ||= Utils::MutableSet.new
       @signatures[callee_ctx].each do |ret_ty|
         @callsites[callee_ctx].each do |caller_ep, ctn|
-          ctn[ret_ty, caller_ep, @return_envs[caller_ep]] # TODO: use Sum type
+          ctn[ret_ty, caller_ep, @return_envs[caller_ep]] # TODO: use Union type
         end
       end
     end
@@ -406,7 +406,7 @@ module TypeProfiler
       ret_ty.each do |ty|
         @signatures[callee_ctx] << ty
       end
-      #raise NotImplementedError if ret_ty.is_a?(Type::Sum)
+      #raise NotImplementedError if ret_ty.is_a?(Type::Union)
 
       #@callsites[callee_ctx] ||= {} # needed?
       @callsites[callee_ctx].each do |caller_ep, ctn|
@@ -425,7 +425,7 @@ module TypeProfiler
       @ivar_read[site][ep] = ctn
       @ivar_write[site] ||= Utils::MutableSet.new
       @ivar_write[site].each do |ty|
-        ctn[ty, ep] # TODO: use Sum type
+        ctn[ty, ep] # TODO: use Union type
       end
     end
 
@@ -435,7 +435,7 @@ module TypeProfiler
       @ivar_write[site] << ty
       @ivar_read[site] ||= {}
       @ivar_read[site].each do |ep, ctn|
-        ctn[ty, ep] # TODO: use Sum type
+        ctn[ty, ep] # TODO: use Union type
       end
     end
 
@@ -444,7 +444,7 @@ module TypeProfiler
       @gvar_read[var][ep] = ctn
       @gvar_write[var] ||= Utils::MutableSet.new
       @gvar_write[var].each do |ty|
-        ctn[ty, ep] # TODO: use Sum type
+        ctn[ty, ep] # TODO: use Union type
       end
     end
 
@@ -964,7 +964,7 @@ module TypeProfiler
               envs = envs.flat_map do |le|
                 union.to_a.map do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
-                  if ty.is_a?(Type::Sum) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
+                  if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
                     ty = Type::Any.new # XXX
                   end
                   le.push(ty)
@@ -979,7 +979,7 @@ module TypeProfiler
               envs = envs.flat_map do |le|
                 union.to_a.map do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
-                  if ty.is_a?(Type::Sum) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
+                  if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
                     ty = Type::Any.new # XXX
                   end
                   le.push(ty)

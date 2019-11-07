@@ -82,9 +82,9 @@ module TypeProfiler
       when :any
         Type::Any.new
       when :union
-        Type::Sum.new(Utils::Set[*ty[1].map {|ty2| convert_type(scratch, ty2) }])
+        Type::Union.new(Utils::Set[*ty[1].map {|ty2| convert_type(scratch, ty2) }])
       when :optional
-        Type::Sum.new(Utils::Set[Type::Instance.new(Type::Builtin[:nil]), convert_type(scratch, ty[1])])
+        Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:nil]), convert_type(scratch, ty[1])])
       else
         pp ty
         raise NotImplementedError
