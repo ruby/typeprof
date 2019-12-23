@@ -521,12 +521,9 @@ module TypeProfiler
         str, = operands
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
         env = env.push(ty)
-      when :putiseq
-        iseq, = operands
-        env = env.push(Type::ISeq.new(iseq))
       when :putself
         env = env.push(ep.ctx.sig.recv_ty)
-      when :newarray
+      when :newarray, :newarraykwsplat
         len, = operands
         env, elems = env.pop(len)
         ty = Type::Array.tuple(elems.map {|elem| Utils::Set[elem] }, Type::Instance.new(Type::Builtin[:ary]))
@@ -560,6 +557,15 @@ module TypeProfiler
         # XXX check if ty is String
         env = env.push(Type::Instance.new(Type::Builtin[:sym]))
 
+      when :definemethod
+        mid, iseq = operands
+        cref = ep.ctx.cref
+        scratch.add_iseq_method(cref.klass, mid, iseq, cref)
+      when :definesmethod
+        mid, iseq = operands
+        env, (recv,) = env.pop(1)
+        cref = ep.ctx.cref
+        scratch.add_singleton_iseq_method(recv, mid, iseq, cref)
       when :defineclass
         id, iseq, flags = operands
         env, (cbase, superclass) = env.pop(2)
@@ -694,6 +700,8 @@ module TypeProfiler
           scratch.error(ep, "no superclass method: #{ ep.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
           env = env.push(Type::Any.new)
         end
+      when :invokebuiltin
+        raise NotImplementedError
       when :leave
         if env.stack.size != 1
           raise "stack inconsistency error: #{ env.stack.inspect }"
@@ -787,7 +795,7 @@ module TypeProfiler
         end
       when :getconstant
         name, = operands
-        env, (cbase,) = env.pop(1)
+        env, (cbase, _allow_nil,) = env.pop(2)
         if cbase.eql?(Type::Instance.new(Type::Builtin[:nil]))
           ty = scratch.search_constant(ep.ctx.cref, name)
           env, ty = ty.deploy_local(env, ep) # TODO: multiple return arguments
@@ -1092,7 +1100,7 @@ module TypeProfiler
       end
 
       def setup_actual_arguments(scratch, operands, ep, env)
-        opt, _, blk_iseq = operands
+        opt, blk_iseq = operands
         flags = opt[:flag]
         mid = opt[:mid]
         argc = opt[:orig_argc]

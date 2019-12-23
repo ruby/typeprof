@@ -9,7 +9,7 @@ module TypeProfiler
       opt[:specialized_instruction] = false
       opt[:operands_unification] = false
       opt[:coverage_enabled] = false
-      new(RubyVM::InstructionSequence.compile_file(file, opt).to_a)
+      new(RubyVM::InstructionSequence.compile_file(file, **opt).to_a)
     end
 
     def self.compile_str(str)
@@ -19,7 +19,7 @@ module TypeProfiler
       opt[:specialized_instruction] = false
       opt[:operands_unification] = false
       opt[:coverage_enabled] = false
-      new(RubyVM::InstructionSequence.compile(str, opt).to_a)
+      new(RubyVM::InstructionSequence.compile(str, **opt).to_a)
     end
 
     FRESH_ID = [0]
@@ -68,14 +68,11 @@ module TypeProfiler
             case type
             when "ISEQ"
               operand && ISeq.new(operand)
-            when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_INFO"
+            when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
               operand
             when "OFFSET"
               labels[operand] || raise("unknown label: #{ operand }")
-            when "CALL_CACHE"
-              raise unless operand == false
-              :_cache_operand
-            when "IC", "ISE"
+            when "IVC", "ISE"
               raise unless operand.is_a?(Integer)
               :_cache_operand
             else

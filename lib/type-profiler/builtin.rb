@@ -2,24 +2,6 @@ module TypeProfiler
   module Builtin
     module_function
 
-    def vmcore_define_method(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
-      mid, iseq = aargs.lead_tys
-      cref = ep.ctx.cref
-      sym = mid.lit
-      raise "symbol expected" unless sym.is_a?(Symbol)
-      scratch.add_iseq_method(cref.klass, sym, iseq.iseq, cref)
-      ctn[mid, ep, env]
-    end
-
-    def vmcore_define_singleton_method(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
-      recv_ty, mid, iseq = aargs.lead_tys
-      cref = ep.ctx.cref
-      sym = mid.lit
-      raise "symbol expected" unless sym.is_a?(Symbol)
-      scratch.add_singleton_iseq_method(recv_ty, sym, iseq.iseq, cref)
-      ctn[mid, ep, env]
-    end
-
     def vmcore_set_method_alias(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       klass, new_mid, old_mid = aargs.lead_tys
       new_sym = new_mid.lit
@@ -66,15 +48,23 @@ module TypeProfiler
       end
     end
 
+    def add_attr_reader(sym, cref, scratch)
+      iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][2]
+      scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
+    end
+
+    def add_attr_writer(sym, cref, scratch)
+      iseq_setter = ISeq.compile_str("def #{ sym }=(x); @#{ sym } = x; end").insns[0][2]
+      scratch.add_iseq_method(cref.klass, :"#{ sym }=", iseq_setter, cref)
+    end
+
     def module_attr_accessor(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
         sym = aarg.lit
         cref = ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
-        iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
-        iseq_setter = ISeq.compile_str("def #{ sym }=(x); @#{ sym } = x; end").insns[2][1]
-        scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
-        scratch.add_iseq_method(cref.klass, :"#{ sym }=", iseq_setter, cref)
+        add_attr_reader(sym, cref, scratch)
+        add_attr_writer(sym, cref, scratch)
       end
       ty = Type::Instance.new(Type::Builtin[:nil])
       ctn[ty, ep, env]
@@ -85,8 +75,18 @@ module TypeProfiler
         sym = aarg.lit
         cref = ep.ctx.cref
         raise "symbol expected" unless sym.is_a?(Symbol)
-        iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[2][1]
-        scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
+        add_attr_reader(sym, cref, scratch)
+      end
+      ty = Type::Instance.new(Type::Builtin[:nil])
+      ctn[ty, ep, env]
+    end
+
+    def module_attr_writer(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      aargs.lead_tys.each do |aarg|
+        sym = aarg.lit
+        cref = ep.ctx.cref
+        raise "symbol expected" unless sym.is_a?(Symbol)
+        add_attr_writer(sym, cref, scratch)
       end
       ty = Type::Instance.new(Type::Builtin[:nil])
       ctn[ty, ep, env]
@@ -255,13 +255,12 @@ module TypeProfiler
     Type::Builtin[:regexp]    = klass_regexp
     Type::Builtin[:matchdata] = klass_matchdata
 
-    scratch.add_custom_method(klass_vmcore, :"core#define_method", Builtin.method(:vmcore_define_method))
-    scratch.add_custom_method(klass_vmcore, :"core#define_singleton_method", Builtin.method(:vmcore_define_singleton_method))
     scratch.add_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
     scratch.add_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
     scratch.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_new))
     scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
     scratch.add_singleton_custom_method(klass_obj, :"attr_reader", Builtin.method(:module_attr_reader))
+    scratch.add_singleton_custom_method(klass_obj, :"attr_writer", Builtin.method(:module_attr_writer))
     scratch.add_custom_method(klass_obj, :p, Builtin.method(:reveal_type))
     scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
     scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))

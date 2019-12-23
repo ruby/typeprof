@@ -19,6 +19,7 @@ module TypeProfiler
   class ISeqMethodDef < MethodDef
     def initialize(iseq, cref, singleton)
       @iseq = iseq
+      raise if iseq.nil?
       @cref = cref
       @singleton = singleton
     end
