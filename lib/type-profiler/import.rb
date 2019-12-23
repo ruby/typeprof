@@ -82,7 +82,8 @@ module TypeProfiler
       when :any
         Type::Any.new
       when :union
-        Type::Union.new(Utils::Set[*ty[1].map {|ty2| convert_type(scratch, ty2) }])
+        tys = ty[1].reject {|ty2| ty2[1] == [:BigDecimal] } # XXX
+        Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }])
       when :optional
         Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:nil]), convert_type(scratch, ty[1])])
       else
