@@ -24,7 +24,6 @@ __END__
 smoke/attr.rb:16: [p] Integer
 smoke/attr.rb:18: [p] Integer
 smoke/attr.rb:20: [p] Integer
-
 # Classes
 class Foo
   @a : Integer
