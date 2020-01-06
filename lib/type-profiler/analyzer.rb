@@ -66,17 +66,19 @@ module TypeProfiler
   class Env
     include Utils::StructuralEquality
 
-    def initialize(locals, stack, type_params)
+    def initialize(recv_ty, locals, stack, type_params)
+      @recv_ty = recv_ty
       @locals = locals
       @stack = stack
       @type_params = type_params
     end
 
-    attr_reader :locals, :stack, :type_params
+    attr_reader :recv_ty, :locals, :stack, :type_params
 
     def merge(other)
       raise if @locals.size != other.locals.size
       raise if @stack.size != other.stack.size
+      recv_ty = @recv_ty.union(other.recv_ty)
       locals = @locals.zip(other.locals).map {|ty1, ty2| ty1.union(ty2) }
       stack = @stack.zip(other.stack).map {|ty1, ty2| ty1.union(ty2) }
       type_params = @type_params.dup
@@ -87,7 +89,7 @@ module TypeProfiler
           type_params[id] = elems
         end
       end
-      Env.new(locals, stack, type_params)
+      Env.new(recv_ty, locals, stack, type_params)
     end
 
     def push(*tys)
@@ -98,19 +100,19 @@ module TypeProfiler
           raise "Array (in Union type) cannot be pushed to the stack"
         end
       end
-      Env.new(@locals, @stack + tys, @type_params)
+      Env.new(@recv_ty, @locals, @stack + tys, @type_params)
     end
 
     def pop(n)
       stack = @stack.dup
       tys = stack.pop(n)
-      nenv = Env.new(@locals, stack, @type_params)
+      nenv = Env.new(@recv_ty, @locals, stack, @type_params)
       return nenv, tys
     end
 
     def setn(i, ty)
       stack = Utils.array_update(@stack, -i, ty)
-      Env.new(@locals, stack, @type_params)
+      Env.new(@recv_ty, @locals, stack, @type_params)
     end
 
     def topn(i)
@@ -122,13 +124,13 @@ module TypeProfiler
     end
 
     def local_update(idx, ty)
-      Env.new(Utils.array_update(@locals, idx, ty), @stack, @type_params)
+      Env.new(@recv_ty, Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
     def deploy_array_type(alloc_site, elems, base_ty)
       local_ty = Type::LocalArray.new(alloc_site, base_ty)
       type_params = @type_params.merge({ alloc_site => elems })
-      nenv = Env.new(@locals, @stack, type_params)
+      nenv = Env.new(@recv_ty, @locals, @stack, type_params)
       return nenv, local_ty
     end
 
@@ -139,21 +141,21 @@ module TypeProfiler
 
     def update_array_elem_types(id, elems)
       type_params = @type_params.merge({ id => elems })
-      Env.new(@locals, @stack, type_params)
+      Env.new(@recv_ty, @locals, @stack, type_params)
     end
 
     def poke_array_elem_types(id, idx, ty)
       if @type_params[id]
         elems = @type_params[id].update(idx, ty)
         type_params = @type_params.merge({ id => elems })
-        Env.new(@locals, @stack, type_params)
+        Env.new(@recv_ty, @locals, @stack, type_params)
       else
         nil
       end
     end
 
     def inspect
-      "Env[locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.inspect }]"
+      "Env[recv_ty:#{ @recv_ty.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.inspect }]"
     end
   end
 
@@ -352,12 +354,12 @@ module TypeProfiler
     end
 
     def add_typed_method(recv_ty, mid, fargs, ret_ty)
-      sig = Signature.new(recv_ty, false, mid, fargs)
+      sig = Signature.new(false, mid, fargs)
       add_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
     end
 
     def add_singleton_typed_method(recv_ty, mid, fargs, ret_ty)
-      sig = Signature.new(recv_ty, true, mid, fargs)
+      sig = Signature.new(true, mid, fargs)
       add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
     end
 
@@ -522,7 +524,7 @@ module TypeProfiler
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
         env = env.push(ty)
       when :putself
-        env = env.push(ep.ctx.sig.recv_ty)
+        env = env.push(env.recv_ty)
       when :newarray, :newarraykwsplat
         len, = operands
         env, elems = env.pop(len)
@@ -601,9 +603,9 @@ module TypeProfiler
         ncref = ep.ctx.cref.extend(klass)
         recv = klass
         blk = ep.ctx.sig.fargs.blk_ty
-        nctx = Context.new(iseq, ncref, Signature.new(recv, nil, nil, FormalArguments.new([], [], nil, [], nil, blk)))
+        nctx = Context.new(iseq, ncref, Signature.new(nil, nil, FormalArguments.new([], [], nil, [], nil, blk)))
         nep = ExecutionPoint.new(nctx, 0, nil)
-        nenv = Env.new([], [], {})
+        nenv = Env.new(recv, [], [], {})
         merge_env(nep, nenv)
         scratch.add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = ret_ty.deploy_local(env, ep)
@@ -687,7 +689,7 @@ module TypeProfiler
       when :invokesuper
         env, recv, _, aargs = Aux.setup_actual_arguments(scratch, operands, ep, env)
 
-        recv = ep.ctx.sig.recv_ty
+        recv = env.recv_ty
         mid  = ep.ctx.sig.mid
         # XXX: need to support included module...
         meths = scratch.get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
@@ -697,7 +699,7 @@ module TypeProfiler
           end
           return
         else
-          scratch.error(ep, "no superclass method: #{ ep.ctx.sig.recv_ty.screen_name(scratch) }##{ mid }")
+          scratch.error(ep, "no superclass method: #{ env.recv_ty.screen_name(scratch) }##{ mid }")
           env = env.push(Type::Any.new)
         end
       when :invokebuiltin
@@ -733,13 +735,13 @@ module TypeProfiler
       when :setinstancevariable
         var, = operands
         env, (ty,) = env.pop(1)
-        recv = ep.ctx.sig.recv_ty
+        recv = env.recv_ty
         ty = ty.strip_local_info(env)
         scratch.add_ivar_write!(recv, var, ty)
 
       when :getinstancevariable
         var, = operands
-        recv = ep.ctx.sig.recv_ty
+        recv = env.recv_ty
         # TODO: deal with inheritance?
         scratch.add_ivar_read!(recv, var, ep) do |ty, ep|
           nenv, ty = ty.deploy_local(env, ep)
@@ -1066,13 +1068,13 @@ module TypeProfiler
         end
         locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
         locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
-        recv = blk_ep.ctx.sig.recv_ty
+        recv = blk_env.recv_ty
         env_blk = blk_ep.ctx.sig.fargs.blk_ty
         nfargs = FormalArguments.new(aargs, [], nil, [], nil, env_blk) # XXX: aargs -> fargs
-        nsig = Signature.new(recv, nil, nil, nfargs)
+        nsig = Signature.new(nil, nil, nfargs)
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
-        nenv = Env.new(locals, [], {})
+        nenv = Env.new(recv, locals, [], {})
         alloc_site = AllocationSite.new(nep)
         aargs.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(i)

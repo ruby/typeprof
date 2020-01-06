@@ -26,17 +26,17 @@ module TypeProfiler
 
       classes.each do |klass, methods, singleton_methods|
         methods.each do |method_name, mdef|
-          mdef = translate_typed_method_def(scratch, false, method_name, mdef, klass)
+          mdef = translate_typed_method_def(scratch, false, method_name, mdef)
           scratch.add_method(klass, method_name, mdef)
         end
         singleton_methods.each do |method_name, mdef|
-          mdef = translate_typed_method_def(scratch, true, method_name, mdef, klass)
+          mdef = translate_typed_method_def(scratch, true, method_name, mdef)
           scratch.add_singleton_method(klass, method_name, mdef)
         end
       end
     end
 
-    def translate_typed_method_def(scratch, singleton, method_name, mdef, klass)
+    def translate_typed_method_def(scratch, singleton, method_name, mdef)
       sig_rets = mdef.map do |lead_tys, opt_tys, blk, ret_ty|
         if blk
           blk = translate_typed_block(scratch, blk)
@@ -48,7 +48,7 @@ module TypeProfiler
           lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
           opt_tys = opt_tys.map {|ty| convert_type(scratch, ty) }
           fargs = FormalArguments.new(lead_tys, opt_tys, nil, [], nil, blk)
-          sig = Signature.new(Type::Instance.new(klass), singleton, method_name, fargs)
+          sig = Signature.new(singleton, method_name, fargs)
           ret_ty = convert_type(scratch, ret_ty)
           [sig, ret_ty]
         rescue UnsupportedType

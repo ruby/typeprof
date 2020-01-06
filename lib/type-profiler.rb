@@ -17,9 +17,9 @@ module TypeProfiler
     main_ep, main_env = starting_state(iseq)
     scratch.merge_env(main_ep, main_env)
 
-    prologue_ctx = Context.new(nil, nil, Signature.new(:top, nil, nil, FormalArguments.new([], nil, nil, nil, nil, nil)))
+    prologue_ctx = Context.new(nil, nil, Signature.new(nil, nil, FormalArguments.new([], nil, nil, nil, nil, nil)))
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
-    prologue_env = Env.new([], [], {})
+    prologue_env = Env.new(:top, [], [], {})
     scratch.add_callsite!(main_ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
     scratch.type_profile
   end
@@ -28,10 +28,10 @@ module TypeProfiler
     cref = CRef.new(:bottom, Type::Builtin[:obj]) # object
     recv = Type::Instance.new(Type::Builtin[:obj])
     _nil = Type::Instance.new(Type::Builtin[:nil])
-    ctx = Context.new(iseq, cref, Signature.new(recv, nil, nil, FormalArguments.new([], nil, nil, nil, nil, _nil)))
+    ctx = Context.new(iseq, cref, Signature.new(nil, nil, FormalArguments.new([], nil, nil, nil, nil, _nil)))
     ep = ExecutionPoint.new(ctx, 0, nil)
     locals = [Type::Instance.new(Type::Builtin[:nil])] * iseq.locals.size
-    env = Env.new(locals, [], {})
+    env = Env.new(recv, locals, [], {})
 
     return ep, env
   end

@@ -290,8 +290,8 @@ module TypeProfiler
     scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_sym])
     scratch.add_typed_method(i[klass_str], :+ , FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]), i[klass_str])
 
-    sig1 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]))
-    sig2 = Signature.new(i[klass_obj], false, :Integer, FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]))
+    sig1 = Signature.new(false, :Integer, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]))
+    sig2 = Signature.new(false, :Integer, FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]))
     mdef = TypedMethodDef.new([[sig1, i[klass_int]], [sig2, i[klass_int]]])
     scratch.add_method(klass_obj, :Integer, mdef)
 

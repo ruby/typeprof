@@ -41,11 +41,11 @@ module TypeProfiler
         end
 
         fargs.each_concrete_formal_arguments do |fargs|
-          ctx = Context.new(@iseq, @cref, Signature.new(recv, @singleton, mid, fargs)) # XXX: to support opts, rest, etc
+          ctx = Context.new(@iseq, @cref, Signature.new(@singleton, mid, fargs)) # XXX: to support opts, rest, etc
           callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
           locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
-          nenv = Env.new(locals, [], {})
+          nenv = Env.new(recv, locals, [], {})
           alloc_site = AllocationSite.new(callee_ep)
           idx = 0
           fargs.lead_tys.each_with_index do |ty, i|
@@ -96,9 +96,9 @@ module TypeProfiler
         #pp [aargs, sig.fargs]
         next unless aargs.consistent_with_formal_arguments?(scratch, sig.fargs)
         found = true
-        dummy_ctx = Context.new(nil, nil, Signature.new(recv, nil, mid, sig.fargs))
+        dummy_ctx = Context.new(nil, nil, Signature.new(nil, mid, sig.fargs))
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
-        dummy_env = Env.new([], [], {})
+        dummy_env = Env.new(recv, [], [], {})
         if sig.fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
           scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
           nfargs = sig.fargs.blk_ty.fargs
