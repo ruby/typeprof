@@ -19,7 +19,7 @@ module TypeProfiler
 
     prologue_ctx = Context.new(nil, nil, Signature.new(nil, nil, FormalArguments.new([], nil, nil, nil, nil, nil)))
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
-    prologue_env = Env.new(:top, [], [], {})
+    prologue_env = Env.new(:top, nil, [], [], {})
     scratch.add_callsite!(main_ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
     scratch.type_profile
   end
@@ -31,7 +31,7 @@ module TypeProfiler
     ctx = Context.new(iseq, cref, Signature.new(nil, nil, FormalArguments.new([], nil, nil, nil, nil, _nil)))
     ep = ExecutionPoint.new(ctx, 0, nil)
     locals = [Type::Instance.new(Type::Builtin[:nil])] * iseq.locals.size
-    env = Env.new(recv, locals, [], {})
+    env = Env.new(recv, _nil, locals, [], {})
 
     return ep, env
   end

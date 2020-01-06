@@ -45,7 +45,7 @@ module TypeProfiler
           callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
           locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
-          nenv = Env.new(recv, locals, [], {})
+          nenv = Env.new(recv, fargs.blk_ty, locals, [], {})
           alloc_site = AllocationSite.new(callee_ep)
           idx = 0
           fargs.lead_tys.each_with_index do |ty, i|
@@ -98,7 +98,7 @@ module TypeProfiler
         found = true
         dummy_ctx = Context.new(nil, nil, Signature.new(nil, mid, sig.fargs))
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
-        dummy_env = Env.new(recv, [], [], {})
+        dummy_env = Env.new(recv, sig.fargs.blk_ty, [], [], {})
         if sig.fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
           scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
           nfargs = sig.fargs.blk_ty.fargs
