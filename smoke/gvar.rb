@@ -8,6 +8,5 @@ __END__
 $foo : Integer | String
 # Classes
 class Object
-  log : (Integer) -> NilClass
-      | (String) -> NilClass
+  log : (Integer | String) -> NilClass
 end

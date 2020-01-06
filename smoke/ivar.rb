@@ -25,6 +25,6 @@ class Foo
   foo : () -> (Integer | String)
 end
 class Object
-  log : (Integer) -> NilClass
-      | (String) -> NilClass
+  log : (Integer | String) -> NilClass
+      | (Integer) -> NilClass
 end

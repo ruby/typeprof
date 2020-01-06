@@ -20,10 +20,9 @@ __END__
 class A
   foo : (Integer) -> NilClass
       | (String) -> NilClass
-  bar : (Integer) -> NilClass
-      | (String) -> NilClass
+  bar : (Integer | String) -> NilClass
+      | (Integer) -> NilClass
 end
 class B
-  bar : (Integer) -> NilClass
-      | (String) -> NilClass
+  bar : (Integer | String) -> NilClass
 end

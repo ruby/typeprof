@@ -10,8 +10,6 @@ log(nil)
 __END__
 # Classes
 class Object
-  log : (Integer) -> NilClass
+  log : (Integer | String | Symbol) -> NilClass
       | (NilClass) -> NilClass
-      | (String) -> NilClass
-      | (Symbol) -> NilClass
 end

@@ -40,45 +40,43 @@ module TypeProfiler
           next
         end
 
-        fargs.each_concrete_formal_arguments do |fargs|
-          ctx = Context.new(@iseq, @cref, Signature.new(@singleton, mid)) # XXX: to support opts, rest, etc
-          callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
+        ctx = Context.new(@iseq, @cref, Signature.new(@singleton, mid)) # XXX: to support opts, rest, etc
+        callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
-          locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
-          nenv = Env.new(recv, fargs.blk_ty, locals, [], {})
-          alloc_site = AllocationSite.new(callee_ep)
-          idx = 0
-          fargs.lead_tys.each_with_index do |ty, i|
+        locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
+        nenv = Env.new(recv, fargs.blk_ty, locals, [], {})
+        alloc_site = AllocationSite.new(callee_ep)
+        idx = 0
+        fargs.lead_tys.each_with_index do |ty, i|
+          alloc_site2 = alloc_site.add_id(idx += 1)
+          nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
+          nenv = nenv.local_update(i, ty)
+        end
+        if fargs.opt_tys
+          fargs.opt_tys.each_with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(idx += 1)
             nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
-            nenv = nenv.local_update(i, ty)
+            nenv = nenv.local_update(lead_num + i, ty)
           end
-          if fargs.opt_tys
-            fargs.opt_tys.each_with_index do |ty, i|
-              alloc_site2 = alloc_site.add_id(idx += 1)
-              nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
-              nenv = nenv.local_update(lead_num + i, ty)
-            end
-          end
-          if fargs.rest_ty
-            alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, rest_ty = fargs.rest_ty.deploy_local_core(nenv, alloc_site2)
-            nenv = nenv.local_update(rest_start, rest_ty)
-          end
-          if fargs.post_tys
-            fargs.post_tys.each_with_index do |ty, i|
-              alloc_site2 = alloc_site.add_id(idx += 1)
-              nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
-              nenv = nenv.local_update(post_start + i, ty)
-            end
-          end
-          # keyword_tys
-          nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
-
-          # XXX: need to jump option argument
-          scratch.merge_env(callee_ep, nenv)
-          scratch.add_callsite!(callee_ep.ctx, fargs, caller_ep, caller_env, &ctn)
         end
+        if fargs.rest_ty
+          alloc_site2 = alloc_site.add_id(idx += 1)
+          nenv, rest_ty = fargs.rest_ty.deploy_local_core(nenv, alloc_site2)
+          nenv = nenv.local_update(rest_start, rest_ty)
+        end
+        if fargs.post_tys
+          fargs.post_tys.each_with_index do |ty, i|
+            alloc_site2 = alloc_site.add_id(idx += 1)
+            nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
+            nenv = nenv.local_update(post_start + i, ty)
+          end
+        end
+        # keyword_tys
+        nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
+
+        # XXX: need to jump option argument
+        scratch.merge_env(callee_ep, nenv)
+        scratch.add_callsite!(callee_ep.ctx, fargs, caller_ep, caller_env, &ctn)
       end
     end
   end

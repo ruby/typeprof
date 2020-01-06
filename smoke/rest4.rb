@@ -14,8 +14,5 @@ __END__
 # Classes
 class Object
   foo : (*Array[Integer | String | Symbol]) -> NilClass
-  bar : (Integer, String, String) -> NilClass
-      | (Integer, String, Symbol) -> NilClass
-      | (Integer, Symbol, String) -> NilClass
-      | (Integer, Symbol, Symbol) -> NilClass
+  bar : (Integer, String | Symbol, String | Symbol) -> NilClass
 end

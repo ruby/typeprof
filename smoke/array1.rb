@@ -22,6 +22,5 @@ class Object
   bar : (Integer) -> NilClass
   baz : (String) -> NilClass
   qux : (NilClass) -> NilClass
-  quux : (Integer) -> NilClass
-       | (String) -> NilClass
+  quux : (Integer | String) -> NilClass
 end

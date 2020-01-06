@@ -32,10 +32,8 @@ __END__
 # Classes
 class Object
   foo : () -> (Integer | NilClass)
-  log1 : (Integer) -> NilClass
-       | (NilClass) -> NilClass
+  log1 : (Integer | NilClass) -> NilClass
   bar : () -> (Integer | NilClass)
   test_yield : (&Proc[() -> NilClass]) -> NilClass
-  log2 : (Integer) -> NilClass
-       | (NilClass) -> NilClass
+  log2 : (Integer | NilClass) -> NilClass
 end

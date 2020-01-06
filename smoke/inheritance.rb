@@ -26,13 +26,12 @@ __END__
 class A
   foo : (Integer) -> NilClass
       | (String) -> NilClass
-  bar : (Integer) -> NilClass
-      | (String) -> NilClass
+  bar : (Integer | String) -> NilClass
+      | (Integer) -> NilClass
   self.test : (Integer) -> NilClass
             | (String) -> NilClass
 end
 class B
-  bar : (Integer) -> NilClass
+  bar : (Integer | String) -> NilClass
       | (NilClass) -> NilClass
-      | (String) -> NilClass
 end
