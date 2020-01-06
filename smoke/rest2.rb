@@ -26,31 +26,31 @@ foo(*a)
 __END__
 # Classes
 class Object
-  foo : (Integer, Integer, Integer) -> [Integer, Integer, Integer]
-      | (Integer, Integer, String) -> [Integer, Integer, String]
-      | (Integer, Integer, Symbol) -> [Integer, Integer, Symbol]
-      | (Integer, String, Integer) -> [Integer, String, Integer]
-      | (Integer, String, String) -> [Integer, String, String]
-      | (Integer, String, Symbol) -> [Integer, String, Symbol]
-      | (Integer, Symbol, Integer) -> [Integer, Symbol, Integer]
-      | (Integer, Symbol, String) -> [Integer, Symbol, String]
-      | (Integer, Symbol, Symbol) -> [Integer, Symbol, Symbol]
-      | (String, Integer, Integer) -> [String, Integer, Integer]
-      | (String, Integer, String) -> [String, Integer, String]
-      | (String, Integer, Symbol) -> [String, Integer, Symbol]
-      | (String, String, Integer) -> [String, String, Integer]
-      | (String, String, String) -> [String, String, String]
-      | (String, String, Symbol) -> [String, String, Symbol]
-      | (String, Symbol, Integer) -> [String, Symbol, Integer]
-      | (String, Symbol, String) -> [String, Symbol, String]
-      | (String, Symbol, Symbol) -> [String, Symbol, Symbol]
-      | (Symbol, Integer, Integer) -> [Symbol, Integer, Integer]
-      | (Symbol, Integer, String) -> [Symbol, Integer, String]
-      | (Symbol, Integer, Symbol) -> [Symbol, Integer, Symbol]
-      | (Symbol, String, Integer) -> [Symbol, String, Integer]
-      | (Symbol, String, String) -> [Symbol, String, String]
-      | (Symbol, String, Symbol) -> [Symbol, String, Symbol]
-      | (Symbol, Symbol, Integer) -> [Symbol, Symbol, Integer]
-      | (Symbol, Symbol, String) -> [Symbol, Symbol, String]
-      | (Symbol, Symbol, Symbol) -> [Symbol, Symbol, Symbol]
+  foo : (Integer, Integer, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, Integer, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, Integer, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, String, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, String, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, String, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, Symbol, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, Symbol, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Integer, Symbol, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, Integer, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, Integer, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, Integer, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, String, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, String, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, String, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, Symbol, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, Symbol, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (String, Symbol, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, Integer, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, Integer, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, Integer, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, String, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, String, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, String, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, Symbol, Integer) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, Symbol, String) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+      | (Symbol, Symbol, Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
 end

@@ -26,12 +26,12 @@ Bar.new.bar
 __END__
 # Classes
 class Foo
-  foo : () -> Integer
+  foo : () -> (Integer | Symbol)
 end
 class Common
-  func : (String, &Proc[(Integer) -> Integer]) -> Integer
-       | (Symbol, &Proc[(Integer) -> Symbol]) -> Symbol
+  func : (String, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> Symbol])) -> (Integer | Symbol)
+       | (Symbol, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> Symbol])) -> (Integer | Symbol)
 end
 class Bar
-  bar : () -> Symbol
+  bar : () -> (Integer | Symbol)
 end

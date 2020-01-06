@@ -66,16 +66,18 @@ __END__
 # Classes
 class Object
   foo : (Boolean) -> (Integer | String)
-  identity : (Integer) -> Integer
-           | (String) -> String
-           | (Symbol) -> Symbol
+  identity : (Integer) -> (Integer | String | Symbol)
+           | (String) -> (Integer | String | Symbol)
+           | (Symbol) -> (Integer | String | Symbol)
   fib : (Integer) -> Integer
 end
 class A
   foo : (Integer) -> NilClass
       | (String) -> NilClass
   bar : (Integer) -> NilClass
+      | (String) -> NilClass
 end
 class B
-  bar : (String) -> NilClass
+  bar : (Integer) -> NilClass
+      | (String) -> NilClass
 end

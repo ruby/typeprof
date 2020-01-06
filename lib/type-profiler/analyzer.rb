@@ -169,7 +169,7 @@ module TypeProfiler
 
       @class_defs = {}
 
-      @callsites, @return_envs, @signatures, @yields = {}, {}, {}, {}
+      @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
       @ivar_read, @ivar_write = {}, {}
       @gvar_read, @gvar_write = {}, {}
 
@@ -356,13 +356,13 @@ module TypeProfiler
     end
 
     def add_typed_method(recv_ty, mid, fargs, ret_ty)
-      sig = Signature.new(false, mid, fargs)
-      add_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
+      sig = Signature.new(false, mid)
+      add_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, fargs, ret_ty]]))
     end
 
     def add_singleton_typed_method(recv_ty, mid, fargs, ret_ty)
-      sig = Signature.new(true, mid, fargs)
-      add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, ret_ty]]))
+      sig = Signature.new(true, mid)
+      add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, fargs, ret_ty]]))
     end
 
     def add_custom_method(klass, mid, impl)
@@ -388,13 +388,15 @@ module TypeProfiler
       (@backward_edges[next_ep] ||= {})[ep] = true
     end
 
-    def add_callsite!(callee_ctx, caller_ep, caller_env, &ctn)
+    def add_callsite!(callee_ctx, fargs, caller_ep, caller_env, &ctn)
       @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx][caller_ep] = ctn
       merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
 
-      ret_ty = @signatures[callee_ctx] ||= Type::Union.new(Utils::Set[])
-      if ret_ty != Type::Union.new(Utils::Set[])
+      @sig_fargs[callee_ctx] ||= Utils::Set[]
+      @sig_fargs[callee_ctx] += Utils::Set[fargs]
+      ret_ty = @sig_ret[callee_ctx] ||= Type::Union.new(Utils::Set[])
+      unless ret_ty.eql?(Type::Union.new(Utils::Set[]))
         @callsites[callee_ctx].each do |caller_ep, ctn|
           ctn[ret_ty, caller_ep, @return_envs[caller_ep]] # TODO: use Union type
         end
@@ -406,8 +408,8 @@ module TypeProfiler
     end
 
     def add_return_type!(callee_ctx, ret_ty)
-      @signatures[callee_ctx] ||= Type::Union.new(Utils::Set.new())
-      @signatures[callee_ctx] = @signatures[callee_ctx].union(ret_ty)
+      @sig_ret[callee_ctx] ||= Type::Union.new(Utils::Set[])
+      @sig_ret[callee_ctx] = @sig_ret[callee_ctx].union(ret_ty)
 
       #@callsites[callee_ctx] ||= {} # needed?
       @callsites[callee_ctx].each do |caller_ep, ctn|
@@ -415,9 +417,9 @@ module TypeProfiler
       end
     end
 
-    def add_yield!(caller_ctx, blk_ctx)
+    def add_yield!(caller_ctx, fargs, blk_ctx)
       @yields[caller_ctx] ||= Utils::MutableSet.new
-      @yields[caller_ctx] << blk_ctx
+      @yields[caller_ctx] << [blk_ctx, fargs]
     end
 
     def add_ivar_read!(recv, var, ep, &ctn)
@@ -488,7 +490,7 @@ module TypeProfiler
       end
       RubySignatureExporter.new(
         self, @errors, @gvar_write, @ivar_write,
-        @signatures, @yields, @backward_edges,
+        @sig_fargs, @sig_ret, @yields, @backward_edges,
       ).show(stat_eps)
     end
 
@@ -605,11 +607,11 @@ module TypeProfiler
         ncref = ep.ctx.cref.extend(klass)
         recv = klass
         blk = env.blk_ty
-        nctx = Context.new(iseq, ncref, Signature.new(nil, nil, FormalArguments.new([], [], nil, [], nil, blk)))
+        nctx = Context.new(iseq, ncref, Signature.new(nil, nil))
         nep = ExecutionPoint.new(nctx, 0, nil)
         nenv = Env.new(recv, blk, [], [], {})
         merge_env(nep, nenv)
-        scratch.add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
+        scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = ret_ty.deploy_local(env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
@@ -1057,50 +1059,52 @@ module TypeProfiler
       end
 
       def do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
-        blk_iseq = blk.iseq
-        blk_ep = blk.ep
-        blk_env = blk.env
-        arg_blk = aargs.blk_ty
-        aargs = aargs.lead_tys.map {|aarg| aarg.strip_local_info(env) }
-        argc = blk_iseq.fargs_format[:lead_num] || 0
-        if argc != aargs.size
-          warn "complex parameter passing of block is not implemented"
-          aargs.pop while argc < aargs.size
-          aargs << Type::Any.new while argc > aargs.size
+        blk.each do |blk|
+          blk_iseq = blk.iseq
+          blk_ep = blk.ep
+          blk_env = blk.env
+          arg_blk = aargs.blk_ty
+          aargs_ = aargs.lead_tys.map {|aarg| aarg.strip_local_info(env) }
+          argc = blk_iseq.fargs_format[:lead_num] || 0
+          if argc != aargs_.size
+            warn "complex parameter passing of block is not implemented"
+            aargs_.pop while argc < aargs_.size
+            aargs_ << Type::Any.new while argc > aargs_.size
+          end
+          locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
+          locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
+          recv = blk_env.recv_ty
+          env_blk = blk_env.blk_ty
+          nfargs = FormalArguments.new(aargs_, [], nil, [], nil, env_blk) # XXX: aargs_ -> fargs
+          nsig = Signature.new(nil, nil)
+          nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
+          nep = ExecutionPoint.new(nctx, 0, blk_ep)
+          nenv = Env.new(recv, env_blk, locals, [], {})
+          alloc_site = AllocationSite.new(nep)
+          aargs_.each_with_index do |ty, i|
+            alloc_site2 = alloc_site.add_id(i)
+            nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
+            nenv = nenv.local_update(i, ty)
+          end
+
+          scratch.merge_env(nep, nenv)
+
+          # caution: given_block flag is not complete
+          #
+          # def foo
+          #   bar do |&blk|
+          #     yield
+          #     blk.call
+          #   end
+          # end
+          #
+          # yield and blk.call call different blocks.
+          # So, a context can have two blocks.
+          # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
+
+          scratch.add_yield!(ep.ctx, nfargs, nep.ctx) if given_block
+          scratch.add_callsite!(nep.ctx, nil, ep, env, &ctn)
         end
-        locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
-        locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
-        recv = blk_env.recv_ty
-        env_blk = blk_env.blk_ty
-        nfargs = FormalArguments.new(aargs, [], nil, [], nil, env_blk) # XXX: aargs -> fargs
-        nsig = Signature.new(nil, nil, nfargs)
-        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
-        nep = ExecutionPoint.new(nctx, 0, blk_ep)
-        nenv = Env.new(recv, env_blk, locals, [], {})
-        alloc_site = AllocationSite.new(nep)
-        aargs.each_with_index do |ty, i|
-          alloc_site2 = alloc_site.add_id(i)
-          nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
-          nenv = nenv.local_update(i, ty)
-        end
-
-        scratch.merge_env(nep, nenv)
-
-        # caution: given_block flag is not complete
-        #
-        # def foo
-        #   bar do |&blk|
-        #     yield
-        #     blk.call
-        #   end
-        # end
-        #
-        # yield and blk.call call different blocks.
-        # So, a context can have two blocks.
-        # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
-
-        scratch.add_yield!(ep.ctx, nep.ctx) if given_block
-        scratch.add_callsite!(nep.ctx, ep, env, &ctn)
       end
 
       def setup_actual_arguments(scratch, operands, ep, env)

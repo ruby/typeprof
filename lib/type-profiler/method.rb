@@ -41,7 +41,7 @@ module TypeProfiler
         end
 
         fargs.each_concrete_formal_arguments do |fargs|
-          ctx = Context.new(@iseq, @cref, Signature.new(@singleton, mid, fargs)) # XXX: to support opts, rest, etc
+          ctx = Context.new(@iseq, @cref, Signature.new(@singleton, mid)) # XXX: to support opts, rest, etc
           callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
           locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
@@ -77,31 +77,31 @@ module TypeProfiler
 
           # XXX: need to jump option argument
           scratch.merge_env(callee_ep, nenv)
-          scratch.add_callsite!(callee_ep.ctx, caller_ep, caller_env, &ctn)
+          scratch.add_callsite!(callee_ep.ctx, fargs, caller_ep, caller_env, &ctn)
         end
       end
     end
   end
 
   class TypedMethodDef < MethodDef
-    def initialize(sigs) # sigs: Array<[Signature, (return)Type]>
+    def initialize(sigs) # sigs: Array<[Signature, FormalArguments, (return)Type]>
       @sigs = sigs
     end
 
     def do_send_core(state, _flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = recv.strip_local_info(caller_env)
       found = false
-      @sigs.each do |sig, ret_ty|
+      @sigs.each do |sig, fargs, ret_ty|
         # need to interpret args more correctly
-        #pp [aargs, sig.fargs]
-        next unless aargs.consistent_with_formal_arguments?(scratch, sig.fargs)
+        #pp [aargs, fargs]
+        next unless aargs.consistent_with_formal_arguments?(scratch, fargs)
         found = true
-        dummy_ctx = Context.new(nil, nil, Signature.new(nil, mid, sig.fargs))
+        dummy_ctx = Context.new(nil, nil, Signature.new(nil, mid))
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
-        dummy_env = Env.new(recv, sig.fargs.blk_ty, [], [], {})
-        if sig.fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
-          scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
-          nfargs = sig.fargs.blk_ty.fargs
+        dummy_env = Env.new(recv, fargs.blk_ty, [], [], {})
+        if fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
+          scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn)
+          nfargs = fargs.blk_ty.fargs
           blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
           naargs = ActualArguments.new(nfargs, nil, blk_nil)
           # XXX: do_invoke_block expects caller's env
@@ -111,8 +111,8 @@ module TypeProfiler
             scratch.add_return_type!(dummy_ctx, ret_ty)
           end
         end
-        if sig.fargs.blk_ty == Type::Instance.new(Type::Builtin[:nil]) && !aargs.blk_ty.is_a?(Type::ISeqProc)
-          scratch.add_callsite!(dummy_ctx, caller_ep, caller_env, &ctn)
+        if fargs.blk_ty == Type::Instance.new(Type::Builtin[:nil]) && !aargs.blk_ty.is_a?(Type::ISeqProc)
+          scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn)
           scratch.add_return_type!(dummy_ctx, ret_ty)
         end
       end

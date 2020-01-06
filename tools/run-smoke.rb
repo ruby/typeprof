@@ -18,6 +18,10 @@ ensure
 end
 
 files = ARGV
+if ARGV.first == "--update"
+  ARGV.shift
+  update = true
+end
 files = Dir.glob("smoke/*.rb").sort if files.empty?
 files.each do |f|
   begin
@@ -31,11 +35,16 @@ files.each do |f|
     if exp == act
       puts "# OK: #{ f }"
     else
-      puts "# NG: #{ f }"
-      puts "expected:"
-      puts exp
-      puts "actual:"
-      puts act
+      if update
+        puts "# Update!: #{ f }"
+        File.write(f, File.read(f).gsub(/^__END__$.*\z/m) { "__END__\n" + act.join("\n") })
+      else
+        puts "# NG: #{ f }"
+        puts "expected:"
+        puts exp
+        puts "actual:"
+        puts act
+      end
     end
   end
 end

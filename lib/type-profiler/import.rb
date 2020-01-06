@@ -48,9 +48,9 @@ module TypeProfiler
           lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
           opt_tys = opt_tys.map {|ty| convert_type(scratch, ty) }
           fargs = FormalArguments.new(lead_tys, opt_tys, nil, [], nil, blk)
-          sig = Signature.new(singleton, method_name, fargs)
+          sig = Signature.new(singleton, method_name)
           ret_ty = convert_type(scratch, ret_ty)
-          [sig, ret_ty]
+          [sig, fargs, ret_ty]
         rescue UnsupportedType
           nil
         end

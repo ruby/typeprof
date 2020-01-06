@@ -27,10 +27,12 @@ class A
   foo : (Integer) -> NilClass
       | (String) -> NilClass
   bar : (Integer) -> NilClass
+      | (String) -> NilClass
   self.test : (Integer) -> NilClass
             | (String) -> NilClass
 end
 class B
-  bar : (NilClass) -> NilClass
+  bar : (Integer) -> NilClass
+      | (NilClass) -> NilClass
       | (String) -> NilClass
 end

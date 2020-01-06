@@ -9,7 +9,7 @@ foo("A", "B", "C", "Z")
 __END__
 # Classes
 class Object
-  foo : (String, String) -> [String, Integer, Integer, String]
-      | (String, String, String) -> [String, String, Integer, String]
-      | (String, String, String, String) -> [String, String, String, String]
+  foo : (String, String) -> (Array[Integer | Integer | String | String] | [String, Integer, Integer, String])
+      | (String, String, String) -> (Array[Integer | Integer | String | String] | [String, Integer, Integer, String])
+      | (String, String, String, String) -> (Array[Integer | Integer | String | String] | [String, Integer, Integer, String])
 end

@@ -11,8 +11,8 @@ foo("A", "B", "C", "D", "E", "Z")
 __END__
 # Classes
 class Object
-  foo : (String, *Array[], String) -> [String, Integer, Integer, Array[], String]
-      | (String, String, *Array[], String) -> [String, String, Integer, Array[], String]
-      | (String, String, String, *Array[String], String) -> [String, String, String, Array[String], String]
-      | (String, String, String, *Array[], String) -> [String, String, String, Array[], String]
+  foo : (String, *Array[], String) -> (Array[Array[String] | Array[] | any | Array[] | Integer | Integer | String | String] | [String, Integer, Integer, Array[], String])
+      | (String, String, *Array[], String) -> (Array[Array[String] | Array[] | any | Array[] | Integer | Integer | String | String] | [String, Integer, Integer, Array[], String])
+      | (String, String, String, *Array[String], String) -> (Array[Array[String] | Array[] | any | Array[] | Integer | Integer | String | String] | [String, Integer, Integer, Array[], String])
+      | (String, String, String, *Array[], String) -> (Array[Array[String] | Array[] | any | Array[] | Integer | Integer | String | String] | [String, Integer, Integer, Array[], String])
 end

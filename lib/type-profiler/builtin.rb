@@ -203,7 +203,7 @@ module TypeProfiler
           callee_ep, callee_env = TypeProfiler.starting_state(iseq)
           scratch.merge_env(callee_ep, callee_env)
 
-          scratch.add_callsite!(callee_ep.ctx, ep, env) do |_ret_ty, ep|
+          scratch.add_callsite!(callee_ep.ctx, nil, ep, env) do |_ret_ty, ep|
             result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
             ctn[result, ep, env]
           end
@@ -290,9 +290,10 @@ module TypeProfiler
     scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_sym])
     scratch.add_typed_method(i[klass_str], :+ , FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]), i[klass_str])
 
-    sig1 = Signature.new(false, :Integer, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]))
-    sig2 = Signature.new(false, :Integer, FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]))
-    mdef = TypedMethodDef.new([[sig1, i[klass_int]], [sig2, i[klass_int]]])
+    sig = Signature.new(false, :Integer)
+    fargs1 = FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil])
+    fargs2 = FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil])
+    mdef = TypedMethodDef.new([[sig, fargs1, i[klass_int]], [sig, fargs2, i[klass_int]]])
     scratch.add_method(klass_obj, :Integer, mdef)
 
     scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:require_relative))

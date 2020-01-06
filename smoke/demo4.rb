@@ -21,7 +21,9 @@ class A
   foo : (Integer) -> NilClass
       | (String) -> NilClass
   bar : (Integer) -> NilClass
+      | (String) -> NilClass
 end
 class B
-  bar : (String) -> NilClass
+  bar : (Integer) -> NilClass
+      | (String) -> NilClass
 end

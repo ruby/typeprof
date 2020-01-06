@@ -1,9 +1,10 @@
 module TypeProfiler
   class RubySignatureExporter
-    def initialize(scratch, errors, gvar_write, ivar_write, signatures, yields, backward_edges)
+    def initialize(scratch, errors, gvar_write, ivar_write, sig_fargs, sig_ret, yields, backward_edges)
       @scratch = scratch
       @errors = errors
-      @signatures = signatures
+      @sig_fargs = sig_fargs
+      @sig_ret = sig_ret
       @yields = yields
       @backward_edges = backward_edges
       @gvar_write = gvar_write
@@ -32,12 +33,12 @@ module TypeProfiler
 
     def show_block(ctx)
       blk_tys = {}
-      @yields[ctx].each do |blk_ctx|
-        blk_fargs = blk_ctx.sig.fargs.lead_tys.map {|ty| ty.screen_name(@scratch) } # XXX: other arguments but lead_tys?
+      @yields[ctx].each do |blk_ctx, fargs|
+        blk_fargs = fargs.lead_tys.map {|ty| ty.screen_name(@scratch) } # XXX: other arguments but lead_tys?
         if @yields[blk_ctx]
           blk_fargs << show_block(blk_ctx)
         end
-        blk_tys["Proc[#{ show_signature(blk_fargs, @signatures[blk_ctx]) }]"] = true
+        blk_tys["Proc[#{ show_signature(blk_fargs, @sig_ret[blk_ctx]) }]"] = true
       end
       blk_tys.size == 1 ? "&#{ blk_tys.keys.first }" : "&(#{ blk_tys.keys.join(" & ") })"
     end
@@ -108,8 +109,9 @@ module TypeProfiler
         classes[recv] ||= { ivars: {}, methods: {} }
         classes[recv][:ivars][var] = show_types(tys)
       end
-      @signatures.each do |ctx, ret_tys|
+      @sig_fargs.each do |ctx, fargss|
         next unless ctx.sig.mid && ctx.iseq
+        ret_tys = @sig_ret[ctx]
 
         recv = ctx.cref.klass
         recv = Type::Instance.new(recv)
@@ -118,14 +120,16 @@ module TypeProfiler
         method_name = ctx.sig.mid
         method_name = "self.#{ method_name }" if ctx.sig.singleton
 
-        fargs = ctx.sig.fargs.screen_name(@scratch)
-        if @yields[ctx]
-          fargs << show_block(ctx)
-        end
+        fargss.each do |fargs|
+          fargs = fargs.screen_name(@scratch)
+          if @yields[ctx]
+            fargs << show_block(ctx)
+          end
 
-        classes[recv] ||= { ivars: {}, methods: {} }
-        classes[recv][:methods][method_name] ||= []
-        classes[recv][:methods][method_name] << show_signature(fargs, ret_tys)
+          classes[recv] ||= { ivars: {}, methods: {} }
+          classes[recv][:methods][method_name] ||= []
+          classes[recv][:methods][method_name] << show_signature(fargs, ret_tys)
+        end
 
         stat_classes[recv] = true
         stat_methods[[recv, method_name]] = true

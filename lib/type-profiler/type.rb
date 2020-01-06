@@ -754,13 +754,12 @@ module TypeProfiler
   class Signature
     include Utils::StructuralEquality
 
-    def initialize(singleton, mid, fargs)
+    def initialize(singleton, mid)
       @singleton = singleton
       @mid = mid
-      @fargs = fargs
     end
 
-    attr_reader :singleton, :mid, :fargs
+    attr_reader :singleton, :mid
 
     def pretty_print(q)
       q.text "Signature["
@@ -771,7 +770,6 @@ module TypeProfiler
           q.text " ::"
           q.breakable
           q.group(2, "(", ")") do
-            q.pp @fargs
             if @blk_ty
               q.text ","
               q.breakable

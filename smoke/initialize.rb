@@ -17,10 +17,10 @@ __END__
 class A
   @int : Integer
   @str : String
-  @val : Integer | NilClass | String
-  initialize : (Integer) -> Integer
-             | (NilClass) -> NilClass
-             | (String) -> String
+  @val : Integer | Integer | NilClass | String
+  initialize : (Integer) -> (Integer | NilClass | String)
+             | (NilClass) -> (Integer | NilClass | String)
+             | (String) -> (Integer | NilClass | String)
 end
 class Object
   log : (A) -> NilClass
