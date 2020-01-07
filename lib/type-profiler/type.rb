@@ -269,6 +269,31 @@ module TypeProfiler
       attr_reader :fargs, :ret_ty
     end
 
+    class Symbol < Type
+      def initialize(sym, type)
+        @sym = sym
+        @type = type
+      end
+
+      attr_reader :sym, :type
+
+      def inspect
+        "Type::Symbol[#{ @sym ? @sym.inspect : "(dynamic symbol)" }, #{ @type.inspect }]"
+      end
+
+      def screen_name(scratch)
+        if @sym
+          @sym.inspect
+        else
+          @type.screen_name(scratch)
+        end
+      end
+
+      def get_method(mid, scratch)
+        @type.get_method(mid, scratch)
+      end
+    end
+
     # local info
     class Literal < Type
       def initialize(lit, type)
@@ -509,7 +534,7 @@ module TypeProfiler
     def self.guess_literal_type(obj)
       case obj
       when ::Symbol
-        Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:sym]))
+        Type::Symbol.new(obj, Type::Instance.new(Type::Builtin[:sym]))
       when ::Integer
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:int]))
       when ::Float

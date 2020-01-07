@@ -2,12 +2,20 @@ module TypeProfiler
   module Builtin
     module_function
 
+    def get_sym(target, ty)
+      raise "symbol expected" unless ty.is_a?(Type::Symbol)
+      sym = ty.sym
+      unless sym
+        scratch.warn(ep, "dynamic symbol is given to #{ target }; ignored")
+        return
+      end
+      sym
+    end
+
     def vmcore_set_method_alias(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       klass, new_mid, old_mid = aargs.lead_tys
-      new_sym = new_mid.lit
-      raise "symbol expected" unless new_sym.is_a?(Symbol)
-      old_sym = old_mid.lit
-      raise "symbol expected" unless old_sym.is_a?(Symbol)
+      new_sym = get_sym("alias", new_mid) or return
+      old_sym = get_sym("alias", old_mid) or return
       scratch.alias_method(klass, new_sym, old_sym)
       ty = Type::Instance.new(Type::Builtin[:nil])
       ctn[ty, ep, env]
@@ -60,9 +68,8 @@ module TypeProfiler
 
     def module_attr_accessor(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        sym = aarg.lit
+        sym = get_sym("attr_accessor", aarg) or next
         cref = ep.ctx.cref
-        raise "symbol expected" unless sym.is_a?(Symbol)
         add_attr_reader(sym, cref, scratch)
         add_attr_writer(sym, cref, scratch)
       end
@@ -72,9 +79,8 @@ module TypeProfiler
 
     def module_attr_reader(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        sym = aarg.lit
+        sym = get_sym("attr_reader", aarg) or next
         cref = ep.ctx.cref
-        raise "symbol expected" unless sym.is_a?(Symbol)
         add_attr_reader(sym, cref, scratch)
       end
       ty = Type::Instance.new(Type::Builtin[:nil])
@@ -83,9 +89,8 @@ module TypeProfiler
 
     def module_attr_writer(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        sym = aarg.lit
+        sym = get_sym("attr_writer", aarg) or next
         cref = ep.ctx.cref
-        raise "symbol expected" unless sym.is_a?(Symbol)
         add_attr_writer(sym, cref, scratch)
       end
       ty = Type::Instance.new(Type::Builtin[:nil])
