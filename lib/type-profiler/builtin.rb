@@ -295,10 +295,9 @@ module TypeProfiler
     scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_sym])
     scratch.add_typed_method(i[klass_str], :+ , FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil]), i[klass_str])
 
-    sig = Signature.new(false, :Integer)
     fargs1 = FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil])
     fargs2 = FormalArguments.new([i[klass_str]], [], nil, [], nil, i[klass_nil])
-    mdef = TypedMethodDef.new([[sig, fargs1, i[klass_int]], [sig, fargs2, i[klass_int]]])
+    mdef = TypedMethodDef.new([[fargs1, i[klass_int]], [fargs2, i[klass_int]]])
     scratch.add_method(klass_obj, :Integer, mdef)
 
     scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:require_relative))

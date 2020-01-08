@@ -356,13 +356,11 @@ module TypeProfiler
     end
 
     def add_typed_method(recv_ty, mid, fargs, ret_ty)
-      sig = Signature.new(false, mid)
-      add_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, fargs, ret_ty]]))
+      add_method(recv_ty.klass, mid, TypedMethodDef.new([[fargs, ret_ty]]))
     end
 
     def add_singleton_typed_method(recv_ty, mid, fargs, ret_ty)
-      sig = Signature.new(true, mid)
-      add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[sig, fargs, ret_ty]]))
+      add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[fargs, ret_ty]]))
     end
 
     def add_custom_method(klass, mid, impl)

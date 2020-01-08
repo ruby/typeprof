@@ -89,7 +89,7 @@ module TypeProfiler
     def do_send_core(state, _flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = recv.strip_local_info(caller_env)
       found = false
-      @sigs.each do |sig, fargs, ret_ty|
+      @sigs.each do |fargs, ret_ty|
         # need to interpret args more correctly
         #pp [aargs, fargs]
         next unless aargs.consistent_with_formal_arguments?(scratch, fargs)
