@@ -40,7 +40,7 @@ module TypeProfiler
           next
         end
 
-        ctx = Context.new(@iseq, @cref, Signature.new(@singleton, mid)) # XXX: to support opts, rest, etc
+        ctx = Context.new(@iseq, @cref, @singleton, mid) # XXX: to support opts, rest, etc
         callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
         locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
@@ -82,7 +82,7 @@ module TypeProfiler
   end
 
   class TypedMethodDef < MethodDef
-    def initialize(sigs) # sigs: Array<[Signature, FormalArguments, (return)Type]>
+    def initialize(sigs) # sigs: Array<[FormalArguments, (return)Type]>
       @sigs = sigs
     end
 
@@ -94,7 +94,7 @@ module TypeProfiler
         #pp [aargs, fargs]
         next unless aargs.consistent_with_formal_arguments?(scratch, fargs)
         found = true
-        dummy_ctx = Context.new(nil, nil, Signature.new(nil, mid))
+        dummy_ctx = Context.new(nil, nil, nil, mid)
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
         dummy_env = Env.new(recv, fargs.blk_ty, [], [], {})
         if fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)

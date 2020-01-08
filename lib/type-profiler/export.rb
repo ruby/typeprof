@@ -110,15 +110,15 @@ module TypeProfiler
         classes[recv][:ivars][var] = show_types(tys)
       end
       @sig_fargs.each do |ctx, fargss|
-        next unless ctx.sig.mid && ctx.iseq
+        next unless ctx.mid && ctx.iseq
         ret_tys = @sig_ret[ctx]
 
         recv = ctx.cref.klass
         recv = Type::Instance.new(recv)
         recv = recv.screen_name(@scratch)
 
-        method_name = ctx.sig.mid
-        method_name = "self.#{ method_name }" if ctx.sig.singleton
+        method_name = ctx.mid
+        method_name = "self.#{ method_name }" if ctx.singleton
 
         fargss.each do |fargs|
           fargs = fargs.screen_name(@scratch)

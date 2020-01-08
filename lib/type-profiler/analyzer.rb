@@ -26,13 +26,14 @@ module TypeProfiler
   class Context
     include Utils::StructuralEquality
 
-    def initialize(iseq, cref, sig)
+    def initialize(iseq, cref, singleton, mid)
       @iseq = iseq
       @cref = cref
-      @sig = sig
+      @singleton = singleton
+      @mid = mid
     end
 
-    attr_reader :iseq, :cref, :sig
+    attr_reader :iseq, :cref, :singleton, :mid
   end
 
   class ExecutionPoint
@@ -605,7 +606,7 @@ module TypeProfiler
         ncref = ep.ctx.cref.extend(klass)
         recv = klass
         blk = env.blk_ty
-        nctx = Context.new(iseq, ncref, Signature.new(nil, nil))
+        nctx = Context.new(iseq, ncref, nil, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
         nenv = Env.new(recv, blk, [], [], {})
         merge_env(nep, nenv)
@@ -692,7 +693,7 @@ module TypeProfiler
         env, recv, _, aargs = Aux.setup_actual_arguments(scratch, operands, ep, env)
 
         recv = env.recv_ty
-        mid  = ep.ctx.sig.mid
+        mid  = ep.ctx.mid
         # XXX: need to support included module...
         meths = scratch.get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
@@ -1074,8 +1075,7 @@ module TypeProfiler
           recv = blk_env.recv_ty
           env_blk = blk_env.blk_ty
           nfargs = FormalArguments.new(aargs_, [], nil, [], nil, env_blk) # XXX: aargs_ -> fargs
-          nsig = Signature.new(nil, nil)
-          nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nsig)
+          nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil, nil)
           nep = ExecutionPoint.new(nctx, 0, blk_ep)
           nenv = Env.new(recv, env_blk, locals, [], {})
           alloc_site = AllocationSite.new(nep)

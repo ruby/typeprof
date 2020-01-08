@@ -775,37 +775,4 @@ module TypeProfiler
       AllocationSite.new(val, self)
     end
   end
-
-  class Signature
-    include Utils::StructuralEquality
-
-    def initialize(singleton, mid)
-      @singleton = singleton
-      @mid = mid
-    end
-
-    attr_reader :singleton, :mid
-
-    def pretty_print(q)
-      q.text "Signature["
-      q.group do
-        q.nest(2) do
-          q.breakable
-          q.text "##{ @mid }"
-          q.text " ::"
-          q.breakable
-          q.group(2, "(", ")") do
-            if @blk_ty
-              q.text ","
-              q.breakable
-              q.text "&"
-              q.pp @blk_ty
-            end
-          end
-        end
-        q.breakable
-      end
-      q.text "]"
-    end
-  end
 end
