@@ -66,9 +66,9 @@ __END__
 # Classes
 class Object
   foo : (Boolean) -> (Integer | String)
-  identity : (Integer) -> (Integer | String | Symbol)
-           | (String) -> (Integer | String | Symbol)
-           | (Symbol) -> (Integer | String | Symbol)
+  identity : (:sym) -> (:sym | Integer | String)
+           | (Integer) -> (:sym | Integer | String)
+           | (String) -> (:sym | Integer | String)
   fib : (Integer) -> Integer
 end
 class A

@@ -10,6 +10,6 @@ log(nil)
 __END__
 # Classes
 class Object
-  log : (Integer | String | Symbol) -> NilClass
+  log : (:sym | Integer | String) -> NilClass
       | (NilClass) -> NilClass
 end

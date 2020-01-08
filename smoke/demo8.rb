@@ -13,6 +13,6 @@ bar(&blk)
 __END__
 # Classes
 class Object
-  foo : (&Proc[(String) -> (String | Symbol)]) -> (String | Symbol)
-  bar : (&Proc[(Symbol) -> (String | Symbol)]) -> (String | Symbol)
+  foo : (&Proc[(String) -> (:sym | String)]) -> (:sym | String)
+  bar : (&Proc[(:sym) -> (:sym | String)]) -> (:sym | String)
 end

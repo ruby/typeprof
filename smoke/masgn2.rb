@@ -12,6 +12,6 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> [Integer, [String, Symbol], NilClass]
-  ary : () -> [Integer, String, Symbol, NilClass]
+  foo : () -> [Integer, [String, :sym], NilClass]
+  ary : () -> [Integer, String, :sym, NilClass]
 end

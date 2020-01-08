@@ -13,6 +13,6 @@ bar(1, *a, :s)
 __END__
 # Classes
 class Object
-  foo : (*Array[Integer | String | Symbol]) -> NilClass
-  bar : (Integer, String | Symbol, String | Symbol) -> NilClass
+  foo : (*Array[:s | Integer | String]) -> NilClass
+  bar : (Integer, :s | String, :s | String) -> NilClass
 end

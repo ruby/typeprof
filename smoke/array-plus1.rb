@@ -6,5 +6,5 @@ log([1] + ["str"] + [2] + [:sym])
 __END__
 # Classes
 class Object
-  log : (Array[Integer | String | Symbol]) -> NilClass
+  log : (Array[:sym | Integer | String]) -> NilClass
 end

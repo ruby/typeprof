@@ -10,7 +10,7 @@ my_to_s(:sym)
 __END__
 # Classes
 class Object
-  my_to_s : (Integer) -> String
+  my_to_s : (:sym) -> String
+          | (Integer) -> String
           | (String) -> String
-          | (Symbol) -> String
 end

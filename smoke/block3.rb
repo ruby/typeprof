@@ -26,12 +26,12 @@ Bar.new.bar
 __END__
 # Classes
 class Foo
-  foo : () -> (Integer | Symbol)
+  foo : () -> (:sym2 | Integer)
 end
 class Common
-  func : (String, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> Symbol])) -> (Integer | Symbol)
-       | (Symbol, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> Symbol])) -> (Integer | Symbol)
+  func : (:sym, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> :sym2])) -> (:sym2 | Integer)
+       | (String, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> :sym2])) -> (:sym2 | Integer)
 end
 class Bar
-  bar : () -> (Integer | Symbol)
+  bar : () -> (:sym2 | Integer)
 end

@@ -7,6 +7,6 @@ __END__
 # Errors
 smoke/reveal.rb:1: [p] Integer
 smoke/reveal.rb:2: [p] String
-smoke/reveal.rb:3: [p] Symbol
-smoke/reveal.rb:4: [p] [Integer, String, Symbol]
+smoke/reveal.rb:3: [p] :sym
+smoke/reveal.rb:4: [p] [Integer, String, :sym]
 # Classes

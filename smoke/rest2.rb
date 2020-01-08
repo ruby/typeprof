@@ -26,5 +26,5 @@ foo(*a)
 __END__
 # Classes
 class Object
-  foo : (Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol) -> ([Integer | String | Symbol, Integer | String | Symbol, Integer | String | Symbol])
+  foo : (:s | Integer | String, :s | Integer | String, :s | Integer | String) -> ([:s | Integer | String, :s | Integer | String, :s | Integer | String])
 end
