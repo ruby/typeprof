@@ -2,12 +2,11 @@ module TypeProfiler
   class MethodDef
     include Utils::StructuralEquality
 
-    # TODO: state is no longer needed
-    def do_send(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def do_send(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       if ctn
-        do_send_core(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+        do_send_core(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       else
-        do_send_core(state, flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
+        do_send_core(flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
           nenv, ret_ty, = ret_ty.deploy_local(env, ep)
           nenv = nenv.push(ret_ty)
           scratch.merge_env(ep.next, nenv)
@@ -24,7 +23,7 @@ module TypeProfiler
       @singleton = singleton
     end
 
-    def do_send_core(state, flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+    def do_send_core(flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       lead_num = @iseq.fargs_format[:lead_num] || 0
       post_start = @iseq.fargs_format[:post_start]
       rest_start = @iseq.fargs_format[:rest_start]
@@ -86,7 +85,7 @@ module TypeProfiler
       @sigs = sigs
     end
 
-    def do_send_core(state, _flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+    def do_send_core(_flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = recv.strip_local_info(caller_env)
       found = false
       @sigs.each do |fargs, ret_ty|
@@ -127,9 +126,9 @@ module TypeProfiler
       @impl = impl
     end
 
-    def do_send_core(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def do_send_core(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       # XXX: ctn?
-      @impl[state, flags, recv, mid, aargs, ep, env, scratch, &ctn]
+      @impl[flags, recv, mid, aargs, ep, env, scratch, &ctn]
     end
   end
 end

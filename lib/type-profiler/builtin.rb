@@ -12,7 +12,7 @@ module TypeProfiler
       sym
     end
 
-    def vmcore_set_method_alias(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def vmcore_set_method_alias(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       klass, new_mid, old_mid = aargs.lead_tys
       new_sym = get_sym("alias", new_mid) or return
       old_sym = get_sym("alias", old_mid) or return
@@ -21,26 +21,26 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def lambda(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def lambda(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       ctn[aargs.blk_ty, ep, env]
     end
 
-    def proc_call(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def proc_call(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       given_block = env.blk_ty == recv
       Scratch::Aux.do_invoke_block(given_block, recv, aargs, ep, env, scratch, &ctn)
     end
 
-    def object_new(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def object_new(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       ty = Type::Instance.new(recv)
       meths = scratch.get_method(recv, :initialize)
       meths.flat_map do |meth|
-        meth.do_send(state, 0, ty, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
+        meth.do_send(0, ty, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
           ctn[Type::Instance.new(recv), ep, env]
         end
       end
     end
 
-    def object_is_a?(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def object_is_a?(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise unless aargs.lead_tys.size != 0
       if recv.is_a?(Type::Instance)
         if recv.klass == aargs.lead_tys[0] # XXX: inheritance
@@ -66,7 +66,7 @@ module TypeProfiler
       scratch.add_iseq_method(cref.klass, :"#{ sym }=", iseq_setter, cref)
     end
 
-    def module_attr_accessor(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def module_attr_accessor(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_accessor", aarg) or next
         cref = ep.ctx.cref
@@ -77,7 +77,7 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def module_attr_reader(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def module_attr_reader(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_reader", aarg) or next
         cref = ep.ctx.cref
@@ -87,7 +87,7 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def module_attr_writer(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def module_attr_writer(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_writer", aarg) or next
         cref = ep.ctx.cref
@@ -97,14 +97,14 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def reveal_type(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def reveal_type(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
         scratch.reveal_type(ep, aarg.strip_local_info(env).screen_name(scratch))
       end
       ctn[Type::Any.new, ep, env]
     end
 
-    def array_aref(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def array_aref(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       idx = aargs.lead_tys.first
       if idx.is_a?(Type::Literal)
@@ -130,7 +130,7 @@ module TypeProfiler
       end
     end
 
-    def array_aset(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def array_aset(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 2
       idx = aargs.lead_tys.first
       if idx.is_a?(Type::Literal)
@@ -158,7 +158,7 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def array_each(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def array_each(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
       elems = elems ? elems.types : [Type::Any.new]
@@ -170,7 +170,7 @@ module TypeProfiler
       end
     end
 
-    def array_plus(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def array_plus(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       ary = aargs.lead_tys.first
       elems1 = env.get_array_elem_types(recv.id)
@@ -185,7 +185,7 @@ module TypeProfiler
       end
     end
 
-    def array_pop(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def array_pop(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 0
         env[Type::Any.new, ep, env]
       end
@@ -196,7 +196,7 @@ module TypeProfiler
       end
     end
 
-    def require_relative(state, flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def require_relative(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       feature = aargs.lead_tys.first
       if feature.is_a?(Type::Literal)

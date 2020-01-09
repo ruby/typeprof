@@ -640,7 +640,7 @@ module TypeProfiler
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
-              meth.do_send(self, flags, recv, mid, aargs, ep, env, scratch)
+              meth.do_send(flags, recv, mid, aargs, ep, env, scratch)
             end
           else
             if recv != Type::Any.new # XXX: should be configurable
@@ -658,7 +658,7 @@ module TypeProfiler
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
-              meth.do_send(self, flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
+              meth.do_send(flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
                 if branch_type != :nil && ret_ty.is_a?(Type::Literal)
                   if !!ret_ty.lit == (branch_type == :if)
                     nep = ep.jump(target)
@@ -716,7 +716,7 @@ module TypeProfiler
         meths = scratch.get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
           meths.each do |meth|
-            meth.do_send(self, flags, recv, mid, aargs, ep, env, scratch)
+            meth.do_send(flags, recv, mid, aargs, ep, env, scratch)
           end
           return
         else
