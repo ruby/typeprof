@@ -372,13 +372,19 @@ module TypeProfiler
       add_singleton_method(klass, mid, CustomMethodDef.new(impl))
     end
 
-    def alias_method(klass, new, old)
+    def alias_method(klass, singleton, new, old)
       if klass == Type::Any.new
         self
       else
         klass_def = @class_defs[klass.idx]
-        klass_def.get_method(old).each do |mdef|
-          klass_def.add_method(new, mdef)
+        if singleton
+          klass_def.get_singleton_method(old).each do |mdef|
+            klass_def.add_singleton_method(new, mdef)
+          end
+        else
+          klass_def.get_method(old).each do |mdef|
+            klass_def.add_method(new, mdef)
+          end
         end
       end
     end
@@ -565,7 +571,11 @@ module TypeProfiler
       when :definemethod
         mid, iseq = operands
         cref = ep.ctx.cref
-        scratch.add_iseq_method(cref.klass, mid, iseq, cref)
+        if ep.ctx.singleton
+          scratch.add_singleton_iseq_method(cref.klass, mid, iseq, cref)
+        else
+          scratch.add_iseq_method(cref.klass, mid, iseq, cref)
+        end
       when :definesmethod
         mid, iseq = operands
         env, (recv,) = env.pop(1)
@@ -598,15 +608,23 @@ module TypeProfiler
               klass = scratch.new_class(cbase, id, superclass)
             end
           end
+          singleton = false
         when 1 # SINGLETON_CLASS
-          raise NotImplementedError
+          singleton = true
+          klass = cbase
+          if klass.is_a?(Type::Class)
+          elsif klass.is_a?(Type::Any)
+          else
+            scratch.warn(ep, "A singleton class is open for #{ klass.screen_name(scratch) }; handled as any")
+            klass = Type::Any.new
+          end
         else
           raise NotImplementedError, "unknown defineclass flag: #{ flags }"
         end
         ncref = ep.ctx.cref.extend(klass)
-        recv = klass
+        recv = singleton ? Type::Any.new : klass
         blk = env.blk_ty
-        nctx = Context.new(iseq, ncref, nil, nil)
+        nctx = Context.new(iseq, ncref, singleton, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
         nenv = Env.new(recv, blk, [], [], {})
         merge_env(nep, nenv)
@@ -862,7 +880,10 @@ module TypeProfiler
       when :reverse
         raise NotImplementedError, "reverse"
       when :defined
-        raise NotImplementedError, "defined"
+        env, = env.pop(1)
+        sym_ty = Type::Symbol.new(nil, Type::Instance.new(Type::Builtin[:sym]))
+        nil_ty = Type::Instance.new(Type::Builtin[:nil])
+        env = env.push(Type::Union.new(Utils::Set[sym_ty, nil_ty]))
       when :checkmatch
         flag, = operands
         array = flag & 4 != 0
