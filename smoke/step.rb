@@ -12,7 +12,7 @@ __END__
 # Classes
 class Object
   log1 : (Numeric) -> NilClass
-  log2 : (Enumerator | Numeric) -> NilClass
-       | (Numeric) -> NilClass
-  log3 : (Enumerator | Numeric) -> NilClass
+  log2 : (Enumerator | any) -> NilClass
+       | (any) -> NilClass
+  log3 : (Enumerator | any) -> NilClass
 end

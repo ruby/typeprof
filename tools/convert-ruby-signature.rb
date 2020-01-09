@@ -1,19 +1,23 @@
 require "ruby/signature"
 
 class TypeProfiler
-  module RubySignaturePorter
+  class RubySignaturePorter
+    def initialize
+      loader = EnvironmentLoader.new(stdlib_root: Pathname("sigs/stdlib/"))
+      @env = Environment.new()
+      loader.load(env: @env)
+      @builder = DefinitionBuilder.new(env: @env)
+
+      @dump = import_ruby_signatures
+    end
+
+    attr_reader :dump
+
     include Ruby::Signature
 
-    module_function
-
     def import_ruby_signatures
-      loader = EnvironmentLoader.new()
-      env = Environment.new()
-      loader.load(env: env)
-      builder = DefinitionBuilder.new(env: env)
-
       class2super = {}
-      env.each_decl do |name, decl|
+      @env.each_decl do |name, decl|
         if name.kind == :class
           next if name.name == :Object && name.namespace == Namespace.root
           if decl.is_a?(AST::Declarations::Class)
@@ -38,9 +42,9 @@ class TypeProfiler
           if !visited[name]
             visited[name] = true
             queue << [:new, name]
-            instance = builder.build_instance(name)
+            instance = @builder.build_instance(name)
             instance.ancestors.each do |parent|
-              if env.find_class(parent.name).is_a?(AST::Declarations::Class)
+              if @env.find_class(parent.name).is_a?(AST::Declarations::Class)
                 queue << [:visit, parent.name]
               end
             end
@@ -54,7 +58,7 @@ class TypeProfiler
           if super_class_name
             superclass = super_class_name.namespace.path + [super_class_name.name]
           else
-            superclass = nil
+            superclass = [:Object]
           end
           classes << [name, klass, superclass]
         end
@@ -65,7 +69,7 @@ class TypeProfiler
         singleton_methods = []
 
         if [:Numeric, :Integer, :Float, :Math].include?(type_name.name)
-          methods = builder.build_instance(type_name).methods.map do |name, rs_method|
+          methods = @builder.build_instance(type_name).methods.map do |name, rs_method|
             # XXX
             case type_name.name
             when :Numeric
@@ -81,7 +85,7 @@ class TypeProfiler
             [name, translate_typed_method_def(rs_method)]
           end.compact
 
-          singleton_methods = builder.build_singleton(type_name).methods.map do |name, rs_method|
+          singleton_methods = @builder.build_singleton(type_name).methods.map do |name, rs_method|
             case type_name.name
             when :Numeric, :Integer, :Float
               next
@@ -101,7 +105,10 @@ class TypeProfiler
 
     def translate_typed_method_def(rs_method)
       rs_method.method_types.map do |type|
-        raise NotImplementedError unless type.type.optional_keywords.empty?
+        unless type.type.optional_keywords.empty?
+          puts "optional_keywords is not supported yet"
+          next
+        end
         raise NotImplementedError unless type.type.required_keywords.empty?
         raise NotImplementedError if type.type.rest_keywords
 
@@ -151,10 +158,18 @@ class TypeProfiler
         [:bool]
       when Ruby::Signature::Types::Bases::Any
         [:any]
+      when Ruby::Signature::Types::Bases::Void
+        [:any]
+      when Ruby::Signature::Types::Bases::Self
+        [:any]
+      when Ruby::Signature::Types::Alias
+        convert_type(@builder.expand_alias(ty.name))
       when Ruby::Signature::Types::Union
         [:union, ty.types.map {|ty2| convert_type(ty2) }]
       when Ruby::Signature::Types::Optional
         [:optional, convert_type(ty.type)]
+      when Ruby::Signature::Types::Interface
+        [:any]
       else
         pp ty
         raise NotImplementedError
@@ -164,5 +179,5 @@ class TypeProfiler
 end
 
 target = File.join(__dir__, "../lib/type-profiler/stdlib-sigs.rb")
-stdlib = TypeProfiler::RubySignaturePorter.import_ruby_signatures
-File.write(target, "STDLIB_SIGS = " + stdlib.pretty_inspect)
+stdlib = TypeProfiler::RubySignaturePorter.new
+File.write(target, "STDLIB_SIGS = " + stdlib.dump.pretty_inspect)

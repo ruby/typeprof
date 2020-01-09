@@ -1,15 +1,19 @@
+PATH
+  remote: ../../work/ruby-signature
+  specs:
+    ruby-signature (0.1.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
-    ruby-signature (0.1.0)
     stackprof (0.2.12)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  ruby-signature
+  ruby-signature!
   stackprof
 
 BUNDLED WITH
-   1.17.3
+   2.1.2
