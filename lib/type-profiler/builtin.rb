@@ -101,7 +101,7 @@ module TypeProfiler
       aargs.lead_tys.each do |aarg|
         scratch.reveal_type(ep, aarg.strip_local_info(env).screen_name(scratch))
       end
-      ctn[Type::Any.new, ep, env]
+      ctn[aargs.lead_tys.size == 1 ? aargs.lead_tys.first : Type::Any.new, ep, env]
     end
 
     def array_aref(flags, recv, mid, aargs, ep, env, scratch, &ctn)
