@@ -167,7 +167,9 @@ def clamp(f)
   i.to_i
 end
 
-def otherBasis(basis, n)
+def otherBasis(n)
+  zero = Vec.new(0.0, 0.0, 0.0)
+  basis = [zero, zero, zero]
   basis[2] = Vec.new(n.x, n.y, n.z)
   basis[1] = Vec.new(0.0, 0.0, 0.0)
 
@@ -186,20 +188,22 @@ def otherBasis(basis, n)
 
   basis[1] = basis[2].vcross(basis[0])
   basis[1] = basis[1].vnormalize
+
+  basis
 end
 
 class Scene
   def initialize
-    @spheres = []
-    @spheres[0] = Sphere.new(Vec.new(-2.0, 0.0, -3.5), 0.5)
-    @spheres[1] = Sphere.new(Vec.new(-0.5, 0.0, -3.0), 0.5)
-    @spheres[2] = Sphere.new(Vec.new(1.0, 0.0, -2.2), 0.5)
+    @spheres = [
+      Sphere.new(Vec.new(-2.0, 0.0, -3.5), 0.5),
+      Sphere.new(Vec.new(-0.5, 0.0, -3.0), 0.5),
+      Sphere.new(Vec.new(1.0, 0.0, -2.2), 0.5),
+    ]
     @plane = Plane.new(Vec.new(0.0, -0.5, 0.0), Vec.new(0.0, 1.0, 0.0))
   end
 
   def ambient_occlusion(isect)
-    basis = [0.0, 0.0, 0.0]
-    otherBasis(basis, isect.n)
+    basis = otherBasis(isect.n)
 
     ntheta    = NAO_SAMPLES
     nphi      = NAO_SAMPLES
