@@ -15,12 +15,15 @@ module TypeProfiler
       classes = []
       STDLIB_SIGS.each do |klass, superclass, methods, singleton_methods|
         next if klass == [:BasicObject]
-        next if klass == [:Object]
         next if klass == [:NilClass]
-        name = klass.last
-        klass = path_to_klass(scratch, klass[0..-2])
-        superclass = path_to_klass(scratch, superclass) if superclass
-        klass = scratch.new_class(klass, name, superclass)
+        if klass != [:Object]
+          name = klass.last
+          klass = path_to_klass(scratch, klass[0..-2])
+          superclass = path_to_klass(scratch, superclass) if superclass
+          klass = scratch.new_class(klass, name, superclass)
+        else
+          klass = Type::Builtin[:obj]
+        end
         classes << [klass, methods, singleton_methods]
       end
 

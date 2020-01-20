@@ -68,10 +68,12 @@ class TypeProfiler
         methods = []
         singleton_methods = []
 
-        if [:Numeric, :Integer, :Float, :Math].include?(type_name.name)
+        if [:Object, :Numeric, :Integer, :Float, :Math].include?(type_name.name)
           methods = @builder.build_instance(type_name).methods.map do |name, rs_method|
             # XXX
             case type_name.name
+            when :Object
+              next unless [:rand, :freeze].include?(name)
             when :Numeric
               next unless [:step].include?(name)
             when :Integer
@@ -87,7 +89,7 @@ class TypeProfiler
 
           singleton_methods = @builder.build_singleton(type_name).methods.map do |name, rs_method|
             case type_name.name
-            when :Numeric, :Integer, :Float
+	    when :Object, :Numeric, :Integer, :Float
               next
             when :Math
               next unless [:sqrt, :sin, :cos].include?(name)
