@@ -286,7 +286,8 @@ module TypeProfiler
         return mthd if mthd
         idx = @class_defs[idx].superclass
       end
-      nil
+      # fallback to methods of Class class; but there is not Class class currently, so substitute Object
+      get_method(Type::Builtin[:obj], mid)
     end
 
     def get_super_method(klass, mid)
