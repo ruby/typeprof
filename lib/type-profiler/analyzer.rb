@@ -689,19 +689,19 @@ module TypeProfiler
         return
       when :invokeblock
         # XXX: need block parameter, unknown block, etc.
+        opt, = operands
+        _flags = opt[:flag]
+        orig_argc = opt[:orig_argc]
+        env, aargs = env.pop(orig_argc)
         blk = env.blk_ty
         case
         when blk.eql?(Type::Instance.new(Type::Builtin[:nil]))
-          scratch.error(ep, "no block given")
+          scratch.warn(ep, "no block given")
           env = env.push(Type::Any.new)
         when blk.eql?(Type::Any.new)
           scratch.warn(ep, "block is any")
           env = env.push(Type::Any.new)
         else # Proc
-          opt, = operands
-          _flags = opt[:flag]
-          orig_argc = opt[:orig_argc]
-          env, aargs = env.pop(orig_argc)
           blk_nil = Type::Instance.new(Type::Builtin[:nil])
           aargs = ActualArguments.new(aargs, nil, blk_nil)
           Aux.do_invoke_block(true, env.blk_ty, aargs, ep, env, scratch)
