@@ -586,7 +586,7 @@ module TypeProfiler
         env, (cbase, superclass) = env.pop(2)
         case flags & 7
         when 0, 2 # CLASS / MODULE
-          scratch.warn(ep, "module is not supported yet") if flags & 7 == 2
+          # scratch.warn(ep, "module is not supported yet") if flags & 7 == 2
           existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
