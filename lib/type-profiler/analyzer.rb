@@ -739,14 +739,18 @@ module TypeProfiler
         raise NotImplementedError, "once"
 
       when :branch # TODO: check how branchnil is used
-        type, target, = operands
-        # type: :if or :unless or :nil
-        env, = env.pop(1)
+        branchtype, target, = operands
+        # branchtype: :if or :unless or :nil
+        env, (ty,) = env.pop(1)
         ep_then = ep.next
         ep_else = ep.jump(target)
 
+        # TODO: it works for only simple cases: `x = nil; x || 1`
+        # It would be good to merge "dup; branchif" to make it context-sensitive-like
+        falsy = ty.eql?(Type::Instance.new(Type::Builtin[:nil]))
+
         merge_env(ep_then, env)
-        merge_env(ep_else, env)
+        merge_env(ep_else, env) unless branchtype == :if && falsy
         return
       when :jump
         target, = operands
