@@ -29,31 +29,31 @@ module TypeProfiler
     class Set
       include StructuralEquality
 
+      attr_reader :tbl
+
       def self.[](*values)
-        hash = {}
-        values.each {|v| hash[v] = true }
-        new(hash)
+        tbl = {}
+        values.each {|v| tbl[v] = true }
+        new(tbl)
       end
 
-      def initialize(hash)
-        @hash = hash
-        @hash.freeze
+      def initialize(tbl)
+        @tbl = tbl
+        @tbl.freeze
       end
 
       def each(&blk)
-        @hash.each_key(&blk)
+        @tbl.each_key(&blk)
       end
 
       include Enumerable
 
       def +(other)
-        hash = @hash.dup
-        other.each {|elem| hash[elem] = true }
-        Set.new(hash)
+        Set.new(@tbl.merge(other.tbl))
       end
 
       def size
-        @hash.size
+        @tbl.size
       end
 
       def map(&blk)
@@ -69,7 +69,7 @@ module TypeProfiler
       end
 
       def include?(elem)
-        @hash[elem]
+        @tbl[elem]
       end
 
       def intersection(other)
