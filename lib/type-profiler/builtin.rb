@@ -62,6 +62,14 @@ module TypeProfiler
       end
     end
 
+    def object_class(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      if recv.is_a?(Type::Instance)
+        ctn[recv.klass, ep, env]
+      else
+        ctn[Type::Any.new, ep, env]
+      end
+    end
+
     def add_attr_reader(sym, cref, scratch)
       iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][2]
       scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
@@ -285,6 +293,7 @@ module TypeProfiler
     scratch.add_singleton_custom_method(klass_obj, :"attr_writer", Builtin.method(:module_attr_writer))
     scratch.add_custom_method(klass_obj, :p, Builtin.method(:reveal_type))
     scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
+    scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
     scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
     scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
     scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
