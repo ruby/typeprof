@@ -123,7 +123,17 @@ module TypeProfiler
           elem = elems.types
         end
       else
-        elem = Utils::Set[Type::Any.new] # XXX
+        tmp_ep = ep
+        while true
+          tmp_ep = tmp_ep.outer
+          elems = scratch.return_envs[tmp_ep].get_array_elem_types(recv.id)
+          break if elems
+        end
+        if idx # code clone
+          elem = elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
+        else
+          elem = elems.types
+        end
       end
       elem.each do |ty| # TODO: Use Union type
         ctn[ty, ep, env]
