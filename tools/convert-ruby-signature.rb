@@ -73,7 +73,7 @@ class TypeProfiler
             # XXX
             case type_name.name
             when :Object
-              next unless [:rand, :freeze, :block_given?].include?(name)
+              next unless [:rand, :freeze, :block_given?, :respond_to?].include?(name)
             when :Numeric
               next unless [:step].include?(name)
             when :Integer

@@ -281,6 +281,10 @@ module TypeProfiler
         "Type::Symbol[#{ @sym ? @sym.inspect : "(dynamic symbol)" }, #{ @type.inspect }]"
       end
 
+      def consistent?(scratch, other)
+        @type.consistent?(scratch, other)
+      end
+
       def screen_name(scratch)
         if @sym
           @sym.inspect
