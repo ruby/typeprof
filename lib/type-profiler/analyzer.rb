@@ -458,7 +458,7 @@ module TypeProfiler
 
     def add_gvar_write!(var, ty, &ctn)
       @gvar_write[var] ||= Utils::MutableSet.new
-      ty.each {|ty2| @gvar_write[site] << ty2 }
+      ty.each {|ty2| @gvar_write[var] << ty2 }
       @gvar_read[var] ||= {}
       @gvar_read[var].each do |ep, ctn|
         ctn[ty, ep]
