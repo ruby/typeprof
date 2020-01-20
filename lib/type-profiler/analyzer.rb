@@ -560,7 +560,7 @@ module TypeProfiler
         env, (_ty1, _ty2,) = env.pop(2)
         env = env.push(Type::Instance.new(Type::Builtin[:str]))
       when :freezestring
-        raise NotImplementedError, "freezestring"
+        # do nothing
       when :toregexp
         raise NotImplementedError, "toregexp"
       when :intern
