@@ -21,6 +21,12 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
+    def vmcore_undef_method(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      # no-op
+      ty = Type::Instance.new(Type::Builtin[:nil])
+      ctn[ty, ep, env]
+    end
+
     def lambda(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       ctn[aargs.blk_ty, ep, env]
     end
@@ -271,6 +277,7 @@ module TypeProfiler
     Type::Builtin[:matchdata] = klass_matchdata
 
     scratch.add_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
+    scratch.add_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
     scratch.add_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
     scratch.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_new))
     scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
