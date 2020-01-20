@@ -97,7 +97,7 @@ module TypeProfiler
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
         dummy_env = Env.new(recv, fargs.blk_ty, [], [], {})
         if fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
-          scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn)
+          scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
           nfargs = fargs.blk_ty.fargs
           blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
           naargs = ActualArguments.new(nfargs, nil, blk_nil)
@@ -108,9 +108,8 @@ module TypeProfiler
             scratch.add_return_type!(dummy_ctx, ret_ty)
           end
         end
-        if fargs.blk_ty == Type::Instance.new(Type::Builtin[:nil]) && !aargs.blk_ty.is_a?(Type::ISeqProc)
-          scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn)
-          scratch.add_return_type!(dummy_ctx, ret_ty)
+        if fargs.blk_ty == Type::Instance.new(Type::Builtin[:nil])# && !aargs.blk_ty.is_a?(Type::ISeqProc)
+          ctn[ret_ty, caller_ep, caller_env]
         end
       end
 
