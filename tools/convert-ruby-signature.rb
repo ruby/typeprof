@@ -89,7 +89,7 @@ class TypeProfiler
 
           singleton_methods = @builder.build_singleton(type_name).methods.map do |name, rs_method|
             case type_name.name
-	    when :Object, :Numeric, :Integer, :Float
+            when :Object, :Numeric, :Integer, :Float
               next
             when :Math
               next unless [:sqrt, :sin, :cos].include?(name)
@@ -163,7 +163,7 @@ class TypeProfiler
       when Ruby::Signature::Types::Bases::Void
         [:any]
       when Ruby::Signature::Types::Bases::Self
-        [:any]
+        [:self]
       when Ruby::Signature::Types::Alias
         convert_type(@builder.expand_alias(ty.name))
       when Ruby::Signature::Types::Union

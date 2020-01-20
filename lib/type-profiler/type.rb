@@ -531,6 +531,24 @@ module TypeProfiler
       end
     end
 
+    class Self < Type
+      # only for TypedMethod signature
+      def initialize
+      end
+
+      def inspect
+        "Type::Self"
+      end
+
+      def screen_name(scratch)
+        "self"
+      end
+
+      def consistent?(scratch, other)
+        raise "Self type should not be checked for consistent?"
+      end
+    end
+
     def self.guess_literal_type(obj)
       case obj
       when ::Symbol

@@ -89,9 +89,12 @@ module TypeProfiler
       recv = recv.strip_local_info(caller_env)
       found = false
       @sigs.each do |fargs, ret_ty|
-        # need to interpret args more correctly
+        # XXX: need to interpret args more correctly
         #pp [aargs, fargs]
+        # XXX: support self type in fargs
         next unless aargs.consistent_with_formal_arguments?(scratch, fargs)
+        # XXX: support self type in container type like Array[Self]
+        ret_ty = recv if ret_ty.is_a?(Type::Self)
         found = true
         dummy_ctx = Context.new(nil, nil, nil, mid)
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
