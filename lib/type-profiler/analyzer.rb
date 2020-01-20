@@ -440,7 +440,7 @@ module TypeProfiler
     def add_ivar_write!(recv, var, ty, &ctn)
       site = [recv, var]
       @ivar_write[site] ||= Utils::MutableSet.new
-      @ivar_write[site] << ty
+      ty.each {|ty2| @ivar_write[site] << ty2 }
       @ivar_read[site] ||= {}
       @ivar_read[site].each do |ep, ctn|
         ctn[ty, ep] # TODO: use Union type
@@ -458,7 +458,7 @@ module TypeProfiler
 
     def add_gvar_write!(var, ty, &ctn)
       @gvar_write[var] ||= Utils::MutableSet.new
-      @gvar_write[var] << ty
+      ty.each {|ty2| @gvar_write[site] << ty2 }
       @gvar_read[var] ||= {}
       @gvar_read[var].each do |ep, ctn|
         ctn[ty, ep]
