@@ -19,7 +19,7 @@ log(Foo.new.foo)
 __END__
 # Classes
 class Foo
-  @foo : Integer | Integer | String
+  @foo : Integer | String
   foo= : (Integer) -> (Integer | String)
        | (String) -> (Integer | String)
   foo : () -> (Integer | String)
