@@ -37,7 +37,7 @@ files.each do |f|
     else
       if update
         puts "# Update!: #{ f }"
-        File.write(f, File.read(f).gsub(/^__END__$.*\z/m) { "__END__\n" + act.join("\n") })
+        File.write(f, File.read(f).gsub(/^__END__$.*\z/m) { "__END__\n" + act.join("\n") } + "\n")
       else
         puts "# NG: #{ f }"
         puts "expected:"
