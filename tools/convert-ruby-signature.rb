@@ -73,7 +73,7 @@ class TypeProfiler
             # XXX
             case type_name.name
             when :Object
-              next unless [:rand, :freeze, :block_given?, :respond_to?, :nil?].include?(name)
+              next unless [:rand, :freeze, :block_given?, :respond_to?, :nil?, :fail].include?(name)
             when :Array
               next unless [:empty?, :size].include?(name)
             when :Numeric
@@ -166,6 +166,8 @@ class TypeProfiler
         [:any]
       when Ruby::Signature::Types::Bases::Self
         [:self]
+      when Ruby::Signature::Types::Bases::Bottom
+        [:union, []]
       when Ruby::Signature::Types::Alias
         convert_type(@builder.expand_alias(ty.name))
       when Ruby::Signature::Types::Union
