@@ -735,7 +735,13 @@ module TypeProfiler
         scratch.add_return_type!(ep.ctx, ty)
         return
       when :throw
-        raise NotImplementedError, "throw"
+        throwtype, = operands
+        env, (ty,) = env.pop(1)
+        tmp_ep = ep.outer
+        nenv = @return_envs[tmp_ep].push(ty)
+        merge_env(tmp_ep.next, nenv)
+        # TODO: jump to ensure?
+        return
       when :once
         raise NotImplementedError, "once"
 

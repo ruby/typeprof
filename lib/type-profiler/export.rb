@@ -14,7 +14,7 @@ module TypeProfiler
     def show_types(tys)
       tys = tys.to_a
       if tys.empty?
-        "None"
+        "bot"
       else
         tys.map {|ty| ty.screen_name(@scratch) }.sort.uniq.join(" | ")
       end
