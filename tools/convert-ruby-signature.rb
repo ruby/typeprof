@@ -21,8 +21,8 @@ class TypeProfiler
         if name.kind == :class
           next if name.name == :Object && name.namespace == Namespace.root
           if decl.is_a?(AST::Declarations::Class)
-            next unless decl.super_class
-            class2super[name] = decl.super_class.name
+            #next unless decl.super_class
+            class2super[name] = decl.super_class ? decl.super_class.name : TypeName.new(namespace: Namespace.root, name: :Object)
           else
             class2super[name] = nil
           end
