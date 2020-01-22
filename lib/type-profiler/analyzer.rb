@@ -399,8 +399,11 @@ module TypeProfiler
       @callsites[callee_ctx][caller_ep] = ctn
       merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
 
-      @sig_fargs[callee_ctx] ||= Utils::Set[]
-      @sig_fargs[callee_ctx] += Utils::Set[fargs]
+      if @sig_fargs[callee_ctx]
+        @sig_fargs[callee_ctx] = @sig_fargs[callee_ctx].merge(fargs)
+      else
+        @sig_fargs[callee_ctx] = fargs
+      end
       ret_ty = @sig_ret[callee_ctx] ||= Type::Union.new(Utils::Set[])
       unless ret_ty.eql?(Type::Union.new(Utils::Set[]))
         @callsites[callee_ctx].each do |caller_ep, ctn|

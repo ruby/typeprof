@@ -29,8 +29,7 @@ class Foo
   foo : () -> (:sym2 | Integer)
 end
 class Common
-  func : (:sym, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> :sym2])) -> (:sym2 | Integer)
-       | (String, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> :sym2])) -> (:sym2 | Integer)
+  func : (:sym | String, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> :sym2])) -> (:sym2 | Integer)
 end
 class Bar
   bar : () -> (:sym2 | Integer)

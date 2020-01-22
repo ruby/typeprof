@@ -109,7 +109,7 @@ module TypeProfiler
         classes[recv] ||= { ivars: {}, methods: {} }
         classes[recv][:ivars][var] = show_types(tys)
       end
-      @sig_fargs.each do |ctx, fargss|
+      @sig_fargs.each do |ctx, fargs|
         next unless ctx.mid && ctx.iseq
         ret_tys = @sig_ret[ctx]
 
@@ -120,16 +120,14 @@ module TypeProfiler
         method_name = ctx.mid
         method_name = "self.#{ method_name }" if ctx.singleton
 
-        fargss.each do |fargs|
-          fargs = fargs.screen_name(@scratch)
-          if @yields[ctx]
-            fargs << show_block(ctx)
-          end
-
-          classes[recv] ||= { ivars: {}, methods: {} }
-          classes[recv][:methods][method_name] ||= []
-          classes[recv][:methods][method_name] << show_signature(fargs, ret_tys)
+        fargs = fargs.screen_name(@scratch)
+        if @yields[ctx]
+          fargs << show_block(ctx)
         end
+
+        classes[recv] ||= { ivars: {}, methods: {} }
+        classes[recv][:methods][method_name] ||= []
+        classes[recv][:methods][method_name] << show_signature(fargs, ret_tys)
 
         stat_classes[recv] = true
         stat_methods[[recv, method_name]] = true

@@ -24,14 +24,10 @@ B.test("str")
 __END__
 # Classes
 class A
-  foo : (Integer) -> NilClass
-      | (String) -> NilClass
+  foo : (Integer | String) -> NilClass
   bar : (Integer | String) -> NilClass
-      | (Integer) -> NilClass
-  self.test : (Integer) -> NilClass
-            | (String) -> NilClass
+  self.test : (Integer | String) -> NilClass
 end
 class B
-  bar : (Integer | String) -> NilClass
-      | (NilClass) -> NilClass
+  bar : (Integer | NilClass | String) -> NilClass
 end

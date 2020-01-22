@@ -20,11 +20,6 @@ bar("A", "B", "C", "D", "E", "Z")
 __END__
 # Classes
 class Object
-  foo : (:a, *Array[], :z) -> (Array[Integer | String])
-      | (Integer, *Array[Integer | String], Integer) -> (Array[Integer | String])
-      | (Integer, *Array[Integer], Integer) -> (Array[Integer | String])
-      | (String, *Array[String], String) -> (Array[Integer | String])
-  bar : (String, *Array[], String) -> (Array[String] | Array[])
-      | (String, String, *Array[String], String) -> (Array[String] | Array[])
-      | (String, String, *Array[], String) -> (Array[String] | Array[])
+  foo : (:a | Integer | String, *Array[Integer | String] | Array[Integer] | Array[String] | Array[], :z | Integer | String) -> (Array[Integer | String])
+  bar : (String, ?String, *Array[String] | Array[], String) -> (Array[String] | Array[])
 end

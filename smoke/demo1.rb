@@ -12,5 +12,5 @@ foo(false)
 __END__
 # Classes
 class Object
-  foo : (Boolean) -> (Integer | String)
+  foo : (FalseClass | TrueClass) -> (Integer | String)
 end

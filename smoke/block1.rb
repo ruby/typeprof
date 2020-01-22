@@ -18,6 +18,5 @@ end
 __END__
 # Classes
 class Object
-  foo : (:sym, &(Proc[(String) -> (:sym | Integer | String)] & Proc[(Integer) -> (:sym | Integer | String)] & Proc[(:sym | String) -> (:sym | Integer | String)])) -> (:sym | Integer | String)
-      | (String, &(Proc[(String) -> (:sym | Integer | String)] & Proc[(Integer) -> (:sym | Integer | String)] & Proc[(:sym | String) -> (:sym | Integer | String)])) -> (:sym | Integer | String)
+  foo : (:sym | String, &(Proc[(String) -> (:sym | Integer | String)] & Proc[(Integer) -> (:sym | Integer | String)] & Proc[(:sym | String) -> (:sym | Integer | String)])) -> (:sym | Integer | String)
 end

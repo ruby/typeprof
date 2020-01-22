@@ -626,9 +626,8 @@ module TypeProfiler
     def screen_name(scratch)
       fargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
       if @opt_tys
-        fargs += @opt_tys.map {|ty| ty.screen_name(scratch) }
+        fargs += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
       end
-      # opt_tys
       if @rest_ty
         fargs << ("*" + @rest_ty.screen_name(scratch))
       end
@@ -651,6 +650,26 @@ module TypeProfiler
           end
         end
       end
+    end
+
+    def merge(other)
+      raise if @lead_tys.size != other.lead_tys.size
+      #raise if @post_tys.size != other.post_tys.size
+      #raise if @keyword_tys.size != other.keyword_tys.size
+      lead_tys = @lead_tys.zip(other.lead_tys).map {|ty1, ty2| ty1.union(ty2) }
+      if @opt_tys || other.opt_tys
+        opt_tys = []
+        [@opt_tys.size, other.opt_tys.size].max.times do |i|
+          ty1 = @opt_tys[i]
+          ty2 = other.opt_tys[i]
+          ty = ty1 ? ty2 ? ty1.union(ty2) : ty1 : ty2
+          opt_tys << ty
+        end
+      end
+      rest_ty = @rest_ty.union(other.rest_ty) if @rest_ty
+      post_tys = @post_tys.zip(other.post_tys).map {|ty1, ty2| ty1.union(ty2) }
+      blk_ty = @blk_ty.union(other.blk_ty) if @blk_ty
+      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, blk_ty)
     end
 
     private

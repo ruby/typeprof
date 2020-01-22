@@ -65,17 +65,13 @@ B.new.foo("str")
 __END__
 # Classes
 class Object
-  foo : (Boolean) -> (Integer | String)
-  identity : (:sym) -> (:sym | Integer | String)
-           | (Integer) -> (:sym | Integer | String)
-           | (String) -> (:sym | Integer | String)
+  foo : (FalseClass | TrueClass) -> (Integer | String)
+  identity : (:sym | Integer | String) -> (:sym | Integer | String)
   fib : (Integer) -> Integer
 end
 class A
-  foo : (Integer) -> NilClass
-      | (String) -> NilClass
+  foo : (Integer | String) -> NilClass
   bar : (Integer | String) -> NilClass
-      | (Integer) -> NilClass
 end
 class B
   bar : (Integer | String) -> NilClass

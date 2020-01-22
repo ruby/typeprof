@@ -31,8 +31,6 @@ class Object
   bar : (*Array[Integer | String]) -> NilClass
   baz : (String, *Array[String]) -> NilClass
   qux : (Integer, *Array[String]) -> NilClass
-  corge : (*Array[Integer | String], String) -> NilClass
-        | (*Array[String], Integer) -> NilClass
-  grault : (String, *Array[String], String) -> NilClass
-         | (String, String, *Array[String], String) -> NilClass
+  corge : (*Array[Integer | String] | Array[String], Integer | String) -> NilClass
+  grault : (String, ?String, *Array[String], String) -> NilClass
 end

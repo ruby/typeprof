@@ -18,9 +18,7 @@ class A
   @int : Integer
   @str : String
   @val : Integer | NilClass | String
-  initialize : (Integer) -> (Integer | NilClass | String)
-             | (NilClass) -> (Integer | NilClass | String)
-             | (String) -> (Integer | NilClass | String)
+  initialize : (Integer | NilClass | String) -> (Integer | NilClass | String)
 end
 class Object
   log : (A) -> NilClass
