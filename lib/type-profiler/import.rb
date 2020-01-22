@@ -18,9 +18,10 @@ module TypeProfiler
         next if klass == [:NilClass]
         if klass != [:Object]
           name = klass.last
-          klass = path_to_klass(scratch, klass[0..-2])
+          base_klass = path_to_klass(scratch, klass[0..-2])
           superclass = path_to_klass(scratch, superclass) if superclass
-          klass = scratch.new_class(klass, name, superclass)
+          klass = scratch.get_constant(base_klass, name)
+          klass = scratch.new_class(base_klass, name, superclass) if klass.is_a?(Type::Any)
         else
           klass = Type::Builtin[:obj]
         end
@@ -80,7 +81,7 @@ module TypeProfiler
           raise UnsupportedType
         end
       when :bool
-        Type::Instance.new(Type::Builtin[:bool])
+        Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
       when :any
         Type::Any.new
       when :self

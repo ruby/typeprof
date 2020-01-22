@@ -175,6 +175,9 @@ module TypeProfiler
             return false if ty.idx == 0 # Object
             ty = scratch.get_superclass(ty)
           end
+        when Type::Instance
+          return true if other.klass == Type::Builtin[:obj] || other.klass == Type::Builtin[:class] || other.klass == Type::Builtin[:module]
+          return false
         else
           false
         end
@@ -564,8 +567,10 @@ module TypeProfiler
       when ::Class
         raise "unknown class: #{ obj.inspect }" if !obj.equal?(Object)
         Type::Builtin[:obj]
-      when ::TrueClass, ::FalseClass
-        Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:bool]))
+      when ::TrueClass
+        Type::Instance.new(Type::Builtin[:true])
+      when ::FalseClass
+        Type::Instance.new(Type::Builtin[:false])
       when ::Array
         ty = Type::Instance.new(Type::Builtin[:ary])
         Type::Array.tuple(obj.map {|arg| Utils::Set[guess_literal_type(arg)] }, ty)

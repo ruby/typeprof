@@ -660,8 +660,10 @@ module TypeProfiler
           if meths
             meths.each do |meth|
               meth.do_send(flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
-                if branch_type != :nil && ret_ty.is_a?(Type::Literal)
-                  if !!ret_ty.lit == (branch_type == :if)
+                is_true = ret_ty.eql?(Type::Instance.new(Type::Builtin[:true]))
+                is_false = ret_ty.eql?(Type::Instance.new(Type::Builtin[:false]))
+                if branch_type != :nil && (is_true || is_false)
+                  if is_true == (branch_type == :if)
                     nep = ep.jump(target)
                     merge_env(nep, env)
                   else
@@ -862,7 +864,8 @@ module TypeProfiler
             merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:nil])))
             return
           else # flip-flop
-            env = env.push(Type::Instance.new(Type::Builtin[:bool]))
+            bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
+            env = env.push(bool)
           end
         else
           # NTH_REF ($1, $2, ...) / BACK_REF ($&, $+, ...)
@@ -904,7 +907,8 @@ module TypeProfiler
         when 2 # VM_CHECKMATCH_TYPE_CASE
           raise NotImplementedError if array
           env, = env.pop(2)
-          env = env.push(Type::Instance.new(Type::Builtin[:bool]))
+          bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
+          env = env.push(bool)
         when 3
           raise NotImplementedError
         else
@@ -977,7 +981,11 @@ module TypeProfiler
         # XXX: is_a?
         env, (val,) = env.pop(1)
         res = val.strip_local_info(env) == Type::Instance.new(Type::Builtin[:str])
-        ty = Type::Literal.new(res, Type::Instance.new(Type::Builtin[:bool]))
+        if res
+          ty = Type::Instance.new(Type::Builtin[:true])
+        else
+          ty = Type::Instance.new(Type::Builtin[:false])
+        end
         env = env.push(ty)
       else
         raise "Unknown insn: #{ insn }"

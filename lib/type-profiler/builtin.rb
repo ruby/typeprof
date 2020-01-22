@@ -50,14 +50,14 @@ module TypeProfiler
       raise unless aargs.lead_tys.size != 0
       if recv.is_a?(Type::Instance)
         if recv.klass == aargs.lead_tys[0] # XXX: inheritance
-          true_val = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
+          true_val = Type::Instance.new(Type::Builtin[:true])
           ctn[true_val, ep, env]
         else
-          false_val = Type::Literal.new(false, Type::Instance.new(Type::Builtin[:bool]))
+          false_val = Type::Instance.new(Type::Builtin[:false])
           ctn[false_val, ep, env]
         end
       else
-        bool = Type::Instance.new(Type::Builtin[:bool])
+        bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
         ctn[bool, ep, env]
       end
     end
@@ -233,7 +233,7 @@ module TypeProfiler
           scratch.merge_env(callee_ep, callee_env)
 
           scratch.add_callsite!(callee_ep.ctx, nil, ep, env) do |_ret_ty, ep|
-            result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
+            result = Type::Instance.new(Type::Builtin[:true])
             ctn[result, ep, env]
           end
           return
@@ -245,7 +245,7 @@ module TypeProfiler
         feature = nil
       end
 
-      result = Type::Literal.new(true, Type::Instance.new(Type::Builtin[:bool]))
+      result = Type::Instance.new(Type::Builtin[:true])
       scratch[result, ep, env]
     end
   end
@@ -253,12 +253,14 @@ module TypeProfiler
   def self.setup_initial_global_env(scratch)
     klass_obj = scratch.new_class(nil, :Object, nil) # cbase, name, superclass
     scratch.add_constant(klass_obj, "Object", klass_obj)
-    klass_bool = scratch.new_class(klass_obj, :Boolean, klass_obj) # ???
+    klass_true  = scratch.new_class(klass_obj, :TrueClass, klass_obj) # ???
+    klass_false = scratch.new_class(klass_obj, :FalseClass, klass_obj) # ???
     klass_nil = scratch.new_class(klass_obj, :NilClass, klass_obj) # ???
 
-    Type::Builtin[:obj]  = klass_obj
-    Type::Builtin[:bool] = klass_bool
-    Type::Builtin[:nil]  = klass_nil
+    Type::Builtin[:obj]   = klass_obj
+    Type::Builtin[:true]  = klass_true
+    Type::Builtin[:false] = klass_false
+    Type::Builtin[:nil]   = klass_nil
 
     TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch)
 
@@ -301,16 +303,19 @@ module TypeProfiler
     scratch.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
     scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
     scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
+    scratch.add_custom_method(klass_ary, :include?, Builtin.method(:array_include?))
 
     i = -> t { Type::Instance.new(t) }
 
-    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), i[klass_bool])
+    bool = Type::Union.new(Utils::Set[Type::Instance.new(klass_true), Type::Instance.new(klass_false)])
+
+    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), bool)
+    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), bool)
     scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_nil])
-    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
-    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_bool])
+    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
+    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
+    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
+    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
     #scratch.add_typed_method(i[klass_int], :+ , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
     scratch.add_typed_method(i[klass_int], :- , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_int])
     int_times_blk = Type::TypedProc.new([i[klass_int]], Type::Any.new, Type::Builtin[:proc])

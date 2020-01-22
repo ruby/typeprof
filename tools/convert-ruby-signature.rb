@@ -68,8 +68,9 @@ class TypeProfiler
         methods = []
         singleton_methods = []
 
-        if [:Object, :Array, :Numeric, :Integer, :Float, :Math].include?(type_name.name)
-          methods = @builder.build_instance(type_name).methods.map do |name, rs_method|
+        if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass].include?(type_name.name)
+          rs_klass = @builder.build_instance(type_name)
+          methods = rs_klass.methods.map do |name, rs_method|
             # XXX
             case type_name.name
             when :Object
@@ -84,20 +85,24 @@ class TypeProfiler
               next unless [:+, :-, :*, :/, :<, :>, :-@].include?(name)
             when :Math
               next
+            when :TrueClass, :FalseClass
+              next unless [:!].include?(name)
+            when :Range
+              next #unless [:each].include?(name)
             end
 
-            [name, translate_typed_method_def(rs_method)]
+            [name, translate_typed_method_def(rs_klass.type_params, rs_method)]
           end.compact
 
           singleton_methods = @builder.build_singleton(type_name).methods.map do |name, rs_method|
             case type_name.name
-            when :Object, :Array, :Numeric, :Integer, :Float
+            when :Object, :Array, :Numeric, :Integer, :Float, :Range, :TrueClass, :FalseClass
               next
             when :Math
               next unless [:sqrt, :sin, :cos].include?(name)
             end
 
-            [name, translate_typed_method_def(rs_method)]
+            [name, translate_typed_method_def(rs_klass.type_params, rs_method)]
           end.compact
         end
 
@@ -107,7 +112,7 @@ class TypeProfiler
       classes
     end
 
-    def translate_typed_method_def(rs_method)
+    def translate_typed_method_def(type_params, rs_method)
       rs_method.method_types.map do |type|
         unless type.type.optional_keywords.empty?
           puts "optional_keywords is not supported yet"
