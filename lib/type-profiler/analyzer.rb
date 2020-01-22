@@ -699,7 +699,7 @@ module TypeProfiler
         blk = env.blk_ty
         case
         when blk.eql?(Type::Instance.new(Type::Builtin[:nil]))
-          scratch.warn(ep, "no block given")
+          #scratch.warn(ep, "no block given")
           env = env.push(Type::Any.new)
         when blk.eql?(Type::Any.new)
           scratch.warn(ep, "block is any")
