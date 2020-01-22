@@ -215,6 +215,9 @@ module TypeProfiler
           return false
         when Type::Instance
           @klass.consistent?(scratch, other.klass)
+        when Type::Class
+          return true if @klass == Type::Builtin[:obj] || @klass == Type::Builtin[:class] || @klass == Type::Builtin[:module]
+          return false
         else
           false
         end

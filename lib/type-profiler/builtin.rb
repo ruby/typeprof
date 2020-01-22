@@ -274,6 +274,8 @@ module TypeProfiler
     klass_range     = scratch.get_constant(klass_obj, :Range)
     klass_regexp    = scratch.get_constant(klass_obj, :Regexp)
     klass_matchdata = scratch.get_constant(klass_obj, :MatchData)
+    klass_class     = scratch.get_constant(klass_obj, :Class)
+    klass_module    = scratch.get_constant(klass_obj, :Module)
 
     Type::Builtin[:vmcore]    = klass_vmcore
     Type::Builtin[:int]       = klass_int
@@ -285,6 +287,8 @@ module TypeProfiler
     Type::Builtin[:range]     = klass_range
     Type::Builtin[:regexp]    = klass_regexp
     Type::Builtin[:matchdata] = klass_matchdata
+    Type::Builtin[:class]     = klass_class
+    Type::Builtin[:module]    = klass_module
 
     scratch.add_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
     scratch.add_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
