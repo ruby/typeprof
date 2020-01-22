@@ -220,6 +220,11 @@ module TypeProfiler
       end
     end
 
+    def array_include?(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
+      ctn[bool, ep, env]
+    end
+
     def require_relative(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       feature = aargs.lead_tys.first
