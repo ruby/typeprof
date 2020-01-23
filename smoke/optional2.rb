@@ -11,5 +11,5 @@ foo("A", "B", "C", "D", "E", "Z")
 __END__
 # Classes
 class Object
-  foo : (String, ?String, ?String, *Array[String] | Array[], String) -> (Array[Array[String] | Array[] | any | Array[] | Integer | Integer | String | String] | [String, Integer, Integer, Array[], String])
+  foo : (String, ?String, ?String, *String, String) -> (Array[Integer | Integer | String | NilClass | NilClass | String | String] | [String, Integer, Integer, NilClass, String])
 end

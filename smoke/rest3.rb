@@ -27,10 +27,10 @@ grault(*string_array)
 __END__
 # Classes
 class Object
-  foo : (*Array[String]) -> NilClass
-  bar : (*Array[Integer | String]) -> NilClass
-  baz : (String, *Array[String]) -> NilClass
-  qux : (Integer, *Array[String]) -> NilClass
-  corge : (*Array[Integer | String] | Array[String], Integer | String) -> NilClass
-  grault : (String, ?String, *Array[String], String) -> NilClass
+  foo : (*String) -> NilClass
+  bar : (*Integer | String) -> NilClass
+  baz : (String, *String) -> NilClass
+  qux : (Integer, *String) -> NilClass
+  corge : (*Integer | String, Integer | String) -> NilClass
+  grault : (String, ?String, *String, String) -> NilClass
 end
