@@ -194,6 +194,18 @@ module TypeProfiler
       end
     end
 
+    def array_map(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.lead_tys.size != 0
+      elems = env.get_array_elem_types(recv.id)
+      elems = elems ? elems.types : [Type::Any.new]
+      ty = Type::Union.new(elems)
+      blk_nil = Type::Instance.new(Type::Builtin[:nil])
+      naargs = ActualArguments.new([ty], nil, blk_nil)
+      Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |ret_ty, ep|
+        ctn[Type::Array.seq(Utils::Set[ret_ty]), ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
+      end
+    end
+
     def array_plus(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       ary = aargs.lead_tys.first
@@ -310,6 +322,7 @@ module TypeProfiler
     scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
     scratch.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
     scratch.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
+    scratch.add_custom_method(klass_ary, :map, Builtin.method(:array_map))
     scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
     scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
     scratch.add_custom_method(klass_ary, :include?, Builtin.method(:array_include?))
