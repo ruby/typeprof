@@ -666,7 +666,13 @@ module TypeProfiler
           opt_tys << ty
         end
       end
-      rest_ty = @rest_ty.union(other.rest_ty) if @rest_ty
+      if @rest_ty || other.rest_ty
+        if @rest_ty && other.rest_ty
+          rest_ty = @rest_ty.union(other.rest_ty)
+        else
+          rest_ty = @rest_ty || other.rest_ty
+        end
+      end
       post_tys = @post_tys.zip(other.post_tys).map {|ty1, ty2| ty1.union(ty2) }
       blk_ty = @blk_ty.union(other.blk_ty) if @blk_ty
       FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, blk_ty)
@@ -761,8 +767,9 @@ module TypeProfiler
         if rest_start
           acc = aargs.inject {|acc, ty| acc.union(ty) }
           acc = acc ? acc.union(rest_elem) : rest_elem if rest_elem
-          elem = acc.is_a?(Type::Union) ? acc.types : acc ? Utils::Set[acc] : Utils::Set[]
-          rest_ty = Type::Array.seq(elem)
+          rest_ty = acc
+          #elem = acc.is_a?(Type::Union) ? acc.types : acc ? Utils::Set[acc] : Utils::Set[]
+          #rest_ty = Type::Array.seq(elem)
           aargs.clear
         end
         if !aargs.empty?
