@@ -157,6 +157,16 @@ module TypeProfiler
       end
     end
 
+    def append_array_elem_types(id, ty)
+      if @type_params[id]
+        elems = @type_params[id].append(ty)
+        type_params = @type_params.merge({ id => elems })
+        Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
+      else
+        nil
+      end
+    end
+
     def inspect
       "Env[recv_ty:#{ @recv_ty.inspect }, blk_ty:#{ @blk_ty.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.inspect }]"
     end

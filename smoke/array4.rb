@@ -10,5 +10,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> (Array[Integer] | NilClass)
+  foo : () -> (NilClass | [Integer])
 end

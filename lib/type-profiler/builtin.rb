@@ -182,6 +182,27 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
+    def array_ltlt(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.lead_tys.size != 1
+
+      ty = aargs.lead_tys.first
+
+      nenv = env.append_array_elem_types(recv.id, ty)
+      if nenv
+        env = nenv
+      else
+        tmp_ep, tmp_env = ep, env
+        until ntmp_env = tmp_env.append_array_elem_types(recv.id, idx, ty)
+          tmp_ep = tmp_ep.outer
+          tmp_env = scratch.return_envs[tmp_ep]
+        end
+        scratch.merge_return_env(tmp_ep) do |_env|
+          ntmp_env
+        end
+      end
+      ctn[recv, ep, env]
+    end
+
     def array_each(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
@@ -321,6 +342,7 @@ module TypeProfiler
     scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
     scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
     scratch.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
+    scratch.add_custom_method(klass_ary, :<<, Builtin.method(:array_ltlt))
     scratch.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
     scratch.add_custom_method(klass_ary, :map, Builtin.method(:array_map))
     scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))

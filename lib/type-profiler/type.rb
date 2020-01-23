@@ -466,6 +466,10 @@ module TypeProfiler
           Seq.new(@elems + Utils::Set[ty])
         end
 
+        def append(ty)
+          Seq.new(@elems + Utils::Set[ty])
+        end
+
         def union(other)
           Seq.new(@elems + other.types)
         end
@@ -535,8 +539,21 @@ module TypeProfiler
           end
         end
 
+        def append(ty)
+          if @elems.size > 5 # XXX: should be configurable, or ...?
+            Seq.new(types + Utils::Set[ty]) # converted to Seq
+          else
+            Tuple.new(*@elems, Utils::Set[ty])
+          end
+        end
+
         def union(other)
-          Seq.new(types + other.types)
+          if other.is_a?(Tuple) && @elems.size == other.elems.size
+            tys = @elems.zip(other.elems).map {|ty1, ty2| ty1 + ty2 }
+            Tuple.new(*tys)
+          else
+            Seq.new(types + other.types)
+          end
         end
       end
     end
