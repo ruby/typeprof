@@ -134,7 +134,7 @@ module TypeProfiler
         if idx
           elem = elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
         else
-          elem = elems.types
+          elem = elems.squash
         end
       else
         tmp_ep = ep
@@ -146,7 +146,7 @@ module TypeProfiler
         if idx # code clone
           elem = elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
         else
-          elem = elems.types
+          elem = elems.squash
         end
       end
       elem.each do |ty| # TODO: Use Union type
@@ -206,7 +206,7 @@ module TypeProfiler
     def array_each(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
-      ty = elems ? elems.types : Type::Any.new
+      ty = elems ? elems.squash : Type::Any.new
       blk_nil = Type::Instance.new(Type::Builtin[:nil])
       naargs = ActualArguments.new([ty], nil, blk_nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |_ret_ty, ep|
@@ -217,7 +217,7 @@ module TypeProfiler
     def array_map(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
-      ty = elems ? elems.types : Type::Any.new
+      ty = elems ? elems.squash : Type::Any.new
       blk_nil = Type::Instance.new(Type::Builtin[:nil])
       naargs = ActualArguments.new([ty], nil, blk_nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |ret_ty, ep|
@@ -231,7 +231,7 @@ module TypeProfiler
       elems1 = env.get_array_elem_types(recv.id)
       if ary.is_a?(Type::LocalArray)
         elems2 = env.get_array_elem_types(ary.id)
-        elems = Type::Array::Seq.new(elems1.types.union(elems2.types))
+        elems = Type::Array::Seq.new(elems1.squash.union(elems2.squash))
         env, ty, = env.deploy_array_type(recv.base_type, elems, recv.base_type)
         ctn[ty, ep, env]
       else
@@ -246,7 +246,7 @@ module TypeProfiler
       end
 
       elems = env.get_array_elem_types(recv.id)
-      elems.types.each do |ty| # TODO: use Union type
+      elems.squash.each do |ty| # TODO: use Union type
         ctn[ty, ep, env]
       end
     end

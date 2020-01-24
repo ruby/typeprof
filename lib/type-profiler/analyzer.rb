@@ -974,7 +974,7 @@ module TypeProfiler
           elems1 = env.get_array_elem_types(ary1.id)
           if ary2.is_a?(Type::LocalArray)
             elems2 = env.get_array_elem_types(ary2.id)
-            elems = Type::Array::Seq.new(elems1.types.union(elems2.types))
+            elems = Type::Array::Seq.new(elems1.squash.union(elems2.squash))
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           else
@@ -1070,7 +1070,7 @@ module TypeProfiler
             num.times do
               nenvs = []
               envs.each do |le|
-                elems.types.each do |ty|
+                elems.squash.each do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   nenvs << le.push(ty)
                 end
@@ -1078,7 +1078,7 @@ module TypeProfiler
               envs = nenvs
             end
             if splat
-              ty = Type::Array.seq(elems.types, Type::Instance.new(Type::Builtin[:ary]))
+              ty = Type::Array.seq(elems.squash, Type::Instance.new(Type::Builtin[:ary]))
               envs = envs.map do |lenv|
                 lenv, local_ary_ty = ty.deploy_local(lenv, ep)
                 lenv = lenv.push(local_ary_ty)
@@ -1095,7 +1095,7 @@ module TypeProfiler
             num.times do
               nenvs = []
               envs.each do |le|
-                elems.types.each do |ty|
+                elems.squash.each do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   nenvs << le.push(ty)
                 end

@@ -458,7 +458,7 @@ module TypeProfiler
           return env, Seq.new(tys.inject(&:union))
         end
 
-        def types
+        def squash
           @elem
         end
 
@@ -475,7 +475,7 @@ module TypeProfiler
         end
 
         def union(other)
-          Seq.new(@elem.union(other.types))
+          Seq.new(@elem.union(other.squash))
         end
 
         def each
@@ -527,7 +527,7 @@ module TypeProfiler
           return env, Tuple.new(*elems)
         end
 
-        def types
+        def squash
           @elems.inject(&:union) || Type::Instance.new(Type::Builtin[:nil]) # Is this okay?
         end
 
@@ -539,13 +539,13 @@ module TypeProfiler
           if idx && idx < @elems.size
             Tuple.new(*Utils.array_update(@elems, idx, ty))
           else
-            Seq.new(types.union(ty)) # converted to Seq
+            Seq.new(squash.union(ty)) # converted to Seq
           end
         end
 
         def append(ty)
           if @elems.size > 5 # XXX: should be configurable, or ...?
-            Seq.new(types.union(ty)) # converted to Seq
+            Seq.new(squash.union(ty)) # converted to Seq
           else
             Tuple.new(*@elems, ty)
           end
@@ -556,7 +556,7 @@ module TypeProfiler
             tys = @elems.zip(other.elems).map {|ty1, ty2| ty1.union(ty2) }
             Tuple.new(*tys)
           else
-            Seq.new(types.union(other.types))
+            Seq.new(squash.union(other.squash))
           end
         end
       end
@@ -765,7 +765,7 @@ module TypeProfiler
       if @rest_ty
         lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
         upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
-        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : @rest_ty.elems.types
+        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : @rest_ty.elems.squash
       else
         lower_bound = upper_bound = 0
       end
