@@ -445,34 +445,30 @@ module TypeProfiler
       site = [recv, var]
       @ivar_read[site] ||= {}
       @ivar_read[site][ep] = ctn
-      @ivar_write[site] ||= Utils::MutableSet.new
-      @ivar_write[site].each do |ty|
-        ctn[ty, ep] # TODO: use Union type
-      end
+      @ivar_write[site] ||= Type::Union.new(Utils::Set[])
+      ctn[@ivar_write[site], ep]
     end
 
     def add_ivar_write!(recv, var, ty, &ctn)
       site = [recv, var]
-      @ivar_write[site] ||= Utils::MutableSet.new
-      ty.each_child {|ty2| @ivar_write[site] << ty2 }
+      @ivar_write[site] ||= Type::Union.new(Utils::Set[])
+      @ivar_write[site] = @ivar_write[site].union(ty)
       @ivar_read[site] ||= {}
       @ivar_read[site].each do |ep, ctn|
-        ctn[ty, ep] # TODO: use Union type
+        ctn[ty, ep]
       end
     end
 
     def add_gvar_read!(var, ep, &ctn)
       @gvar_read[var] ||= {}
       @gvar_read[var][ep] = ctn
-      @gvar_write[var] ||= Utils::MutableSet.new
-      @gvar_write[var].each do |ty|
-        ctn[ty, ep] # TODO: use Union type
-      end
+      @gvar_write[var] ||= Type::Union.new(Utils::Set[])
+      ctn[@gvar_write[var], ep]
     end
 
     def add_gvar_write!(var, ty, &ctn)
-      @gvar_write[var] ||= Utils::MutableSet.new
-      ty.each_child {|ty2| @gvar_write[var] << ty2 }
+      @gvar_write[var] ||= Type::Union.new(Utils::Set[])
+      @gvar_write[var] = @gvar_write[var].union(ty)
       @gvar_read[var] ||= {}
       @gvar_read[var].each do |ep, ctn|
         ctn[ty, ep]
@@ -978,12 +974,12 @@ module TypeProfiler
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           else
-            elems = Type::Array::Seq.new(Utils::Set[Type::Any.new])
+            elems = Type::Array::Seq.new(Type::Any.new)
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           end
         else
-          ty = Type::Array.seq(Utils::Set[Type::Any.new])
+          ty = Type::Array.seq(Type::Any.new)
           env, ty = ty.deploy_local(env, ep)
           env = env.push(ty)
         end

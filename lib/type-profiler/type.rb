@@ -100,9 +100,13 @@ module TypeProfiler
       end
 
       def screen_name(scratch)
-        @types.to_a.map do |ty|
-          ty.screen_name(scratch)
-        end.sort.join (" | ")
+        if @types.size == 0
+          "bot"
+        else
+          @types.to_a.map do |ty|
+            ty.screen_name(scratch)
+          end.sort.join (" | ")
+        end
       end
 
       def strip_local_info_core(env, visited)
@@ -513,13 +517,13 @@ module TypeProfiler
         def deploy_local_core(env, alloc_site)
           elems = @elems.map.with_index do |elem, i|
             alloc_site2 = alloc_site.add_id(i)
-            tys = []
+            tys = Type::Union.new(Utils::Set[])
             elem.each_child do |ty|
               alloc_site3 = alloc_site2.add_id(ty)
               env, ty2 = ty.deploy_local_core(env, alloc_site2)
-              tys << ty2
+              tys = tys.union(ty2)
             end
-            tys.inject(&:union)
+            tys
           end
           return env, Tuple.new(*elems)
         end

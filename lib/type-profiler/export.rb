@@ -22,12 +22,7 @@ module TypeProfiler
 
     def show_signature(farg_tys, ret_ty)
       s = "(#{ farg_tys.join(", ") }) -> "
-      if ret_ty.is_a?(Type::Union)
-        ret_ty = ret_ty.types
-      else
-        ret_ty = [ret_ty]
-      end
-      ret_tys = show_types(ret_ty)
+      ret_tys = ret_ty.screen_name(@scratch)
       s + (ret_tys.include?("|") ? "(#{ ret_tys })" : ret_tys)
     end
 
@@ -92,7 +87,7 @@ module TypeProfiler
 
       puts "# Global variables"
       @gvar_write.each do |gvar_name, tys|
-        puts "#{ gvar_name } : #{ show_types(tys) }"
+        puts "#{ gvar_name } : #{ tys.screen_name(@scratch) }"
       end
       puts
     end
@@ -104,10 +99,10 @@ module TypeProfiler
       stat_classes = {}
       stat_methods = {}
       classes = {}
-      @ivar_write.each do |(recv, var), tys|
+      @ivar_write.each do |(recv, var), ty|
         recv = recv.screen_name(@scratch)
         classes[recv] ||= { ivars: {}, methods: {} }
-        classes[recv][:ivars][var] = show_types(tys)
+        classes[recv][:ivars][var] = ty.screen_name(@scratch)
       end
       @sig_fargs.each do |ctx, fargs|
         next unless ctx.mid && ctx.iseq
