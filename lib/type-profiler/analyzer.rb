@@ -748,10 +748,22 @@ module TypeProfiler
       when :throw
         throwtype, = operands
         env, (ty,) = env.pop(1)
-        tmp_ep = ep.outer
-        nenv = @return_envs[tmp_ep].push(ty)
-        merge_env(tmp_ep.next, nenv)
-        # TODO: jump to ensure?
+        case throwtype
+        when 1 # return
+          ty = ty.strip_local_info(env)
+          tmp_ep = ep
+          tmp_ep = tmp_ep.outer while tmp_ep.outer
+          scratch.add_return_type!(tmp_ep.ctx, ty)
+          return
+        when 2 # break
+          tmp_ep = ep.outer
+          nenv = @return_envs[tmp_ep].push(ty)
+          merge_env(tmp_ep.next, nenv)
+          # TODO: jump to ensure?
+        else
+          p throwtype
+          raise NotImplementedError
+        end
         return
       when :once
         raise NotImplementedError, "once"
