@@ -99,7 +99,7 @@ module TypeProfiler
       tys.each do |ty|
         raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         raise "nil cannot be pushed to the stack" if ty.nil?
-        if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
+        if ty.is_a?(Type::Union) && ty.each_child.any? {|ty| ty.is_a?(Type::Array) }
           raise "Array (in Union type) cannot be pushed to the stack"
         end
       end
@@ -454,7 +454,7 @@ module TypeProfiler
     def add_ivar_write!(recv, var, ty, &ctn)
       site = [recv, var]
       @ivar_write[site] ||= Utils::MutableSet.new
-      ty.each {|ty2| @ivar_write[site] << ty2 }
+      ty.each_child {|ty2| @ivar_write[site] << ty2 }
       @ivar_read[site] ||= {}
       @ivar_read[site].each do |ep, ctn|
         ctn[ty, ep] # TODO: use Union type
@@ -472,7 +472,7 @@ module TypeProfiler
 
     def add_gvar_write!(var, ty, &ctn)
       @gvar_write[var] ||= Utils::MutableSet.new
-      ty.each {|ty2| @gvar_write[var] << ty2 }
+      ty.each_child {|ty2| @gvar_write[var] << ty2 }
       @gvar_read[var] ||= {}
       @gvar_read[var].each do |ep, ctn|
         ctn[ty, ep]
@@ -551,7 +551,7 @@ module TypeProfiler
       when :newarray, :newarraykwsplat
         len, = operands
         env, elems = env.pop(len)
-        ty = Type::Array.tuple(elems.map {|elem| Utils::Set[elem] }, Type::Instance.new(Type::Builtin[:ary]))
+        ty = Type::Array.tuple(elems, Type::Instance.new(Type::Builtin[:ary]))
         env, ty = ty.deploy_local(env, ep)
         env = env.push(ty)
       when :newhash
@@ -650,7 +650,7 @@ module TypeProfiler
         return
       when :send
         env, recvs, mid, aargs = Aux.setup_actual_arguments(scratch, operands, ep, env)
-        recvs.each do |recv|
+        recvs.each_child do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
@@ -668,7 +668,7 @@ module TypeProfiler
       when :send_is_a_and_branch
         send_operands, (branch_type, target,) = *operands
         env, recvs, mid, aargs = Aux.setup_actual_arguments(scratch, send_operands, ep, env)
-        recvs.each do |recv|
+        recvs.each_child do |recv|
           meths = recv.get_method(mid, scratch)
           if meths
             meths.each do |meth|
@@ -1022,11 +1022,11 @@ module TypeProfiler
               env = env.push(ty)
             end
             envs = [env]
-            elems += [Utils::Set[Type::Instance.new(Type::Builtin[:nil])]] * (num - elems.size) if elems.size < num
+            elems += [Type::Instance.new(Type::Builtin[:nil])] * (num - elems.size) if elems.size < num
             elems[0, num].reverse_each do |union|
               nenvs = []
               envs.each do |le|
-                union.each do |ty|
+                union.each_child do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
                     ty = Type::Any.new # XXX
@@ -1043,7 +1043,7 @@ module TypeProfiler
             elems[-num..-1].reverse_each do |union|
               nenvs = []
               envs.each do |le|
-                union.each do |ty|
+                union.each_child do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
                     ty = Type::Any.new # XXX
@@ -1070,7 +1070,7 @@ module TypeProfiler
             num.times do
               nenvs = []
               envs.each do |le|
-                elems.squash.each do |ty|
+                elems.squash.each_child do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   nenvs << le.push(ty)
                 end
@@ -1095,7 +1095,7 @@ module TypeProfiler
             num.times do
               nenvs = []
               envs.each do |le|
-                elems.squash.each do |ty|
+                elems.squash.each_child do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   nenvs << le.push(ty)
                 end
@@ -1122,7 +1122,7 @@ module TypeProfiler
       end
 
       def do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
-        blk.each do |blk|
+        blk.each_child do |blk|
           unless blk.is_a?(Type::ISeqProc)
             scratch.warn(ep, "non-iseq-proc is passed as a block")
             next

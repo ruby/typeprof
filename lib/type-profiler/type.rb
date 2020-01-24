@@ -34,7 +34,7 @@ module TypeProfiler
       end
     end
 
-    def each
+    def each_child
       yield self
     end
 
@@ -91,7 +91,7 @@ module TypeProfiler
 
       attr_reader :types
 
-      def each(&blk)
+      def each_child(&blk)
         @types.each(&blk)
       end
 
@@ -123,7 +123,7 @@ module TypeProfiler
         when Type::Any then true
         when Type::Union
           @types.each do |ty1|
-            other.types.each do |ty2|
+            other.types.each_child do |ty2|
               return true if ty1.consistent?(scratch, ty2)
             end
           end
@@ -165,7 +165,7 @@ module TypeProfiler
         case other
         when Type::Any then true
         when Type::Union
-          other.types.each do |ty|
+          other.types.each_child do |ty|
             return true if consistent?(scratch, ty)
           end
           return false
@@ -438,7 +438,7 @@ module TypeProfiler
 
         def strip_local_info_core(env, visited)
           tys = []
-          @elem.each do |ty|
+          @elem.each_child do |ty|
             tys << ty.strip_local_info_core(env, visited)
           end
           Seq.new(tys.inject(&:union))
@@ -450,7 +450,7 @@ module TypeProfiler
 
         def deploy_local_core(env, alloc_site)
           tys = []
-          @elem.each do |ty|
+          @elem.each_child do |ty|
             alloc_site2 = alloc_site.add_id(ty)
             env, ty2 = ty.deploy_local_core(env, alloc_site2)
             tys << ty2
@@ -477,16 +477,13 @@ module TypeProfiler
         def union(other)
           Seq.new(@elem.union(other.squash))
         end
-
-        def each
-          yield self
-        end
       end
 
       class Tuple
         include Utils::StructuralEquality
 
         def initialize(*elems)
+          elems.each {|ty| raise unless ty.is_a?(Type) }
           @elems = elems # Array[Type]
         end
 
@@ -517,7 +514,7 @@ module TypeProfiler
           elems = @elems.map.with_index do |elem, i|
             alloc_site2 = alloc_site.add_id(i)
             tys = []
-            elem.each do |ty|
+            elem.each_child do |ty|
               alloc_site3 = alloc_site2.add_id(ty)
               env, ty2 = ty.deploy_local_core(env, alloc_site2)
               tys << ty2
@@ -597,7 +594,7 @@ module TypeProfiler
         Type::Instance.new(Type::Builtin[:false])
       when ::Array
         ty = Type::Instance.new(Type::Builtin[:ary])
-        Type::Array.tuple(obj.map {|arg| Utils::Set[guess_literal_type(arg)] }, ty)
+        Type::Array.tuple(obj.map {|arg| guess_literal_type(arg) }, ty)
       when ::String
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:str]))
       when ::Regexp
@@ -708,7 +705,7 @@ module TypeProfiler
         yield types
       else
         rest = union_types[1..]
-        union_types.first.each do |ty|
+        union_types.first.each_child do |ty|
           expand_union_types(rest, types + [ty], &blk)
         end
       end

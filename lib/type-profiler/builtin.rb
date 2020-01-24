@@ -149,9 +149,7 @@ module TypeProfiler
           elem = elems.squash
         end
       end
-      elem.each do |ty| # TODO: Use Union type
-        ctn[ty, ep, env]
-      end
+      ctn[elem, ep, env]
     end
 
     def array_aset(flags, recv, mid, aargs, ep, env, scratch, &ctn)
@@ -246,9 +244,7 @@ module TypeProfiler
       end
 
       elems = env.get_array_elem_types(recv.id)
-      elems.squash.each do |ty| # TODO: use Union type
-        ctn[ty, ep, env]
-      end
+      ctn[elems.squash, ep, env]
     end
 
     def array_include?(flags, recv, mid, aargs, ep, env, scratch, &ctn)
