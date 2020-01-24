@@ -127,7 +127,7 @@ module TypeProfiler
         when Type::Any then true
         when Type::Union
           @types.each do |ty1|
-            other.types.each_child do |ty2|
+            other.types.each do |ty2|
               return true if ty1.consistent?(scratch, ty2)
             end
           end
