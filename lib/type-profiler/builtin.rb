@@ -17,14 +17,12 @@ module TypeProfiler
       new_sym = get_sym("alias", new_mid) or return
       old_sym = get_sym("alias", old_mid) or return
       scratch.alias_method(klass, ep.ctx.singleton, new_sym, old_sym)
-      ty = Type::Instance.new(Type::Builtin[:nil])
-      ctn[ty, ep, env]
+      ctn[Type.nil, ep, env]
     end
 
     def vmcore_undef_method(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       # no-op
-      ty = Type::Instance.new(Type::Builtin[:nil])
-      ctn[ty, ep, env]
+      ctn[Type.nil, ep, env]
     end
 
     def lambda(flags, recv, mid, aargs, ep, env, scratch, &ctn)
@@ -57,8 +55,7 @@ module TypeProfiler
           ctn[false_val, ep, env]
         end
       else
-        bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
-        ctn[bool, ep, env]
+        ctn[Type.bool, ep, env]
       end
     end
 
@@ -66,7 +63,7 @@ module TypeProfiler
       if recv.is_a?(Type::Instance)
         ctn[recv.klass, ep, env]
       else
-        ctn[Type::Any.new, ep, env]
+        ctn[Type.any, ep, env]
       end
     end
 
@@ -87,8 +84,7 @@ module TypeProfiler
         add_attr_reader(sym, cref, scratch)
         add_attr_writer(sym, cref, scratch)
       end
-      ty = Type::Instance.new(Type::Builtin[:nil])
-      ctn[ty, ep, env]
+      ctn[Type.nil, ep, env]
     end
 
     def module_attr_reader(flags, recv, mid, aargs, ep, env, scratch, &ctn)
@@ -97,8 +93,7 @@ module TypeProfiler
         cref = ep.ctx.cref
         add_attr_reader(sym, cref, scratch)
       end
-      ty = Type::Instance.new(Type::Builtin[:nil])
-      ctn[ty, ep, env]
+      ctn[Type.nil, ep, env]
     end
 
     def module_attr_writer(flags, recv, mid, aargs, ep, env, scratch, &ctn)
@@ -107,15 +102,14 @@ module TypeProfiler
         cref = ep.ctx.cref
         add_attr_writer(sym, cref, scratch)
       end
-      ty = Type::Instance.new(Type::Builtin[:nil])
-      ctn[ty, ep, env]
+      ctn[Type.nil, ep, env]
     end
 
     def reveal_type(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
         scratch.reveal_type(ep, aarg.strip_local_info(env).screen_name(scratch))
       end
-      ctn[aargs.lead_tys.size == 1 ? aargs.lead_tys.first : Type::Any.new, ep, env]
+      ctn[aargs.lead_tys.size == 1 ? aargs.lead_tys.first : Type.any, ep, env]
     end
 
     def array_aref(flags, recv, mid, aargs, ep, env, scratch, &ctn)
@@ -132,7 +126,7 @@ module TypeProfiler
       elems = env.get_array_elem_types(recv.id)
       if elems
         if idx
-          elem = elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
+          elem = elems[idx] || Utils::Set[Type.nil] # HACK
         else
           elem = elems.squash
         end
@@ -144,7 +138,7 @@ module TypeProfiler
           break if elems
         end
         if idx # code clone
-          elem = elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
+          elem = elems[idx] || Utils::Set[Type.nil] # HACK
         else
           elem = elems.squash
         end
@@ -204,9 +198,8 @@ module TypeProfiler
     def array_each(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
-      ty = elems ? elems.squash : Type::Any.new
-      blk_nil = Type::Instance.new(Type::Builtin[:nil])
-      naargs = ActualArguments.new([ty], nil, blk_nil)
+      ty = elems ? elems.squash : Type.any
+      naargs = ActualArguments.new([ty], nil, Type.nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
       end
@@ -215,9 +208,8 @@ module TypeProfiler
     def array_map(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
-      ty = elems ? elems.squash : Type::Any.new
-      blk_nil = Type::Instance.new(Type::Builtin[:nil])
-      naargs = ActualArguments.new([ty], nil, blk_nil)
+      ty = elems ? elems.squash : Type.any
+      naargs = ActualArguments.new([ty], nil, Type.nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |ret_ty, ep|
         ctn[Type::Array.seq(ret_ty), ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
       end
@@ -234,13 +226,13 @@ module TypeProfiler
         ctn[ty, ep, env]
       else
         # warn??
-        ctn[Type::Any.new, ep, env]
+        ctn[Type.any, ep, env]
       end
     end
 
     def array_pop(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 0
-        env[Type::Any.new, ep, env]
+        env[Type.any, ep, env]
       end
 
       elems = env.get_array_elem_types(recv.id)
@@ -248,8 +240,7 @@ module TypeProfiler
     end
 
     def array_include?(flags, recv, mid, aargs, ep, env, scratch, &ctn)
-      bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
-      ctn[bool, ep, env]
+      ctn[Type.bool, ep, env]
     end
 
     def require_relative(flags, recv, mid, aargs, ep, env, scratch, &ctn)
@@ -345,18 +336,16 @@ module TypeProfiler
 
     i = -> t { Type::Instance.new(t) }
 
-    bool = Type::Union.new(Utils::Set[Type::Instance.new(klass_true), Type::Instance.new(klass_false)])
-
-    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), bool)
-    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type::Any.new], [], nil, [], nil, i[klass_nil]), bool)
+    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type.any], [], nil, [], nil, i[klass_nil]), Type.bool)
+    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type.any], [], nil, [], nil, i[klass_nil]), Type.bool)
     scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_nil])
-    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
-    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
-    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
-    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), bool)
+    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), Type.bool)
+    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), Type.bool)
+    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), Type.bool)
+    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), Type.bool)
     #scratch.add_typed_method(i[klass_int], :+ , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
     scratch.add_typed_method(i[klass_int], :- , FormalArguments.new([i[klass_int]], [], nil, [], nil, i[klass_nil]), i[klass_int])
-    int_times_blk = Type::TypedProc.new([i[klass_int]], Type::Any.new, Type::Builtin[:proc])
+    int_times_blk = Type::TypedProc.new([i[klass_int]], Type.any, Type::Builtin[:proc])
     scratch.add_typed_method(i[klass_int], :times, FormalArguments.new([], [], nil, [], nil, int_times_blk), i[klass_int])
     scratch.add_typed_method(i[klass_int], :to_s, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_str])
     scratch.add_typed_method(i[klass_str], :to_s, FormalArguments.new([], [], nil, [], nil, i[klass_nil]), i[klass_str])

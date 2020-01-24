@@ -141,6 +141,29 @@ module TypeProfiler
       end
     end
 
+    def self.any
+      @any ||= Any.new
+    end
+
+    def self.bot
+      @bot ||= Union.new(Utils::Set[])
+    end
+
+    def self.bool
+      @bool ||= Union.new(Utils::Set[
+        Instance.new(Type::Builtin[:true]),
+        Instance.new(Type::Builtin[:false])
+      ])
+    end
+
+    def self.nil
+      @nil ||= Instance.new(Type::Builtin[:nil])
+    end
+
+    def self.optional(ty)
+      Union.new(Utils::Set[ty, Type.nil])
+    end
+
     class Class < Type
       def initialize(idx, name)
         @idx = idx
@@ -192,7 +215,7 @@ module TypeProfiler
     class Instance < Type
       def initialize(klass)
         raise unless klass
-        raise if klass == Type::Any.new
+        raise if klass == Type.any
         @klass = klass
       end
 
@@ -358,7 +381,7 @@ module TypeProfiler
 
       def strip_local_info_core(env, visited)
         if visited[self]
-          Type::Any.new
+          Type.any
         else
           visited[self] = true
           elems = env.get_array_elem_types(@id)
@@ -366,7 +389,7 @@ module TypeProfiler
             elems = elems.strip_local_info_core(env, visited)
           else
             # TODO: currently out-of-scope array cannot be accessed
-            elems = Array::Seq.new(Type::Any.new)
+            elems = Array::Seq.new(Type.any)
           end
           Array.new(elems, @base_type)
         end
@@ -517,7 +540,7 @@ module TypeProfiler
         def deploy_local_core(env, alloc_site)
           elems = @elems.map.with_index do |elem, i|
             alloc_site2 = alloc_site.add_id(i)
-            tys = Type::Union.new(Utils::Set[])
+            tys = Type.bot
             elem.each_child do |ty|
               alloc_site3 = alloc_site2.add_id(ty)
               env, ty2 = ty.deploy_local_core(env, alloc_site2)
@@ -529,11 +552,11 @@ module TypeProfiler
         end
 
         def squash
-          @elems.inject(&:union) || Type::Instance.new(Type::Builtin[:nil]) # Is this okay?
+          @elems.inject(&:union) || Type.nil # Is this okay?
         end
 
         def [](idx)
-          @elems[idx] || Type::Instance.new(Type::Builtin[:nil]) # HACK
+          @elems[idx] || Type.nil # HACK
         end
 
         def update(idx, ty)
@@ -738,7 +761,7 @@ module TypeProfiler
       if @rest_ty
         lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
         upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
-        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : @rest_ty.elems.squash
+        rest_elem = @rest_ty.eql?(Type.any) ? Type.any : @rest_ty.elems.squash
       else
         lower_bound = upper_bound = 0
       end

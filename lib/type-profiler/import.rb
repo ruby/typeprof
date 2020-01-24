@@ -6,7 +6,7 @@ module TypeProfiler
       klass = Type::Builtin[:obj]
       path.each do |name|
         klass = scratch.get_constant(klass, name)
-        raise if klass == Type::Any.new
+        raise if klass == Type.any
       end
       klass
     end
@@ -81,16 +81,16 @@ module TypeProfiler
           raise UnsupportedType
         end
       when :bool
-        Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
+        Type.bool
       when :any
-        Type::Any.new
+        Type.any
       when :self
         Type::Self.new
       when :union
         tys = ty[1].reject {|ty2| ty2[1] == [:BigDecimal] } # XXX
         Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }])
       when :optional
-        Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:nil]), convert_type(scratch, ty[1])])
+        Type.optional(convert_type(scratch, ty[1]))
       else
         pp ty
         raise NotImplementedError

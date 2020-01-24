@@ -222,7 +222,7 @@ module TypeProfiler
       end
 
       def get_constant(name)
-        @consts[name] || Type::Any.new # XXX: warn?
+        @consts[name] || Type.any # XXX: warn?
       end
 
       def add_constant(name, ty)
@@ -270,7 +270,7 @@ module TypeProfiler
     end
 
     def get_class_name(klass)
-      if klass == Type::Any.new
+      if klass == Type.any
         "???"
       else
         @class_defs[klass.idx].name
@@ -318,8 +318,8 @@ module TypeProfiler
     end
 
     def get_constant(klass, name)
-      if klass == Type::Any.new
-        Type::Any.new
+      if klass == Type.any
+        Type.any
       else
         @class_defs[klass.idx].get_constant(name)
       end
@@ -328,15 +328,15 @@ module TypeProfiler
     def search_constant(cref, name)
       while cref != :bottom
         val = get_constant(cref.klass, name)
-        return val if val != Type::Any.new
+        return val if val != Type.any
         cref = cref.outer
       end
 
-      Type::Any.new
+      Type.any
     end
 
     def add_constant(klass, name, value)
-      if klass == Type::Any.new
+      if klass == Type.any
         self
       else
         @class_defs[klass.idx].add_constant(name, value)
@@ -344,7 +344,7 @@ module TypeProfiler
     end
 
     def add_method(klass, mid, mdef)
-      if klass == Type::Any.new
+      if klass == Type.any
         self # XXX warn
       else
         @class_defs[klass.idx].add_method(mid, mdef)
@@ -352,7 +352,7 @@ module TypeProfiler
     end
 
     def add_singleton_method(klass, mid, mdef)
-      if klass == Type::Any.new
+      if klass == Type.any
         self # XXX warn
       else
         @class_defs[klass.idx].add_singleton_method(mid, mdef)
@@ -384,7 +384,7 @@ module TypeProfiler
     end
 
     def alias_method(klass, singleton, new, old)
-      if klass == Type::Any.new
+      if klass == Type.any
         self
       else
         klass_def = @class_defs[klass.idx]
@@ -414,8 +414,8 @@ module TypeProfiler
       else
         @sig_fargs[callee_ctx] = fargs
       end
-      ret_ty = @sig_ret[callee_ctx] ||= Type::Union.new(Utils::Set[])
-      unless ret_ty.eql?(Type::Union.new(Utils::Set[]))
+      ret_ty = @sig_ret[callee_ctx] ||= Type.bot
+      unless ret_ty.eql?(Type.bot)
         @callsites[callee_ctx].each do |caller_ep, ctn|
           ctn[ret_ty, caller_ep, @return_envs[caller_ep]] # TODO: use Union type
         end
@@ -427,7 +427,7 @@ module TypeProfiler
     end
 
     def add_return_type!(callee_ctx, ret_ty)
-      @sig_ret[callee_ctx] ||= Type::Union.new(Utils::Set[])
+      @sig_ret[callee_ctx] ||= Type.bot
       @sig_ret[callee_ctx] = @sig_ret[callee_ctx].union(ret_ty)
 
       #@callsites[callee_ctx] ||= {} # needed?
@@ -445,13 +445,13 @@ module TypeProfiler
       site = [recv, var]
       @ivar_read[site] ||= {}
       @ivar_read[site][ep] = ctn
-      @ivar_write[site] ||= Type::Union.new(Utils::Set[])
+      @ivar_write[site] ||= Type.bot
       ctn[@ivar_write[site], ep]
     end
 
     def add_ivar_write!(recv, var, ty, &ctn)
       site = [recv, var]
-      @ivar_write[site] ||= Type::Union.new(Utils::Set[])
+      @ivar_write[site] ||= Type.bot
       @ivar_write[site] = @ivar_write[site].union(ty)
       @ivar_read[site] ||= {}
       @ivar_read[site].each do |ep, ctn|
@@ -462,12 +462,12 @@ module TypeProfiler
     def add_gvar_read!(var, ep, &ctn)
       @gvar_read[var] ||= {}
       @gvar_read[var][ep] = ctn
-      @gvar_write[var] ||= Type::Union.new(Utils::Set[])
+      @gvar_write[var] ||= Type.bot
       ctn[@gvar_write[var], ep]
     end
 
     def add_gvar_write!(var, ty, &ctn)
-      @gvar_write[var] ||= Type::Union.new(Utils::Set[])
+      @gvar_write[var] ||= Type.bot
       @gvar_write[var] = @gvar_write[var].union(ty)
       @gvar_read[var] ||= {}
       @gvar_read[var].each do |ep, ctn|
@@ -533,7 +533,7 @@ module TypeProfiler
         end
         env = env.push(ty)
       when :putnil
-        env = env.push(Type::Instance.new(Type::Builtin[:nil]))
+        env = env.push(Type.nil)
       when :putobject, :duparray
         obj, = operands
         env, ty = Type.guess_literal_type(obj).deploy_local(env, ep)
@@ -554,7 +554,7 @@ module TypeProfiler
         # XXX
         num, = operands
         env, = env.pop(num)
-        env = env.push(Type::Any.new)
+        env = env.push(Type.any)
       when :newhashfromarray
         raise NotImplementedError, "newhashfromarray"
       when :newrange
@@ -601,18 +601,18 @@ module TypeProfiler
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
           else
-            if existing_klass != Type::Any.new
+            if existing_klass != Type.any
               scratch.error(ep, "the class \"#{ id }\" is #{ existing_klass.screen_name(scratch) }")
               id = :"#{ id }(dummy)"
             end
             existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
-            if existing_klass != Type::Any.new
+            if existing_klass != Type.any
               klass = existing_klass
             else
-              if superclass == Type::Any.new
+              if superclass == Type.any
                 scratch.warn(ep, "superclass is any; Object is used instead")
                 superclass = Type::Builtin[:obj]
-              elsif superclass.eql?(Type::Instance.new(Type::Builtin[:nil]))
+              elsif superclass.eql?(Type.nil)
                 superclass = Type::Builtin[:obj]
               end
               klass = scratch.new_class(cbase, id, superclass)
@@ -626,13 +626,13 @@ module TypeProfiler
           elsif klass.is_a?(Type::Any)
           else
             scratch.warn(ep, "A singleton class is open for #{ klass.screen_name(scratch) }; handled as any")
-            klass = Type::Any.new
+            klass = Type.any
           end
         else
           raise NotImplementedError, "unknown defineclass flag: #{ flags }"
         end
         ncref = ep.ctx.cref.extend(klass)
-        recv = singleton ? Type::Any.new : klass
+        recv = singleton ? Type.any : klass
         blk = env.blk_ty
         nctx = Context.new(iseq, ncref, singleton, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
@@ -653,10 +653,10 @@ module TypeProfiler
               meth.do_send(flags, recv, mid, aargs, ep, env, scratch)
             end
           else
-            if recv != Type::Any.new # XXX: should be configurable
+            if recv != Type.any # XXX: should be configurable
               scratch.error(ep, "undefined method: #{ recv.strip_local_info(env).screen_name(scratch) }##{ mid }")
             end
-            nenv = env.push(Type::Any.new)
+            nenv = env.push(Type.any)
             merge_env(ep.next, nenv)
           end
         end
@@ -689,7 +689,7 @@ module TypeProfiler
               end
             end
           else
-            if recv != Type::Any.new # XXX: should be configurable
+            if recv != Type.any # XXX: should be configurable
               scratch.error(ep, "undefined method: #{ recv.strip_local_info(env).screen_name(scratch) }##{ mid }")
             end
             ep_then = ep.next
@@ -707,14 +707,14 @@ module TypeProfiler
         env, aargs = env.pop(orig_argc)
         blk = env.blk_ty
         case
-        when blk.eql?(Type::Instance.new(Type::Builtin[:nil]))
+        when blk.eql?(Type.nil)
           #scratch.warn(ep, "no block given")
-          env = env.push(Type::Any.new)
-        when blk.eql?(Type::Any.new)
+          env = env.push(Type.any)
+        when blk.eql?(Type.any)
           scratch.warn(ep, "block is any")
-          env = env.push(Type::Any.new)
+          env = env.push(Type.any)
         else # Proc
-          blk_nil = Type::Instance.new(Type::Builtin[:nil])
+          blk_nil = Type.nil
           aargs = ActualArguments.new(aargs, nil, blk_nil)
           Aux.do_invoke_block(true, env.blk_ty, aargs, ep, env, scratch)
           return
@@ -733,7 +733,7 @@ module TypeProfiler
           return
         else
           scratch.error(ep, "no superclass method: #{ env.recv_ty.screen_name(scratch) }##{ mid }")
-          env = env.push(Type::Any.new)
+          env = env.push(Type.any)
         end
       when :invokebuiltin
         raise NotImplementedError
@@ -765,7 +765,7 @@ module TypeProfiler
 
         # TODO: it works for only simple cases: `x = nil; x || 1`
         # It would be good to merge "dup; branchif" to make it context-sensitive-like
-        falsy = ty.eql?(Type::Instance.new(Type::Builtin[:nil]))
+        falsy = ty.eql?(Type.nil)
 
         merge_env(ep_then, env)
         merge_env(ep_else, env) unless branchtype == :if && falsy
@@ -841,12 +841,12 @@ module TypeProfiler
       when :getconstant
         name, = operands
         env, (cbase, _allow_nil,) = env.pop(2)
-        if cbase.eql?(Type::Instance.new(Type::Builtin[:nil]))
+        if cbase.eql?(Type.nil)
           ty = scratch.search_constant(ep.ctx.cref, name)
           env, ty = ty.deploy_local(env, ep) # TODO: multiple return arguments
           env = env.push(ty)
-        elsif cbase.eql?(Type::Any.new)
-          env = env.push(Type::Any.new) # XXX: warning needed?
+        elsif cbase.eql?(Type.any)
+          env = env.push(Type.any) # XXX: warning needed?
         else
           ty = scratch.get_constant(cbase, name)
           env, ty = ty.deploy_local(env, ep) # TODO: multiple return arguments
@@ -856,7 +856,7 @@ module TypeProfiler
         name, = operands
         env, (ty, cbase) = env.pop(2)
         old_ty = scratch.get_constant(cbase, name) # TODO: multiple return arguments
-        if old_ty != Type::Any.new # XXX???
+        if old_ty != Type.any # XXX???
           scratch.warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(scratch) }::#{ name }")
         end
         scratch.add_constant(cbase, name, ty.strip_local_info(env))
@@ -867,19 +867,18 @@ module TypeProfiler
           raise NotImplementedError
           case key
           when 0 # VM_SVAR_LASTLINE
-            env = env.push(Type::Any.new) # or String | NilClass only?
+            env = env.push(Type.any) # or String | NilClass only?
           when 1 # VM_SVAR_BACKREF ($~)
             merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:matchdata])))
-            merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:nil])))
+            merge_env(ep.next, env.push(Type.nil))
             return
           else # flip-flop
-            bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
-            env = env.push(bool)
+            env = env.push(Type.bool)
           end
         else
           # NTH_REF ($1, $2, ...) / BACK_REF ($&, $+, ...)
           merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:str])))
-          merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:nil])))
+          merge_env(ep.next, env.push(Type.nil))
           return
         end
       when :setspecial
@@ -890,7 +889,7 @@ module TypeProfiler
         env, (ty,) = env.pop(1)
         env = env.push(ty).push(ty)
       when :duphash
-        env = env.push(Type::Any.new) # TODO: implement hash
+        env = env.push(Type.any) # TODO: implement hash
       when :dupn
         n, = operands
         _, tys = env.pop(n)
@@ -905,8 +904,7 @@ module TypeProfiler
       when :defined
         env, = env.pop(1)
         sym_ty = Type::Symbol.new(nil, Type::Instance.new(Type::Builtin[:sym]))
-        nil_ty = Type::Instance.new(Type::Builtin[:nil])
-        env = env.push(Type::Union.new(Utils::Set[sym_ty, nil_ty]))
+        env = env.push(Type.optional(sym_ty))
       when :checkmatch
         flag, = operands
         array = flag & 4 != 0
@@ -916,8 +914,7 @@ module TypeProfiler
         when 2 # VM_CHECKMATCH_TYPE_CASE
           raise NotImplementedError if array
           env, = env.pop(2)
-          bool = Type::Union.new(Utils::Set[Type::Instance.new(Type::Builtin[:true]), Type::Instance.new(Type::Builtin[:false])])
-          env = env.push(bool)
+          env = env.push(Type.bool)
         when 3
           raise NotImplementedError
         else
@@ -949,14 +946,14 @@ module TypeProfiler
         case ary
         when Type::LocalArray
           elems = env.get_array_elem_types(ary.id)
-          elems ||= Type::Array::Seq.new(Type::Any.new) # XXX
+          elems ||= Type::Array::Seq.new(Type.any) # XXX
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         when Type::Any
           splat = flag & 1 == 1
           num += 1 if splat
           num.times do
-            env = env.push(Type::Any.new)
+            env = env.push(Type.any)
           end
         else
           # TODO: call to_ary (or to_a?)
@@ -974,12 +971,12 @@ module TypeProfiler
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           else
-            elems = Type::Array::Seq.new(Type::Any.new)
+            elems = Type::Array::Seq.new(Type.any)
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           end
         else
-          ty = Type::Array.seq(Type::Any.new)
+          ty = Type::Array.seq(Type.any)
           env, ty = ty.deploy_local(env, ep)
           env = env.push(ty)
         end
@@ -1018,14 +1015,14 @@ module TypeProfiler
               env = env.push(ty)
             end
             envs = [env]
-            elems += [Type::Instance.new(Type::Builtin[:nil])] * (num - elems.size) if elems.size < num
+            elems += [Type.nil] * (num - elems.size) if elems.size < num
             elems[0, num].reverse_each do |union|
               nenvs = []
               envs.each do |le|
                 union.each_child do |ty|
-                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  ty = Type.any if ty.is_a?(Type::Array) # XXX
                   if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
-                    ty = Type::Any.new # XXX
+                    ty = Type.any # XXX
                   end
                   nenvs << le.push(ty)
                 end
@@ -1035,14 +1032,14 @@ module TypeProfiler
           else
             # fetch num elements from the tail
             envs = [env]
-            elems += [Utils::Set[Type::Instance.new(Type::Builtin[:nil])]] * (num - elems.size) if elems.size < num
+            elems += [Utils::Set[Type.nil]] * (num - elems.size) if elems.size < num
             elems[-num..-1].reverse_each do |union|
               nenvs = []
               envs.each do |le|
                 union.each_child do |ty|
-                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  ty = Type.any if ty.is_a?(Type::Array) # XXX
                   if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
-                    ty = Type::Any.new # XXX
+                    ty = Type.any # XXX
                   end
                   nenvs << le.push(ty)
                 end
@@ -1067,7 +1064,7 @@ module TypeProfiler
               nenvs = []
               envs.each do |le|
                 elems.squash.each_child do |ty|
-                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  ty = Type.any if ty.is_a?(Type::Array) # XXX
                   nenvs << le.push(ty)
                 end
               end
@@ -1092,7 +1089,7 @@ module TypeProfiler
               nenvs = []
               envs.each do |le|
                 elems.squash.each_child do |ty|
-                  ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
+                  ty = Type.any if ty.is_a?(Type::Array) # XXX
                   nenvs << le.push(ty)
                 end
               end
@@ -1132,9 +1129,9 @@ module TypeProfiler
           if argc != aargs_.size
             warn "complex parameter passing of block is not implemented"
             aargs_.pop while argc < aargs_.size
-            aargs_ << Type::Any.new while argc > aargs_.size
+            aargs_ << Type.any while argc > aargs_.size
           end
-          locals = [Type::Instance.new(Type::Builtin[:nil])] * blk_iseq.locals.size
+          locals = [Type.nil] * blk_iseq.locals.size
           locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
           recv = blk_env.recv_ty
           env_blk = blk_env.blk_ty
@@ -1201,16 +1198,16 @@ module TypeProfiler
             # check
             blk_ty = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
           else
-            blk_ty = Type::Instance.new(Type::Builtin[:nil])
+            blk_ty = Type.nil
           end
         end
         case
-        when blk_ty.eql?(Type::Instance.new(Type::Builtin[:nil]))
-        when blk_ty.eql?(Type::Any.new)
+        when blk_ty.eql?(Type.nil)
+        when blk_ty.eql?(Type.any)
         when blk_ty.is_a?(Type::ISeqProc)
         else
           scratch.error(ep, "wrong argument type #{ blk_ty.screen_name(scratch) } (expected Proc)")
-          blk_ty = Type::Any.new
+          blk_ty = Type.any
         end
         if flags[0] != 0 # VM_CALL_ARGS_SPLAT_bit
           aargs = ActualArguments.new(aargs[0..-2], aargs.last, blk_ty)

@@ -35,14 +35,14 @@ module TypeProfiler
       aargs.each_formal_arguments(@iseq.fargs_format) do |fargs, start_pc|
         if fargs.is_a?(String)
           scratch.error(caller_ep, fargs)
-          ctn[Type::Any.new, caller_ep, caller_env]
+          ctn[Type.any, caller_ep, caller_env]
           next
         end
 
         ctx = Context.new(@iseq, @cref, @singleton, mid) # XXX: to support opts, rest, etc
         callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
-        locals = [Type::Instance.new(Type::Builtin[:nil])] * @iseq.locals.size
+        locals = [Type.nil] * @iseq.locals.size
         nenv = Env.new(recv, fargs.blk_ty, locals, [], {})
         alloc_site = AllocationSite.new(callee_ep)
         idx = 0
@@ -102,8 +102,7 @@ module TypeProfiler
         if fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
           scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
           nfargs = fargs.blk_ty.fargs
-          blk_nil = Type::Instance.new(Type::Builtin[:nil]) # XXX: support block to block?
-          naargs = ActualArguments.new(nfargs, nil, blk_nil)
+          naargs = ActualArguments.new(nfargs, nil, Type.nil) # XXX: support block to block?
           # XXX: do_invoke_block expects caller's env
           Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
             # XXX: check the return type from the block
@@ -111,14 +110,14 @@ module TypeProfiler
             scratch.add_return_type!(dummy_ctx, ret_ty)
           end
         end
-        if fargs.blk_ty == Type::Instance.new(Type::Builtin[:nil])# && !aargs.blk_ty.is_a?(Type::ISeqProc)
+        if fargs.blk_ty == Type.nil# && !aargs.blk_ty.is_a?(Type::ISeqProc)
           ctn[ret_ty, caller_ep, caller_env]
         end
       end
 
       unless found
         scratch.error(caller_ep, "failed to resolve overload: #{ recv.screen_name(scratch) }##{ mid }")
-        ctn[Type::Any.new, caller_ep, caller_env]
+        ctn[Type.any, caller_ep, caller_env]
       end
     end
   end
