@@ -953,7 +953,7 @@ module TypeProfiler
         case ary
         when Type::LocalArray
           elems = env.get_array_elem_types(ary.id)
-          elems ||= Type::Array::Seq.new(Utils::Set[Type::Any.new]) # XXX
+          elems ||= Type::Array::Seq.new(Type::Any.new) # XXX
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         when Type::Any
@@ -964,7 +964,7 @@ module TypeProfiler
           end
         else
           # TODO: call to_ary (or to_a?)
-          elems = Type::Array::Tuple.new(Utils::Set[ary.strip_local_info(env)])
+          elems = Type::Array::Tuple.new(ary.strip_local_info(env))
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         end
@@ -974,7 +974,7 @@ module TypeProfiler
           elems1 = env.get_array_elem_types(ary1.id)
           if ary2.is_a?(Type::LocalArray)
             elems2 = env.get_array_elem_types(ary2.id)
-            elems = Type::Array::Seq.new(elems1.types + elems2.types)
+            elems = Type::Array::Seq.new(elems1.types.union(elems2.types))
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           else
@@ -1024,30 +1024,34 @@ module TypeProfiler
             envs = [env]
             elems += [Utils::Set[Type::Instance.new(Type::Builtin[:nil])]] * (num - elems.size) if elems.size < num
             elems[0, num].reverse_each do |union|
-              envs = envs.flat_map do |le|
-                union.to_a.map do |ty|
+              nenvs = []
+              envs.each do |le|
+                union.each do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
                     ty = Type::Any.new # XXX
                   end
-                  le.push(ty)
+                  nenvs << le.push(ty)
                 end
               end
+              envs = nenvs
             end
           else
             # fetch num elements from the tail
             envs = [env]
             elems += [Utils::Set[Type::Instance.new(Type::Builtin[:nil])]] * (num - elems.size) if elems.size < num
             elems[-num..-1].reverse_each do |union|
-              envs = envs.flat_map do |le|
-                union.to_a.map do |ty|
+              nenvs = []
+              envs.each do |le|
+                union.each do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
                   if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
                     ty = Type::Any.new # XXX
                   end
-                  le.push(ty)
+                  nenvs << le.push(ty)
                 end
               end
+              envs = nenvs
             end
             if splat
               ty = Type::Array.tuple(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
@@ -1064,14 +1068,17 @@ module TypeProfiler
           if from_head
             envs = [env]
             num.times do
-              envs = envs.flat_map do |le|
-                elems.types.to_a.map do |ty|
+              nenvs = []
+              envs.each do |le|
+                elems.types.each do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
-                  le.push(ty)
+                  nenvs << le.push(ty)
                 end
               end
+              envs = nenvs
             end
             if splat
+              ty = Type::Array.seq(elems.types, Type::Instance.new(Type::Builtin[:ary]))
               envs = envs.map do |lenv|
                 lenv, local_ary_ty = ty.deploy_local(lenv, ep)
                 lenv = lenv.push(local_ary_ty)
@@ -1086,12 +1093,14 @@ module TypeProfiler
               end
             end
             num.times do
-              envs = envs.flat_map do |le|
-                elems.types.map do |ty|
+              nenvs = []
+              envs.each do |le|
+                elems.types.each do |ty|
                   ty = Type::Any.new if ty.is_a?(Type::Array) # XXX
-                  le.push(ty)
+                  nenvs << le.push(ty)
                 end
               end
+              envs = nenvs
             end
           end
           envs.each do |env|
@@ -1105,13 +1114,19 @@ module TypeProfiler
           do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
         else
           do_invoke_block_core(given_block, blk, aargs, ep, env, scratch) do |ret_ty, ep, env|
-            scratch.merge_env(ep.next, env.push(ret_ty))
+            nenv, ret_ty, = ret_ty.deploy_local(env, ep)
+            nenv = nenv.push(ret_ty)
+            scratch.merge_env(ep.next, nenv)
           end
         end
       end
 
       def do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
         blk.each do |blk|
+          unless blk.is_a?(Type::ISeqProc)
+            scratch.warn(ep, "non-iseq-proc is passed as a block")
+            next
+          end
           blk_iseq = blk.iseq
           blk_ep = blk.ep
           blk_env = blk.env

@@ -192,7 +192,7 @@ module TypeProfiler
         env = nenv
       else
         tmp_ep, tmp_env = ep, env
-        until ntmp_env = tmp_env.append_array_elem_types(recv.id, idx, ty)
+        until ntmp_env = tmp_env.append_array_elem_types(recv.id, ty)
           tmp_ep = tmp_ep.outer
           tmp_env = scratch.return_envs[tmp_ep]
         end
@@ -206,8 +206,7 @@ module TypeProfiler
     def array_each(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
-      elems = elems ? elems.types : [Type::Any.new]
-      ty = Type::Union.new(elems)
+      ty = elems ? elems.types : Type::Any.new
       blk_nil = Type::Instance.new(Type::Builtin[:nil])
       naargs = ActualArguments.new([ty], nil, blk_nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |_ret_ty, ep|
@@ -218,12 +217,11 @@ module TypeProfiler
     def array_map(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       elems = env.get_array_elem_types(recv.id)
-      elems = elems ? elems.types : [Type::Any.new]
-      ty = Type::Union.new(elems)
+      ty = elems ? elems.types : Type::Any.new
       blk_nil = Type::Instance.new(Type::Builtin[:nil])
       naargs = ActualArguments.new([ty], nil, blk_nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |ret_ty, ep|
-        ctn[Type::Array.seq(Utils::Set[ret_ty]), ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
+        ctn[Type::Array.seq(ret_ty), ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
       end
     end
 
@@ -233,7 +231,7 @@ module TypeProfiler
       elems1 = env.get_array_elem_types(recv.id)
       if ary.is_a?(Type::LocalArray)
         elems2 = env.get_array_elem_types(ary.id)
-        elems = Type::Array::Seq.new(elems1.types + elems2.types.map {|ty| ty.strip_local_info(env) })
+        elems = Type::Array::Seq.new(elems1.types.union(elems2.types))
         env, ty, = env.deploy_array_type(recv.base_type, elems, recv.base_type)
         ctn[ty, ep, env]
       else

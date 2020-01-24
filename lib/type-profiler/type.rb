@@ -69,6 +69,7 @@ module TypeProfiler
 
     class Union < Type
       def initialize(tys)
+        raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
       end
 
@@ -361,7 +362,7 @@ module TypeProfiler
             elems = elems.strip_local_info_core(env, visited)
           else
             # TODO: currently out-of-scope array cannot be accessed
-            elems = Array::Seq.new(Utils::Set[Type::Any.new])
+            elems = Array::Seq.new(Type::Any.new)
           end
           Array.new(elems, @base_type)
         end
@@ -428,50 +429,53 @@ module TypeProfiler
       class Seq
         include Utils::StructuralEquality
 
-        def initialize(elems)
-          raise if !elems.is_a?(Utils::Set)
-          @elems = elems
+        def initialize(elem)
+          raise if !elem.is_a?(Type)
+          @elem = elem
         end
 
-        attr_reader :elems
+        attr_reader :elem
 
         def strip_local_info_core(env, visited)
-          Seq.new(@elems.map {|ty| ty.strip_local_info_core(env, visited) })
+          tys = []
+          @elem.each do |ty|
+            tys << ty.strip_local_info_core(env, visited)
+          end
+          Seq.new(tys.inject(&:union))
         end
 
         def screen_name(scratch)
-          s = []
-          @elems.each {|ty| s << ty.screen_name(scratch) }
-          "Array[" + s.sort.join(" | ") + "]"
+          "Array[#{ @elem.screen_name(scratch) }]"
         end
 
         def deploy_local_core(env, alloc_site)
-          elems = @elems.map do |ty|
+          tys = []
+          @elem.each do |ty|
             alloc_site2 = alloc_site.add_id(ty)
             env, ty2 = ty.deploy_local_core(env, alloc_site2)
-            ty2
+            tys << ty2
           end
-          return env, Seq.new(elems)
+          return env, Seq.new(tys.inject(&:union))
         end
 
         def types
-          @elems
+          @elem
         end
 
         def [](idx)
-          @elems
+          @elem
         end
 
         def update(_idx, ty)
-          Seq.new(@elems + Utils::Set[ty])
+          Seq.new(@elem.union(ty))
         end
 
         def append(ty)
-          Seq.new(@elems + Utils::Set[ty])
+          Seq.new(@elem.union(ty))
         end
 
         def union(other)
-          Seq.new(@elems + other.types)
+          Seq.new(@elem.union(other.types))
         end
 
         def each
@@ -483,14 +487,14 @@ module TypeProfiler
         include Utils::StructuralEquality
 
         def initialize(*elems)
-          @elems = elems
+          @elems = elems # Array[Type]
         end
 
         attr_reader :elems
 
         def strip_local_info_core(env, visited)
           elems = @elems.map do |elem|
-            elem.map {|ty| ty.strip_local_info_core(env, visited) }
+            elem.strip_local_info_core(env, visited)
           end
           Tuple.new(*elems)
         end
@@ -505,54 +509,54 @@ module TypeProfiler
 
         def screen_name(scratch)
           "[" + @elems.map do |elem|
-            s = []
-            elem.each {|ty| s << ty.screen_name(scratch) }
-            s.join(" | ")
+            elem.screen_name(scratch)
           end.join(", ") + "]"
         end
 
         def deploy_local_core(env, alloc_site)
           elems = @elems.map.with_index do |elem, i|
             alloc_site2 = alloc_site.add_id(i)
-            elem.map do |ty|
+            tys = []
+            elem.each do |ty|
               alloc_site3 = alloc_site2.add_id(ty)
               env, ty2 = ty.deploy_local_core(env, alloc_site2)
-              ty2
+              tys << ty2
             end
+            tys.inject(&:union)
           end
           return env, Tuple.new(*elems)
         end
 
         def types
-          @elems.inject(&:+) || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # Is this okay?
+          @elems.inject(&:union) || Type::Instance.new(Type::Builtin[:nil]) # Is this okay?
         end
 
         def [](idx)
-          @elems[idx] || Utils::Set[Type::Instance.new(Type::Builtin[:nil])] # HACK
+          @elems[idx] || Type::Instance.new(Type::Builtin[:nil]) # HACK
         end
 
         def update(idx, ty)
           if idx && idx < @elems.size
-            Tuple.new(*Utils.array_update(@elems, idx, Utils::Set[ty]))
+            Tuple.new(*Utils.array_update(@elems, idx, ty))
           else
-            Seq.new(types + Utils::Set[ty]) # converted to Seq
+            Seq.new(types.union(ty)) # converted to Seq
           end
         end
 
         def append(ty)
           if @elems.size > 5 # XXX: should be configurable, or ...?
-            Seq.new(types + Utils::Set[ty]) # converted to Seq
+            Seq.new(types.union(ty)) # converted to Seq
           else
-            Tuple.new(*@elems, Utils::Set[ty])
+            Tuple.new(*@elems, ty)
           end
         end
 
         def union(other)
           if other.is_a?(Tuple) && @elems.size == other.elems.size
-            tys = @elems.zip(other.elems).map {|ty1, ty2| ty1 + ty2 }
+            tys = @elems.zip(other.elems).map {|ty1, ty2| ty1.union(ty2) }
             Tuple.new(*tys)
           else
-            Seq.new(types + other.types)
+            Seq.new(types.union(other.types))
           end
         end
       end
@@ -761,7 +765,7 @@ module TypeProfiler
       if @rest_ty
         lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
         upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
-        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : Type::Union.new(@rest_ty.elems.types)
+        rest_elem = @rest_ty.eql?(Type::Any.new) ? Type::Any.new : @rest_ty.elems.types
       else
         lower_bound = upper_bound = 0
       end
