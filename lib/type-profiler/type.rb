@@ -657,19 +657,6 @@ module TypeProfiler
       fargs
     end
 
-    def each_concrete_formal_arguments
-      expand_union_types(@lead_tys) do |lead_tys|
-        expand_union_types(@opt_tys) do |opt_tys|
-          expand_union_types([@rest_ty]) do |rest_ty,|
-            expand_union_types(@post_tys) do |post_tys|
-              #expand_union_types(@keyword_tys)
-              yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, @keyword_tys, @blk_ty)
-            end
-          end
-        end
-      end
-    end
-
     def merge(other)
       raise if @lead_tys.size != other.lead_tys.size
       #raise if @post_tys.size != other.post_tys.size
@@ -694,21 +681,6 @@ module TypeProfiler
       post_tys = @post_tys.zip(other.post_tys).map {|ty1, ty2| ty1.union(ty2) }
       blk_ty = @blk_ty.union(other.blk_ty) if @blk_ty
       FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, blk_ty)
-    end
-
-    private
-
-    def expand_union_types(union_types, types = [], &blk)
-      if !union_types || union_types == [nil]
-        yield nil
-      elsif union_types.empty?
-        yield types
-      else
-        rest = union_types[1..]
-        union_types.first.each_child do |ty|
-          expand_union_types(rest, types + [ty], &blk)
-        end
-      end
     end
   end
 
@@ -820,17 +792,6 @@ module TypeProfiler
       end
       # XXX: fargs.keyword_tys
       true
-    end
-
-    def each_type(union_types, types, &blk)
-      if union_types.empty?
-        yield types
-      else
-        rest = union_types[1..]
-        union_types.first.each do |ty|
-          expand_union_types(rest, types + [ty], &blk)
-        end
-      end
     end
   end
 
