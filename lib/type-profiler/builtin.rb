@@ -221,7 +221,40 @@ module TypeProfiler
       ctn[Type.bool, ep, env]
     end
 
-    def require_relative(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def file_load(path, ep, env, scratch, &ctn)
+      iseq = ISeq.compile(path)
+      callee_ep, callee_env = TypeProfiler.starting_state(iseq)
+      scratch.merge_env(callee_ep, callee_env)
+
+      scratch.add_callsite!(callee_ep.ctx, nil, ep, env) do |_ret_ty, ep|
+        ret_ty = Type::Instance.new(Type::Builtin[:true])
+        ctn[ret_ty, ep, env]
+      end
+    end
+
+    def kernel_require(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.lead_tys.size != 1
+      feature = aargs.lead_tys.first
+      if feature.is_a?(Type::Literal)
+        feature = feature.lit
+
+        filetype, path = $LOAD_PATH.resolve_feature_path(feature)
+        if filetype == :rb
+          return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
+
+          scratch.warn(ep, "failed to read: #{ path }")
+        else
+          scratch.warn(ep, "failed to read a .so file: #{ path }")
+        end
+      else
+        scratch.warn(ep, "require target cannot be identified statically")
+      end
+
+      result = Type::Instance.new(Type::Builtin[:true])
+      scratch[result, ep, env]
+    end
+
+    def kernel_require_relative(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       feature = aargs.lead_tys.first
       if feature.is_a?(Type::Literal)
@@ -336,6 +369,7 @@ module TypeProfiler
     mdef = TypedMethodDef.new([[fargs1, i[klass_int]], [fargs2, i[klass_int]]])
     scratch.add_method(klass_obj, :Integer, mdef)
 
-    scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:require_relative))
+    scratch.add_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
+    scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
   end
 end
