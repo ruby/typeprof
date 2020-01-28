@@ -122,28 +122,8 @@ module TypeProfiler
         idx = nil
       end
 
-      # assumes that recv is LocalArray
-      elems = env.get_array_elem_types(recv.id)
-      if elems
-        if idx
-          elem = elems[idx] || Utils::Set[Type.nil] # HACK
-        else
-          elem = elems.squash
-        end
-      else
-        tmp_ep = ep
-        while true
-          tmp_ep = tmp_ep.outer
-          elems = scratch.return_envs[tmp_ep].get_array_elem_types(recv.id)
-          break if elems
-        end
-        if idx # code clone
-          elem = elems[idx] || Utils::Set[Type.nil] # HACK
-        else
-          elem = elems.squash
-        end
-      end
-      ctn[elem, ep, env]
+      ty = scratch.get_array_elem_type(env, ep, recv.id, idx)
+      ctn[ty, ep, env]
     end
 
     def array_aset(flags, recv, mid, aargs, ep, env, scratch, &ctn)
@@ -197,8 +177,7 @@ module TypeProfiler
 
     def array_each(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
-      elems = env.get_array_elem_types(recv.id)
-      ty = elems ? elems.squash : Type.any
+      ty = scratch.get_array_elem_type(env, ep, recv.id)
       naargs = ActualArguments.new([ty], nil, Type.nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
@@ -207,8 +186,7 @@ module TypeProfiler
 
     def array_map(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
-      elems = env.get_array_elem_types(recv.id)
-      ty = elems ? elems.squash : Type.any
+      ty = scratch.get_array_elem_type(env, ep, recv.id)
       naargs = ActualArguments.new([ty], nil, Type.nil)
       Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |ret_ty, ep|
         ctn[Type::Array.seq(ret_ty), ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
@@ -218,10 +196,10 @@ module TypeProfiler
     def array_plus(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       ary = aargs.lead_tys.first
-      elems1 = env.get_array_elem_types(recv.id)
+      elems1 = scratch.get_array_elem_type(env, ep, recv.id)
       if ary.is_a?(Type::LocalArray)
-        elems2 = env.get_array_elem_types(ary.id)
-        elems = Type::Array::Seq.new(elems1.squash.union(elems2.squash))
+        elems2 = scratch.get_array_elem_type(env, ep, ary.id)
+        elems = Type::Array::Seq.new(elems1.union(elems2))
         env, ty, = env.deploy_array_type(recv.base_type, elems, recv.base_type)
         ctn[ty, ep, env]
       else
@@ -235,8 +213,8 @@ module TypeProfiler
         env[Type.any, ep, env]
       end
 
-      elems = env.get_array_elem_types(recv.id)
-      ctn[elems.squash, ep, env]
+      ty = scratch.get_array_elem_type(env, ep, recv.id)
+      ctn[ty, ep, env]
     end
 
     def array_include?(flags, recv, mid, aargs, ep, env, scratch, &ctn)

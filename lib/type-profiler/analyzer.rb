@@ -138,8 +138,7 @@ module TypeProfiler
     end
 
     def get_array_elem_types(id)
-      # need to check this in the caller side
-      @type_params[id]# || @outer.get_array_elem_types(id)
+      @type_params[id]
     end
 
     def update_array_elem_types(id, elems)
@@ -488,6 +487,24 @@ module TypeProfiler
     def reveal_type(ep, msg)
       p [ep.source_location, "[p] " + msg] if ENV["TP_DEBUG"]
       @errors << [ep, "[p] " + msg]
+    end
+
+    def get_array_elem_type(env, ep, id, idx = nil)
+      elems = env.get_array_elem_types(id)
+      while ep && !elems
+        ep = ep.outer
+        elems = @return_envs[ep].get_array_elem_types(id)
+        break if elems
+      end
+      if elems
+        if idx
+          return elems[idx] || Type.nil
+        else
+          return elems.squash
+        end
+      else
+        Type.any
+      end
     end
 
     def type_profile
