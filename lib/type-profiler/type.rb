@@ -389,7 +389,7 @@ module TypeProfiler
             elems = elems.strip_local_info_core(env, visited)
           else
             # TODO: currently out-of-scope array cannot be accessed
-            elems = Array::Seq.new(Type.any)
+            elems = Array::Elements.new([], Type.any)
           end
           Array.new(elems, @base_type)
         end
@@ -436,14 +436,6 @@ module TypeProfiler
         raise
       end
 
-      def self.tuple(elems, base_type = Type::Instance.new(Type::Builtin[:ary]))
-        new(Tuple.new(*elems), base_type)
-      end
-
-      def self.seq(elems, base_type = Type::Instance.new(Type::Builtin[:ary]))
-        new(Seq.new(elems), base_type)
-      end
-
       #def union(other)
       #  raise NotImplementedError
       #end
@@ -453,135 +445,117 @@ module TypeProfiler
       #  raise "must not be used"
       #end
 
-      class Seq
+      class Elements
         include Utils::StructuralEquality
 
-        def initialize(elem)
-          raise if !elem.is_a?(Type)
-          @elem = elem
+        def initialize(lead_tys, rest_ty = Type.bot)
+          raise unless lead_tys.all? {|ty| ty.is_a?(Type) }
+          raise unless rest_ty.is_a?(Type)
+          @lead_tys, @rest_ty = lead_tys, rest_ty
         end
 
-        attr_reader :elem
+        attr_reader :lead_tys, :rest_ty
 
         def strip_local_info_core(env, visited)
-          tys = []
-          @elem.each_child do |ty|
-            tys << ty.strip_local_info_core(env, visited)
+          lead_tys = []
+          @lead_tys.each do |ty|
+            lead_tys << ty.strip_local_info_core(env, visited)
           end
-          Seq.new(tys.inject(&:union))
-        end
-
-        def screen_name(scratch)
-          "Array[#{ @elem.screen_name(scratch) }]"
+          rest_ty = @rest_ty&.strip_local_info_core(env, visited)
+          Elements.new(lead_tys, rest_ty)
         end
 
         def deploy_local_core(env, alloc_site)
-          tys = []
-          @elem.each_child do |ty|
-            alloc_site2 = alloc_site.add_id(ty)
-            env, ty2 = ty.deploy_local_core(env, alloc_site2)
-            tys << ty2
+          lead_tys = @lead_tys.map.with_index do |ty, i|
+            alloc_site2 = alloc_site.add_id(i)
+            tys = Type.bot
+            ty.each_child do |ty|
+              alloc_site3 = alloc_site2.add_id(ty)
+              env, ty2 = ty.deploy_local_core(env, alloc_site3)
+              tys = tys.union(ty2)
+            end
+            tys
           end
-          return env, Seq.new(tys.inject(&:union))
+          alloc_site_rest = alloc_site.add_id(:rest)
+          env, rest_ty = @rest_ty.deploy_local_core(env, alloc_site_rest)
+          return env, Elements.new(lead_tys, rest_ty)
         end
 
-        def squash
-          @elem
-        end
-
-        def [](idx)
-          @elem
-        end
-
-        def update(_idx, ty)
-          Seq.new(@elem.union(ty))
-        end
-
-        def append(ty)
-          Seq.new(@elem.union(ty))
-        end
-
-        def union(other)
-          Seq.new(@elem.union(other.squash))
-        end
-      end
-
-      class Tuple
-        include Utils::StructuralEquality
-
-        def initialize(*elems)
-          elems.each {|ty| raise unless ty.is_a?(Type) }
-          @elems = elems # Array[Type]
-        end
-
-        attr_reader :elems
-
-        def strip_local_info_core(env, visited)
-          elems = @elems.map do |elem|
-            elem.strip_local_info_core(env, visited)
+        def screen_name(scratch)
+          if ENV["TP_DUMP_RAW_ELEMENTS"] || @rest_ty == Type.bot
+            s = @lead_tys.map do |ty|
+              ty.screen_name(scratch)
+            end
+            s << "*" + @rest_ty.screen_name(scratch) if @rest_ty != Type.bot
+            return "[#{ s.join(", ") }]"
           end
-          Tuple.new(*elems)
+
+          "Array[#{ squash.screen_name(scratch) }]"
         end
 
         def pretty_print(q)
-          q.group(6, "Tuple[", "]") do
-            q.seplist(@elems) do |elem|
+          q.group(9, "Elements[", "]") do
+            q.seplist(@lead_tys + [@rest_ty]) do |elem|
               q.pp elem
             end
           end
         end
 
-        def screen_name(scratch)
-          "[" + @elems.map do |elem|
-            elem.screen_name(scratch)
-          end.join(", ") + "]"
-        end
-
-        def deploy_local_core(env, alloc_site)
-          elems = @elems.map.with_index do |elem, i|
-            alloc_site2 = alloc_site.add_id(i)
-            tys = Type.bot
-            elem.each_child do |ty|
-              alloc_site3 = alloc_site2.add_id(ty)
-              env, ty2 = ty.deploy_local_core(env, alloc_site2)
-              tys = tys.union(ty2)
-            end
-            tys
-          end
-          return env, Tuple.new(*elems)
-        end
-
         def squash
-          @elems.inject(&:union) || Type.nil # Is this okay?
+          @lead_tys.inject(@rest_ty) {|ty1, ty2| ty1.union(ty2) }
         end
 
         def [](idx)
-          @elems[idx] || Type.nil # HACK
+          if idx < @lead_tys.size
+            @lead_tys[idx]
+          elsif @rest_ty == Type.bot
+            Type.nil
+          else
+            @rest_ty
+          end
         end
 
         def update(idx, ty)
-          if idx && idx < @elems.size
-            Tuple.new(*Utils.array_update(@elems, idx, ty))
+          if idx
+            if idx < @lead_tys.size
+              lead_tys = Utils.array_update(@lead_tys, idx, ty)
+              Elements.new(lead_tys, @rest_ty)
+            else
+              rest_ty = @rest_ty.union(ty)
+              Elements.new(@lead_tys, rest_ty)
+            end
           else
-            Seq.new(squash.union(ty)) # converted to Seq
+            lead_tys = @lead_tys.map {|ty1| ty1.union(ty) }
+            rest_ty = @rest_ty.union(ty)
+            Elements.new(lead_tys, rest_ty)
           end
         end
 
         def append(ty)
-          if @elems.size > 5 # XXX: should be configurable, or ...?
-            Seq.new(squash.union(ty)) # converted to Seq
+          if @rest_ty == Type.bot
+            if @lead_tys.size < 5 # XXX: should be configurable, or ...?
+              lead_tys = @lead_tys + [ty]
+              Elements.new(lead_tys, @rest_ty)
+            else
+              Elements.new(@lead_tys, ty)
+            end
           else
-            Tuple.new(*@elems, ty)
+            Elements.new(@lead_tys, @rest_ty.union(ty))
           end
         end
 
         def union(other)
-          if other.is_a?(Tuple) && @elems.size == other.elems.size
-            tys = @elems.zip(other.elems).map {|ty1, ty2| ty1.union(ty2) }
-            Tuple.new(*tys)
-          else
-            Seq.new(squash.union(other.squash))
+          lead_count = [@lead_tys.size, other.lead_tys.size].min
+          lead_tys = (0...lead_count).map do |i|
+            @lead_tys[i].union(other.lead_tys[i])
           end
+
+          rest_ty = @rest_ty.union(other.rest_ty)
+          (@lead_tys[lead_count..-1] + other.lead_tys[lead_count..-1]).each do |ty|
+            rest_ty = rest_ty.union(ty)
+          end
+
+          Elements.new(lead_tys, rest_ty)
         end
       end
     end
@@ -620,8 +594,9 @@ module TypeProfiler
       when ::FalseClass
         Type::Instance.new(Type::Builtin[:false])
       when ::Array
-        ty = Type::Instance.new(Type::Builtin[:ary])
-        Type::Array.tuple(obj.map {|arg| guess_literal_type(arg) }, ty)
+        base_ty = Type::Instance.new(Type::Builtin[:ary])
+        lead_tys = obj.map {|arg| guess_literal_type(arg) }
+        Type::Array.new(Type::Array::Elements.new(lead_tys), base_ty)
       when ::String
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:str]))
       when ::Regexp

@@ -564,7 +564,7 @@ module TypeProfiler
       when :newarray, :newarraykwsplat
         len, = operands
         env, elems = env.pop(len)
-        ty = Type::Array.tuple(elems, Type::Instance.new(Type::Builtin[:ary]))
+        ty = Type::Array.new(Type::Array::Elements.new(elems), Type::Instance.new(Type::Builtin[:ary]))
         env, ty = ty.deploy_local(env, ep)
         env = env.push(ty)
       when :newhash
@@ -975,7 +975,7 @@ module TypeProfiler
         case ary
         when Type::LocalArray
           elems = env.get_array_elem_types(ary.id)
-          elems ||= Type::Array::Seq.new(Type.any) # XXX
+          elems ||= Type::Array::Elements.new([], Type.any) # XXX
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         when Type::Any
@@ -986,7 +986,7 @@ module TypeProfiler
           end
         else
           # TODO: call to_ary (or to_a?)
-          elems = Type::Array::Tuple.new(ary.strip_local_info(env))
+          elems = Type::Array::Elements.new([ary.strip_local_info(env)])
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         end
@@ -996,16 +996,16 @@ module TypeProfiler
           elems1 = env.get_array_elem_types(ary1.id)
           if ary2.is_a?(Type::LocalArray)
             elems2 = env.get_array_elem_types(ary2.id)
-            elems = Type::Array::Seq.new(elems1.squash.union(elems2.squash))
+            elems = Type::Array::Elements.new([], elems1.squash.union(elems2.squash))
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           else
-            elems = Type::Array::Seq.new(Type.any)
+            elems = Type::Array::Elements.new([], Type.any)
             env = env.update_array_elem_types(ary1.id, elems)
             env = env.push(ary1)
           end
         else
-          ty = Type::Array.seq(Type.any)
+          ty = Type::Array.new(Type::Array::Elements.new([], Type.any), Type::Instance.new(Type::Builtin[:ary]))
           env, ty = ty.deploy_local(env, ep)
           env = env.push(ty)
         end
@@ -1034,100 +1034,47 @@ module TypeProfiler
       module_function
 
       def do_expand_array(scratch, ep, env, elems, num, splat, from_head)
-        if elems.is_a?(Type::Array::Tuple)
-          elems = elems.elems
-          if from_head
-            # fetch num elements from the head
-            if splat
-              ty = Type::Array.tuple(elems[num..-1], Type::Instance.new(Type::Builtin[:ary]))
-              env, ty = ty.deploy_local(env, ep)
-              env = env.push(ty)
-            end
-            envs = [env]
-            elems += [Type.nil] * (num - elems.size) if elems.size < num
-            elems[0, num].reverse_each do |union|
-              nenvs = []
-              envs.each do |le|
-                union.each_child do |ty|
-                  ty = Type.any if ty.is_a?(Type::Array) # XXX
-                  if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
-                    ty = Type.any # XXX
-                  end
-                  nenvs << le.push(ty)
-                end
-              end
-              envs = nenvs
-            end
-          else
-            # fetch num elements from the tail
-            envs = [env]
-            elems += [Utils::Set[Type.nil]] * (num - elems.size) if elems.size < num
-            elems[-num..-1].reverse_each do |union|
-              nenvs = []
-              envs.each do |le|
-                union.each_child do |ty|
-                  ty = Type.any if ty.is_a?(Type::Array) # XXX
-                  if ty.is_a?(Type::Union) && ty.each.any? {|ty| ty.is_a?(Type::Array) }
-                    ty = Type.any # XXX
-                  end
-                  nenvs << le.push(ty)
-                end
-              end
-              envs = nenvs
-            end
-            if splat
-              ty = Type::Array.tuple(elems[0...-num], Type::Instance.new(Type::Builtin[:ary]))
-              envs = envs.map do |lenv|
-                lenv, local_ary_ty = ty.deploy_local(lenv, ep)
-                lenv = lenv.push(local_ary_ty)
-              end
+        if from_head
+          envs = [env]
+          if splat
+            ty = Type::Array.new(Type::Array::Elements.new([], elems.squash), Type::Instance.new(Type::Builtin[:ary]))
+            envs = envs.map do |lenv|
+              lenv, local_ary_ty = ty.deploy_local(lenv, ep)
+              lenv = lenv.push(local_ary_ty)
             end
           end
-          envs.each do |env|
-            scratch.merge_env(ep.next, env)
+          num.times do
+            nenvs = []
+            envs.each do |le|
+              elems.squash.each_child do |ty|
+                ty = Type.any if ty.is_a?(Type::Array) # XXX
+                nenvs << le.push(ty)
+              end
+            end
+            envs = nenvs
           end
         else
-          if from_head
-            envs = [env]
-            num.times do
-              nenvs = []
-              envs.each do |le|
-                elems.squash.each_child do |ty|
-                  ty = Type.any if ty.is_a?(Type::Array) # XXX
-                  nenvs << le.push(ty)
-                end
-              end
-              envs = nenvs
-            end
-            if splat
-              ty = Type::Array.seq(elems.squash, Type::Instance.new(Type::Builtin[:ary]))
-              envs = envs.map do |lenv|
-                lenv, local_ary_ty = ty.deploy_local(lenv, ep)
-                lenv = lenv.push(local_ary_ty)
+          envs = [env]
+          num.times do
+            nenvs = []
+            envs.each do |le|
+              elems.squash.each_child do |ty|
+                ty = Type.any if ty.is_a?(Type::Array) # XXX
+                nenvs << le.push(ty)
               end
             end
-          else
-            envs = [env]
-            if splat
-              envs = envs.map do |lenv|
-                lenv, local_ary_ty = ty.deploy_local(lenv, ep)
-                lenv = lenv.push(local_ary_ty)
-              end
-            end
-            num.times do
-              nenvs = []
-              envs.each do |le|
-                elems.squash.each_child do |ty|
-                  ty = Type.any if ty.is_a?(Type::Array) # XXX
-                  nenvs << le.push(ty)
-                end
-              end
-              envs = nenvs
+            envs = nenvs
+          end
+          if splat
+            ty = Type::Array.new(Type::Array::Elements.new([], elems.squash), Type::Instance.new(Type::Builtin[:ary]))
+            envs = envs.map do |lenv|
+              lenv, local_ary_ty = ty.deploy_local(lenv, ep)
+              lenv = lenv.push(local_ary_ty)
             end
           end
-          envs.each do |env|
-            scratch.merge_env(ep.next, env)
-          end
+        end
+        envs.each do |env|
+          scratch.merge_env(ep.next, env)
         end
       end
 
