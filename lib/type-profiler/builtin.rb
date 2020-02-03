@@ -243,6 +243,7 @@ module TypeProfiler
 
         filetype, path = $LOAD_PATH.resolve_feature_path(feature)
         if filetype == :rb
+          # TODO: if there is RBS file for the library, do not read the source code
           return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
 
           scratch.warn(ep, "failed to read: #{ path }")
@@ -254,7 +255,7 @@ module TypeProfiler
       end
 
       result = Type::Instance.new(Type::Builtin[:true])
-      scratch[result, ep, env]
+      ctn[result, ep, env]
     end
 
     def kernel_require_relative(flags, recv, mid, aargs, ep, env, scratch, &ctn)
