@@ -241,14 +241,18 @@ module TypeProfiler
       if feature.is_a?(Type::Literal)
         feature = feature.lit
 
-        filetype, path = $LOAD_PATH.resolve_feature_path(feature)
-        if filetype == :rb
-          # TODO: if there is RBS file for the library, do not read the source code
-          return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
+        begin
+          filetype, path = $LOAD_PATH.resolve_feature_path(feature)
+          if filetype == :rb
+            # TODO: if there is RBS file for the library, do not read the source code
+            return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
 
-          scratch.warn(ep, "failed to read: #{ path }")
-        else
-          scratch.warn(ep, "failed to read a .so file: #{ path }")
+            scratch.warn(ep, "failed to load: #{ path }")
+          else
+            scratch.warn(ep, "cannnot load a .so file: #{ path }")
+          end
+        rescue LoadError
+          scratch.warn(ep, "failed to load: #{ path }")
         end
       else
         scratch.warn(ep, "require target cannot be identified statically")
