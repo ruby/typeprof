@@ -21,7 +21,7 @@ module TypeProfiler
 
       def self.included(klass)
         def klass.new(*args)
-          TABLE[[self] + args] ||= super
+          (TABLE[self] ||= {})[args] ||= super
         end
       end
     end
@@ -33,14 +33,26 @@ module TypeProfiler
 
       def self.[](*values)
         tbl = {}
-        values.each {|v| tbl[v] = true }
-        new(tbl)
+        h = 0
+        values.each do |v|
+          tbl[v] = true
+          h ^= v.hash
+        end
+        new(tbl, h)
       end
 
-      def initialize(tbl)
+      TABLE = {}
+      def self.new(tbl, hash)
+        TABLE[tbl] ||= super(tbl, hash)
+      end
+
+      def initialize(tbl, hash)
         @tbl = tbl
         @tbl.freeze
+        @hash = hash
       end
+
+      attr_reader :hash
 
       def each(&blk)
         @tbl.each_key(&blk)
@@ -49,7 +61,7 @@ module TypeProfiler
       include Enumerable
 
       def +(other)
-        Set.new(@tbl.merge(other.tbl))
+        Set.new(@tbl.merge(other.tbl), hash ^ other.hash)
       end
 
       def size
@@ -57,9 +69,14 @@ module TypeProfiler
       end
 
       def map(&blk)
-        nhash = {}
-        each {|elem| nhash[yield(elem)] = true }
-        Set.new(nhash)
+        tbl = {}
+        h = 0
+        each do |elem|
+          v = yield(elem)
+          tbl[v] = true
+          h ^= v.hash
+        end
+        Set.new(tbl, h)
       end
 
       def inspect
@@ -73,9 +90,15 @@ module TypeProfiler
       end
 
       def intersection(other)
-        nhash = {}
-        each {|elem| nhash << elem if other.include?(elem) }
-        Set.new(nhash)
+        tbl = {}
+        h = 0
+        each do |elem|
+          if other.include?(elem)
+            tbl << elem
+            h ^= elem.hash
+          end
+        end
+        Set.new(tbl, h)
       end
     end
 
