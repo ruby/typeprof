@@ -504,7 +504,7 @@ module TypeProfiler
         end
 
         def squash
-          @lead_tys.inject(@rest_ty) {|ty1, ty2| ty1.union(ty2) }
+          @lead_tys.inject(@rest_ty) {|ty1, ty2| ty1.union(ty2) } #.union(Type.nil) # is this needed?
         end
 
         def [](idx)
@@ -558,6 +558,52 @@ module TypeProfiler
           end
 
           Elements.new(lead_tys, rest_ty)
+        end
+
+        def take_first(num)
+          base_ty = Type::Instance.new(Type::Builtin[:ary])
+          if @lead_tys.size >= num
+            lead_tys = @lead_tys[0, num]
+            rest_ary_ty = Array.new(Elements.new(@lead_tys[num..-1], @rest_ty), base_ty)
+            return lead_tys, rest_ary_ty
+          else
+            lead_tys = @lead_tys.dup
+            until lead_tys.size == num
+              # .union(Type.nil) is needed for `a, b, c = [42]` to assign nil to b and c
+              lead_tys << @rest_ty.union(Type.nil)
+            end
+            rest_ary_ty = Array.new(Elements.new([], @rest_ty), base_ty)
+            return lead_tys, rest_ary_ty
+          end
+        end
+
+        def take_last(num)
+          base_ty = Type::Instance.new(Type::Builtin[:ary])
+          if @rest_ty == Type.bot
+            if @lead_tys.size >= num
+              following_tys = @lead_tys[-num, num]
+              rest_ary_ty = Array.new(Elements.new(@lead_tys[0...-num], Type.bot), base_ty)
+              return rest_ary_ty, following_tys
+            else
+              following_tys = @lead_tys[-num, num] || []
+              until following_tys.size == num
+                following_tys.unshift(Type.nil)
+              end
+              rest_ary_ty = Array.new(Elements.new([], Type.bot), base_ty)
+              return rest_ary_ty, following_tys
+            end
+          else
+            lead_tys = @lead_tys.dup
+            last_ty = rest_ty
+            following_tys = []
+            until following_tys.size == num
+              last_ty = last_ty.union(lead_tys.pop) unless lead_tys.empty?
+              following_tys.unshift(last_ty)
+            end
+            rest_ty = lead_tys.inject(last_ty) {|ty1, ty2| ty1.union(ty2) }
+            rest_ary_ty = Array.new(Elements.new([], Type.bot), base_ty)
+            return rest_ary_ty, following_tys
+          end
         end
       end
     end

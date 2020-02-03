@@ -990,7 +990,7 @@ module TypeProfiler
           end
         else
           # TODO: call to_ary (or to_a?)
-          elems = Type::Array::Elements.new([ary.strip_local_info(env)])
+          elems = Type::Array::Elements.new([ary], Type.bot)
           Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
           return
         end
@@ -1039,47 +1039,25 @@ module TypeProfiler
 
       def do_expand_array(scratch, ep, env, elems, num, splat, from_head)
         if from_head
-          envs = [env]
+          lead_tys, rest_ary_ty = elems.take_first(num)
           if splat
-            ty = Type::Array.new(Type::Array::Elements.new([], elems.squash), Type::Instance.new(Type::Builtin[:ary]))
-            envs = envs.map do |lenv|
-              lenv, local_ary_ty = ty.deploy_local(lenv, ep)
-              lenv = lenv.push(local_ary_ty)
-            end
+            env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
+            env = env.push(local_ary_ty)
           end
-          num.times do
-            nenvs = []
-            envs.each do |le|
-              elems.squash.each_child do |ty|
-                ty = Type.any if ty.is_a?(Type::Array) # XXX
-                nenvs << le.push(ty)
-              end
-            end
-            envs = nenvs
+          lead_tys.reverse_each do |ty|
+            env = env.push(ty)
           end
         else
-          envs = [env]
-          num.times do
-            nenvs = []
-            envs.each do |le|
-              elems.squash.each_child do |ty|
-                ty = Type.any if ty.is_a?(Type::Array) # XXX
-                nenvs << le.push(ty)
-              end
-            end
-            envs = nenvs
+          rest_ary_ty, following_tys = elems.take_last(num)
+          following_tys.each do |ty|
+            env = env.push(ty)
           end
           if splat
-            ty = Type::Array.new(Type::Array::Elements.new([], elems.squash), Type::Instance.new(Type::Builtin[:ary]))
-            envs = envs.map do |lenv|
-              lenv, local_ary_ty = ty.deploy_local(lenv, ep)
-              lenv = lenv.push(local_ary_ty)
-            end
+            env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
+            env = env.push(local_ary_ty)
           end
         end
-        envs.each do |env|
-          scratch.merge_env(ep.next, env)
-        end
+        scratch.merge_env(ep.next, env)
       end
 
       def do_invoke_block(given_block, blk, aargs, ep, env, scratch, &ctn)
