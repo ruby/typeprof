@@ -980,7 +980,7 @@ module TypeProfiler
         when Type::LocalArray
           elems = env.get_array_elem_types(ary.id)
           elems ||= Type::Array::Elements.new([], Type.any) # XXX
-          Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
+          do_expand_array(ep, env, elems, num, splat, from_head)
           return
         when Type::Any
           splat = flag & 1 == 1
@@ -991,7 +991,7 @@ module TypeProfiler
         else
           # TODO: call to_ary (or to_a?)
           elems = Type::Array::Elements.new([ary], Type.bot)
-          Aux.do_expand_array(self, ep, env, elems, num, splat, from_head)
+          do_expand_array(ep, env, elems, num, splat, from_head)
           return
         end
       when :concatarray
@@ -1034,31 +1034,31 @@ module TypeProfiler
       merge_env(ep.next, env)
     end
 
+    def do_expand_array(ep, env, elems, num, splat, from_head)
+      if from_head
+        lead_tys, rest_ary_ty = elems.take_first(num)
+        if splat
+          env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
+          env = env.push(local_ary_ty)
+        end
+        lead_tys.reverse_each do |ty|
+          env = env.push(ty)
+        end
+      else
+        rest_ary_ty, following_tys = elems.take_last(num)
+        following_tys.each do |ty|
+          env = env.push(ty)
+        end
+        if splat
+          env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
+          env = env.push(local_ary_ty)
+        end
+      end
+      merge_env(ep.next, env)
+    end
+
     module Aux
       module_function
-
-      def do_expand_array(scratch, ep, env, elems, num, splat, from_head)
-        if from_head
-          lead_tys, rest_ary_ty = elems.take_first(num)
-          if splat
-            env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
-            env = env.push(local_ary_ty)
-          end
-          lead_tys.reverse_each do |ty|
-            env = env.push(ty)
-          end
-        else
-          rest_ary_ty, following_tys = elems.take_last(num)
-          following_tys.each do |ty|
-            env = env.push(ty)
-          end
-          if splat
-            env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
-            env = env.push(local_ary_ty)
-          end
-        end
-        scratch.merge_env(ep.next, env)
-      end
 
       def do_invoke_block(given_block, blk, aargs, ep, env, scratch, &ctn)
         if ctn
