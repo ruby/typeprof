@@ -39,7 +39,9 @@ module TypeProfiler
     end
 
     def union(other)
-      if other.is_a?(Type::Union)
+      if self == other
+        self
+      elsif other.is_a?(Type::Union)
         Type::Union.new(other.types + Utils::Set[self]).normalize
       else
         Type::Union.new(Utils::Set[self, other]).normalize
