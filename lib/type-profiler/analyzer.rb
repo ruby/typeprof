@@ -172,6 +172,10 @@ module TypeProfiler
   end
 
   class Scratch
+    def inspect
+      "#<Scratch>"
+    end
+
     def initialize
       @worklist = Utils::WorkList.new
 
