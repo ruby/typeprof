@@ -1,5 +1,5 @@
 def ary
-  [1, "str", :sym, nil]
+  [1, "str", :sym, 1.0]
 end
 
 def foo
@@ -12,6 +12,6 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> [Integer, [String, :sym], NilClass]
-  ary : () -> [Integer, String, :sym, NilClass]
+  foo : () -> [Integer, [String, :sym], Float]
+  ary : () -> [Integer, String, :sym, Float]
 end

@@ -12,5 +12,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> (Array[Integer | NilClass | String])
+  foo : () -> (Array[Integer | String])
 end
