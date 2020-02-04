@@ -10,6 +10,6 @@ Foo.new.foo
 __END__
 # Classes
 class Foo
-  @var : Array[Integer] | [Integer]
+  @var : Array[Integer]
   foo : () -> Array[Integer]
 end

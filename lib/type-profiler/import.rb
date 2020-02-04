@@ -88,7 +88,7 @@ module TypeProfiler
         Type::Self.new
       when :union
         tys = ty[1].reject {|ty2| ty2[1] == [:BigDecimal] } # XXX
-        Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }])
+        Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }], nil) #  Array support
       when :optional
         Type.optional(convert_type(scratch, ty[1]))
       else

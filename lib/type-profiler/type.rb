@@ -42,9 +42,20 @@ module TypeProfiler
       if self == other
         self
       elsif other.is_a?(Type::Union)
-        Type::Union.new(other.types.add(self)).normalize
+        if self.is_a?(Type::Array)
+          Type::Union.new(other.types, self.elems).normalize
+        else
+          Type::Union.new(other.types.add(self), nil).normalize
+        end
+      elsif other.is_a?(Type::Array)
+        if self.is_a?(Type::Array)
+          Type::Union.new(Utils::Set[], self.elems.union(other.elems)).normalize
+        else
+          # TODO: What can we do about other.base_ty?
+          Type::Union.new(Utils::Set[self], other.elems).normalize
+        end
       else
-        Type::Union.new(Utils::Set[self, other]).normalize
+        Type::Union.new(Utils::Set[self, other], nil).normalize
       end
     end
 
@@ -70,57 +81,101 @@ module TypeProfiler
     end
 
     class Union < Type
-      def initialize(tys)
+      def initialize(tys, ary_elems)
         raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
+        tys.each do |ty|
+          raise if ty.is_a?(Type::Array)
+        end
+        @array_elems = ary_elems # Type::Array::Elements
+      end
+
+      attr_reader :types, :array_elems
+
+      def union_elems(e1, e2)
+        if e1
+          if e2
+            e1.union(e2)
+          else
+            e1
+          end
+        else
+          e2
+        end
       end
 
       def union(other)
         if other.is_a?(Type::Union)
-          Type::Union.new(@types + other.types).normalize
+          Type::Union.new(@types.sum(other.types), union_elems(@array_elems, other.array_elems)).normalize
+        elsif other.is_a?(Type::Array)
+          Type::Union.new(@types, union_elems(@array_elems, other.elems)).normalize
         else
-          Type::Union.new(@types.add(other)).normalize
+          Type::Union.new(@types.add(other), @array_elems).normalize
         end
       end
 
       def normalize
-        if @types.size == 1
+        if @types.size == 1 && !@array_elems
           @types.each {|ty| return ty }
         else
           self
         end
       end
 
-      attr_reader :types
-
       def each_child(&blk)
         @types.each(&blk)
+        if @array_elems
+          raise
+        end
       end
 
       def inspect
-        "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }}"
+        "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }, #{ Type::Array.new(@array_elems, Type.any).inspect }}"
       end
 
       def screen_name(scratch)
-        if @types.size == 0
+        types = @types.to_a
+        if @array_elems
+          base_ty = Type::Instance.new(Type::Builtin[:ary])
+          types << Type::Array.new(@array_elems, base_ty)
+        end
+        if types.size == 0
           "bot"
         else
-          @types.to_a.map do |ty|
+          types.to_a.map do |ty|
             ty.screen_name(scratch)
           end.sort.join (" | ")
         end
       end
 
       def strip_local_info_core(env, visited)
-        Type::Union.new(@types.map {|ty| ty.strip_local_info_core(env, visited) }).normalize
+        tys = Utils::Set[]
+        array_elems = @array_elems&.strip_local_info_core(env, visited)
+        @types.each do |ty|
+          ty = ty.strip_local_info_core(env, visited)
+          if ty.is_a?(Array)
+            array_elems = union_elems(array_elems, ty.elems)
+          else
+            tys = tys.add(ty)
+          end
+        end
+        Type::Union.new(tys, array_elems).normalize
       end
 
       def deploy_local_core(env, alloc_site)
-        ty = Union.new(@types.map do |ty|
+        tys = @types.map do |ty|
           alloc_site2 = alloc_site.add_id(ty)
           env, ty2 = ty.deploy_local_core(env, alloc_site2)
           ty2
-        end)
+        end
+        if @array_elems
+          base_ty = Type::Instance.new(Type::Builtin[:ary])
+          ary_ty = Type::Array.new(@array_elems, base_ty)
+          alloc_site2 = alloc_site.add_id(:ary)
+          env, ary_ty = ary_ty.deploy_local_core(env, alloc_site2)
+          tys = tys.add(ary_ty)
+        end
+        ty = Union.new(tys, nil)
         return env, ty
       end
 
@@ -133,11 +188,13 @@ module TypeProfiler
               return true if ty1.consistent?(scratch, ty2)
             end
           end
+          # TODO: array argument?
           return false
         else
           @types.each do |ty1|
             return true if ty1.consistent?(scratch, other)
           end
+          # TODO: array argument?
           return false
         end
       end
@@ -148,14 +205,14 @@ module TypeProfiler
     end
 
     def self.bot
-      @bot ||= Union.new(Utils::Set[])
+      @bot ||= Union.new(Utils::Set[], nil)
     end
 
     def self.bool
       @bool ||= Union.new(Utils::Set[
         Instance.new(Type::Builtin[:true]),
         Instance.new(Type::Builtin[:false])
-      ])
+      ], nil)
     end
 
     def self.nil
@@ -470,13 +527,8 @@ module TypeProfiler
         def deploy_local_core(env, alloc_site)
           lead_tys = @lead_tys.map.with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(i)
-            tys = Type.bot
-            ty.each_child do |ty|
-              alloc_site3 = alloc_site2.add_id(ty)
-              env, ty2 = ty.deploy_local_core(env, alloc_site3)
-              tys = tys.union(ty2)
-            end
-            tys
+            env, ty = ty.deploy_local_core(env, alloc_site2)
+            ty
           end
           alloc_site_rest = alloc_site.add_id(:rest)
           env, rest_ty = @rest_ty.deploy_local_core(env, alloc_site_rest)

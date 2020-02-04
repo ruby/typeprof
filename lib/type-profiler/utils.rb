@@ -60,7 +60,7 @@ module TypeProfiler
 
       include Enumerable
 
-      def +(other)
+      def sum(other)
         Set.new(@tbl.merge(other.tbl), hash ^ other.hash)
       end
 
@@ -157,7 +157,7 @@ module TypeProfiler
       def insert(key, val)
         i = @heap.size
         @heap << [key, val]
-        while i > 0 && (cmp = @heap[i][0] <=> @heap[i / 2][0]; p @heap[i][0], @heap[i/2][0] if !cmp; cmp) < 0
+        while i > 0 && (@heap[i][0] <=> @heap[i / 2][0]) < 0
           @heap[i], @heap[i / 2] = @heap[i / 2], @heap[i]
           i /= 2
         end
