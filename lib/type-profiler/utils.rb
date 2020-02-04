@@ -64,6 +64,13 @@ module TypeProfiler
         Set.new(@tbl.merge(other.tbl), hash ^ other.hash)
       end
 
+      def add(new_val)
+        tbl = @tbl.dup
+        tbl[new_val] = true
+        h = hash ^ new_val.hash
+        Set.new(tbl, h)
+      end
+
       def size
         @tbl.size
       end

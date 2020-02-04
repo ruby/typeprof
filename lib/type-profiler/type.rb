@@ -42,7 +42,7 @@ module TypeProfiler
       if self == other
         self
       elsif other.is_a?(Type::Union)
-        Type::Union.new(other.types + Utils::Set[self]).normalize
+        Type::Union.new(other.types.add(self)).normalize
       else
         Type::Union.new(Utils::Set[self, other]).normalize
       end
@@ -79,7 +79,7 @@ module TypeProfiler
         if other.is_a?(Type::Union)
           Type::Union.new(@types + other.types).normalize
         else
-          Type::Union.new(@types + Utils::Set[other]).normalize
+          Type::Union.new(@types.add(other)).normalize
         end
       end
 
@@ -163,7 +163,7 @@ module TypeProfiler
     end
 
     def self.optional(ty)
-      Union.new(Utils::Set[ty, Type.nil])
+      ty.union(Type.nil)
     end
 
     class Class < Type
