@@ -595,7 +595,10 @@ module TypeProfiler
       when :freezestring
         # do nothing
       when :toregexp
-        raise NotImplementedError, "toregexp"
+        _regexp_opt, str_count = operands
+        env, tys = env.pop(3)
+        # TODO: check if tys are all strings?
+        env = env.push(Type::Instance.new(Type::Builtin[:regexp]))
       when :intern
         env, (ty,) = env.pop(1)
         # XXX check if ty is String
