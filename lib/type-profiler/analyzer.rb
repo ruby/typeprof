@@ -392,14 +392,13 @@ module TypeProfiler
       if klass == Type.any
         self
       else
-        klass_def = @class_defs[klass.idx]
         if singleton
-          klass_def.get_singleton_method(old).each do |mdef|
-            klass_def.add_singleton_method(new, mdef)
+          get_singleton_method(klass, old).each do |mdef|
+            @class_defs[klass.idx].add_singleton_method(new, mdef)
           end
         else
-          klass_def.get_method(old).each do |mdef|
-            klass_def.add_method(new, mdef)
+          get_method(klass, old).each do |mdef|
+            @class_defs[klass.idx].add_method(new, mdef)
           end
         end
       end
