@@ -325,8 +325,10 @@ module TypeProfiler
     def get_constant(klass, name)
       if klass == Type.any
         Type.any
-      else
+      elsif klass.is_a?(Type::Class)
         @class_defs[klass.idx].get_constant(name)
+      else
+        Type.any
       end
     end
 
