@@ -113,17 +113,25 @@ module TypeProfiler
     end
 
     def array_aref(flags, recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 1
-      idx = aargs.lead_tys.first
-      if idx.is_a?(Type::Literal)
-        idx = idx.lit
-        raise NotImplementedError if !idx.is_a?(Integer)
+      case aargs.lead_tys.size
+      when 1
+        idx = aargs.lead_tys.first
+        if idx.is_a?(Type::Literal)
+          idx = idx.lit
+          raise NotImplementedError if !idx.is_a?(Integer)
+        else
+          idx = nil
+        end
+        ty = scratch.get_array_elem_type(env, ep, recv.id, idx)
+        ctn[ty, ep, env]
+      when 2
+        ty = scratch.get_array_elem_type(env, ep, recv.id)
+        base_ty = Type::Instance.new(Type::Builtin[:ary])
+        ret_ty = Type::Array.new(Type::Array::Elements.new([], ty), base_ty)
+        ctn[ret_ty, ep, env]
       else
-        idx = nil
+        ctn[Type.any, ep, env]
       end
-
-      ty = scratch.get_array_elem_type(env, ep, recv.id, idx)
-      ctn[ty, ep, env]
     end
 
     def array_aset(flags, recv, mid, aargs, ep, env, scratch, &ctn)
