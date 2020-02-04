@@ -640,6 +640,9 @@ module TypeProfiler
                 superclass = Type::Builtin[:obj]
               elsif superclass.eql?(Type.nil)
                 superclass = Type::Builtin[:obj]
+              elsif superclass.is_a?(Type::Instance)
+                scratch.warn(ep, "superclass is an instance; Object is used instead")
+                superclass = Type::Builtin[:obj]
               end
               klass = scratch.new_class(cbase, id, superclass)
             end
@@ -844,6 +847,7 @@ module TypeProfiler
       when :getglobal
         var, = operands
         scratch.add_gvar_read!(var, ep) do |ty, ep|
+          ty = Type.nil if ty == Type.bot # HACK
           nenv, ty = ty.deploy_local(env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
