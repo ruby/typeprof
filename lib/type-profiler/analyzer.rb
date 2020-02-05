@@ -186,8 +186,9 @@ module TypeProfiler
       @class_defs = {}
 
       @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
-      @ivar_read, @ivar_write = {}, {}
-      @gvar_read, @gvar_write = {}, {}
+      @ivar_table = VarTable.new
+      @cvar_table = VarTable.new
+      @gvar_table = VarTable.new
 
       @errors = []
       @backward_edges = {}
@@ -447,38 +448,52 @@ module TypeProfiler
       @yields[caller_ctx] << [blk_ctx, fargs]
     end
 
+    class VarTable
+      def initialize
+        @read, @write = {}, {}
+      end
+
+      attr_reader :write
+
+      def add_read!(site, ep, &ctn)
+        @read[site] ||= {}
+        @read[site][ep] = ctn
+        @write[site] ||= Type.bot
+        ctn[@write[site], ep]
+      end
+
+      def add_write!(site, ty, &ctn)
+        @write[site] ||= Type.bot
+        @write[site] = @write[site].union(ty)
+        @read[site] ||= {}
+        @read[site].each do |ep, ctn|
+          ctn[ty, ep]
+        end
+      end
+    end
+
     def add_ivar_read!(recv, var, ep, &ctn)
-      site = [recv, var]
-      @ivar_read[site] ||= {}
-      @ivar_read[site][ep] = ctn
-      @ivar_write[site] ||= Type.bot
-      ctn[@ivar_write[site], ep]
+      @ivar_table.add_read!([recv, var], ep, &ctn)
     end
 
     def add_ivar_write!(recv, var, ty, &ctn)
-      site = [recv, var]
-      @ivar_write[site] ||= Type.bot
-      @ivar_write[site] = @ivar_write[site].union(ty)
-      @ivar_read[site] ||= {}
-      @ivar_read[site].each do |ep, ctn|
-        ctn[ty, ep]
-      end
+      @ivar_table.add_write!([recv, var], ty, &ctn)
+    end
+
+    def add_cvar_read!(klass, var, ep, &ctn)
+      @cvar_table.add_read!([klass, var], ep, &ctn)
+    end
+
+    def add_cvar_write!(klass, var, ty, &ctn)
+      @cvar_table.add_write!([klass, var], ty, &ctn)
     end
 
     def add_gvar_read!(var, ep, &ctn)
-      @gvar_read[var] ||= {}
-      @gvar_read[var][ep] = ctn
-      @gvar_write[var] ||= Type.bot
-      ctn[@gvar_write[var], ep]
+      @gvar_table.add_read!(var, ep, &ctn)
     end
 
     def add_gvar_write!(var, ty, &ctn)
-      @gvar_write[var] ||= Type.bot
-      @gvar_write[var] = @gvar_write[var].union(ty)
-      @gvar_read[var] ||= {}
-      @gvar_read[var].each do |ep, ctn|
-        ctn[ty, ep]
-      end
+      @gvar_table.add_write!(var, ty, &ctn)
     end
 
     def error(ep, msg)
@@ -528,7 +543,7 @@ module TypeProfiler
         step(@ep) # TODO: deletemin
       end
       RubySignatureExporter.new(
-        self, @errors, @gvar_write, @ivar_write,
+        self, @errors, @gvar_table.write, @ivar_table.write, @cvar_table.write,
         @sig_fargs, @sig_ret, @yields, @backward_edges,
       ).show(stat_eps)
     end
@@ -834,10 +849,23 @@ module TypeProfiler
         end
         return
 
-      when :getclassvariable
-        raise NotImplementedError, "getclassvariable"
       when :setclassvariable
-        raise NotImplementedError, "setclassvariable"
+        var, = operands
+        env, (ty,) = env.pop(1)
+        cbase = ep.ctx.cref.klass
+        ty = ty.strip_local_info(env)
+        # TODO: if superclass has the variable, it should be updated
+        scratch.add_cvar_write!(cbase, var, ty)
+
+      when :getclassvariable
+        var, = operands
+        cbase = ep.ctx.cref.klass
+        # TODO: if superclass has the variable, it should be read
+        scratch.add_cvar_read!(cbase, var, ep) do |ty, ep|
+          nenv, ty = ty.deploy_local(env, ep)
+          merge_env(ep.next, nenv.push(ty))
+        end
+        return
 
       when :setglobal
         var, = operands

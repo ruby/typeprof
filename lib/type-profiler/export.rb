@@ -1,6 +1,6 @@
 module TypeProfiler
   class RubySignatureExporter
-    def initialize(scratch, errors, gvar_write, ivar_write, sig_fargs, sig_ret, yields, backward_edges)
+    def initialize(scratch, errors, gvar_write, ivar_write, cvar_write, sig_fargs, sig_ret, yields, backward_edges)
       @scratch = scratch
       @errors = errors
       @sig_fargs = sig_fargs
@@ -9,6 +9,7 @@ module TypeProfiler
       @backward_edges = backward_edges
       @gvar_write = gvar_write
       @ivar_write = ivar_write
+      @cvar_write = cvar_write
     end
 
     def show_types(tys)
@@ -101,8 +102,13 @@ module TypeProfiler
       classes = {}
       @ivar_write.each do |(recv, var), ty|
         recv = recv.screen_name(@scratch)
-        classes[recv] ||= { ivars: {}, methods: {} }
+        classes[recv] ||= { ivars: {}, cvars: {}, methods: {} }
         classes[recv][:ivars][var] = ty.screen_name(@scratch)
+      end
+      @cvar_write.each do |(klass, var), ty|
+        klass = Type::Instance.new(klass).screen_name(@scratch)
+        classes[klass] ||= { ivars: {}, cvars: {}, methods: {} }
+        classes[klass][:cvars][var] = ty.screen_name(@scratch)
       end
       @sig_fargs.each do |ctx, fargs|
         next unless ctx.mid && ctx.iseq
@@ -120,7 +126,7 @@ module TypeProfiler
           fargs << show_block(ctx)
         end
 
-        classes[recv] ||= { ivars: {}, methods: {} }
+        classes[recv] ||= { ivars: {}, cvars: {}, methods: {} }
         classes[recv][:methods][method_name] ||= []
         classes[recv][:methods][method_name] << show_signature(fargs, ret_tys)
 
@@ -135,6 +141,9 @@ module TypeProfiler
         first = false
         puts "class #{ recv }"
         cls[:ivars].each do |var, tys|
+          puts "  #{ var } : #{ tys }"
+        end
+        cls[:cvars].each do |var, tys|
           puts "  #{ var } : #{ tys }"
         end
         cls[:methods].each do |method_name, sigs|
