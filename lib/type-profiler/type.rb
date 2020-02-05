@@ -42,11 +42,13 @@ module TypeProfiler
       if self == other
         self
       elsif other.is_a?(Type::Union)
-        if self.is_a?(Type::Array)
-          Type::Union.new(other.types, self.elems).normalize
-        else
-          Type::Union.new(other.types.add(self), nil).normalize
-        end
+        other.union(self)
+        #if self.is_a?(Type::Array)
+        #  p :foo
+        #  Type::Union.new(other.types, self.elems).normalize
+        #else
+        #  Type::Union.new(other.types.add(self), nil).normalize
+        #end
       elsif other.is_a?(Type::Array)
         if self.is_a?(Type::Array)
           Type::Union.new(Utils::Set[], self.elems.union(other.elems)).normalize
@@ -55,7 +57,11 @@ module TypeProfiler
           Type::Union.new(Utils::Set[self], other.elems).normalize
         end
       else
-        Type::Union.new(Utils::Set[self, other], nil).normalize
+        if self.is_a?(Type::Array)
+          Type::Union.new(Utils::Set[other], self.elems).normalize
+        else
+          Type::Union.new(Utils::Set[self, other], nil).normalize
+        end
       end
     end
 
