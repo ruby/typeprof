@@ -39,29 +39,36 @@ module TypeProfiler
     end
 
     def union(other)
-      if self == other
-        self
-      elsif other.is_a?(Type::Union)
-        other.union(self)
-        #if self.is_a?(Type::Array)
-        #  p :foo
-        #  Type::Union.new(other.types, self.elems).normalize
-        #else
-        #  Type::Union.new(other.types.add(self), nil).normalize
-        #end
-      elsif other.is_a?(Type::Array)
-        if self.is_a?(Type::Array)
-          Type::Union.new(Utils::Set[], self.elems.union(other.elems)).normalize
+      return self if self == other # fastpath
+
+      ty1, ty2 = self, other
+
+      ty1 = Type::Union.new(Utils::Set[], ty1.elems) if ty1.is_a?(Array)
+      ty2 = Type::Union.new(Utils::Set[], ty2.elems) if ty2.is_a?(Array)
+
+      if ty1.is_a?(Union) && ty2.is_a?(Union)
+        ty = ty1.types.sum(ty2.types)
+        array_elems = union_elems(ty1.array_elems, ty2.array_elems)
+        Type::Union.new(ty, array_elems)
+      else
+        ty1, ty2 = ty2, ty1 if ty2.is_a?(Union)
+        if ty1.is_a?(Union)
+          Type::Union.new(ty1.types.add(ty2), ty1.array_elems)
         else
-          # TODO: What can we do about other.base_ty?
-          Type::Union.new(Utils::Set[self], other.elems).normalize
+          Type::Union.new(Utils::Set[ty1, ty2], nil)
+        end
+      end
+    end
+
+    private def union_elems(e1, e2)
+      if e1
+        if e2
+          e1.union(e2)
+        else
+          e1
         end
       else
-        if self.is_a?(Type::Array)
-          Type::Union.new(Utils::Set[other], self.elems).normalize
-        else
-          Type::Union.new(Utils::Set[self, other], nil).normalize
-        end
+        e2
       end
     end
 
@@ -97,28 +104,6 @@ module TypeProfiler
       end
 
       attr_reader :types, :array_elems
-
-      def union_elems(e1, e2)
-        if e1
-          if e2
-            e1.union(e2)
-          else
-            e1
-          end
-        else
-          e2
-        end
-      end
-
-      def union(other)
-        if other.is_a?(Type::Union)
-          Type::Union.new(@types.sum(other.types), union_elems(@array_elems, other.array_elems)).normalize
-        elsif other.is_a?(Type::Array)
-          Type::Union.new(@types, union_elems(@array_elems, other.elems)).normalize
-        else
-          Type::Union.new(@types.add(other), @array_elems).normalize
-        end
-      end
 
       def normalize
         if @types.size == 1 && !@array_elems
