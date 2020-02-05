@@ -111,7 +111,7 @@ module TypeProfiler
         classes[klass][:cvars][var] = ty.screen_name(@scratch)
       end
       @sig_fargs.each do |ctx, fargs|
-        next unless ctx.mid && ctx.iseq
+        next unless ctx.mid && ctx.iseq && fargs
         ret_tys = @sig_ret[ctx]
 
         recv = ctx.cref.klass

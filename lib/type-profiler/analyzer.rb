@@ -812,7 +812,21 @@ module TypeProfiler
         end
         return
       when :once
-        raise NotImplementedError, "once"
+        iseq, = operands
+
+        recv = env.recv_ty
+        blk = env.blk_ty
+        nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
+        nep = ExecutionPoint.new(nctx, 0, ep)
+        raise if iseq.locals != []
+        nenv = Env.new(recv, blk, [], [], {})
+        merge_env(nep, nenv)
+        scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
+          nenv, ret_ty = ret_ty.deploy_local(env, ep)
+          nenv = nenv.push(ret_ty)
+          merge_env(ep.next, nenv)
+        end
+        return
 
       when :branch # TODO: check how branchnil is used
         branchtype, target, = operands
