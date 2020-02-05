@@ -859,6 +859,7 @@ module TypeProfiler
         if rest_start
           acc = aargs.inject {|acc, ty| acc.union(ty) }
           acc = acc ? acc.union(rest_elem) : rest_elem if rest_elem
+          acc ||= Type.bot
           rest_ty = acc
           #elem = acc.is_a?(Type::Union) ? acc.types : acc ? Utils::Set[acc] : Utils::Set[]
           #rest_ty = Type::Array.seq(elem)

@@ -60,7 +60,8 @@ module TypeProfiler
         end
         if fargs.rest_ty
           alloc_site2 = alloc_site.add_id(idx += 1)
-          nenv, rest_ty = fargs.rest_ty.deploy_local_core(nenv, alloc_site2)
+          ty = Type::Array.new(Type::Array::Elements.new([], fargs.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
+          nenv, rest_ty = ty.deploy_local_core(nenv, alloc_site2)
           nenv = nenv.local_update(rest_start, rest_ty)
         end
         if fargs.post_tys
