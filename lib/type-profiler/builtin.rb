@@ -277,19 +277,9 @@ module TypeProfiler
         feature = feature.lit
 
         path = File.join(File.dirname(ep.ctx.iseq.path), feature) + ".rb" # XXX
-        if File.readable?(path)
-          iseq = ISeq.compile(path)
-          callee_ep, callee_env = TypeProfiler.starting_state(iseq)
-          scratch.merge_env(callee_ep, callee_env)
+        return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
 
-          scratch.add_callsite!(callee_ep.ctx, nil, ep, env) do |_ret_ty, ep|
-            result = Type::Instance.new(Type::Builtin[:true])
-            ctn[result, ep, env]
-          end
-          return
-        else
-          scratch.warn(ep, "failed to read: #{ path }")
-        end
+        scratch.warn(ep, "failed to load: #{ path }")
       else
         scratch.warn(ep, "require target cannot be identified statically")
         feature = nil
