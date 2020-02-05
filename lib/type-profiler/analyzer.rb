@@ -612,7 +612,7 @@ module TypeProfiler
         # do nothing
       when :toregexp
         _regexp_opt, str_count = operands
-        env, tys = env.pop(3)
+        env, tys = env.pop(str_count)
         # TODO: check if tys are all strings?
         env = env.push(Type::Instance.new(Type::Builtin[:regexp]))
       when :intern
@@ -681,7 +681,8 @@ module TypeProfiler
         blk = env.blk_ty
         nctx = Context.new(iseq, ncref, singleton, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
-        nenv = Env.new(recv, blk, [], [], {})
+        locals = [Type.nil] * iseq.locals.size
+        nenv = Env.new(recv, blk, locals, [], {})
         merge_env(nep, nenv)
         scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = ret_ty.deploy_local(env, ep)
