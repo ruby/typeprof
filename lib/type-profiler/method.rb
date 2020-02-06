@@ -29,8 +29,8 @@ module TypeProfiler
       rest_start = @iseq.fargs_format[:rest_start]
       block_start = @iseq.fargs_format[:block_start]
 
-      recv = scratch.globalize_type(recv, caller_env)
-      aargs = scratch.globalize_type(aargs, caller_env)
+      recv = scratch.globalize_type(recv, caller_env, caller_ep)
+      aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
 
       aargs.each_formal_arguments(@iseq.fargs_format) do |fargs, start_pc|
         if fargs.is_a?(String)
@@ -88,9 +88,9 @@ module TypeProfiler
     end
 
     def do_send_core(_flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      recv = scratch.globalize_type(recv, caller_env)
+      recv = scratch.globalize_type(recv, caller_env, caller_ep)
       found = false
-      aargs = scratch.globalize_type(aargs, caller_env)
+      aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
       @sigs.each do |fargs, ret_ty|
         # XXX: need to interpret args more correctly
         #pp [aargs, fargs]

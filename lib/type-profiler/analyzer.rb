@@ -567,7 +567,7 @@ module TypeProfiler
       ).show(stat_eps)
     end
 
-    def globalize_type(ty, env)
+    def globalize_type(ty, env, ep)
       ty.globalize(env, {})
     end
 
@@ -739,7 +739,7 @@ module TypeProfiler
             end
           else
             if recv != Type.any # XXX: should be configurable
-              scratch.error(ep, "undefined method: #{ globalize_type(recv, env).screen_name(scratch) }##{ mid }")
+              scratch.error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(scratch) }##{ mid }")
             end
             nenv = env.push(Type.any)
             merge_env(ep.next, nenv)
@@ -775,7 +775,7 @@ module TypeProfiler
             end
           else
             if recv != Type.any # XXX: should be configurable
-              scratch.error(ep, "undefined method: #{ globalize_type(recv, env).screen_name(scratch) }##{ mid }")
+              scratch.error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(scratch) }##{ mid }")
             end
             ep_then = ep.next
             ep_else = ep.jump(target)
@@ -827,7 +827,7 @@ module TypeProfiler
           raise "stack inconsistency error: #{ env.stack.inspect }"
         end
         env, (ty,) = env.pop(1)
-        ty = globalize_type(ty, env)
+        ty = globalize_type(ty, env, ep)
         scratch.add_return_type!(ep.ctx, ty)
         return
       when :throw
@@ -835,7 +835,7 @@ module TypeProfiler
         env, (ty,) = env.pop(1)
         case throwtype
         when 1 # return
-          ty = globalize_type(ty, env)
+          ty = globalize_type(ty, env, ep)
           tmp_ep = ep
           tmp_ep = tmp_ep.outer while tmp_ep.outer
           scratch.add_return_type!(tmp_ep.ctx, ty)
@@ -890,7 +890,7 @@ module TypeProfiler
         var, = operands
         env, (ty,) = env.pop(1)
         recv = env.recv_ty
-        ty = globalize_type(ty, env)
+        ty = globalize_type(ty, env, ep)
         scratch.add_ivar_write!(recv, var, ty)
 
       when :getinstancevariable
@@ -907,7 +907,7 @@ module TypeProfiler
         var, = operands
         env, (ty,) = env.pop(1)
         cbase = ep.ctx.cref.klass
-        ty = globalize_type(ty, env)
+        ty = globalize_type(ty, env, ep)
         # TODO: if superclass has the variable, it should be updated
         scratch.add_cvar_write!(cbase, var, ty)
 
@@ -924,7 +924,7 @@ module TypeProfiler
       when :setglobal
         var, = operands
         env, (ty,) = env.pop(1)
-        ty = globalize_type(ty, env)
+        ty = globalize_type(ty, env, ep)
         scratch.add_gvar_write!(var, ty)
 
       when :getglobal
@@ -984,7 +984,7 @@ module TypeProfiler
         if old_ty != Type.any # XXX???
           scratch.warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(scratch) }::#{ name }")
         end
-        scratch.add_constant(cbase, name, globalize_type(ty, env))
+        scratch.add_constant(cbase, name, globalize_type(ty, env, ep))
 
       when :getspecial
         key, type = operands
@@ -1111,7 +1111,7 @@ module TypeProfiler
         raise NotImplementedError if type != 5 # T_STRING
         # XXX: is_a?
         env, (val,) = env.pop(1)
-        res = globalize_type(val, env) == Type::Instance.new(Type::Builtin[:str])
+        res = globalize_type(val, env, ep) == Type::Instance.new(Type::Builtin[:str])
         if res
           ty = Type::Instance.new(Type::Builtin[:true])
         else
@@ -1174,7 +1174,7 @@ module TypeProfiler
           blk_ep = blk.ep
           blk_env = blk.env
           arg_blk = aargs.blk_ty
-          aargs_ = aargs.lead_tys.map {|aarg| scratch.globalize_type(aarg, env) }
+          aargs_ = aargs.lead_tys.map {|aarg| scratch.globalize_type(aarg, env, ep) }
           argc = blk_iseq.fargs_format[:lead_num] || 0
           if argc != aargs_.size
             warn "complex parameter passing of block is not implemented"
