@@ -449,6 +449,19 @@ module TypeProfiler
         base_ty = Type::Instance.new(Type::Builtin[:ary])
         lead_tys = obj.map {|arg| guess_literal_type(arg) }
         Type::Array.new(Type::Array::Elements.new(lead_tys), base_ty)
+      when ::Hash
+        base_ty = Type::Instance.new(Type::Builtin[:hash])
+        map_tys = {}
+        obj.each do |k_ty, v_ty|
+          k_ty = guess_literal_type(k_ty)
+          v_ty = guess_literal_type(v_ty)
+          if map_tys[k_ty]
+            map_tys[k_ty] = map_tys[k_ty].union(v_ty)
+          else
+            map_tys[k_ty] = v_ty
+          end
+        end
+        Type::Hash.new(Type::Hash::Elements.new(map_tys), base_ty)
       when ::String
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:str]))
       when ::Regexp

@@ -143,6 +143,10 @@ module TypeProfiler
       @type_params[id]
     end
 
+    def get_hash_elem_types(id)
+      @type_params[id]
+    end
+
     def update_array_elem_types(id, elems)
       type_params = @type_params.merge({ id => elems })
       Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
@@ -590,10 +594,20 @@ module TypeProfiler
         env, ty = ty.deploy_local(env, ep)
         env = env.push(ty)
       when :newhash
-        # XXX
         num, = operands
-        env, = env.pop(num)
-        env = env.push(Type.any)
+        env, tys = env.pop(num)
+
+        map_tys = {}
+        tys.each_slice(2) do |k_ty, v_ty|
+          if map_tys[k_ty]
+            map_tys[k_ty] = map_tys[k_ty].union(v_ty)
+          else
+            map_tys[k_ty] = v_ty
+          end
+        end
+        ty = Type::Hash.new(Type::Hash::Elements.new(map_tys), Type::Instance.new(Type::Builtin[:hash]))
+        env, ty = ty.deploy_local(env, ep)
+        env = env.push(ty)
       when :newhashfromarray
         raise NotImplementedError, "newhashfromarray"
       when :newrange

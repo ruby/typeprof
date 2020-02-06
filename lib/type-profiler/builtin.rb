@@ -310,6 +310,7 @@ module TypeProfiler
     klass_sym       = scratch.get_constant(klass_obj, :Symbol)
     klass_str       = scratch.get_constant(klass_obj, :String)
     klass_ary       = scratch.get_constant(klass_obj, :Array)
+    klass_hash      = scratch.get_constant(klass_obj, :Hash)
     klass_proc      = scratch.get_constant(klass_obj, :Proc)
     klass_range     = scratch.get_constant(klass_obj, :Range)
     klass_regexp    = scratch.get_constant(klass_obj, :Regexp)
@@ -323,6 +324,7 @@ module TypeProfiler
     Type::Builtin[:sym]       = klass_sym
     Type::Builtin[:str]       = klass_str
     Type::Builtin[:ary]       = klass_ary
+    Type::Builtin[:hash]      = klass_hash
     Type::Builtin[:proc]      = klass_proc
     Type::Builtin[:range]     = klass_range
     Type::Builtin[:regexp]    = klass_regexp

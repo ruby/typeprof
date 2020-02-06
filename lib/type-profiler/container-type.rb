@@ -1,8 +1,10 @@
 module TypeProfiler
   class Type # or AbstractValue
+    # This is a type for global interface, e.g., TypedISeq.
+    # Do not insert Array type to local environment, stack, etc.
     class Array < Type
       def initialize(elems, base_type)
-        @elems = elems
+        @elems = elems # Array::Elements
         @base_type = base_type
         # XXX: need infinite recursion
       end
@@ -188,6 +190,7 @@ module TypeProfiler
       end
     end
 
+    # Do not insert Array type to local environment, stack, etc.
     class LocalArray < Type
       def initialize(id, base_type)
         @id = id
@@ -218,6 +221,177 @@ module TypeProfiler
             elems = Array::Elements.new([], Type.any)
           end
           Array.new(elems, @base_type)
+        end
+      end
+
+      def get_method(mid, scratch)
+        @base_type.get_method(mid, scratch)
+      end
+
+      def consistent?(scratch, other)
+        raise "must not be used"
+      end
+    end
+
+
+    class Hash < Type
+      def initialize(elems, base_type)
+        @elems = elems
+        @base_type = base_type
+      end
+
+      attr_reader :elems, :base_type
+
+      def inspect
+        "Type::Hash#{ @elems.inspect }"
+      end
+
+      def screen_name(scratch)
+        @elems.screen_name(scratch)
+      end
+
+      def strip_local_info_core(env, visited)
+        self
+      end
+
+      def deploy_local_core(env, alloc_site)
+        env, elems = @elems.deploy_local_core(env, alloc_site)
+        env, ty = env.deploy_array_type(alloc_site, elems, @base_type)
+      end
+
+      def get_method(mid, scratch)
+        raise
+      end
+
+      class Elements
+        include Utils::StructuralEquality
+
+        def initialize(map_tys)
+          raise unless map_tys.all? {|k_ty, v_ty| k_ty.is_a?(Type) && v_ty.is_a?(Type) }
+          @map_tys = map_tys
+        end
+
+        attr_reader :map_tys
+
+        def strip_local_info_core(env, visited)
+          map_tys = {}
+          @map_tys.each do |k_ty, v_ty|
+            k_ty = k_ty.strip_local_info_core(env, visited)
+            v_ty = v_ty.strip_local_info_core(env, visited)
+            if map_tys[k_ty]
+              map_tys[k_ty] = map_tys[k_ty].union(v_ty)
+            else
+              map_tys[k_ty] = v_ty
+            end
+          end
+          Elements.new(map_tys)
+        end
+
+        def deploy_local_core(env, alloc_site)
+          map_tys = @map_tys.to_h do |k_ty, v_ty|
+            alloc_site2 = alloc_site.add_id(k_ty)
+            env, k_ty = k_ty.deploy_local_core(env, alloc_site2.add_id(:key))
+            env, v_ty = v_ty.deploy_local_core(env, alloc_site2.add_id(:val))
+            [k_ty, v_ty]
+          end
+          return env, Elements.new(map_tys)
+        end
+
+        def screen_name(scratch)
+          s = @map_tys.map do |k_ty, v_ty|
+            k = k_ty.screen_name(scratch)
+            v = v_ty.screen_name(scratch)
+            "#{ k }=>#{ v }"
+          end.join(", ")
+          "{#{ s }}"
+        end
+
+        def pretty_print(q)
+          q.group(9, "Elements[", "]") do
+            q.seplist(@map_tys) do |k_ty, v_ty|
+              group do
+                q.pp k_ty
+                q.text '=>'
+                q.group(1) do
+                  q.breakable ''
+                  q.pp v
+                end
+              end
+            end
+          end
+        end
+
+        def [](key_ty)
+          val_ty = Type.bot
+          @map_tys.each do |k_ty, v_ty|
+            if k_ty.consistent?(key_ty)
+              val_ty = val_ty.union(v_ty)
+            end
+          end
+          val_ty
+        end
+
+        def update(idx, ty)
+          raise NotImplementedError
+          if idx
+            if idx < @lead_tys.size
+              lead_tys = Utils.array_update(@lead_tys, idx, ty)
+              Elements.new(lead_tys, @rest_ty)
+            else
+              rest_ty = @rest_ty.union(ty)
+              Elements.new(@lead_tys, rest_ty)
+            end
+          else
+            lead_tys = @lead_tys.map {|ty1| ty1.union(ty) }
+            rest_ty = @rest_ty.union(ty)
+            Elements.new(lead_tys, rest_ty)
+          end
+        end
+
+        def union(other)
+          map_ty = @map_ty.dup
+          other.map_ty.each do |k_ty, v_ty|
+            if map_ty[k_ty]
+              map_ty[k_ty] = map_ty[k_ty].union(v_ty)
+            else
+              map_ty[k_ty] = v_ty
+            end
+          end
+
+          Elements.new(map_tys)
+        end
+      end
+    end
+
+    class LocalHash < Type
+      def initialize(id, base_type)
+        @id = id
+        @base_type = base_type
+      end
+
+      attr_reader :id, :base_type
+
+      def inspect
+        "Type::LocalHash[#{ @id }]"
+      end
+
+      def screen_name(scratch)
+        #raise "LocalHash must not be included in signature"
+        "LocalHash!"
+      end
+
+      def strip_local_info_core(env, visited)
+        if visited[self]
+          Type.any
+        else
+          visited[self] = true
+          elems = env.get_hash_elem_types(@id)
+          if elems
+            elems = elems.strip_local_info_core(env, visited)
+          else
+            elems = Hash::Elements.new([], Type.any)
+          end
+          Hash.new(elems, @base_type)
         end
       end
 
