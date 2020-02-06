@@ -130,9 +130,10 @@ module TypeProfiler
       @impl = impl
     end
 
-    def do_send_core(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+    def do_send_core(flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       # XXX: ctn?
-      @impl[flags, recv, mid, aargs, ep, env, scratch, &ctn]
+      scratch.merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env } # for Kernel#lambda
+      @impl[flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn]
     end
   end
 end
