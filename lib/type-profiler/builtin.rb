@@ -107,7 +107,7 @@ module TypeProfiler
 
     def reveal_type(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        scratch.reveal_type(ep, aarg.strip_local_info(env).screen_name(scratch))
+        scratch.reveal_type(ep, scratch.globalize_type(aarg, env).screen_name(scratch))
       end
       ctn[aargs.lead_tys.size == 1 ? aargs.lead_tys.first : Type.any, ep, env]
     end

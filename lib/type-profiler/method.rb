@@ -7,7 +7,7 @@ module TypeProfiler
         do_send_core(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       else
         do_send_core(flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
-          nenv, ret_ty, = ret_ty.deploy_local(env, ep)
+          nenv, ret_ty, = scratch.localize_type(ret_ty, env, ep)
           nenv = nenv.push(ret_ty)
           scratch.merge_env(ep.next, nenv)
         end
@@ -29,8 +29,8 @@ module TypeProfiler
       rest_start = @iseq.fargs_format[:rest_start]
       block_start = @iseq.fargs_format[:block_start]
 
-      recv = recv.strip_local_info(caller_env)
-      aargs = aargs.strip_local_info(caller_env)
+      recv = scratch.globalize_type(recv, caller_env)
+      aargs = scratch.globalize_type(aargs, caller_env)
 
       aargs.each_formal_arguments(@iseq.fargs_format) do |fargs, start_pc|
         if fargs.is_a?(String)
@@ -87,9 +87,9 @@ module TypeProfiler
     end
 
     def do_send_core(_flags, recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      recv = recv.strip_local_info(caller_env)
+      recv = scratch.globalize_type(recv, caller_env)
       found = false
-      aargs = aargs.strip_local_info(caller_env)
+      aargs = scratch.globalize_type(aargs, caller_env)
       @sigs.each do |fargs, ret_ty|
         # XXX: need to interpret args more correctly
         #pp [aargs, fargs]

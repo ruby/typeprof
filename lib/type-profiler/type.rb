@@ -8,16 +8,8 @@ module TypeProfiler
 
     Builtin = {}
 
-    def strip_local_info(env)
-      strip_local_info_core(env, {})
-    end
-
     def strip_local_info_core(env, visited)
       self
-    end
-
-    def deploy_local(env, ep)
-      deploy_local_core(env, AllocationSite.new(ep))
     end
 
     def deploy_local_core(env, _alloc_site)
@@ -571,9 +563,9 @@ module TypeProfiler
 
     attr_reader :lead_tys, :rest_ty, :blk_ty
 
-    def strip_local_info(caller_env)
-      lead_tys = @lead_tys.map {|ty| ty.strip_local_info(caller_env) }
-      rest_ty = @rest_ty.strip_local_info(caller_env) if @rest_ty
+    def strip_local_info_core(caller_env, visited)
+      lead_tys = @lead_tys.map {|ty| ty.strip_local_info_core(caller_env, visited) }
+      rest_ty = @rest_ty.strip_local_info_core(caller_env, visited) if @rest_ty
       ActualArguments.new(lead_tys, rest_ty, blk_ty)
     end
 

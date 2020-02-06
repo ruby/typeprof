@@ -567,6 +567,17 @@ module TypeProfiler
       ).show(stat_eps)
     end
 
+    def globalize_type(ty, env)
+      ty.strip_local_info_core(env, {})
+      #ty.globalize(env)
+    end
+
+    def localize_type(ty, env, ep)
+      alloc_site = AllocationSite.new(ep)
+      ty.deploy_local_core(env, alloc_site)
+      #ty.localize(env, alloc_site)
+    end
+
     def step(ep)
       orig_ep = ep
       env = @ep2env[ep]
@@ -594,7 +605,7 @@ module TypeProfiler
         env = env.push(Type.nil)
       when :putobject, :duparray
         obj, = operands
-        env, ty = Type.guess_literal_type(obj).deploy_local(env, ep)
+        env, ty = localize_type(Type.guess_literal_type(obj), env, ep)
         env = env.push(ty)
       when :putstring
         str, = operands
@@ -606,7 +617,7 @@ module TypeProfiler
         len, = operands
         env, elems = env.pop(len)
         ty = Type::Array.new(Type::Array::Elements.new(elems), Type::Instance.new(Type::Builtin[:ary]))
-        env, ty = ty.deploy_local(env, ep)
+        env, ty = localize_type(ty, env, ep)
         env = env.push(ty)
       when :newhash
         num, = operands
@@ -621,7 +632,7 @@ module TypeProfiler
           end
         end
         ty = Type::Hash.new(Type::Hash::Elements.new(map_tys), Type::Instance.new(Type::Builtin[:hash]))
-        env, ty = ty.deploy_local(env, ep)
+        env, ty = localize_type(ty, env, ep)
         env = env.push(ty)
       when :newhashfromarray
         raise NotImplementedError, "newhashfromarray"
@@ -714,7 +725,7 @@ module TypeProfiler
         nenv = Env.new(recv, blk, locals, [], {})
         merge_env(nep, nenv)
         scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
-          nenv, ret_ty = ret_ty.deploy_local(env, ep)
+          nenv, ret_ty = localize_type(ret_ty, env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
         end
@@ -729,7 +740,7 @@ module TypeProfiler
             end
           else
             if recv != Type.any # XXX: should be configurable
-              scratch.error(ep, "undefined method: #{ recv.strip_local_info(env).screen_name(scratch) }##{ mid }")
+              scratch.error(ep, "undefined method: #{ globalize_type(recv, env).screen_name(scratch) }##{ mid }")
             end
             nenv = env.push(Type.any)
             merge_env(ep.next, nenv)
@@ -765,7 +776,7 @@ module TypeProfiler
             end
           else
             if recv != Type.any # XXX: should be configurable
-              scratch.error(ep, "undefined method: #{ recv.strip_local_info(env).screen_name(scratch) }##{ mid }")
+              scratch.error(ep, "undefined method: #{ globalize_type(recv, env).screen_name(scratch) }##{ mid }")
             end
             ep_then = ep.next
             ep_else = ep.jump(target)
@@ -817,7 +828,7 @@ module TypeProfiler
           raise "stack inconsistency error: #{ env.stack.inspect }"
         end
         env, (ty,) = env.pop(1)
-        ty = ty.strip_local_info(env)
+        ty = globalize_type(ty, env)
         scratch.add_return_type!(ep.ctx, ty)
         return
       when :throw
@@ -825,7 +836,7 @@ module TypeProfiler
         env, (ty,) = env.pop(1)
         case throwtype
         when 1 # return
-          ty = ty.strip_local_info(env)
+          ty = globalize_type(ty, env)
           tmp_ep = ep
           tmp_ep = tmp_ep.outer while tmp_ep.outer
           scratch.add_return_type!(tmp_ep.ctx, ty)
@@ -851,7 +862,7 @@ module TypeProfiler
         nenv = Env.new(recv, blk, [], [], {})
         merge_env(nep, nenv)
         scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
-          nenv, ret_ty = ret_ty.deploy_local(env, ep)
+          nenv, ret_ty = localize_type(ret_ty, env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
         end
@@ -880,7 +891,7 @@ module TypeProfiler
         var, = operands
         env, (ty,) = env.pop(1)
         recv = env.recv_ty
-        ty = ty.strip_local_info(env)
+        ty = globalize_type(ty, env)
         scratch.add_ivar_write!(recv, var, ty)
 
       when :getinstancevariable
@@ -888,7 +899,7 @@ module TypeProfiler
         recv = env.recv_ty
         # TODO: deal with inheritance?
         scratch.add_ivar_read!(recv, var, ep) do |ty, ep|
-          nenv, ty = ty.deploy_local(env, ep)
+          nenv, ty = localize_type(ty, env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
         return
@@ -897,7 +908,7 @@ module TypeProfiler
         var, = operands
         env, (ty,) = env.pop(1)
         cbase = ep.ctx.cref.klass
-        ty = ty.strip_local_info(env)
+        ty = globalize_type(ty, env)
         # TODO: if superclass has the variable, it should be updated
         scratch.add_cvar_write!(cbase, var, ty)
 
@@ -906,7 +917,7 @@ module TypeProfiler
         cbase = ep.ctx.cref.klass
         # TODO: if superclass has the variable, it should be read
         scratch.add_cvar_read!(cbase, var, ep) do |ty, ep|
-          nenv, ty = ty.deploy_local(env, ep)
+          nenv, ty = localize_type(ty, env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
         return
@@ -914,14 +925,14 @@ module TypeProfiler
       when :setglobal
         var, = operands
         env, (ty,) = env.pop(1)
-        ty = ty.strip_local_info(env)
+        ty = globalize_type(ty, env)
         scratch.add_gvar_write!(var, ty)
 
       when :getglobal
         var, = operands
         scratch.add_gvar_read!(var, ep) do |ty, ep|
           ty = Type.nil if ty == Type.bot # HACK
-          nenv, ty = ty.deploy_local(env, ep)
+          nenv, ty = localize_type(ty, env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
         # need to return default nil of global variables
@@ -958,23 +969,23 @@ module TypeProfiler
         env, (cbase, _allow_nil,) = env.pop(2)
         if cbase.eql?(Type.nil)
           ty = scratch.search_constant(ep.ctx.cref, name)
-          env, ty = ty.deploy_local(env, ep) # TODO: multiple return arguments
+          env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         elsif cbase.eql?(Type.any)
           env = env.push(Type.any) # XXX: warning needed?
         else
           ty = scratch.get_constant(cbase, name)
-          env, ty = ty.deploy_local(env, ep) # TODO: multiple return arguments
+          env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         end
       when :setconstant
         name, = operands
         env, (ty, cbase) = env.pop(2)
-        old_ty = scratch.get_constant(cbase, name) # TODO: multiple return arguments
+        old_ty = scratch.get_constant(cbase, name)
         if old_ty != Type.any # XXX???
           scratch.warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(scratch) }::#{ name }")
         end
-        scratch.add_constant(cbase, name, ty.strip_local_info(env))
+        scratch.add_constant(cbase, name, globalize_type(ty, env))
 
       when :getspecial
         key, type = operands
@@ -1092,7 +1103,7 @@ module TypeProfiler
           end
         else
           ty = Type::Array.new(Type::Array::Elements.new([], Type.any), Type::Instance.new(Type::Builtin[:ary]))
-          env, ty = ty.deploy_local(env, ep)
+          env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         end
 
@@ -1101,7 +1112,7 @@ module TypeProfiler
         raise NotImplementedError if type != 5 # T_STRING
         # XXX: is_a?
         env, (val,) = env.pop(1)
-        res = val.strip_local_info(env) == Type::Instance.new(Type::Builtin[:str])
+        res = globalize_type(val, env) == Type::Instance.new(Type::Builtin[:str])
         if res
           ty = Type::Instance.new(Type::Builtin[:true])
         else
@@ -1120,7 +1131,7 @@ module TypeProfiler
       if from_head
         lead_tys, rest_ary_ty = elems.take_first(num)
         if splat
-          env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
+          env, local_ary_ty = localize_type(rest_ary_ty, env, ep)
           env = env.push(local_ary_ty)
         end
         lead_tys.reverse_each do |ty|
@@ -1132,7 +1143,7 @@ module TypeProfiler
           env = env.push(ty)
         end
         if splat
-          env, local_ary_ty = rest_ary_ty.deploy_local(env, ep)
+          env, local_ary_ty = localize_type(rest_ary_ty, env, ep)
           env = env.push(local_ary_ty)
         end
       end
@@ -1147,7 +1158,7 @@ module TypeProfiler
           do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
         else
           do_invoke_block_core(given_block, blk, aargs, ep, env, scratch) do |ret_ty, ep, env|
-            nenv, ret_ty, = ret_ty.deploy_local(env, ep)
+            nenv, ret_ty, = scratch.localize_type(ret_ty, env, ep)
             nenv = nenv.push(ret_ty)
             scratch.merge_env(ep.next, nenv)
           end
@@ -1164,7 +1175,7 @@ module TypeProfiler
           blk_ep = blk.ep
           blk_env = blk.env
           arg_blk = aargs.blk_ty
-          aargs_ = aargs.lead_tys.map {|aarg| aarg.strip_local_info(env) }
+          aargs_ = aargs.lead_tys.map {|aarg| scratch.globalize_type(aarg, env) }
           argc = blk_iseq.fargs_format[:lead_num] || 0
           if argc != aargs_.size
             warn "complex parameter passing of block is not implemented"
