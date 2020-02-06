@@ -4,6 +4,7 @@ module TypeProfiler
     # Do not insert Array type to local environment, stack, etc.
     class Array < Type
       def initialize(elems, base_type)
+        raise unless elems.is_a?(Array::Elements)
         @elems = elems # Array::Elements
         @base_type = base_type
         # XXX: need infinite recursion
@@ -25,7 +26,6 @@ module TypeProfiler
       end
 
       def deploy_local_core(env, alloc_site)
-        #alloc_site = alloc_site.add_id(:array)
         env, elems = @elems.deploy_local_core(env, alloc_site)
         env, ty = env.deploy_array_type(alloc_site, elems, @base_type)
       end
@@ -256,7 +256,7 @@ module TypeProfiler
 
       def deploy_local_core(env, alloc_site)
         env, elems = @elems.deploy_local_core(env, alloc_site)
-        env, ty = env.deploy_array_type(alloc_site, elems, @base_type)
+        env, ty = env.deploy_hash_type(alloc_site, elems, @base_type)
       end
 
       def get_method(mid, scratch)
@@ -349,12 +349,12 @@ module TypeProfiler
         end
 
         def union(other)
-          map_ty = @map_ty.dup
-          other.map_ty.each do |k_ty, v_ty|
-            if map_ty[k_ty]
-              map_ty[k_ty] = map_ty[k_ty].union(v_ty)
+          map_tys = @map_tys.dup
+          other.map_tys.each do |k_ty, v_ty|
+            if map_tys[k_ty]
+              map_tys[k_ty] = map_tys[k_ty].union(v_ty)
             else
-              map_ty[k_ty] = v_ty
+              map_tys[k_ty] = v_ty
             end
           end
 
@@ -389,7 +389,7 @@ module TypeProfiler
           if elems
             elems = elems.strip_local_info_core(env, visited)
           else
-            elems = Hash::Elements.new([], Type.any)
+            elems = Hash::Elements.new({Type.any => Type.any})
           end
           Hash.new(elems, @base_type)
         end

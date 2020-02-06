@@ -132,6 +132,13 @@ module TypeProfiler
       Env.new(@recv_ty, @blk_ty, Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
+    def deploy_hash_type(alloc_site, elems, base_ty)
+      local_ty = Type::LocalHash.new(alloc_site, base_ty)
+      type_params = @type_params.merge({ alloc_site => elems })
+      nenv = Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
+      return nenv, local_ty
+    end
+
     def deploy_array_type(alloc_site, elems, base_ty)
       local_ty = Type::LocalArray.new(alloc_site, base_ty)
       type_params = @type_params.merge({ alloc_site => elems })
