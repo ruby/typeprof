@@ -121,7 +121,11 @@ module TypeProfiler
       end
 
       def inspect
-        "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }, #{ Type::Array.new(@array_elems, Type.any).inspect }}"
+        if @array_elems
+          "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }, #{ Type::Array.new(@array_elems, Type.any).inspect }}"
+        else
+          "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }}"
+        end
       end
 
       def screen_name(scratch)
@@ -367,7 +371,12 @@ module TypeProfiler
       end
 
       def consistent?(other)
-        @type.consistent?(other)
+        case other
+        when Symbol
+          @sym == other.sym
+        else
+          @type.consistent?(other)
+        end
       end
 
       def screen_name(scratch)

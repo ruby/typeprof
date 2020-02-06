@@ -534,6 +534,20 @@ module TypeProfiler
       end
     end
 
+    def get_hash_elem_type(env, ep, id, key_ty = nil)
+      elems = env.get_hash_elem_types(id)
+      while ep && !elems
+        ep = ep.outer
+        elems = @return_envs[ep].get_hash_elem_types(id)
+        break if elems
+      end
+      if elems
+        elems[key_ty || Type.any]
+      else
+        Type.any
+      end
+    end
+
     def type_profile
       counter = 0
       stat_eps = Utils::MutableSet.new

@@ -232,6 +232,16 @@ module TypeProfiler
       ctn[Type.bool, ep, env]
     end
 
+    def hash_aref(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      key = aargs.lead_tys.first
+      ty = scratch.get_hash_elem_type(env, ep, recv.id, key)
+      ctn[ty, ep, env]
+    end
+
+    def hash_aset(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      raise
+    end
+
     def file_load(path, ep, env, scratch, &ctn)
       iseq = ISeq.compile(path)
       callee_ep, callee_env = TypeProfiler.starting_state(iseq)
@@ -344,6 +354,7 @@ module TypeProfiler
     scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
     scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
     scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
+
     scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
     scratch.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
     scratch.add_custom_method(klass_ary, :<<, Builtin.method(:array_ltlt))
@@ -352,6 +363,9 @@ module TypeProfiler
     scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
     scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
     scratch.add_custom_method(klass_ary, :include?, Builtin.method(:array_include?))
+
+    scratch.add_custom_method(klass_hash, :[], Builtin.method(:hash_aref))
+    scratch.add_custom_method(klass_hash, :[]=, Builtin.method(:hash_aset))
 
     i = -> t { Type::Instance.new(t) }
 
