@@ -21,12 +21,12 @@ module TypeProfiler
         @elems.screen_name(scratch)
       end
 
-      def strip_local_info_core(env, visited)
+      def globalize(env, visited)
         self
       end
 
-      def deploy_local_core(env, alloc_site)
-        env, elems = @elems.deploy_local_core(env, alloc_site)
+      def localize(env, alloc_site)
+        env, elems = @elems.localize(env, alloc_site)
         env, ty = env.deploy_array_type(alloc_site, elems, @base_type)
       end
 
@@ -45,23 +45,23 @@ module TypeProfiler
 
         attr_reader :lead_tys, :rest_ty
 
-        def strip_local_info_core(env, visited)
+        def globalize(env, visited)
           lead_tys = []
           @lead_tys.each do |ty|
-            lead_tys << ty.strip_local_info_core(env, visited)
+            lead_tys << ty.globalize(env, visited)
           end
-          rest_ty = @rest_ty&.strip_local_info_core(env, visited)
+          rest_ty = @rest_ty&.globalize(env, visited)
           Elements.new(lead_tys, rest_ty)
         end
 
-        def deploy_local_core(env, alloc_site)
+        def localize(env, alloc_site)
           lead_tys = @lead_tys.map.with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(i)
-            env, ty = ty.deploy_local_core(env, alloc_site2)
+            env, ty = ty.localize(env, alloc_site2)
             ty
           end
           alloc_site_rest = alloc_site.add_id(:rest)
-          env, rest_ty = @rest_ty.deploy_local_core(env, alloc_site_rest)
+          env, rest_ty = @rest_ty.localize(env, alloc_site_rest)
           return env, Elements.new(lead_tys, rest_ty)
         end
 
@@ -208,14 +208,14 @@ module TypeProfiler
         "LocalArray!"
       end
 
-      def strip_local_info_core(env, visited)
+      def globalize(env, visited)
         if visited[self]
           Type.any
         else
           visited[self] = true
           elems = env.get_array_elem_types(@id)
           if elems
-            elems = elems.strip_local_info_core(env, visited)
+            elems = elems.globalize(env, visited)
           else
             # TODO: currently out-of-scope array cannot be accessed
             elems = Array::Elements.new([], Type.any)
@@ -250,12 +250,12 @@ module TypeProfiler
         @elems.screen_name(scratch)
       end
 
-      def strip_local_info_core(env, visited)
+      def globalize(env, visited)
         self
       end
 
-      def deploy_local_core(env, alloc_site)
-        env, elems = @elems.deploy_local_core(env, alloc_site)
+      def localize(env, alloc_site)
+        env, elems = @elems.localize(env, alloc_site)
         env, ty = env.deploy_hash_type(alloc_site, elems, @base_type)
       end
 
@@ -273,11 +273,11 @@ module TypeProfiler
 
         attr_reader :map_tys
 
-        def strip_local_info_core(env, visited)
+        def globalize(env, visited)
           map_tys = {}
           @map_tys.each do |k_ty, v_ty|
-            k_ty = k_ty.strip_local_info_core(env, visited)
-            v_ty = v_ty.strip_local_info_core(env, visited)
+            k_ty = k_ty.globalize(env, visited)
+            v_ty = v_ty.globalize(env, visited)
             if map_tys[k_ty]
               map_tys[k_ty] = map_tys[k_ty].union(v_ty)
             else
@@ -287,11 +287,11 @@ module TypeProfiler
           Elements.new(map_tys)
         end
 
-        def deploy_local_core(env, alloc_site)
+        def localize(env, alloc_site)
           map_tys = @map_tys.to_h do |k_ty, v_ty|
             alloc_site2 = alloc_site.add_id(k_ty)
-            env, k_ty = k_ty.deploy_local_core(env, alloc_site2.add_id(:key))
-            env, v_ty = v_ty.deploy_local_core(env, alloc_site2.add_id(:val))
+            env, k_ty = k_ty.localize(env, alloc_site2.add_id(:key))
+            env, v_ty = v_ty.localize(env, alloc_site2.add_id(:val))
             [k_ty, v_ty]
           end
           return env, Elements.new(map_tys)
@@ -380,14 +380,14 @@ module TypeProfiler
         "LocalHash!"
       end
 
-      def strip_local_info_core(env, visited)
+      def globalize(env, visited)
         if visited[self]
           Type.any
         else
           visited[self] = true
           elems = env.get_hash_elem_types(@id)
           if elems
-            elems = elems.strip_local_info_core(env, visited)
+            elems = elems.globalize(env, visited)
           else
             elems = Hash::Elements.new({Type.any => Type.any})
           end

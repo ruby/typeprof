@@ -568,13 +568,12 @@ module TypeProfiler
     end
 
     def globalize_type(ty, env)
-      ty.strip_local_info_core(env, {})
-      #ty.globalize(env)
+      ty.globalize(env, {})
     end
 
     def localize_type(ty, env, ep)
       alloc_site = AllocationSite.new(ep)
-      ty.deploy_local_core(env, alloc_site)
+      ty.localize(env, alloc_site)
       #ty.localize(env, alloc_site)
     end
 
@@ -1193,7 +1192,7 @@ module TypeProfiler
           alloc_site = AllocationSite.new(nep)
           aargs_.each_with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(i)
-            nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
+            nenv, ty = ty.localize(nenv, alloc_site2) # Use Scratch#localize_type?
             nenv = nenv.local_update(i, ty)
           end
 

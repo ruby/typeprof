@@ -8,11 +8,11 @@ module TypeProfiler
 
     Builtin = {}
 
-    def strip_local_info_core(env, visited)
+    def globalize(env, visited)
       self
     end
 
-    def deploy_local_core(env, _alloc_site)
+    def localize(env, _alloc_site)
       return env, self
     end
 
@@ -135,11 +135,11 @@ module TypeProfiler
         end
       end
 
-      def strip_local_info_core(env, visited)
+      def globalize(env, visited)
         tys = Utils::Set[]
-        array_elems = @array_elems&.strip_local_info_core(env, visited)
+        array_elems = @array_elems&.globalize(env, visited)
         @types.each do |ty|
-          ty = ty.strip_local_info_core(env, visited)
+          ty = ty.globalize(env, visited)
           if ty.is_a?(Array)
             array_elems = union_elems(array_elems, ty.elems)
           else
@@ -149,17 +149,17 @@ module TypeProfiler
         Type::Union.new(tys, array_elems).normalize
       end
 
-      def deploy_local_core(env, alloc_site)
+      def localize(env, alloc_site)
         tys = @types.map do |ty|
           alloc_site2 = alloc_site.add_id(ty)
-          env, ty2 = ty.deploy_local_core(env, alloc_site2)
+          env, ty2 = ty.localize(env, alloc_site2)
           ty2
         end
         if @array_elems
           base_ty = Type::Instance.new(Type::Builtin[:ary])
           ary_ty = Type::Array.new(@array_elems, base_ty)
           alloc_site2 = alloc_site.add_id(:ary)
-          env, ary_ty = ary_ty.deploy_local_core(env, alloc_site2)
+          env, ary_ty = ary_ty.localize(env, alloc_site2)
           tys = tys.add(ary_ty)
         end
         ty = Union.new(tys, nil)
@@ -401,7 +401,7 @@ module TypeProfiler
         @type.screen_name(scratch) + "<#{ @lit.inspect }>"
       end
 
-      def strip_local_info_core(env, visited)
+      def globalize(env, visited)
         @type
       end
 
@@ -563,9 +563,9 @@ module TypeProfiler
 
     attr_reader :lead_tys, :rest_ty, :blk_ty
 
-    def strip_local_info_core(caller_env, visited)
-      lead_tys = @lead_tys.map {|ty| ty.strip_local_info_core(caller_env, visited) }
-      rest_ty = @rest_ty.strip_local_info_core(caller_env, visited) if @rest_ty
+    def globalize(caller_env, visited)
+      lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited) }
+      rest_ty = @rest_ty.globalize(caller_env, visited) if @rest_ty
       ActualArguments.new(lead_tys, rest_ty, blk_ty)
     end
 

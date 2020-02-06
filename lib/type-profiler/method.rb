@@ -48,26 +48,27 @@ module TypeProfiler
         idx = 0
         fargs.lead_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
-          nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
+          # nenv is top-level, so it is okay to call Type#localize directly
+          nenv, ty = ty.localize(nenv, alloc_site2)
           nenv = nenv.local_update(i, ty)
         end
         if fargs.opt_tys
           fargs.opt_tys.each_with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
+            nenv, ty = ty.localize(nenv, alloc_site2)
             nenv = nenv.local_update(lead_num + i, ty)
           end
         end
         if fargs.rest_ty
           alloc_site2 = alloc_site.add_id(idx += 1)
           ty = Type::Array.new(Type::Array::Elements.new([], fargs.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
-          nenv, rest_ty = ty.deploy_local_core(nenv, alloc_site2)
+          nenv, rest_ty = ty.localize(nenv, alloc_site2)
           nenv = nenv.local_update(rest_start, rest_ty)
         end
         if fargs.post_tys
           fargs.post_tys.each_with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.deploy_local_core(nenv, alloc_site2)
+            nenv, ty = ty.localize(nenv, alloc_site2)
             nenv = nenv.local_update(post_start + i, ty)
           end
         end
