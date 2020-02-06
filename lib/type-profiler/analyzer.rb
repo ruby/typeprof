@@ -280,7 +280,7 @@ module TypeProfiler
       end
       idx = @class_defs.size
       @class_defs[idx] = ClassDef.new(class_name, superclass && superclass.idx)
-      klass = Type::Class.new(idx, name)
+      klass = Type::Class.new(idx, superclass, name)
       cbase ||= klass # for bootstrap
       add_constant(cbase, name, klass)
       return klass
@@ -326,12 +326,6 @@ module TypeProfiler
         idx = @class_defs[idx].superclass
       end
       nil
-    end
-
-    def get_superclass(klass)
-      idx = klass.idx
-      idx = @class_defs[idx].superclass
-      Type::Class.new(idx, nil)
     end
 
     def get_constant(klass, name)

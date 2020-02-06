@@ -215,12 +215,13 @@ module TypeProfiler
     end
 
     class Class < Type
-      def initialize(idx, name)
+      def initialize(idx, superclass, name)
         @idx = idx
+        @superclass = superclass
         @_name = name
       end
 
-      attr_reader :idx
+      attr_reader :idx, :superclass
 
       def inspect
         if @_name
@@ -251,7 +252,7 @@ module TypeProfiler
           loop do
             return true if ty.idx == other.idx
             return false if ty.idx == 0 # Object
-            ty = scratch.get_superclass(ty)
+            ty = ty.superclass
           end
         when Type::Instance
           return true if other.klass == Type::Builtin[:obj] || other.klass == Type::Builtin[:class] || other.klass == Type::Builtin[:module]
