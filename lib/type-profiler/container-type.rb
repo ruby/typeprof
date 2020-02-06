@@ -228,7 +228,7 @@ module TypeProfiler
         @base_type.get_method(mid, scratch)
       end
 
-      def consistent?(scratch, other)
+      def consistent?(other)
         raise "must not be used"
       end
     end
@@ -399,7 +399,7 @@ module TypeProfiler
         @base_type.get_method(mid, scratch)
       end
 
-      def consistent?(scratch, other)
+      def consistent?(other)
         raise "must not be used"
       end
     end

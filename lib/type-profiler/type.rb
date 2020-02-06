@@ -24,7 +24,7 @@ module TypeProfiler
       return env, self
     end
 
-    def consistent?(scratch, other)
+    def consistent?(other)
       case other
       when Type::Any then true
       when Type::Union
@@ -88,7 +88,7 @@ module TypeProfiler
         nil
       end
 
-      def consistent?(scratch, other)
+      def consistent?(other)
         true
       end
     end
@@ -170,20 +170,20 @@ module TypeProfiler
         return env, ty
       end
 
-      def consistent?(scratch, other)
+      def consistent?(other)
         case other
         when Type::Any then true
         when Type::Union
           @types.each do |ty1|
             other.types.each do |ty2|
-              return true if ty1.consistent?(scratch, ty2)
+              return true if ty1.consistent?(ty2)
             end
           end
           # TODO: array argument?
           return false
         else
           @types.each do |ty1|
-            return true if ty1.consistent?(scratch, other)
+            return true if ty1.consistent?(other)
           end
           # TODO: array argument?
           return false
@@ -239,12 +239,12 @@ module TypeProfiler
         scratch.get_singleton_method(self, mid)
       end
 
-      def consistent?(scratch, other)
+      def consistent?(other)
         case other
         when Type::Any then true
         when Type::Union
           other.types.each_child do |ty|
-            return true if consistent?(scratch, ty)
+            return true if consistent?(ty)
           end
           return false
         when Type::Class
@@ -284,16 +284,16 @@ module TypeProfiler
         scratch.get_method(@klass, mid)
       end
 
-      def consistent?(scratch, other)
+      def consistent?(other)
         case other
         when Type::Any then true
         when Type::Union
           other.types.each do |ty|
-            return true if consistent?(scratch, ty)
+            return true if consistent?(ty)
           end
           return false
         when Type::Instance
-          @klass.consistent?(scratch, other.klass)
+          @klass.consistent?(other.klass)
         when Type::Class
           return true if @klass == Type::Builtin[:obj] || @klass == Type::Builtin[:class] || @klass == Type::Builtin[:module]
           return false
@@ -366,8 +366,8 @@ module TypeProfiler
         "Type::Symbol[#{ @sym ? @sym.inspect : "(dynamic symbol)" }, #{ @type.inspect }]"
       end
 
-      def consistent?(scratch, other)
-        @type.consistent?(scratch, other)
+      def consistent?(other)
+        @type.consistent?(other)
       end
 
       def screen_name(scratch)
@@ -408,8 +408,8 @@ module TypeProfiler
         @type.get_method(mid, scratch)
       end
 
-      def consistent?(scratch, other)
-        @type.consistent?(scratch, other)
+      def consistent?(other)
+        @type.consistent?(other)
       end
     end
 
@@ -426,7 +426,7 @@ module TypeProfiler
         "self"
       end
 
-      def consistent?(scratch, other)
+      def consistent?(other)
         raise "Self type should not be checked for consistent?"
       end
     end
@@ -492,17 +492,17 @@ module TypeProfiler
 
     attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :keyword_tys, :blk_ty
 
-    def consistent?(scratch, fargs)
+    def consistent?(fargs)
       warn "used?"
       return false if @lead_tys.size != fargs.lead_tys.size
-      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(scratch, ty2) }
+      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
       return false if (@opt_tys || []) != (fargs.opt_tys || []) # ??
       if @rest_ty
-        return false unless @rest_ty.consistent?(scratch, fargs.rest_ty)
+        return false unless @rest_ty.consistent?(fargs.rest_ty)
       end
       if @post_tys
         return false if @post_tys.size != fargs.post_tys.size
-        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(scratch, ty2) }
+        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
       end
       return false if @keyword_tys != fargs.keyword_tys # ??
       # intentionally skip blk_ty
@@ -637,7 +637,7 @@ module TypeProfiler
       end
     end
 
-    def consistent_with_formal_arguments?(scratch, fargs)
+    def consistent_with_formal_arguments?(fargs)
       #@lead_tys = lead_tys
       #@rest_ty = rest_ty
       #@blk_ty = blk_ty
@@ -648,13 +648,13 @@ module TypeProfiler
         return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
         return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
         aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
-          return false unless aarg.consistent?(scratch, farg)
+          return false unless aarg.consistent?(farg)
         end
         aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
-          return false unless aarg.consistent?(scratch, farg)
+          return false unless aarg.consistent?(farg)
         end
         aargs.zip(fargs.opt_tys) do |aarg, farg|
-          return false unless aarg.consistent?(scratch, farg)
+          return false unless aarg.consistent?(farg)
         end
       end
       # XXX: fargs.keyword_tys

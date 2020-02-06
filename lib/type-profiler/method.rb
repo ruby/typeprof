@@ -94,7 +94,7 @@ module TypeProfiler
         # XXX: need to interpret args more correctly
         #pp [aargs, fargs]
         # XXX: support self type in fargs
-        next unless aargs.consistent_with_formal_arguments?(scratch, fargs)
+        next unless aargs.consistent_with_formal_arguments?(fargs)
         # XXX: support self type in container type like Array[Self]
         ret_ty = recv if ret_ty.is_a?(Type::Self)
         found = true

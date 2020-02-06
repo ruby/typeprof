@@ -279,7 +279,7 @@ module TypeProfiler
         class_name = name.to_s
       end
       idx = @class_defs.size
-      @class_defs[idx] = ClassDef.new(class_name, superclass && superclass.idx)
+      @class_defs[idx] = ClassDef.new(class_name, superclass&.idx)
       klass = Type::Class.new(idx, superclass, name)
       cbase ||= klass # for bootstrap
       add_constant(cbase, name, klass)
