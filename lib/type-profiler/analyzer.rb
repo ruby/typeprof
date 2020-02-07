@@ -590,7 +590,6 @@ module TypeProfiler
     def step(ep)
       orig_ep = ep
       env = @ep2env[ep]
-      scratch = self
       raise "nil env" unless env
 
       insn, *operands = ep.ctx.iseq.insns[ep.pc]
@@ -673,43 +672,43 @@ module TypeProfiler
         mid, iseq = operands
         cref = ep.ctx.cref
         if ep.ctx.singleton
-          scratch.add_singleton_iseq_method(cref.klass, mid, iseq, cref)
+          add_singleton_iseq_method(cref.klass, mid, iseq, cref)
         else
-          scratch.add_iseq_method(cref.klass, mid, iseq, cref)
+          add_iseq_method(cref.klass, mid, iseq, cref)
         end
       when :definesmethod
         mid, iseq = operands
         env, (recv,) = env.pop(1)
         cref = ep.ctx.cref
-        scratch.add_singleton_iseq_method(recv, mid, iseq, cref)
+        add_singleton_iseq_method(recv, mid, iseq, cref)
       when :defineclass
         id, iseq, flags = operands
         env, (cbase, superclass) = env.pop(2)
         case flags & 7
         when 0, 2 # CLASS / MODULE
           # scratch.warn(ep, "module is not supported yet") if flags & 7 == 2
-          existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
+          existing_klass = get_constant(cbase, id) # TODO: multiple return values
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
           else
             if existing_klass != Type.any
-              scratch.error(ep, "the class \"#{ id }\" is #{ existing_klass.screen_name(scratch) }")
+              error(ep, "the class \"#{ id }\" is #{ existing_klass.screen_name(self) }")
               id = :"#{ id }(dummy)"
             end
-            existing_klass = scratch.get_constant(cbase, id) # TODO: multiple return values
+            existing_klass = get_constant(cbase, id) # TODO: multiple return values
             if existing_klass != Type.any
               klass = existing_klass
             else
               if superclass == Type.any
-                scratch.warn(ep, "superclass is any; Object is used instead")
+                warn(ep, "superclass is any; Object is used instead")
                 superclass = Type::Builtin[:obj]
               elsif superclass.eql?(Type.nil)
                 superclass = Type::Builtin[:obj]
               elsif superclass.is_a?(Type::Instance)
-                scratch.warn(ep, "superclass is an instance; Object is used instead")
+                warn(ep, "superclass is an instance; Object is used instead")
                 superclass = Type::Builtin[:obj]
               end
-              klass = scratch.new_class(cbase, id, superclass)
+              klass = new_class(cbase, id, superclass)
             end
           end
           singleton = false
@@ -719,7 +718,7 @@ module TypeProfiler
           if klass.is_a?(Type::Class)
           elsif klass.is_a?(Type::Any)
           else
-            scratch.warn(ep, "A singleton class is open for #{ klass.screen_name(scratch) }; handled as any")
+            warn(ep, "A singleton class is open for #{ klass.screen_name(self) }; handled as any")
             klass = Type.any
           end
         else
@@ -733,23 +732,23 @@ module TypeProfiler
         locals = [Type.nil] * iseq.locals.size
         nenv = Env.new(recv, blk, locals, [], {})
         merge_env(nep, nenv)
-        scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
+        add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
         end
         return
       when :send
-        env, recvs, mid, aargs = Aux.setup_actual_arguments(scratch, operands, ep, env)
+        env, recvs, mid, aargs = Aux.setup_actual_arguments(self, operands, ep, env)
         recvs.each_child do |recv|
-          meths = recv.get_method(mid, scratch)
+          meths = recv.get_method(mid, self)
           if meths
             meths.each do |meth|
-              meth.do_send(flags, recv, mid, aargs, ep, env, scratch)
+              meth.do_send(flags, recv, mid, aargs, ep, env, self)
             end
           else
             if recv != Type.any # XXX: should be configurable
-              scratch.error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(scratch) }##{ mid }")
+              error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
             end
             nenv = env.push(Type.any)
             merge_env(ep.next, nenv)
@@ -758,12 +757,12 @@ module TypeProfiler
         return
       when :send_is_a_and_branch
         send_operands, (branch_type, target,) = *operands
-        env, recvs, mid, aargs = Aux.setup_actual_arguments(scratch, send_operands, ep, env)
+        env, recvs, mid, aargs = Aux.setup_actual_arguments(self, send_operands, ep, env)
         recvs.each_child do |recv|
-          meths = recv.get_method(mid, scratch)
+          meths = recv.get_method(mid, self)
           if meths
             meths.each do |meth|
-              meth.do_send(flags, recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
+              meth.do_send(flags, recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
                 is_true = ret_ty.eql?(Type::Instance.new(Type::Builtin[:true]))
                 is_false = ret_ty.eql?(Type::Instance.new(Type::Builtin[:false]))
                 if branch_type != :nil && (is_true || is_false)
@@ -785,7 +784,7 @@ module TypeProfiler
             end
           else
             if recv != Type.any # XXX: should be configurable
-              scratch.error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(scratch) }##{ mid }")
+              error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
             end
             ep_then = ep.next
             ep_else = ep.jump(target)
@@ -803,31 +802,30 @@ module TypeProfiler
         blk = env.blk_ty
         case
         when blk.eql?(Type.nil)
-          #scratch.warn(ep, "no block given")
           env = env.push(Type.any)
         when blk.eql?(Type.any)
-          scratch.warn(ep, "block is any")
+          warn(ep, "block is any")
           env = env.push(Type.any)
         else # Proc
           blk_nil = Type.nil
           aargs = ActualArguments.new(aargs, nil, blk_nil)
-          Aux.do_invoke_block(true, env.blk_ty, aargs, ep, env, scratch)
+          Aux.do_invoke_block(true, env.blk_ty, aargs, ep, env, self)
           return
         end
       when :invokesuper
-        env, recv, _, aargs = Aux.setup_actual_arguments(scratch, operands, ep, env)
+        env, recv, _, aargs = Aux.setup_actual_arguments(self, operands, ep, env)
 
         recv = env.recv_ty
         mid  = ep.ctx.mid
         # XXX: need to support included module...
-        meths = scratch.get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
+        meths = get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
           meths.each do |meth|
-            meth.do_send(flags, recv, mid, aargs, ep, env, scratch)
+            meth.do_send(flags, recv, mid, aargs, ep, env, self)
           end
           return
         else
-          scratch.error(ep, "no superclass method: #{ env.recv_ty.screen_name(scratch) }##{ mid }")
+          error(ep, "no superclass method: #{ env.recv_ty.screen_name(self) }##{ mid }")
           env = env.push(Type.any)
         end
       when :invokebuiltin
@@ -838,7 +836,7 @@ module TypeProfiler
         end
         env, (ty,) = env.pop(1)
         ty = globalize_type(ty, env, ep)
-        scratch.add_return_type!(ep.ctx, ty)
+        add_return_type!(ep.ctx, ty)
         return
       when :throw
         throwtype, = operands
@@ -848,7 +846,7 @@ module TypeProfiler
           ty = globalize_type(ty, env, ep)
           tmp_ep = ep
           tmp_ep = tmp_ep.outer while tmp_ep.outer
-          scratch.add_return_type!(tmp_ep.ctx, ty)
+          add_return_type!(tmp_ep.ctx, ty)
           return
         when 2 # break
           tmp_ep = ep.outer
@@ -870,7 +868,7 @@ module TypeProfiler
         raise if iseq.locals != []
         nenv = Env.new(recv, blk, [], [], nil)
         merge_env(nep, nenv)
-        scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
+        add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
@@ -901,13 +899,13 @@ module TypeProfiler
         env, (ty,) = env.pop(1)
         recv = env.recv_ty
         ty = globalize_type(ty, env, ep)
-        scratch.add_ivar_write!(recv, var, ty)
+        add_ivar_write!(recv, var, ty)
 
       when :getinstancevariable
         var, = operands
         recv = env.recv_ty
         # TODO: deal with inheritance?
-        scratch.add_ivar_read!(recv, var, ep) do |ty, ep|
+        add_ivar_read!(recv, var, ep) do |ty, ep|
           nenv, ty = localize_type(ty, env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
@@ -919,13 +917,13 @@ module TypeProfiler
         cbase = ep.ctx.cref.klass
         ty = globalize_type(ty, env, ep)
         # TODO: if superclass has the variable, it should be updated
-        scratch.add_cvar_write!(cbase, var, ty)
+        add_cvar_write!(cbase, var, ty)
 
       when :getclassvariable
         var, = operands
         cbase = ep.ctx.cref.klass
         # TODO: if superclass has the variable, it should be read
-        scratch.add_cvar_read!(cbase, var, ep) do |ty, ep|
+        add_cvar_read!(cbase, var, ep) do |ty, ep|
           nenv, ty = localize_type(ty, env, ep)
           merge_env(ep.next, nenv.push(ty))
         end
@@ -935,11 +933,11 @@ module TypeProfiler
         var, = operands
         env, (ty,) = env.pop(1)
         ty = globalize_type(ty, env, ep)
-        scratch.add_gvar_write!(var, ty)
+        add_gvar_write!(var, ty)
 
       when :getglobal
         var, = operands
-        scratch.add_gvar_read!(var, ep) do |ty, ep|
+        add_gvar_read!(var, ep) do |ty, ep|
           ty = Type.nil if ty == Type.bot # HACK
           nenv, ty = localize_type(ty, env, ep)
           merge_env(ep.next, nenv.push(ty))
@@ -977,24 +975,24 @@ module TypeProfiler
         name, = operands
         env, (cbase, _allow_nil,) = env.pop(2)
         if cbase.eql?(Type.nil)
-          ty = scratch.search_constant(ep.ctx.cref, name)
+          ty = search_constant(ep.ctx.cref, name)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         elsif cbase.eql?(Type.any)
           env = env.push(Type.any) # XXX: warning needed?
         else
-          ty = scratch.get_constant(cbase, name)
+          ty = get_constant(cbase, name)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         end
       when :setconstant
         name, = operands
         env, (ty, cbase) = env.pop(2)
-        old_ty = scratch.get_constant(cbase, name)
+        old_ty = get_constant(cbase, name)
         if old_ty != Type.any # XXX???
-          scratch.warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(scratch) }::#{ name }")
+          warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(self) }::#{ name }")
         end
-        scratch.add_constant(cbase, name, globalize_type(ty, env, ep))
+        add_constant(cbase, name, globalize_type(ty, env, ep))
 
       when :getspecial
         key, type = operands
