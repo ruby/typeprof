@@ -194,7 +194,7 @@ module TypeProfiler
       if ary.is_a?(Type::LocalArray)
         elems2 = scratch.get_array_elem_type(env, ep, ary.id)
         elems = Type::Array::Elements.new([], elems1.union(elems2))
-        env, ty, = env.deploy_array_type(recv.base_type, elems, recv.base_type)
+        ty = Type::Array.new(elems, recv.base_type)
         ctn[ty, ep, env]
       else
         # warn??
@@ -227,6 +227,11 @@ module TypeProfiler
 
       idx = aargs.lead_tys.first
       ty = aargs.lead_tys.last
+
+      unless recv.is_a?(Type::LocalHash)
+        # to ignore: class OptionMap < Hash
+        return ctn[ty, ep, env]
+      end
 
       env = scratch.update_container_elem_types(env, ep, recv.id) do |elems|
         elems.update(idx, ty)
