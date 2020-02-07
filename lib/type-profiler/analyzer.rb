@@ -799,7 +799,7 @@ module TypeProfiler
         end
         return
       when :invokeblock
-        # XXX: need block parameter, unknown block, etc.
+        # XXX: need block parameter, unknown block, etc.  Use setup_actual_arguments
         opt, = operands
         _flags = opt[:flag]
         orig_argc = opt[:orig_argc]
@@ -813,7 +813,8 @@ module TypeProfiler
           env = env.push(Type.any)
         else # Proc
           blk_nil = Type.nil
-          aargs = ActualArguments.new(aargs, nil, blk_nil)
+          #
+          aargs = ActualArguments.new(aargs, nil, nil, blk_nil)
           do_invoke_block(true, env.blk_ty, aargs, ep, env)
           return
         end
@@ -1059,7 +1060,7 @@ module TypeProfiler
           raise "unknown checkmatch flag"
         end
       when :checkkeyword
-        raise NotImplementedError, "checkkeyword"
+        env = env.push(Type.bool)
       when :adjuststack
         n, = operands
         env, _ = env.pop(n)
@@ -1166,19 +1167,22 @@ module TypeProfiler
       opt, blk_iseq = operands
       flags = opt[:flag]
       mid = opt[:mid]
+      kw_arg = opt[:kw_arg]
       argc = opt[:orig_argc]
       argc += 1 # receiver
+      argc += kw_arg.size if kw_arg
 
-      flag_args_splat    = flags[0] != 0
-      flag_args_blockarg = flags[1] != 0
-      _flag_args_fcall   = flags[2] != 0
-      _flag_args_vcall   = flags[3] != 0
-      _flag_blockiseq    = flags[4] != 0 # unused
-      flag_args_kwarg    = flags[5] != 0
-      flag_args_kw_splat = flags[6] != 0
-      _flag_tailcall     = flags[7] != 0
-      _flag_super        = flags[8] != 0
-      _flag_zsuper       = flags[9] != 0
+      flag_args_splat    = flags[ 0] != 0
+      flag_args_blockarg = flags[ 1] != 0
+      _flag_args_fcall   = flags[ 2] != 0
+      _flag_args_vcall   = flags[ 3] != 0
+      _flag_args_simple  = flags[ 4] != 0 # unused in TP
+      _flag_blockiseq    = flags[ 5] != 0 # unused in VM :-)
+      flag_args_kwarg    = flags[ 6] != 0
+      flag_args_kw_splat = flags[ 7] != 0
+      _flag_tailcall     = flags[ 8] != 0
+      _flag_super        = flags[ 9] != 0
+      _flag_zsuper       = flags[10] != 0
 
       if flag_args_blockarg
         env, (recv, *aargs, blk_ty) = env.pop(argc + 1)
@@ -1193,19 +1197,40 @@ module TypeProfiler
         end
       end
 
-      case
-      when blk_ty.eql?(Type.nil)
-      when blk_ty.eql?(Type.any)
-      when blk_ty.is_a?(Type::ISeqProc)
+      case blk_ty
+      when Type.nil
+      when Type.any
+      when Type::ISeqProc
       else
         error(ep, "wrong argument type #{ blk_ty.screen_name(self) } (expected Proc)")
         blk_ty = Type.any
       end
 
       if flag_args_splat
-        aargs = ActualArguments.new(aargs[0..-2], aargs.last, blk_ty)
+        # assert !flag_args_kwarg
+        # XXX: handle kw_splat
+        aargs = ActualArguments.new(aargs[0..-2], aargs.last, nil, blk_ty)
+      elsif flag_args_kw_splat
+        raise NotImplementedError
+      elsif flag_args_kwarg
+        kw_vals = aargs.pop(kw_arg.size)
+        kw_arg = kw_arg.map {|sym| Type::Symbol.new(sym, Type::Instance.new(Type::Builtin[:sym])) }
+
+        map_tys = {}
+        kw_arg.zip(kw_vals) do |k_ty, v_ty|
+          if map_tys[k_ty]
+            map_tys[k_ty] = map_tys[k_ty].union(v_ty)
+          else
+            map_tys[k_ty] = v_ty
+          end
+        end
+
+        # don't have to localize, maybe?
+        kw_ty = Type::Hash.new(Type::Hash::Elements.new(map_tys), Type::Instance.new(Type::Builtin[:hash]))
+
+        aargs = ActualArguments.new(aargs, nil, kw_ty, blk_ty)
       else
-        aargs = ActualArguments.new(aargs, nil, blk_ty)
+        aargs = ActualArguments.new(aargs, nil, nil, blk_ty)
       end
 
       return env, recv, mid, aargs

@@ -22,7 +22,9 @@ module TypeProfiler
       end
 
       def globalize(env, visited)
-        self
+        elems = @elems.globalize(env, visited)
+        base_ty = @base_type.globalize(env, visited)
+        Array.new(elems, base_ty)
       end
 
       def localize(env, alloc_site)
@@ -251,7 +253,9 @@ module TypeProfiler
       end
 
       def globalize(env, visited)
-        self
+        elems = @elems.globalize(env, visited)
+        base_ty = @base_type.globalize(env, visited)
+        Hash.new(elems, base_ty)
       end
 
       def localize(env, alloc_site)

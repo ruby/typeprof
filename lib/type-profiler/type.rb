@@ -41,13 +41,13 @@ module TypeProfiler
       if ty1.is_a?(Union) && ty2.is_a?(Union)
         ty = ty1.types.sum(ty2.types)
         array_elems = union_elems(ty1.array_elems, ty2.array_elems)
-        Type::Union.new(ty, array_elems)
+        Type::Union.new(ty, array_elems).normalize
       else
         ty1, ty2 = ty2, ty1 if ty2.is_a?(Union)
         if ty1.is_a?(Union)
-          Type::Union.new(ty1.types.add(ty2), ty1.array_elems)
+          Type::Union.new(ty1.types.add(ty2), ty1.array_elems).normalize
         else
-          Type::Union.new(Utils::Set[ty1, ty2], nil)
+          Type::Union.new(Utils::Set[ty1, ty2], nil).normalize
         end
       end
     end
@@ -482,16 +482,16 @@ module TypeProfiler
   class FormalArguments
     include Utils::StructuralEquality
 
-    def initialize(lead_tys, opt_tys, rest_ty, post_tys, keyword_tys, blk_ty)
+    def initialize(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, blk_ty)
       @lead_tys = lead_tys
       @opt_tys = opt_tys
       @rest_ty = rest_ty
       @post_tys = post_tys
-      @keyword_tys = keyword_tys
+      @kw_tys = kw_tys
       @blk_ty = blk_ty
     end
 
-    attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :keyword_tys, :blk_ty
+    attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :kw_tys, :blk_ty
 
     def consistent?(fargs)
       warn "used?"
@@ -505,7 +505,8 @@ module TypeProfiler
         return false if @post_tys.size != fargs.post_tys.size
         return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
       end
-      return false if @keyword_tys != fargs.keyword_tys # ??
+      return false if @kw_tys.size != fargs.kw_tys.size
+      return false unless @kw_tys.zip(fargs.kw_tys).all? {|(_, ty1), (_, ty2)| ty1.consistent?(ty2) }
       # intentionally skip blk_ty
       true
     end
@@ -521,15 +522,24 @@ module TypeProfiler
       if @post_tys
         fargs += @post_tys.map {|ty| ty.screen_name(scratch) }
       end
-      # keyword_tys
+      if @kw_tys
+        @kw_tys.each do |sym, ty|
+          fargs << "#{ sym }: #{ ty.screen_name(scratch) }"
+        end
+      end
       # intentionally skip blk_ty
       fargs
     end
 
     def merge(other)
       raise if @lead_tys.size != other.lead_tys.size
-      #raise if @post_tys.size != other.post_tys.size
-      #raise if @keyword_tys.size != other.keyword_tys.size
+      raise if @post_tys.size != other.post_tys.size
+      if @kw_tys
+        raise if @kw_tys.size != other.kw_tys.size
+        @kw_tys.zip(other.kw_tys) {|(k1, _), (k2, _)| raise if k1 != k2 }
+      else
+        raise if other.kw_tys
+      end
       lead_tys = @lead_tys.zip(other.lead_tys).map {|ty1, ty2| ty1.union(ty2) }
       if @opt_tys || other.opt_tys
         opt_tys = []
@@ -548,16 +558,18 @@ module TypeProfiler
         end
       end
       post_tys = @post_tys.zip(other.post_tys).map {|ty1, ty2| ty1.union(ty2) }
+      kw_tys = @kw_tys.zip(other.kw_tys).map {|(k, ty1), (_, ty2)| [k, ty1.union(ty2)] } if @kw_tys
       blk_ty = @blk_ty.union(other.blk_ty) if @blk_ty
-      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, blk_ty)
+      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, blk_ty)
     end
   end
 
   # Arguments from caller side
   class ActualArguments
-    def initialize(lead_tys, rest_ty, blk_ty)
+    def initialize(lead_tys, rest_ty, kw_ty, blk_ty)
       @lead_tys = lead_tys
       @rest_ty = rest_ty
+      @kw_ty = kw_ty
       @blk_ty = blk_ty
     end
 
@@ -566,16 +578,18 @@ module TypeProfiler
     def globalize(caller_env, visited)
       lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited) }
       rest_ty = @rest_ty.globalize(caller_env, visited) if @rest_ty
-      ActualArguments.new(lead_tys, rest_ty, blk_ty)
+      kw_ty = @kw_ty.globalize(caller_env, visited) if @kw_ty
+      ActualArguments.new(lead_tys, rest_ty, kw_ty, blk_ty)
     end
 
     def each_formal_arguments(fargs_format)
       lead_num = fargs_format[:lead_num] || 0
       post_num = fargs_format[:post_num] || 0
-      post_start = fargs_format[:post_start]
-      rest_start = fargs_format[:rest_start]
-      block_start = fargs_format[:block_start]
+      rest_acceptable = !!fargs_format[:rest_start]
+      keyword = fargs_format[:keyword]
+      kw_rest_acceptable = !!fargs_format[:kwrest]
       opt = fargs_format[:opt]
+      #p fargs_format
 
       # TODO: expand tuples to normal arguments
 
@@ -585,7 +599,7 @@ module TypeProfiler
         yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
         return
       end
-      if !rest_start
+      if !rest_acceptable
         # too many
         if opt
           if lead_num + post_num + opt.size - 1 < @lead_tys.size
@@ -602,11 +616,42 @@ module TypeProfiler
 
       if @rest_ty
         lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
-        upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_start ? 1 : 0)
+        upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_acceptable ? 1 : 0)
         rest_elem = @rest_ty.eql?(Type.any) ? Type.any : @rest_ty.elems.squash
       else
         lower_bound = upper_bound = 0
       end
+
+      if keyword
+        kw_tys = []
+        keyword.each do |kw|
+          case
+          when kw.is_a?(Symbol) # required keyword
+            key = kw
+          when kw.size == 2 # optional keyword (default value is a literal)
+            key, default_ty = *kw
+            default_ty = Type.guess_literal_type(default_ty).globalize(nil, nil)
+          else # optional keyword (default value is an expression)
+            key, = kw
+          end
+
+          sym = Type::Symbol.new(key, Type::Instance.new(Type::Builtin[:sym]))
+          ty = Type.bot
+          if @kw_ty.is_a?(Type::Hash)
+            # XXX: consider Union
+            ty = @kw_ty.elems[sym]
+            # XXX: remove the key
+          end
+          ty = ty.union(default_ty) if default_ty
+          kw_tys << [key, ty]
+        end
+      end
+      if kw_rest_acceptable
+        kw_rest_ty = @kw_ty
+      end
+      #if @kw_ty
+      #  yield "passed a keyword to non-keyword method"
+      #end
 
       (lower_bound .. upper_bound).each do |rest_len|
         aargs = @lead_tys + [rest_elem] * rest_len
@@ -623,7 +668,7 @@ module TypeProfiler
             start_pc = tmp_opt.shift
           end
         end
-        if rest_start
+        if rest_acceptable
           acc = aargs.inject {|acc, ty| acc.union(ty) }
           acc = acc ? acc.union(rest_elem) : rest_elem if rest_elem
           acc ||= Type.bot
@@ -634,14 +679,11 @@ module TypeProfiler
           yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
           return
         end
-        yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, nil, @blk_ty), start_pc
+        yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, @blk_ty), start_pc
       end
     end
 
     def consistent_with_formal_arguments?(fargs)
-      #@lead_tys = lead_tys
-      #@rest_ty = rest_ty
-      #@blk_ty = blk_ty
       aargs = @lead_tys.dup
       if @rest_ty
         raise NotImplementedError

@@ -169,7 +169,7 @@ module TypeProfiler
     def array_each(recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       ty = scratch.get_array_elem_type(env, ep, recv.id)
-      naargs = ActualArguments.new([ty], nil, Type.nil)
+      naargs = ActualArguments.new([ty], nil, nil, Type.nil)
       scratch.do_invoke_block(false, aargs.blk_ty, naargs, ep, env) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
       end
@@ -179,7 +179,7 @@ module TypeProfiler
       raise NotImplementedError if aargs.lead_tys.size != 0
       # TODO: get_array_elem_type does squash, but tuple part may be preserved
       ty = scratch.get_array_elem_type(env, ep, recv.id)
-      naargs = ActualArguments.new([ty], nil, Type.nil)
+      naargs = ActualArguments.new([ty], nil, nil, Type.nil)
       scratch.do_invoke_block(false, aargs.blk_ty, naargs, ep, env) do |ret_ty, ep|
         base_ty = Type::Instance.new(Type::Builtin[:ary])
         ret_ty = Type::Array.new(Type::Array::Elements.new([], ret_ty), base_ty)

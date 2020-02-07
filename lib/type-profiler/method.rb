@@ -27,6 +27,8 @@ module TypeProfiler
       lead_num = @iseq.fargs_format[:lead_num] || 0
       post_start = @iseq.fargs_format[:post_start]
       rest_start = @iseq.fargs_format[:rest_start]
+      kw_start = @iseq.fargs_format[:kwbits]
+      kw_start -= @iseq.fargs_format[:keyword].size if kw_start
       block_start = @iseq.fargs_format[:block_start]
 
       recv = scratch.globalize_type(recv, caller_env, caller_ep)
@@ -72,10 +74,16 @@ module TypeProfiler
             nenv = nenv.local_update(post_start + i, ty)
           end
         end
-        # keyword_tys
+        if fargs.kw_tys
+          fargs.kw_tys.each_with_index do |(_, ty), i|
+            alloc_site2 = alloc_site.add_id(idx += 1)
+            nenv, ty = ty.localize(nenv, alloc_site2)
+            nenv = nenv.local_update(kw_start + i, ty)
+          end
+        end
+        # kwrest
         nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
 
-        # XXX: need to jump option argument
         scratch.merge_env(callee_ep, nenv)
         scratch.add_callsite!(callee_ep.ctx, fargs, caller_ep, caller_env, &ctn)
       end
@@ -105,7 +113,7 @@ module TypeProfiler
         if fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
           scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
           nfargs = fargs.blk_ty.fargs
-          naargs = ActualArguments.new(nfargs, nil, Type.nil) # XXX: support block to block?
+          naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
           scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |_ret_ty, _ep, _env|
             # XXX: check the return type from the block
             # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
