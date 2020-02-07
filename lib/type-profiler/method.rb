@@ -99,7 +99,7 @@ module TypeProfiler
         # XXX: support self type in container type like Array[Self]
         ret_ty = recv if ret_ty.is_a?(Type::Self)
         found = true
-        dummy_ctx = Context.new(nil, nil, nil, mid)
+        dummy_ctx = Context.new(nil, nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo
         dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
         dummy_env = Env.new(recv, fargs.blk_ty, [], [], {})
         if fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
