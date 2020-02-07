@@ -137,15 +137,15 @@ module TypeProfiler
       Env.new(@recv_ty, @blk_ty, Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
-    def deploy_hash_type(alloc_site, elems, base_ty)
-      local_ty = Type::LocalHash.new(alloc_site, base_ty)
+    def deploy_array_type(alloc_site, elems, base_ty)
+      local_ty = Type::LocalArray.new(alloc_site, base_ty)
       type_params = @type_params.merge({ alloc_site => elems })
       nenv = Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
       return nenv, local_ty
     end
 
-    def deploy_array_type(alloc_site, elems, base_ty)
-      local_ty = Type::LocalArray.new(alloc_site, base_ty)
+    def deploy_hash_type(alloc_site, elems, base_ty)
+      local_ty = Type::LocalHash.new(alloc_site, base_ty)
       type_params = @type_params.merge({ alloc_site => elems })
       nenv = Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
       return nenv, local_ty
@@ -158,26 +158,6 @@ module TypeProfiler
     def update_container_elem_types(id, elems)
       type_params = @type_params.merge({ id => elems })
       Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
-    end
-
-    def poke_array_elem_types(id, idx, ty)
-      if @type_params[id]
-        elems = @type_params[id].update(idx, ty)
-        type_params = @type_params.merge({ id => elems })
-        Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
-      else
-        nil
-      end
-    end
-
-    def append_array_elem_types(id, ty)
-      if @type_params[id]
-        elems = @type_params[id].append(ty)
-        type_params = @type_params.merge({ id => elems })
-        Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
-      else
-        nil
-      end
     end
 
     def inspect
@@ -526,16 +506,20 @@ module TypeProfiler
       env.get_container_elem_types(id)
     end
 
-    def update_container_elem_types(env, ep)
+    def update_container_elem_types(env, ep, id)
       if ep.outer
         tmp_ep = ep
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         merge_return_env(tmp_ep) do |menv|
-          yield menv
+          elems = menv.get_container_elem_types(id)
+          elems = yield elems
+          menv.update_container_elem_types(id, elems)
         end
         env
       else
-        yield env
+        elems = env.get_container_elem_types(id)
+        elems = yield elems
+        env.update_container_elem_types(id, elems)
       end
     end
 

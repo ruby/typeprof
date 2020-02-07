@@ -147,8 +147,8 @@ module TypeProfiler
 
       ty = aargs.lead_tys.last
 
-      env = scratch.update_container_elem_types(env, ep) do |env|
-        env.poke_array_elem_types(recv.id, idx, ty)
+      env = scratch.update_container_elem_types(env, ep, recv.id) do |elems|
+        elems.update(idx, ty)
       end
 
       ctn[ty, ep, env]
@@ -159,8 +159,8 @@ module TypeProfiler
 
       ty = aargs.lead_tys.first
 
-      env = scratch.update_container_elem_types(env, ep) do |env|
-        env.append_array_elem_types(recv.id, ty)
+      env = scratch.update_container_elem_types(env, ep, recv.id) do |elems|
+        elems.append(ty)
       end
 
       ctn[recv, ep, env]
@@ -228,8 +228,8 @@ module TypeProfiler
       idx = aargs.lead_tys.first
       ty = aargs.lead_tys.last
 
-      env = scratch.update_container_elem_types(env, ep) do |env|
-        env.poke_array_elem_types(recv.id, idx, ty)
+      env = scratch.update_container_elem_types(env, ep, recv.id) do |elems|
+        elems.update(idx, ty)
       end
 
       ctn[ty, ep, env]

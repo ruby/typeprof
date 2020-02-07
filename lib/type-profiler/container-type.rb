@@ -332,20 +332,13 @@ module TypeProfiler
         end
 
         def update(idx, ty)
-          #raise NotImplementedError
-          if idx
-            if idx < @lead_tys.size
-              lead_tys = Utils.array_update(@lead_tys, idx, ty)
-              Elements.new(lead_tys, @rest_ty)
-            else
-              rest_ty = @rest_ty.union(ty)
-              Elements.new(@lead_tys, rest_ty)
-            end
+          map_tys = @map_tys.dup
+          if map_tys[idx]
+            map_tys[idx] = map_tys[idx].union(ty)
           else
-            lead_tys = @lead_tys.map {|ty1| ty1.union(ty) }
-            rest_ty = @rest_ty.union(ty)
-            Elements.new(lead_tys, rest_ty)
+            map_tys[idx] = ty
           end
+          Elements.new(map_tys)
         end
 
         def union(other)
