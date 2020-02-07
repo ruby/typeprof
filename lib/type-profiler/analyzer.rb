@@ -739,12 +739,12 @@ module TypeProfiler
         end
         return
       when :send
-        env, recvs, mid, aargs = Aux.setup_actual_arguments(self, operands, ep, env)
+        env, recvs, mid, aargs = setup_actual_arguments(operands, ep, env)
         recvs.each_child do |recv|
           meths = recv.get_method(mid, self)
           if meths
             meths.each do |meth|
-              meth.do_send(flags, recv, mid, aargs, ep, env, self)
+              meth.do_send(recv, mid, aargs, ep, env, self)
             end
           else
             if recv != Type.any # XXX: should be configurable
@@ -757,12 +757,12 @@ module TypeProfiler
         return
       when :send_is_a_and_branch
         send_operands, (branch_type, target,) = *operands
-        env, recvs, mid, aargs = Aux.setup_actual_arguments(self, send_operands, ep, env)
+        env, recvs, mid, aargs = setup_actual_arguments(send_operands, ep, env)
         recvs.each_child do |recv|
           meths = recv.get_method(mid, self)
           if meths
             meths.each do |meth|
-              meth.do_send(flags, recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
+              meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
                 is_true = ret_ty.eql?(Type::Instance.new(Type::Builtin[:true]))
                 is_false = ret_ty.eql?(Type::Instance.new(Type::Builtin[:false]))
                 if branch_type != :nil && (is_true || is_false)
@@ -813,7 +813,7 @@ module TypeProfiler
           return
         end
       when :invokesuper
-        env, recv, _, aargs = Aux.setup_actual_arguments(self, operands, ep, env)
+        env, recv, _, aargs = setup_actual_arguments(operands, ep, env)
 
         recv = env.recv_ty
         mid  = ep.ctx.mid
@@ -821,7 +821,7 @@ module TypeProfiler
         meths = get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
         if meths
           meths.each do |meth|
-            meth.do_send(flags, recv, mid, aargs, ep, env, self)
+            meth.do_send(recv, mid, aargs, ep, env, self)
           end
           return
         else
@@ -1157,6 +1157,55 @@ module TypeProfiler
       merge_env(ep.next, env)
     end
 
+    def setup_actual_arguments(operands, ep, env)
+      opt, blk_iseq = operands
+      flags = opt[:flag]
+      mid = opt[:mid]
+      argc = opt[:orig_argc]
+      argc += 1 # receiver
+
+      flag_args_splat    = flags[0] != 0
+      flag_args_blockarg = flags[1] != 0
+      _flag_args_fcall   = flags[2] != 0
+      _flag_args_vcall   = flags[3] != 0
+      _flag_blockiseq    = flags[4] != 0 # unused
+      flag_args_kwarg    = flags[5] != 0
+      flag_args_kw_splat = flags[6] != 0
+      _flag_tailcall     = flags[7] != 0
+      _flag_super        = flags[8] != 0
+      _flag_zsuper       = flags[9] != 0
+
+      if flag_args_blockarg
+        env, (recv, *aargs, blk_ty) = env.pop(argc + 1)
+        raise "both block arg and actual block given" if blk_iseq
+      else
+        env, (recv, *aargs) = env.pop(argc)
+        if blk_iseq
+          # check
+          blk_ty = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
+        else
+          blk_ty = Type.nil
+        end
+      end
+
+      case
+      when blk_ty.eql?(Type.nil)
+      when blk_ty.eql?(Type.any)
+      when blk_ty.is_a?(Type::ISeqProc)
+      else
+        error(ep, "wrong argument type #{ blk_ty.screen_name(self) } (expected Proc)")
+        blk_ty = Type.any
+      end
+
+      if flag_args_splat
+        aargs = ActualArguments.new(aargs[0..-2], aargs.last, blk_ty)
+      else
+        aargs = ActualArguments.new(aargs, nil, blk_ty)
+      end
+
+      return env, recv, mid, aargs
+    end
+
     module Aux
       module_function
 
@@ -1222,57 +1271,6 @@ module TypeProfiler
           scratch.add_yield!(ep.ctx, nfargs, nep.ctx) if given_block
           scratch.add_callsite!(nep.ctx, nil, ep, env, &ctn)
         end
-      end
-
-      def setup_actual_arguments(scratch, operands, ep, env)
-        opt, blk_iseq = operands
-        flags = opt[:flag]
-        mid = opt[:mid]
-        argc = opt[:orig_argc]
-        argc += 1 # receiver
-        # 1061     VM_CALL_ARGS_SPLAT_bit,     /* m(*args) */
-        # 1062     VM_CALL_ARGS_BLOCKARG_bit,  /* m(&block) */
-        # 1063     VM_CALL_FCALL_bit,          /* m(...) */
-        # 1064     VM_CALL_VCALL_bit,          /* m */
-        # 1065     VM_CALL_ARGS_SIMPLE_bit,    /* (ci->flag & (SPLAT|BLOCKARG)) && blockiseq == NULL && ci->kw_arg == NULL */
-        # 1066     VM_CALL_BLOCKISEQ_bit,      /* has blockiseq */
-        # 1067     VM_CALL_KWARG_bit,          /* has kwarg */
-        # 1068     VM_CALL_KW_SPLAT_bit,       /* m(**opts) */
-        # 1069     VM_CALL_TAILCALL_bit,       /* located at tail position */
-        # 1070     VM_CALL_SUPER_bit,          /* super */
-        # 1071     VM_CALL_ZSUPER_bit,         /* zsuper */
-        # 1072     VM_CALL_OPT_SEND_bit,       /* internal flag */
-        # 1073     VM_CALL__END
-
-        #raise "call with splat is not supported yet" if flags[0] != 0
-        #raise "call with splat is not supported yet" if flags[2] != 0
-        splat = flags[0] != 0
-        if flags[1] != 0 # VM_CALL_ARGS_BLOCKARG
-          env, (recv, *aargs, blk_ty) = env.pop(argc + 1)
-          raise "both block arg and actual block given" if blk_iseq
-        else
-          env, (recv, *aargs) = env.pop(argc)
-          if blk_iseq
-            # check
-            blk_ty = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
-          else
-            blk_ty = Type.nil
-          end
-        end
-        case
-        when blk_ty.eql?(Type.nil)
-        when blk_ty.eql?(Type.any)
-        when blk_ty.is_a?(Type::ISeqProc)
-        else
-          scratch.error(ep, "wrong argument type #{ blk_ty.screen_name(scratch) } (expected Proc)")
-          blk_ty = Type.any
-        end
-        if flags[0] != 0 # VM_CALL_ARGS_SPLAT_bit
-          aargs = ActualArguments.new(aargs[0..-2], aargs.last, blk_ty)
-        else
-          aargs = ActualArguments.new(aargs, nil, blk_ty)
-        end
-        return env, recv, mid, aargs
       end
     end
   end
