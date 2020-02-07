@@ -136,6 +136,7 @@ module TypeProfiler
 
     def array_aset(flags, recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 2
+
       idx = aargs.lead_tys.first
       if idx.is_a?(Type::Literal)
         idx = idx.lit
@@ -146,19 +147,10 @@ module TypeProfiler
 
       ty = aargs.lead_tys.last
 
-      nenv = env.poke_array_elem_types(recv.id, idx, ty)
-      if nenv
-        env = nenv
-      else
-        tmp_ep, tmp_env = ep, env
-        until ntmp_env = tmp_env.poke_array_elem_types(recv.id, idx, ty)
-          tmp_ep = tmp_ep.outer
-          tmp_env = scratch.return_envs[tmp_ep]
-        end
-        scratch.merge_return_env(tmp_ep) do |_env|
-          ntmp_env
-        end
+      env = scratch.update_container_elem_types(env, ep) do |env|
+        env.poke_array_elem_types(recv.id, idx, ty)
       end
+
       ctn[ty, ep, env]
     end
 
@@ -167,19 +159,10 @@ module TypeProfiler
 
       ty = aargs.lead_tys.first
 
-      nenv = env.append_array_elem_types(recv.id, ty)
-      if nenv
-        env = nenv
-      else
-        tmp_ep, tmp_env = ep, env
-        until ntmp_env = tmp_env.append_array_elem_types(recv.id, ty)
-          tmp_ep = tmp_ep.outer
-          tmp_env = scratch.return_envs[tmp_ep]
-        end
-        scratch.merge_return_env(tmp_ep) do |_env|
-          ntmp_env
-        end
+      env = scratch.update_container_elem_types(env, ep) do |env|
+        env.append_array_elem_types(recv.id, ty)
       end
+
       ctn[recv, ep, env]
     end
 
@@ -233,13 +216,23 @@ module TypeProfiler
     end
 
     def hash_aref(flags, recv, mid, aargs, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.lead_tys.size != 1
       key = aargs.lead_tys.first
       ty = scratch.get_hash_elem_type(env, ep, recv.id, key)
       ctn[ty, ep, env]
     end
 
     def hash_aset(flags, recv, mid, aargs, ep, env, scratch, &ctn)
-      raise
+      raise NotImplementedError if aargs.lead_tys.size != 2
+
+      idx = aargs.lead_tys.first
+      ty = aargs.lead_tys.last
+
+      env = scratch.update_container_elem_types(env, ep) do |env|
+        env.poke_array_elem_types(recv.id, idx, ty)
+      end
+
+      ctn[ty, ep, env]
     end
 
     def file_load(path, ep, env, scratch, &ctn)

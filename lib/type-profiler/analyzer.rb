@@ -84,13 +84,18 @@ module TypeProfiler
       blk_ty = @blk_ty.union(other.blk_ty)
       locals = @locals.zip(other.locals).map {|ty1, ty2| ty1.union(ty2) }
       stack = @stack.zip(other.stack).map {|ty1, ty2| ty1.union(ty2) }
-      type_params = @type_params.dup
-      other.type_params.each do |id, elems|
-        if type_params[id]
-          type_params[id] = type_params[id].union(elems)
-        else
-          type_params[id] = elems
+      if @type_params
+        raise if !other.type_params
+        type_params = @type_params.dup
+        other.type_params.each do |id, elems|
+          if type_params[id]
+            type_params[id] = type_params[id].union(elems)
+          else
+            type_params[id] = elems
+          end
         end
+      else
+        raise if other.type_params
       end
       Env.new(recv_ty, blk_ty, locals, stack, type_params)
     end
@@ -146,15 +151,11 @@ module TypeProfiler
       return nenv, local_ty
     end
 
-    def get_array_elem_types(id)
+    def get_container_elem_types(id)
       @type_params[id]
     end
 
-    def get_hash_elem_types(id)
-      @type_params[id]
-    end
-
-    def update_array_elem_types(id, elems)
+    def update_container_elem_types(id, elems)
       type_params = @type_params.merge({ id => elems })
       Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
     end
@@ -516,31 +517,42 @@ module TypeProfiler
       @errors << [ep, "[p] " + msg]
     end
 
-    def get_array_elem_type(env, ep, id, idx = nil)
-      elems = env.get_array_elem_types(id)
-      while ep && !elems
-        ep = ep.outer
-        elems = @return_envs[ep].get_array_elem_types(id)
-        break if elems
+    def get_container_elem_type(env, ep, id)
+      if ep.outer
+        tmp_ep = ep
+        tmp_ep = tmp_ep.outer while tmp_ep.outer
+        env = @return_envs[tmp_ep]
       end
-      if elems
-        if idx
-          return elems[idx] || Type.nil
-        else
-          return elems.squash
+      env.get_container_elem_types(id)
+    end
+
+    def update_container_elem_types(env, ep)
+      if ep.outer
+        tmp_ep = ep
+        tmp_ep = tmp_ep.outer while tmp_ep.outer
+        merge_return_env(tmp_ep) do |menv|
+          yield menv
         end
+        env
+      else
+        yield env
+      end
+    end
+
+    def get_array_elem_type(env, ep, id, idx = nil)
+      elems = get_container_elem_type(env, ep, id)
+
+      if elems
+        return elems[idx] || Type.nil if idx
+        return elems.squash
       else
         Type.any
       end
     end
 
     def get_hash_elem_type(env, ep, id, key_ty = nil)
-      elems = env.get_hash_elem_types(id)
-      while ep && !elems
-        ep = ep.outer
-        elems = @return_envs[ep].get_hash_elem_types(id)
-        break if elems
-      end
+      elems = get_container_elem_type(env, ep, id)
+
       if elems
         elems[key_ty || Type.any]
       else
@@ -568,13 +580,27 @@ module TypeProfiler
     end
 
     def globalize_type(ty, env, ep)
+      if ep.outer
+        tmp_ep = ep
+        tmp_ep = tmp_ep.outer while tmp_ep.outer
+        env = @return_envs[tmp_ep]
+      end
       ty.globalize(env, {})
     end
 
-    def localize_type(ty, env, ep)
-      alloc_site = AllocationSite.new(ep)
-      ty.localize(env, alloc_site)
-      #ty.localize(env, alloc_site)
+    def localize_type(ty, env, ep, alloc_site = AllocationSite.new(ep))
+      if ep.outer
+        tmp_ep = ep
+        tmp_ep = tmp_ep.outer while tmp_ep.outer
+        target_env = @return_envs[tmp_ep]
+        target_env, ty = ty.localize(target_env, alloc_site)
+        merge_return_env(tmp_ep) do |env|
+          env ? env.merge(target_env) : target_env
+        end
+        return env, ty
+      else
+        return ty.localize(env, alloc_site)
+      end
     end
 
     def step(ep)
@@ -858,7 +884,7 @@ module TypeProfiler
         nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
         nep = ExecutionPoint.new(nctx, 0, ep)
         raise if iseq.locals != []
-        nenv = Env.new(recv, blk, [], [], {})
+        nenv = Env.new(recv, blk, [], [], nil)
         merge_env(nep, nenv)
         scratch.add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)
@@ -1070,7 +1096,7 @@ module TypeProfiler
         from_head = flag & 2 == 0
         case ary
         when Type::LocalArray
-          elems = env.get_array_elem_types(ary.id)
+          elems = env.get_container_elem_types(ary.id)
           elems ||= Type::Array::Elements.new([], Type.any) # XXX
           do_expand_array(ep, env, elems, num, splat, from_head)
           return
@@ -1089,15 +1115,15 @@ module TypeProfiler
       when :concatarray
         env, (ary1, ary2) = env.pop(2)
         if ary1.is_a?(Type::LocalArray)
-          elems1 = env.get_array_elem_types(ary1.id)
+          elems1 = env.get_container_elem_types(ary1.id)
           if ary2.is_a?(Type::LocalArray)
-            elems2 = env.get_array_elem_types(ary2.id)
+            elems2 = env.get_container_elem_types(ary2.id)
             elems = Type::Array::Elements.new([], elems1.squash.union(elems2.squash))
-            env = env.update_array_elem_types(ary1.id, elems)
+            env = env.update_container_elem_types(ary1.id, elems)
             env = env.push(ary1)
           else
             elems = Type::Array::Elements.new([], Type.any)
-            env = env.update_array_elem_types(ary1.id, elems)
+            env = env.update_container_elem_types(ary1.id, elems)
             env = env.push(ary1)
           end
         else
@@ -1188,11 +1214,11 @@ module TypeProfiler
           nfargs = FormalArguments.new(aargs_, [], nil, [], nil, env_blk) # XXX: aargs_ -> fargs
           nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil, nil)
           nep = ExecutionPoint.new(nctx, 0, blk_ep)
-          nenv = Env.new(recv, env_blk, locals, [], {})
+          nenv = Env.new(recv, env_blk, locals, [], nil)
           alloc_site = AllocationSite.new(nep)
           aargs_.each_with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(i)
-            nenv, ty = ty.localize(nenv, alloc_site2) # Use Scratch#localize_type?
+            nenv, ty = scratch.localize_type(ty, nenv, nep, alloc_site2) # Use Scratch#localize_type?
             nenv = nenv.local_update(i, ty)
           end
 

@@ -27,7 +27,7 @@ module TypeProfiler
 
       def localize(env, alloc_site)
         env, elems = @elems.localize(env, alloc_site)
-        env, ty = env.deploy_array_type(alloc_site, elems, @base_type)
+        env.deploy_array_type(alloc_site, elems, @base_type)
       end
 
       def get_method(mid, scratch)
@@ -213,7 +213,7 @@ module TypeProfiler
           Type.any
         else
           visited[self] = true
-          elems = env.get_array_elem_types(@id)
+          elems = env.get_container_elem_types(@id)
           if elems
             elems = elems.globalize(env, visited)
           else
@@ -256,7 +256,7 @@ module TypeProfiler
 
       def localize(env, alloc_site)
         env, elems = @elems.localize(env, alloc_site)
-        env, ty = env.deploy_hash_type(alloc_site, elems, @base_type)
+        env.deploy_hash_type(alloc_site, elems, @base_type)
       end
 
       def get_method(mid, scratch)
@@ -332,7 +332,7 @@ module TypeProfiler
         end
 
         def update(idx, ty)
-          raise NotImplementedError
+          #raise NotImplementedError
           if idx
             if idx < @lead_tys.size
               lead_tys = Utils.array_update(@lead_tys, idx, ty)
@@ -385,7 +385,7 @@ module TypeProfiler
           Type.any
         else
           visited[self] = true
-          elems = env.get_hash_elem_types(@id)
+          elems = env.get_container_elem_types(@id)
           if elems
             elems = elems.globalize(env, visited)
           else
