@@ -497,7 +497,7 @@ module TypeProfiler
       @errors << [ep, "[p] " + msg]
     end
 
-    def get_container_elem_type(env, ep, id)
+    def get_container_elem_types(env, ep, id)
       if ep.outer
         tmp_ep = ep
         tmp_ep = tmp_ep.outer while tmp_ep.outer
@@ -524,7 +524,7 @@ module TypeProfiler
     end
 
     def get_array_elem_type(env, ep, id, idx = nil)
-      elems = get_container_elem_type(env, ep, id)
+      elems = get_container_elem_types(env, ep, id)
 
       if elems
         return elems[idx] || Type.nil if idx
@@ -535,7 +535,7 @@ module TypeProfiler
     end
 
     def get_hash_elem_type(env, ep, id, key_ty = nil)
-      elems = get_container_elem_type(env, ep, id)
+      elems = get_container_elem_types(env, ep, id)
 
       if elems
         elems[key_ty || Type.any]
