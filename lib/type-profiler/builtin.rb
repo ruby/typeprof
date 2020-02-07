@@ -31,7 +31,7 @@ module TypeProfiler
 
     def proc_call(recv, mid, aargs, ep, env, scratch, &ctn)
       given_block = env.blk_ty == recv
-      Scratch::Aux.do_invoke_block(given_block, recv, aargs, ep, env, scratch, &ctn)
+      scratch.do_invoke_block(given_block, recv, aargs, ep, env, &ctn)
     end
 
     def object_new(recv, mid, aargs, ep, env, scratch, &ctn)
@@ -170,7 +170,7 @@ module TypeProfiler
       raise NotImplementedError if aargs.lead_tys.size != 0
       ty = scratch.get_array_elem_type(env, ep, recv.id)
       naargs = ActualArguments.new([ty], nil, Type.nil)
-      Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |_ret_ty, ep|
+      scratch.do_invoke_block(false, aargs.blk_ty, naargs, ep, env) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
       end
     end
@@ -180,7 +180,7 @@ module TypeProfiler
       # TODO: get_array_elem_type does squash, but tuple part may be preserved
       ty = scratch.get_array_elem_type(env, ep, recv.id)
       naargs = ActualArguments.new([ty], nil, Type.nil)
-      Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, ep, env, scratch) do |ret_ty, ep|
+      scratch.do_invoke_block(false, aargs.blk_ty, naargs, ep, env) do |ret_ty, ep|
         base_ty = Type::Instance.new(Type::Builtin[:ary])
         ret_ty = Type::Array.new(Type::Array::Elements.new([], ret_ty), base_ty)
         ctn[ret_ty, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"

@@ -60,7 +60,12 @@ module TypeProfiler
     end
 
     def source_location
-      @ctx.iseq.source_location(@pc)
+      iseq = @ctx.iseq
+      if iseq
+        iseq.source_location(@pc)
+      else
+        "<builtin>"
+      end
     end
   end
 
@@ -809,7 +814,7 @@ module TypeProfiler
         else # Proc
           blk_nil = Type.nil
           aargs = ActualArguments.new(aargs, nil, blk_nil)
-          Aux.do_invoke_block(true, env.blk_ty, aargs, ep, env, self)
+          do_invoke_block(true, env.blk_ty, aargs, ep, env)
           return
         end
       when :invokesuper
@@ -1206,71 +1211,67 @@ module TypeProfiler
       return env, recv, mid, aargs
     end
 
-    module Aux
-      module_function
-
-      def do_invoke_block(given_block, blk, aargs, ep, env, scratch, &ctn)
-        if ctn
-          do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
-        else
-          do_invoke_block_core(given_block, blk, aargs, ep, env, scratch) do |ret_ty, ep, env|
-            nenv, ret_ty, = scratch.localize_type(ret_ty, env, ep)
-            nenv = nenv.push(ret_ty)
-            scratch.merge_env(ep.next, nenv)
-          end
+    def do_invoke_block(given_block, blk, aargs, ep, env, &ctn)
+      if ctn
+        do_invoke_block_core(given_block, blk, aargs, ep, env, &ctn)
+      else
+        do_invoke_block_core(given_block, blk, aargs, ep, env) do |ret_ty, ep, env|
+          nenv, ret_ty, = localize_type(ret_ty, env, ep)
+          nenv = nenv.push(ret_ty)
+          merge_env(ep.next, nenv)
         end
       end
+    end
 
-      def do_invoke_block_core(given_block, blk, aargs, ep, env, scratch, &ctn)
-        blk.each_child do |blk|
-          unless blk.is_a?(Type::ISeqProc)
-            scratch.warn(ep, "non-iseq-proc is passed as a block")
-            next
-          end
-          blk_iseq = blk.iseq
-          blk_ep = blk.ep
-          blk_env = blk.env
-          arg_blk = aargs.blk_ty
-          aargs_ = aargs.lead_tys.map {|aarg| scratch.globalize_type(aarg, env, ep) }
-          argc = blk_iseq.fargs_format[:lead_num] || 0
-          if argc != aargs_.size
-            warn "complex parameter passing of block is not implemented"
-            aargs_.pop while argc < aargs_.size
-            aargs_ << Type.any while argc > aargs_.size
-          end
-          locals = [Type.nil] * blk_iseq.locals.size
-          locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
-          recv = blk_env.recv_ty
-          env_blk = blk_env.blk_ty
-          nfargs = FormalArguments.new(aargs_, [], nil, [], nil, env_blk) # XXX: aargs_ -> fargs
-          nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil, nil)
-          nep = ExecutionPoint.new(nctx, 0, blk_ep)
-          nenv = Env.new(recv, env_blk, locals, [], nil)
-          alloc_site = AllocationSite.new(nep)
-          aargs_.each_with_index do |ty, i|
-            alloc_site2 = alloc_site.add_id(i)
-            nenv, ty = scratch.localize_type(ty, nenv, nep, alloc_site2) # Use Scratch#localize_type?
-            nenv = nenv.local_update(i, ty)
-          end
-
-          scratch.merge_env(nep, nenv)
-
-          # caution: given_block flag is not complete
-          #
-          # def foo
-          #   bar do |&blk|
-          #     yield
-          #     blk.call
-          #   end
-          # end
-          #
-          # yield and blk.call call different blocks.
-          # So, a context can have two blocks.
-          # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
-
-          scratch.add_yield!(ep.ctx, nfargs, nep.ctx) if given_block
-          scratch.add_callsite!(nep.ctx, nil, ep, env, &ctn)
+    private def do_invoke_block_core(given_block, blk, aargs, ep, env, &ctn)
+      blk.each_child do |blk|
+        unless blk.is_a?(Type::ISeqProc)
+          warn(ep, "non-iseq-proc is passed as a block")
+          next
         end
+        blk_iseq = blk.iseq
+        blk_ep = blk.ep
+        blk_env = blk.env
+        arg_blk = aargs.blk_ty
+        aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
+        argc = blk_iseq.fargs_format[:lead_num] || 0
+        if argc != aargs_.size
+          warn(ep, "complex parameter passing of block is not implemented")
+          aargs_.pop while argc < aargs_.size
+          aargs_ << Type.any while argc > aargs_.size
+        end
+        locals = [Type.nil] * blk_iseq.locals.size
+        locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
+        recv = blk_env.recv_ty
+        env_blk = blk_env.blk_ty
+        nfargs = FormalArguments.new(aargs_, [], nil, [], nil, env_blk) # XXX: aargs_ -> fargs
+        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil, nil)
+        nep = ExecutionPoint.new(nctx, 0, blk_ep)
+        nenv = Env.new(recv, env_blk, locals, [], nil)
+        alloc_site = AllocationSite.new(nep)
+        aargs_.each_with_index do |ty, i|
+          alloc_site2 = alloc_site.add_id(i)
+          nenv, ty = localize_type(ty, nenv, nep, alloc_site2) # Use Scratch#localize_type?
+          nenv = nenv.local_update(i, ty)
+        end
+
+        merge_env(nep, nenv)
+
+        # caution: given_block flag is not complete
+        #
+        # def foo
+        #   bar do |&blk|
+        #     yield
+        #     blk.call
+        #   end
+        # end
+        #
+        # yield and blk.call call different blocks.
+        # So, a context can have two blocks.
+        # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
+
+        add_yield!(ep.ctx, nfargs, nep.ctx) if given_block
+        add_callsite!(nep.ctx, nil, ep, env, &ctn)
       end
     end
   end

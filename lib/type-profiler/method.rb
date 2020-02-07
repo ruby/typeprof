@@ -106,8 +106,7 @@ module TypeProfiler
           scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
           nfargs = fargs.blk_ty.fargs
           naargs = ActualArguments.new(nfargs, nil, Type.nil) # XXX: support block to block?
-          # XXX: do_invoke_block expects caller's env
-          Scratch::Aux.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env, scratch) do |_ret_ty, _ep, _env|
+          scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |_ret_ty, _ep, _env|
             # XXX: check the return type from the block
             # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
             scratch.add_return_type!(dummy_ctx, ret_ty)
