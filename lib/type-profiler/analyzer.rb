@@ -1080,7 +1080,7 @@ module TypeProfiler
         from_head = flag & 2 == 0
         case ary
         when Type::LocalArray
-          elems = env.get_container_elem_types(ary.id)
+          elems = get_container_elem_types(env, ep, ary.id)
           elems ||= Type::Array::Elements.new([], Type.any) # XXX
           do_expand_array(ep, env, elems, num, splat, from_head)
           return
@@ -1099,9 +1099,9 @@ module TypeProfiler
       when :concatarray
         env, (ary1, ary2) = env.pop(2)
         if ary1.is_a?(Type::LocalArray)
-          elems1 = env.get_container_elem_types(ary1.id)
+          elems1 = get_container_elem_types(env, ep, ary1.id)
           if ary2.is_a?(Type::LocalArray)
-            elems2 = env.get_container_elem_types(ary2.id)
+            elems2 = get_container_elem_types(env, ep, ary2.id)
             elems = Type::Array::Elements.new([], elems1.squash.union(elems2.squash))
             env = env.update_container_elem_types(ary1.id, elems)
             env = env.push(ary1)
