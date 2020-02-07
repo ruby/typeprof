@@ -51,7 +51,7 @@ module TypeProfiler
         begin
           lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
           opt_tys = opt_tys.map {|ty| convert_type(scratch, ty) }
-          fargs = FormalArguments.new(lead_tys, opt_tys, nil, [], nil, blk)
+          fargs = FormalArguments.new(lead_tys, opt_tys, nil, [], nil, nil, blk)
           ret_ty = convert_type(scratch, ret_ty)
           [fargs, ret_ty]
         rescue UnsupportedType

@@ -482,16 +482,17 @@ module TypeProfiler
   class FormalArguments
     include Utils::StructuralEquality
 
-    def initialize(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, blk_ty)
+    def initialize(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
       @lead_tys = lead_tys
       @opt_tys = opt_tys
       @rest_ty = rest_ty
       @post_tys = post_tys
       @kw_tys = kw_tys
+      @kw_rest_ty = kw_rest_ty
       @blk_ty = blk_ty
     end
 
-    attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :kw_tys, :blk_ty
+    attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :kw_tys, :kw_rest_ty, :blk_ty
 
     def consistent?(fargs)
       warn "used?"
@@ -507,6 +508,9 @@ module TypeProfiler
       end
       return false if @kw_tys.size != fargs.kw_tys.size
       return false unless @kw_tys.zip(fargs.kw_tys).all? {|(_, ty1), (_, ty2)| ty1.consistent?(ty2) }
+      if @kw_rest_ty
+        return false unless @kw_rest_ty.consistent?(fargs.kw_rest_ty)
+      end
       # intentionally skip blk_ty
       true
     end
@@ -526,6 +530,9 @@ module TypeProfiler
         @kw_tys.each do |sym, ty|
           fargs << "#{ sym }: #{ ty.screen_name(scratch) }"
         end
+      end
+      if @kw_rest_ty
+        fargs << ("**" + @kw_rest_ty.screen_name(scratch))
       end
       # intentionally skip blk_ty
       fargs
@@ -559,8 +566,15 @@ module TypeProfiler
       end
       post_tys = @post_tys.zip(other.post_tys).map {|ty1, ty2| ty1.union(ty2) }
       kw_tys = @kw_tys.zip(other.kw_tys).map {|(k, ty1), (_, ty2)| [k, ty1.union(ty2)] } if @kw_tys
+      if @kw_rest_ty || other.kw_rest_ty
+        if @kw_rest_ty && other.kw_rest_ty
+          kw_rest_ty = @kw_rest_ty.union(other.kw_rest_ty)
+        else
+          kw_rest_ty = @kw_rest_ty || other.kw_rest_ty
+        end
+      end
       blk_ty = @blk_ty.union(other.blk_ty) if @blk_ty
-      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, blk_ty)
+      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
     end
   end
 
@@ -679,7 +693,7 @@ module TypeProfiler
           yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
           return
         end
-        yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, @blk_ty), start_pc
+        yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, @blk_ty), start_pc
       end
     end
 

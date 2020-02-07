@@ -1269,7 +1269,7 @@ module TypeProfiler
         locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
         recv = blk_env.recv_ty
         env_blk = blk_env.blk_ty
-        nfargs = FormalArguments.new(aargs_, [], nil, [], nil, env_blk) # XXX: aargs_ -> fargs
+        nfargs = FormalArguments.new(aargs_, [], nil, [], nil, nil, env_blk) # XXX: aargs_ -> fargs
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil, nil)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(recv, env_blk, locals, [], nil)
