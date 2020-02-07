@@ -1139,7 +1139,7 @@ module TypeProfiler
       merge_env(ep.next, env)
     end
 
-    def do_expand_array(ep, env, elems, num, splat, from_head)
+    private def do_expand_array(ep, env, elems, num, splat, from_head)
       if from_head
         lead_tys, rest_ary_ty = elems.take_first(num)
         if splat
@@ -1162,7 +1162,7 @@ module TypeProfiler
       merge_env(ep.next, env)
     end
 
-    def setup_actual_arguments(operands, ep, env)
+    private def setup_actual_arguments(operands, ep, env)
       opt, blk_iseq = operands
       flags = opt[:flag]
       mid = opt[:mid]
