@@ -636,15 +636,12 @@ module TypeProfiler
         num, = operands
         env, tys = env.pop(num)
 
-        map_tys = {}
-        tys.each_slice(2) do |k_ty, v_ty|
-          if map_tys[k_ty]
-            map_tys[k_ty] = map_tys[k_ty].union(v_ty)
-          else
-            map_tys[k_ty] = v_ty
+        ty = Type.gen_hash do |h|
+          tys.each_slice(2) do |k_ty, v_ty|
+            h[k_ty] = v_ty
           end
         end
-        ty = Type::Hash.new(Type::Hash::Elements.new(map_tys), Type::Instance.new(Type::Builtin[:hash]))
+
         env, ty = localize_type(ty, env, ep)
         env = env.push(ty)
       when :newhashfromarray
@@ -1216,17 +1213,13 @@ module TypeProfiler
         kw_vals = aargs.pop(kw_arg.size)
         kw_arg = kw_arg.map {|sym| Type::Symbol.new(sym, Type::Instance.new(Type::Builtin[:sym])) }
 
-        map_tys = {}
-        kw_arg.zip(kw_vals) do |k_ty, v_ty|
-          if map_tys[k_ty]
-            map_tys[k_ty] = map_tys[k_ty].union(v_ty)
-          else
-            map_tys[k_ty] = v_ty
+        kw_ty = Type.gen_hash do |h|
+          kw_arg.zip(kw_vals) do |k_ty, v_ty|
+            h[k_ty] = v_ty
           end
         end
 
-        # don't have to localize, maybe?
-        kw_ty = Type::Hash.new(Type::Hash::Elements.new(map_tys), Type::Instance.new(Type::Builtin[:hash]))
+        # kw_ty is Type::Hash, but we don't have to localize it, maybe?
 
         aargs = ActualArguments.new(aargs, nil, kw_ty, blk_ty)
       else
