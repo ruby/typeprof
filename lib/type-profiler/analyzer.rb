@@ -1206,22 +1206,41 @@ module TypeProfiler
 
       if flag_args_splat
         # assert !flag_args_kwarg
-        # XXX: handle kw_splat
-        aargs = ActualArguments.new(aargs[0..-2], aargs.last, nil, blk_ty)
+        rest_ty = aargs.last
+        aargs = aargs[0..-2]
+        if flag_args_kw_splat
+          ty = globalize_type(rest_ty, env, ep)
+          if ty.is_a?(Type::Array)
+            _, (ty,) = ty.elems.take_last(1)
+            case ty
+            when Type::Hash
+              kw_ty = ty
+            when Type::Union
+              kw_ty = Type::Hash.new(ty.hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+            else
+              warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
+              kw_ty = nil
+            end
+          else
+            raise NotImplementedError
+          end
+          # XXX: should we remove kw_ty from rest_ty?
+        end
+        aargs = ActualArguments.new(aargs, rest_ty, kw_ty, blk_ty)
       elsif flag_args_kw_splat
         last = aargs.last
         ty = globalize_type(last, env, ep)
         case ty
         when Type::Hash
           aargs = aargs[0..-2]
-          kw = ty
+          kw_ty = ty
         when Type::Union
-          kw = Type::Hash.new(ty.hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+          kw_ty = Type::Hash.new(ty.hash_elems, Type::Instance.new(Type::Builtin[:hash]))
         else
           warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
-          kw = nil
+          kw_ty = nil
         end
-        aargs = ActualArguments.new(aargs, nil, kw, blk_ty)
+        aargs = ActualArguments.new(aargs, nil, kw_ty, blk_ty)
       elsif flag_args_kwarg
         kw_vals = aargs.pop(kw_arg.size)
 

@@ -313,12 +313,12 @@ module TypeProfiler
         def pretty_print(q)
           q.group(9, "Elements[", "]") do
             q.seplist(@map_tys) do |k_ty, v_ty|
-              group do
+              q.group do
                 q.pp k_ty
                 q.text '=>'
                 q.group(1) do
                   q.breakable ''
-                  q.pp v
+                  q.pp v_ty
                 end
               end
             end

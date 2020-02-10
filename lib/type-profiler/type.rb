@@ -112,7 +112,7 @@ module TypeProfiler
       attr_reader :types, :array_elems, :hash_elems
 
       def normalize
-        if @types.size == 1 && !@array_elems
+        if @types.size == 1 && !@array_elems && !@hash_elems
           @types.each {|ty| return ty }
         else
           self
@@ -187,9 +187,9 @@ module TypeProfiler
         end
         if @hash_elems
           base_ty = Type::Instance.new(Type::Builtin[:hash])
-          hash_ty = Type::Array.new(@hash_elems, base_ty)
+          hash_ty = Type::Hash.new(@hash_elems, base_ty)
           alloc_site2 = alloc_site.add_id(:hash)
-          env, ary_ty = hash_ty.localize(env, alloc_site2)
+          env, hash_ty = hash_ty.localize(env, alloc_site2)
           tys = tys.add(hash_ty)
         end
         ty = Union.new(tys, nil, nil)
