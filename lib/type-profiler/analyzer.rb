@@ -1023,7 +1023,10 @@ module TypeProfiler
         env, (ty,) = env.pop(1)
         env = env.push(ty).push(ty)
       when :duphash
-        env = env.push(Type.any) # TODO: implement hash
+        raw_hash, = operands
+        ty = Type.guess_literal_type(raw_hash)
+        env, ty = localize_type(globalize_type(ty, env, ep), env, ep)
+        env = env.push(ty)
       when :dupn
         n, = operands
         _, tys = env.pop(n)

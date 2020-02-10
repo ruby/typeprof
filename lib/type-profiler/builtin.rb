@@ -25,6 +25,31 @@ module TypeProfiler
       ctn[Type.nil, ep, env]
     end
 
+    def vmcore_hash_merge_kwd(recv, mid, aargs, ep, env, scratch, &ctn)
+      h1 = aargs.lead_tys[0]
+      h2 = aargs.lead_tys[1]
+      elems = nil
+      h1.each_child do |h1|
+        if h1.is_a?(Type::LocalHash)
+          h1_elems = scratch.get_container_elem_types(env, ep, h1.id)
+          h2.each_child do |h2|
+            if h2.is_a?(Type::LocalHash)
+              h2_elems = scratch.get_container_elem_types(env, ep, h2.id)
+              elems0 = h1_elems.union(h2_elems)
+              if elems
+                elems = elems.union(elems0)
+              else
+                elems = elems0
+              end
+            end
+          end
+        end
+      end
+      base_ty = Type::Instance.new(Type::Builtin[:hash])
+      ret_ty = Type::Hash.new(elems, base_ty)
+      ctn[ret_ty, ep, env]
+    end
+
     def lambda(recv, mid, aargs, ep, env, scratch, &ctn)
       ctn[aargs.blk_ty, ep, env]
     end
@@ -218,6 +243,7 @@ module TypeProfiler
     def hash_aref(recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       key = aargs.lead_tys.first
+      # XXX: recv may be a union
       ty = scratch.get_hash_elem_type(env, ep, recv.id, key)
       ctn[ty, ep, env]
     end
@@ -342,6 +368,7 @@ module TypeProfiler
 
     scratch.add_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
     scratch.add_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
+    scratch.add_custom_method(klass_vmcore, :"core#hash_merge_kwd", Builtin.method(:vmcore_hash_merge_kwd))
     scratch.add_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
     scratch.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_new))
     scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
