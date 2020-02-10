@@ -107,12 +107,9 @@ module TypeProfiler
 
     def push(*tys)
       tys.each do |ty|
-        raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         raise "nil cannot be pushed to the stack" if ty.nil?
-        if ty.is_a?(Type::Union)
-          ty.each_child do |ty|
-            raise "Array (in Union type) cannot be pushed to the stack" if ty.is_a?(Type::Array)
-          end
+        ty.each_child do |ty|
+          raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
         end
       end
       Env.new(@recv_ty, @blk_ty, @locals, @stack + tys, @type_params)
