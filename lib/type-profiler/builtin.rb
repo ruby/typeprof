@@ -45,6 +45,7 @@ module TypeProfiler
           end
         end
       end
+      elems ||= Type::Hash::Elements.new({Type.any => Type.any})
       base_ty = Type::Instance.new(Type::Builtin[:hash])
       ret_ty = Type::Hash.new(elems, base_ty)
       ctn[ret_ty, ep, env]

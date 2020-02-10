@@ -1209,13 +1209,25 @@ module TypeProfiler
         # XXX: handle kw_splat
         aargs = ActualArguments.new(aargs[0..-2], aargs.last, nil, blk_ty)
       elsif flag_args_kw_splat
-        raise NotImplementedError
+        last = aargs.last
+        ty = globalize_type(last, env, ep)
+        case ty
+        when Type::Hash
+          aargs = aargs[0..-2]
+          kw = ty
+        when Type::Union
+          kw = Type::Hash.new(ty.hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+        else
+          warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
+          kw = nil
+        end
+        aargs = ActualArguments.new(aargs, nil, kw, blk_ty)
       elsif flag_args_kwarg
         kw_vals = aargs.pop(kw_arg.size)
-        kw_arg = kw_arg.map {|sym| Type::Symbol.new(sym, Type::Instance.new(Type::Builtin[:sym])) }
 
         kw_ty = Type.gen_hash do |h|
-          kw_arg.zip(kw_vals) do |k_ty, v_ty|
+          kw_arg.zip(kw_vals) do |key, v_ty|
+            k_ty = Type::Symbol.new(key, Type::Instance.new(Type::Builtin[:sym]))
             h[k_ty] = v_ty
           end
         end
