@@ -301,13 +301,15 @@ module TypeProfiler
       get_method(Type::Builtin[:class], mid)
     end
 
-    def get_super_method(klass, mid)
-      idx = klass.idx
+    def get_super_method(ctx)
+      idx = ctx.cref.klass.idx
+      mid = ctx.mid
       idx = @class_defs[idx].superclass
       while idx
-        mthd = @class_defs[idx].get_method(mid)
+        class_def = @class_defs[idx]
+        mthd = ctx.singleton ? class_def.get_singleton_method(mid) : class_def.get_method(mid)
         return mthd if mthd
-        idx = @class_defs[idx].superclass
+        idx = class_def.superclass
       end
       nil
     end
@@ -819,7 +821,7 @@ module TypeProfiler
         recv = env.recv_ty
         mid  = ep.ctx.mid
         # XXX: need to support included module...
-        meths = get_super_method(ep.ctx.cref.klass, mid) # TODO: multiple return values
+        meths = get_super_method(ep.ctx) # TODO: multiple return values
         if meths
           meths.each do |meth|
             meth.do_send(recv, mid, aargs, ep, env, self)
