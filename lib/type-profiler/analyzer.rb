@@ -110,6 +110,7 @@ module TypeProfiler
         raise "nil cannot be pushed to the stack" if ty.nil?
         ty.each_child do |ty|
           raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
+          raise "Hash cannot be pushed to the stack" if ty.is_a?(Type::Hash)
         end
       end
       Env.new(@recv_ty, @blk_ty, @locals, @stack + tys, @type_params)

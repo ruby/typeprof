@@ -35,20 +35,32 @@ module TypeProfiler
 
       ty1, ty2 = self, other
 
-      ty1 = Type::Union.new(Utils::Set[], ty1.elems) if ty1.is_a?(Array)
-      ty2 = Type::Union.new(Utils::Set[], ty2.elems) if ty2.is_a?(Array)
+      ty1 = container_to_union(ty1)
+      ty2 = container_to_union(ty2)
 
       if ty1.is_a?(Union) && ty2.is_a?(Union)
         ty = ty1.types.sum(ty2.types)
         array_elems = union_elems(ty1.array_elems, ty2.array_elems)
-        Type::Union.new(ty, array_elems).normalize
+        hash_elems = union_elems(ty1.hash_elems, ty2.hash_elems)
+        Type::Union.new(ty, array_elems, hash_elems).normalize
       else
         ty1, ty2 = ty2, ty1 if ty2.is_a?(Union)
         if ty1.is_a?(Union)
-          Type::Union.new(ty1.types.add(ty2), ty1.array_elems).normalize
+          Type::Union.new(ty1.types.add(ty2), ty1.array_elems, ty1.hash_elems).normalize
         else
-          Type::Union.new(Utils::Set[ty1, ty2], nil).normalize
+          Type::Union.new(Utils::Set[ty1, ty2], nil, nil).normalize
         end
+      end
+    end
+
+    private def container_to_union(ty)
+      case ty
+      when Type::Array
+        Type::Union.new(Utils::Set[], ty.elems, nil)
+      when Type::Hash
+        Type::Union.new(Utils::Set[], nil, ty.elems)
+      else
+        ty
       end
     end
 
@@ -86,16 +98,18 @@ module TypeProfiler
     end
 
     class Union < Type
-      def initialize(tys, ary_elems)
+      def initialize(tys, ary_elems, hash_elems)
         raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
         tys.each do |ty|
           raise if ty.is_a?(Type::Array)
+          raise if ty.is_a?(Type::Hash)
         end
         @array_elems = ary_elems # Type::Array::Elements
+        @hash_elems = hash_elems # Type::Array::Elements
       end
 
-      attr_reader :types, :array_elems
+      attr_reader :types, :array_elems, :hash_elems
 
       def normalize
         if @types.size == 1 && !@array_elems
@@ -113,11 +127,12 @@ module TypeProfiler
       end
 
       def inspect
-        if @array_elems
-          "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }, #{ Type::Array.new(@array_elems, Type.any).inspect }}"
-        else
-          "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }}"
-        end
+        a = []
+        a << "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }"
+        a << ", #{ Type::Array.new(@array_elems, Type.any).inspect }" if @array_elems
+        a << ", #{ Type::Hash.new(@hash_elems, Type.any).inspect }" if @hash_elems
+        a << "}"
+        a.join
       end
 
       def screen_name(scratch)
@@ -125,6 +140,10 @@ module TypeProfiler
         if @array_elems
           base_ty = Type::Instance.new(Type::Builtin[:ary])
           types << Type::Array.new(@array_elems, base_ty)
+        end
+        if @hash_elems
+          base_ty = Type::Instance.new(Type::Builtin[:hash])
+          types << Type::Hash.new(@hash_elems, base_ty)
         end
         if types.size == 0
           "bot"
@@ -138,15 +157,19 @@ module TypeProfiler
       def globalize(env, visited)
         tys = Utils::Set[]
         array_elems = @array_elems&.globalize(env, visited)
+        hash_elems = @hash_elems&.globalize(env, visited)
         @types.each do |ty|
           ty = ty.globalize(env, visited)
-          if ty.is_a?(Array)
+          case ty
+          when Array
             array_elems = union_elems(array_elems, ty.elems)
+          when Hash
+            hash_elems = union_elems(hash_elems, ty.elems)
           else
             tys = tys.add(ty)
           end
         end
-        Type::Union.new(tys, array_elems).normalize
+        Type::Union.new(tys, array_elems, hash_elems).normalize
       end
 
       def localize(env, alloc_site)
@@ -162,7 +185,14 @@ module TypeProfiler
           env, ary_ty = ary_ty.localize(env, alloc_site2)
           tys = tys.add(ary_ty)
         end
-        ty = Union.new(tys, nil)
+        if @hash_elems
+          base_ty = Type::Instance.new(Type::Builtin[:hash])
+          hash_ty = Type::Array.new(@hash_elems, base_ty)
+          alloc_site2 = alloc_site.add_id(:hash)
+          env, ary_ty = hash_ty.localize(env, alloc_site2)
+          tys = tys.add(hash_ty)
+        end
+        ty = Union.new(tys, nil, nil)
         return env, ty
       end
 
@@ -192,14 +222,14 @@ module TypeProfiler
     end
 
     def self.bot
-      @bot ||= Union.new(Utils::Set[], nil)
+      @bot ||= Union.new(Utils::Set[], nil, nil)
     end
 
     def self.bool
       @bool ||= Union.new(Utils::Set[
         Instance.new(Type::Builtin[:true]),
         Instance.new(Type::Builtin[:false])
-      ], nil)
+      ], nil, nil)
     end
 
     def self.nil
