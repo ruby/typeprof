@@ -1,3 +1,4 @@
+# Currently, flow sensitive analysis does not work!  Need work...
 def foo(n)
   if n.is_a?(Integer)
     n + 1
@@ -11,6 +12,7 @@ foo("str")
 
 __END__
 # Errors
+smoke/flow1.rb:5: [error] failed to resolve overload: Integer#+
 smoke/flow1.rb:3: [error] failed to resolve overload: String#+
 smoke/flow1.rb:5: [error] failed to resolve overload: Integer#+
 # Classes

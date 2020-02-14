@@ -1,6 +1,6 @@
 # Ruby Type Profiler
 
-WARNING: This program requires ruby-trunk.
+WARNING: Use Ruby 2.7.0
 WARNING: This implementation is very preliminary.
 
 ## Demo
@@ -30,12 +30,12 @@ Object#foo :: (Integer) -> String
 
 There are many features that are not supported yet or incompletely:
 
-* some instructions of RubyVM
-* container types (generics)
-* modules
-* break/next/redo
-* exception
-* meta-programming features (is_a?, send, etc.)
-* complex arguments: `(opt=expr, *rest, keyword: expr)`
-* performance: type profiling may be very slow
+* Many builtin features: Now working to import the definitions from [ruby-signature](https://github.com/ruby/ruby-signature)
+* Module#include
+* Exceptions and some control structure (redo, retry, etc.)
+* Flow sensitivity
+* Meta-programming features (is_a?, send, etc.)
+* Requiring .rbs instead of .rb (for some methods of application)
+* Performance: type profiling may be very slow
+* Test, test, test
 * etc. etc.

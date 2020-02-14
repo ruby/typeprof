@@ -757,44 +757,44 @@ module TypeProfiler
           end
         end
         return
-      when :send_is_a_and_branch
-        send_operands, (branch_type, target,) = *operands
-        env, recvs, mid, aargs = setup_actual_arguments(send_operands, ep, env)
-        recvs.each_child do |recv|
-          meths = recv.get_method(mid, self)
-          if meths
-            meths.each do |meth|
-              meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
-                is_true = ret_ty.eql?(Type::Instance.new(Type::Builtin[:true]))
-                is_false = ret_ty.eql?(Type::Instance.new(Type::Builtin[:false]))
-                if branch_type != :nil && (is_true || is_false)
-                  if is_true == (branch_type == :if)
-                    nep = ep.jump(target)
-                    merge_env(nep, env)
-                  else
-                    nep = ep.next
-                    merge_env(nep, env)
-                  end
-                else
-                  ep_then = ep.next
-                  ep_else = ep.jump(target)
+      #when :send_is_a_and_branch
+      #  send_operands, (branch_type, target,) = *operands
+      #  env, recvs, mid, aargs = setup_actual_arguments(send_operands, ep, env)
+      #  recvs.each_child do |recv|
+      #    meths = recv.get_method(mid, self)
+      #    if meths
+      #      meths.each do |meth|
+      #        meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
+      #          is_true = ret_ty.eql?(Type::Instance.new(Type::Builtin[:true]))
+      #          is_false = ret_ty.eql?(Type::Instance.new(Type::Builtin[:false]))
+      #          if branch_type != :nil && (is_true || is_false)
+      #            if is_true == (branch_type == :if)
+      #              nep = ep.jump(target)
+      #              merge_env(nep, env)
+      #            else
+      #              nep = ep.next
+      #              merge_env(nep, env)
+      #            end
+      #          else
+      #            ep_then = ep.next
+      #            ep_else = ep.jump(target)
 
-                  merge_env(ep_then, env)
-                  merge_env(ep_else, env)
-                end
-              end
-            end
-          else
-            if recv != Type.any # XXX: should be configurable
-              error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
-            end
-            ep_then = ep.next
-            ep_else = ep.jump(target)
-            merge_env(ep_then, env)
-            merge_env(ep_else, env)
-          end
-        end
-        return
+      #            merge_env(ep_then, env)
+      #            merge_env(ep_else, env)
+      #          end
+      #        end
+      #      end
+      #    else
+      #      if recv != Type.any # XXX: should be configurable
+      #        error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
+      #      end
+      #      ep_then = ep.next
+      #      ep_else = ep.jump(target)
+      #      merge_env(ep_then, env)
+      #      merge_env(ep_else, env)
+      #    end
+      #  end
+      #  return
       when :invokeblock
         # XXX: need block parameter, unknown block, etc.  Use setup_actual_arguments
         opt, = operands

@@ -103,16 +103,16 @@ module TypeProfiler
         end
       end
 
-      (@insns.size - 1).times do |i|
-        insn, *operands = @insns[i]
-        if insn == :send && operands[0][:mid] == :is_a?
-          insn2, *operands2 = @insns[i + 1]
-          if insn2 == :branch
-            @insns[i] = [:nop]
-            @insns[i + 1] = [:send_is_a_and_branch, operands, operands2]
-          end
-        end
-      end
+      #(@insns.size - 1).times do |i|
+      #  insn, *operands = @insns[i]
+      #  if insn == :send && operands[0][:mid] == :is_a?
+      #    insn2, *operands2 = @insns[i + 1]
+      #    if insn2 == :branch
+      #      @insns[i] = [:nop]
+      #      @insns[i + 1] = [:send_is_a_and_branch, operands, operands2]
+      #    end
+      #  end
+      #end
     end
 
     def source_location(pc)
