@@ -13,15 +13,22 @@ module TypeProfiler
 
     def import_ruby_signatures(scratch)
       classes = []
-      STDLIB_SIGS.each do |klass, superclass, methods, singleton_methods|
-        next if klass == [:BasicObject]
-        next if klass == [:NilClass]
-        if klass != [:Object]
-          name = klass.last
-          base_klass = path_to_klass(scratch, klass[0..-2])
+      STDLIB_SIGS.each do |classpath, superclass, methods, singleton_methods|
+        next if classpath == [:BasicObject]
+        next if classpath == [:NilClass]
+        if classpath != [:Object]
+          name = classpath.last
+          base_klass = path_to_klass(scratch, classpath[0..-2])
           superclass = path_to_klass(scratch, superclass) if superclass
           klass = scratch.get_constant(base_klass, name)
-          klass = scratch.new_class(base_klass, name, superclass) if klass.is_a?(Type::Any)
+          if klass.is_a?(Type::Any)
+            klass = scratch.new_class(base_klass, name, superclass)
+            case classpath
+            when [:NilClass] then Type::Builtin[:nil] = klass
+            when [:Integer]  then Type::Builtin[:int] = klass
+            when [:Array]    then Type::Builtin[:ary] = klass
+            end
+          end
         else
           klass = Type::Builtin[:obj]
         end
@@ -86,6 +93,19 @@ module TypeProfiler
         Type.any
       when :self
         Type::Self.new
+      when :int
+        Type::Instance.new(Type::Builtin[:int])
+      when :nil
+        Type.nil
+      when :true
+        Type::Instance.new(Type::Builtin[:true])
+      when :false
+        Type::Instance.new(Type::Builtin[:false])
+      when :array
+        _, lead_tys, rest_ty = ty
+        lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
+        rest_ty = convert_type(scratch, rest_ty)
+        Type::Array.new(Type::Array::Elements.new(lead_tys, rest_ty), Type::Instance.new(Type::Builtin[:ary]))
       when :union
         tys = ty[1].reject {|ty2| ty2[1] == [:BigDecimal] } # XXX
         Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }], nil, nil) #  Array support

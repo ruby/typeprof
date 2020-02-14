@@ -120,7 +120,7 @@ module TypeProfiler
             scratch.add_return_type!(dummy_ctx, ret_ty)
           end
         end
-        if fargs.blk_ty == Type.nil# && !aargs.blk_ty.is_a?(Type::ISeqProc)
+        if fargs.blk_ty == Type.nil && !aargs.blk_ty.is_a?(Type::ISeqProc)
           ctn[ret_ty, caller_ep, caller_env]
         end
       end

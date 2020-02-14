@@ -80,11 +80,12 @@ class TypeProfiler
             when :Numeric
               next unless [:step].include?(name)
             when :Integer
-              next unless [:+, :-, :*, :/, :<, :>, :-@, :<<, :>>, :|, :&, :to_f].include?(name)
+              next if name == :class
+              #next unless [:+, :-, :*, :/, :<, :>, :-@, :<<, :>>, :|, :&, :to_f].include?(name)
             when :Float
-              next unless [:+, :-, :*, :/, :<, :>, :-@].include?(name)
+              #next unless [:+, :-, :*, :/, :<, :>, :-@].include?(name)
             when :Math
-              next
+              #next
             when :TrueClass, :FalseClass
               next unless [:!].include?(name)
             when :Range
@@ -114,13 +115,6 @@ class TypeProfiler
 
     def translate_typed_method_def(type_params, rs_method)
       rs_method.method_types.map do |type|
-        unless type.type.optional_keywords.empty?
-          puts "optional_keywords is not supported yet"
-          next
-        end
-        raise NotImplementedError unless type.type.required_keywords.empty?
-        raise NotImplementedError if type.type.rest_keywords
-
         if type.block
           blk = translate_typed_block(type.block)
         else
@@ -135,6 +129,10 @@ class TypeProfiler
           opt_tys = type.type.optional_positionals.map do |type|
             convert_type(type.type)
           end
+          p opt_kw_tys = type.type.optional_keywords
+          #p req_kw_tys = type.type.required_keywords
+          #p rest_kw_ty = type.type.rest_keywords
+
           ret_ty = convert_type(type.type.return_type)
           [lead_tys, opt_tys, blk, ret_ty]
         rescue UnsupportedType
@@ -171,8 +169,28 @@ class TypeProfiler
         [:any]
       when Ruby::Signature::Types::Bases::Self
         [:self]
+      when Ruby::Signature::Types::Bases::Nil
+        [:nil]
       when Ruby::Signature::Types::Bases::Bottom
         [:union, []]
+      when Ruby::Signature::Types::Variable
+        [:any] # temporal
+      when Ruby::Signature::Types::Tuple
+        tys = ty.types.map {|ty2| convert_type(ty2) }
+        [:array, tys, [:union, []]]
+      when Ruby::Signature::Types::Literal
+        case ty.literal
+        when Integer
+          [:int]
+        when true
+          [:true]
+        when false
+          [:false]
+        else
+          p ty.literal
+          raise NotImplementedError
+        end
+      when Ruby::Signature::Types::Literal
       when Ruby::Signature::Types::Alias
         convert_type(@builder.expand_alias(ty.name))
       when Ruby::Signature::Types::Union

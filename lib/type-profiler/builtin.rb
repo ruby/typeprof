@@ -354,11 +354,9 @@ module TypeProfiler
     klass_module    = scratch.get_constant(klass_obj, :Module)
 
     Type::Builtin[:vmcore]    = klass_vmcore
-    Type::Builtin[:int]       = klass_int
     Type::Builtin[:float]     = klass_float
     Type::Builtin[:sym]       = klass_sym
     Type::Builtin[:str]       = klass_str
-    Type::Builtin[:ary]       = klass_ary
     Type::Builtin[:hash]      = klass_hash
     Type::Builtin[:proc]      = klass_proc
     Type::Builtin[:range]     = klass_range
@@ -398,15 +396,6 @@ module TypeProfiler
     scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type.any], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
     scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type.any], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
     scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_nil])
-    scratch.add_typed_method(i[klass_int], :< , FormalArguments.new([i[klass_int]], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
-    scratch.add_typed_method(i[klass_int], :<=, FormalArguments.new([i[klass_int]], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
-    scratch.add_typed_method(i[klass_int], :>=, FormalArguments.new([i[klass_int]], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
-    scratch.add_typed_method(i[klass_int], :> , FormalArguments.new([i[klass_int]], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
-    #scratch.add_typed_method(i[klass_int], :+ , FormalArguments.new([i[klass_int]], nil, nil, nil, nil, i[klass_nil]), i[klass_int])
-    scratch.add_typed_method(i[klass_int], :- , FormalArguments.new([i[klass_int]], [], nil, [], nil, nil, i[klass_nil]), i[klass_int])
-    int_times_blk = Type::TypedProc.new([i[klass_int]], Type.any, Type::Builtin[:proc])
-    scratch.add_typed_method(i[klass_int], :times, FormalArguments.new([], [], nil, [], nil, nil, int_times_blk), i[klass_int])
-    scratch.add_typed_method(i[klass_int], :to_s, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
     scratch.add_typed_method(i[klass_str], :to_s, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
     scratch.add_typed_method(i[klass_sym], :to_s, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
     scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_sym])

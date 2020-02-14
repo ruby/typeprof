@@ -9,5 +9,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> (Integer | NilClass)
+  foo : () -> Integer
 end
