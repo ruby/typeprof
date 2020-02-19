@@ -395,7 +395,7 @@ module TypeProfiler
 
     scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type.any], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
     scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type.any], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
-    scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_nil])
+    scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), Type.any)
     scratch.add_typed_method(i[klass_str], :to_s, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
     scratch.add_typed_method(i[klass_sym], :to_s, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
     scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_sym])

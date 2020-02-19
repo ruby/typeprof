@@ -107,20 +107,25 @@ module TypeProfiler
         # XXX: support self type in container type like Array[Self]
         ret_ty = recv if ret_ty.is_a?(Type::Self)
         found = true
-        dummy_ctx = Context.new(nil, nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo
-        dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
-        dummy_env = Env.new(recv, fargs.blk_ty, [], [], {})
-        if fargs.blk_ty.is_a?(Type::TypedProc) && aargs.blk_ty.is_a?(Type::ISeqProc)
-          scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
-          nfargs = fargs.blk_ty.fargs
-          naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
-          scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |_ret_ty, _ep, _env|
-            # XXX: check the return type from the block
-            # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
-            scratch.add_return_type!(dummy_ctx, ret_ty)
+        if aargs.blk_ty.is_a?(Type::ISeqProc)
+          dummy_ctx = Context.new(nil, nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo
+          dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
+          dummy_env = Env.new(recv, fargs.blk_ty, [], [], {})
+          if fargs.blk_ty.is_a?(Type::TypedProc)
+            scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
+            nfargs = fargs.blk_ty.fargs
+            naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
+            scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |_ret_ty, _ep, _env|
+              # XXX: check the return type from the block
+              # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
+              scratch.add_return_type!(dummy_ctx, ret_ty)
+            end
+          else
+            # XXX: a block is passed to a method that does not accept block.
+            # Should we call the passed block with any arguments?
+            ctn[ret_ty, caller_ep, caller_env]
           end
-        end
-        if fargs.blk_ty == Type.nil && !aargs.blk_ty.is_a?(Type::ISeqProc)
+        else
           ctn[ret_ty, caller_ep, caller_env]
         end
       end
