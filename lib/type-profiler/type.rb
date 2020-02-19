@@ -517,7 +517,7 @@ module TypeProfiler
       when ::Regexp
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:regexp]))
       when ::NilClass
-        Type::Builtin[:nil]
+        Type.nil
       when ::Range
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:range]))
       else
@@ -536,6 +536,7 @@ module TypeProfiler
       @rest_ty = rest_ty
       @post_tys = post_tys
       @kw_tys = kw_tys
+      kw_tys.each {|a| raise if a.size != 3 } if kw_tys
       @kw_rest_ty = kw_rest_ty
       @blk_ty = blk_ty
     end
@@ -575,8 +576,9 @@ module TypeProfiler
         fargs += @post_tys.map {|ty| ty.screen_name(scratch) }
       end
       if @kw_tys
-        @kw_tys.each do |sym, ty|
-          fargs << "#{ sym }: #{ ty.screen_name(scratch) }"
+        @kw_tys.each do |req, sym, ty|
+          opt = req ? "" : "?"
+          fargs << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
         end
       end
       if @kw_rest_ty
@@ -591,7 +593,7 @@ module TypeProfiler
       raise if @post_tys.size != other.post_tys.size
       if @kw_tys
         raise if @kw_tys.size != other.kw_tys.size
-        @kw_tys.zip(other.kw_tys) {|(k1, _), (k2, _)| raise if k1 != k2 }
+        @kw_tys.zip(other.kw_tys) {|(req1, k1, _), (req2, k2, _)| raise if req1 != req2 || k1 != k2 }
       else
         raise if other.kw_tys
       end
@@ -613,7 +615,7 @@ module TypeProfiler
         end
       end
       post_tys = @post_tys.zip(other.post_tys).map {|ty1, ty2| ty1.union(ty2) }
-      kw_tys = @kw_tys.zip(other.kw_tys).map {|(k, ty1), (_, ty2)| [k, ty1.union(ty2)] } if @kw_tys
+      kw_tys = @kw_tys.zip(other.kw_tys).map {|(req, k, ty1), (_, _, ty2)| [req, k, ty1.union(ty2)] } if @kw_tys
       if @kw_rest_ty || other.kw_rest_ty
         if @kw_rest_ty && other.kw_rest_ty
           kw_rest_ty = @kw_rest_ty.union(other.kw_rest_ty)
@@ -690,11 +692,14 @@ module TypeProfiler
           case
           when kw.is_a?(Symbol) # required keyword
             key = kw
+            req = true
           when kw.size == 2 # optional keyword (default value is a literal)
             key, default_ty = *kw
             default_ty = Type.guess_literal_type(default_ty).globalize(nil, nil)
+            req = false
           else # optional keyword (default value is an expression)
             key, = kw
+            req = false
           end
 
           sym = Type::Symbol.new(key, Type::Instance.new(Type::Builtin[:sym]))
@@ -704,8 +709,12 @@ module TypeProfiler
             ty = @kw_ty.elems[sym]
             # XXX: remove the key
           end
+          if ty == Type.bot
+            yield "no argument for required keywords"
+            return
+          end
           ty = ty.union(default_ty) if default_ty
-          kw_tys << [key, ty]
+          kw_tys << [req, key, ty]
         end
       end
       if kw_rest_acceptable

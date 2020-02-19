@@ -7,5 +7,5 @@ foo(n: 42, s: "str")
 __END__
 # Classes
 class Object
-  foo : (n: Integer, s: Integer | String) -> ([Integer, Integer | String])
+  foo : (?n: Integer, ?s: Integer | String) -> ([Integer, Integer | String])
 end

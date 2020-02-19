@@ -75,7 +75,7 @@ module TypeProfiler
           end
         end
         if fargs.kw_tys
-          fargs.kw_tys.each_with_index do |(_, ty), i|
+          fargs.kw_tys.each_with_index do |(_, _, ty), i|
             alloc_site2 = alloc_site.add_id(idx += 1)
             nenv, ty = ty.localize(nenv, alloc_site2)
             nenv = nenv.local_update(kw_start + i, ty)

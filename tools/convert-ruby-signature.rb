@@ -1,4 +1,5 @@
 require "ruby/signature"
+require "json"
 
 class TypeProfiler
   class RubySignaturePorter
@@ -207,6 +208,7 @@ class TypeProfiler
   end
 end
 
-target = File.join(__dir__, "../lib/type-profiler/stdlib-sigs.rb")
+target = File.join(__dir__, "../lib/type-profiler/rbs.json")
 stdlib = TypeProfiler::RubySignaturePorter.new
-File.write(target, "STDLIB_SIGS = " + stdlib.dump.pretty_inspect)
+File.write(target, JSON.generate(stdlib.dump))
+p :k
