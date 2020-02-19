@@ -756,22 +756,31 @@ module TypeProfiler
 
     def consistent_with_formal_arguments?(fargs)
       aargs = @lead_tys.dup
-      if @rest_ty
-        raise NotImplementedError
-      else
-        return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
-        return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
-        aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
-        end
-        aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
-        end
-        aargs.zip(fargs.opt_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
-        end
+
+      raise NotImplementedError if @rest_ty
+
+      return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
+      return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
+      aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
+        return false unless aarg.consistent?(farg)
+      end
+      aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
+        return false unless aarg.consistent?(farg)
+      end
+      aargs.zip(fargs.opt_tys) do |aarg, farg|
+        return false unless aarg.consistent?(farg)
       end
       # XXX: fargs.keyword_tys
+
+      case fargs.blk_ty
+      when Type::TypedProc
+        return false if @blk_ty == Type.nil
+      when Type.nil
+        return false if @blk_ty != Type.nil
+      when Type::Any
+      else
+        raise "unknown typo of formal block signature"
+      end
       true
     end
   end

@@ -79,7 +79,8 @@ class TypeProfiler
             when :Array
               next unless [:empty?, :size].include?(name)
             when :Numeric
-              next unless [:step].include?(name)
+              next if name == :class
+              #next unless [:step].include?(name)
             when :Integer
               next if name == :class
               #next unless [:+, :-, :*, :/, :<, :>, :-@, :<<, :>>, :|, :&, :to_f].include?(name)
