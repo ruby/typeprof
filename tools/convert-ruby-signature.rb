@@ -88,7 +88,7 @@ class TypeProfiler
             when :Math
               #next
             when :TrueClass, :FalseClass
-              next unless [:!].include?(name)
+              #next unless [:!].include?(name)
             when :Range
               next #unless [:each].include?(name)
             end
@@ -183,6 +183,8 @@ class TypeProfiler
         case ty.literal
         when Integer
           [:int]
+        when String
+          [:str]
         when true
           [:true]
         when false

@@ -26,6 +26,7 @@ module TypeProfiler
             case classpath
             when [:NilClass] then Type::Builtin[:nil] = klass
             when [:Integer]  then Type::Builtin[:int] = klass
+            when [:String]   then Type::Builtin[:str] = klass
             when [:Array]    then Type::Builtin[:ary] = klass
             end
           end
@@ -95,6 +96,8 @@ module TypeProfiler
         Type::Self.new
       when :int
         Type::Instance.new(Type::Builtin[:int])
+      when :str
+        Type::Instance.new(Type::Builtin[:str])
       when :nil
         Type.nil
       when :true
