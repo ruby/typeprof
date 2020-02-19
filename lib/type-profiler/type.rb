@@ -192,7 +192,7 @@ module TypeProfiler
           env, hash_ty = hash_ty.localize(env, alloc_site2)
           tys = tys.add(hash_ty)
         end
-        ty = Union.new(tys, nil, nil)
+        ty = Union.new(tys, nil, nil).normalize
         return env, ty
       end
 

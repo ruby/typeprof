@@ -33,23 +33,21 @@ module TypeProfiler
 
       def self.[](*values)
         tbl = {}
-        h = 0
         values.each do |v|
           tbl[v] = true
-          h ^= v.hash
         end
-        new(tbl, h)
+        new(tbl)
       end
 
       TABLE = {}
-      def self.new(tbl, hash)
-        TABLE[tbl] ||= super(tbl, hash)
+      def self.new(tbl)
+        TABLE[tbl] ||= super(tbl)
       end
 
-      def initialize(tbl, hash)
+      def initialize(tbl)
         @tbl = tbl
         @tbl.freeze
-        @hash = hash
+        @hash = tbl.hash
       end
 
       attr_reader :hash
@@ -61,14 +59,19 @@ module TypeProfiler
       include Enumerable
 
       def sum(other)
-        Set.new(@tbl.merge(other.tbl), hash ^ other.hash)
+        if @tbl.size == 0
+          other
+        elsif other.tbl.size == 0
+          self
+        else
+          Set.new(@tbl.merge(other.tbl))
+        end
       end
 
       def add(new_val)
         tbl = @tbl.dup
         tbl[new_val] = true
-        h = hash ^ new_val.hash
-        Set.new(tbl, h)
+        Set.new(tbl)
       end
 
       def size
@@ -77,13 +80,11 @@ module TypeProfiler
 
       def map(&blk)
         tbl = {}
-        h = 0
         each do |elem|
           v = yield(elem)
           tbl[v] = true
-          h ^= v.hash
         end
-        Set.new(tbl, h)
+        Set.new(tbl)
       end
 
       def inspect
