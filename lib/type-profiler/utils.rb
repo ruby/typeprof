@@ -149,6 +149,16 @@ module TypeProfiler
       end
     end
 
+    class HashWrapper
+      include StructuralEquality
+
+      def initialize(hash)
+        @internal_hash = hash.freeze
+      end
+
+      attr_reader :internal_hash
+    end
+
     class WorkList
       def initialize
         @heap = []

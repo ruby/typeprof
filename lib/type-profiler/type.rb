@@ -792,9 +792,14 @@ module TypeProfiler
       raise if !val.is_a?(Utils::StructuralEquality) && !val.is_a?(Integer) && !val.is_a?(Symbol)
       @val = val
       @parent = parent
+      @_hash ||= (@val.hash ^ @parent.hash)
     end
 
     attr_reader :val, :parent
+
+    def hash
+      @_hash
+    end
 
     def add_id(val)
       AllocationSite.new(val, self)

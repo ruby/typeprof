@@ -91,13 +91,19 @@ module TypeProfiler
       stack = @stack.zip(other.stack).map {|ty1, ty2| ty1.union(ty2) }
       if @type_params
         raise if !other.type_params
-        type_params = @type_params.dup
-        other.type_params.each do |id, elems|
-          if type_params[id]
-            type_params[id] = type_params[id].union(elems)
-          else
-            type_params[id] = elems
+        if @type_params == other.type_params
+          type_params = @type_params
+        else
+          type_params = @type_params.internal_hash.dup
+          other.type_params.internal_hash.each do |id, elems|
+            elems2 = type_params[id]
+            if elems2
+              type_params[id] = elems.union(elems2) if elems != elems2
+            else
+              type_params[id] = elems
+            end
           end
+          type_params = Utils::HashWrapper.new(type_params)
         end
       else
         raise if other.type_params
@@ -142,29 +148,29 @@ module TypeProfiler
 
     def deploy_array_type(alloc_site, elems, base_ty)
       local_ty = Type::LocalArray.new(alloc_site, base_ty)
-      type_params = @type_params.merge({ alloc_site => elems })
+      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
       nenv = Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
       return nenv, local_ty
     end
 
     def deploy_hash_type(alloc_site, elems, base_ty)
       local_ty = Type::LocalHash.new(alloc_site, base_ty)
-      type_params = @type_params.merge({ alloc_site => elems })
+      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
       nenv = Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
       return nenv, local_ty
     end
 
     def get_container_elem_types(id)
-      @type_params[id]
+      @type_params.internal_hash[id]
     end
 
     def update_container_elem_types(id, elems)
-      type_params = @type_params.merge({ id => elems })
+      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ id => elems }))
       Env.new(@recv_ty, @blk_ty, @locals, @stack, type_params)
     end
 
     def inspect
-      "Env[recv_ty:#{ @recv_ty.inspect }, blk_ty:#{ @blk_ty.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.inspect }]"
+      "Env[recv_ty:#{ @recv_ty.inspect }, blk_ty:#{ @blk_ty.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.internal_hash.inspect }]"
     end
   end
 
@@ -732,7 +738,7 @@ module TypeProfiler
         nctx = Context.new(iseq, ncref, singleton, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
         locals = [Type.nil] * iseq.locals.size
-        nenv = Env.new(recv, blk, locals, [], {})
+        nenv = Env.new(recv, blk, locals, [], Utils::HashWrapper.new({}))
         merge_env(nep, nenv)
         add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)

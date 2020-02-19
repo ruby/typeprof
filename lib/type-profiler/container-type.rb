@@ -131,6 +131,8 @@ module TypeProfiler
         end
 
         def union(other)
+          return self if self == other
+
           lead_count = [@lead_tys.size, other.lead_tys.size].min
           lead_tys = (0...lead_count).map do |i|
             @lead_tys[i].union(other.lead_tys[i])
@@ -346,6 +348,8 @@ module TypeProfiler
         end
 
         def union(other)
+          return self if self == other
+
           map_tys = @map_tys.dup
           other.map_tys.each do |k_ty, v_ty|
             if map_tys[k_ty]
