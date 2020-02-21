@@ -240,14 +240,15 @@ module TypeProfiler
       ty.union(Type.nil)
     end
 
-    class Class < Type
-      def initialize(idx, superclass, name)
+    class Class < Type # or Module
+      def initialize(kind, idx, superclass, name)
+        @kind = kind # :class | :module
         @idx = idx
         @superclass = superclass
         @_name = name
       end
 
-      attr_reader :idx, :superclass
+      attr_reader :kind, :idx, :superclass
 
       def inspect
         if @_name

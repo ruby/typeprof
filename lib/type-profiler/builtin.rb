@@ -97,6 +97,12 @@ module TypeProfiler
       ctn[Type::Instance.new(Type::Builtin[:float]), ep, env]
     end
 
+    def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
+      arg = aargs.lead_tys[0]
+      scratch.include_module(recv, arg)
+      ctn[recv, ep, env]
+    end
+
     def add_attr_reader(sym, cref, scratch)
       iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][2]
       scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
@@ -330,7 +336,7 @@ module TypeProfiler
   end
 
   def self.setup_initial_global_env(scratch)
-    klass_obj = scratch.new_class(nil, :Object, nil) # cbase, name, superclass
+    klass_obj = scratch.new_class(nil, :Object, :__root__) # cbase, name, superclass
     scratch.add_constant(klass_obj, "Object", klass_obj)
     klass_true  = scratch.new_class(klass_obj, :TrueClass, klass_obj) # ???
     klass_false = scratch.new_class(klass_obj, :FalseClass, klass_obj) # ???
@@ -381,6 +387,9 @@ module TypeProfiler
     scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
     scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
     scratch.add_custom_method(klass_obj, :rand, Builtin.method(:object_rand))
+
+    scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
+
     scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
     scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
 

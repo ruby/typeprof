@@ -219,13 +219,24 @@ module TypeProfiler
 
     attr_reader :class_defs
 
-    class ClassDef
-      def initialize(name, superclass)
+    class ClassDef # or ModuleDef
+      def initialize(kind, name, superclass)
+        @kind = kind
         @superclass = superclass
+        @included_modules = []
         @name = name
         @consts = {}
         @methods = {}
         @singleton_methods = {}
+      end
+
+      attr_reader :kind, :included_modules, :name, :methods, :superclass
+
+      def include_module(mod)
+        # XXX: need to check if mod is already included by the ancestors?
+        unless @included_modules.include?(mod)
+          @included_modules << mod
+        end
       end
 
       def get_constant(name)
@@ -241,7 +252,15 @@ module TypeProfiler
 
       def get_method(mid)
         # TODO: support multiple methods?
-        @methods[mid]
+        if @methods.key?(mid)
+          @methods[mid]
+        else
+          @included_modules.reverse_each do |mod|
+            mhtd = mod.get_method(mid)
+            return mhtd if mhtd
+          end
+          nil
+        end
       end
 
       def add_method(mid, mdef)
@@ -258,22 +277,43 @@ module TypeProfiler
         @singleton_methods[mid] ||= Utils::MutableSet.new
         @singleton_methods[mid] << mdef
       end
+    end
 
-      attr_reader :name, :methods, :superclass
+    def include_module(including_mod, included_mod)
+      including_mod = @class_defs[including_mod.idx]
+      included_mod = @class_defs[included_mod.idx]
+      if included_mod && included_mod.kind == :module
+        including_mod.include_module(included_mod)
+      else
+        warn "including something that is not a module"
+      end
     end
 
     def new_class(cbase, name, superclass)
       if cbase && cbase.idx != 0
-        class_name = "#{ @class_defs[cbase.idx].name }::#{ name }"
+        show_name = "#{ @class_defs[cbase.idx].name }::#{ name }"
       else
-        class_name = name.to_s
+        show_name = name.to_s
       end
       idx = @class_defs.size
-      @class_defs[idx] = ClassDef.new(class_name, superclass&.idx)
-      klass = Type::Class.new(idx, superclass, name)
-      cbase ||= klass # for bootstrap
-      add_constant(cbase, name, klass)
-      return klass
+      if superclass
+        if superclass == :__root__
+          superclass_idx = superclass = nil
+        else
+          superclass_idx = superclass.idx
+        end
+        @class_defs[idx] = ClassDef.new(:class, show_name, superclass_idx)
+        klass = Type::Class.new(:class, idx, superclass, show_name)
+        cbase ||= klass # for bootstrap
+        add_constant(cbase, name, klass)
+        return klass
+      else
+        # module
+        @class_defs[idx] = ClassDef.new(:module, show_name, nil)
+        mod = Type::Class.new(:module, idx, nil, show_name)
+        add_constant(cbase, name, mod)
+        return mod
+      end
     end
 
     def get_class_name(klass)
@@ -287,10 +327,11 @@ module TypeProfiler
     def get_method(klass, mid)
       idx = klass.idx
       while idx
-        mthd = @class_defs[idx].get_method(mid)
+        class_def = @class_defs[idx]
+        mthd = class_def.get_method(mid)
         # Need to be conservative to include all super candidates...?
         return mthd if mthd
-        idx = @class_defs[idx].superclass
+        idx = class_def.superclass
       end
       nil
     end
@@ -298,12 +339,13 @@ module TypeProfiler
     def get_singleton_method(klass, mid)
       idx = klass.idx
       while idx
-        mthd = @class_defs[idx].get_singleton_method(mid)
+        class_def = @class_defs[idx]
+        mthd = class_def.get_singleton_method(mid)
         # Need to be conservative to include all super candidates...?
         return mthd if mthd
-        idx = @class_defs[idx].superclass
+        idx = class_def.superclass
       end
-      # fallback to methods of Class class; but there is not Class class currently, so substitute Object
+      # fallback to methods of Class class
       get_method(Type::Builtin[:class], mid)
     end
 
@@ -694,7 +736,7 @@ module TypeProfiler
         env, (cbase, superclass) = env.pop(2)
         case flags & 7
         when 0, 2 # CLASS / MODULE
-          # scratch.warn(ep, "module is not supported yet") if flags & 7 == 2
+          type = (flags & 7) == 2 ? :module : :class
           existing_klass = get_constant(cbase, id) # TODO: multiple return values
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
@@ -707,14 +749,18 @@ module TypeProfiler
             if existing_klass != Type.any
               klass = existing_klass
             else
-              if superclass == Type.any
-                warn(ep, "superclass is any; Object is used instead")
-                superclass = Type::Builtin[:obj]
-              elsif superclass.eql?(Type.nil)
-                superclass = Type::Builtin[:obj]
-              elsif superclass.is_a?(Type::Instance)
-                warn(ep, "superclass is an instance; Object is used instead")
-                superclass = Type::Builtin[:obj]
+              if type == :class
+                if superclass == Type.any
+                  warn(ep, "superclass is any; Object is used instead")
+                  superclass = Type::Builtin[:obj]
+                elsif superclass.eql?(Type.nil)
+                  superclass = Type::Builtin[:obj]
+                elsif superclass.is_a?(Type::Instance)
+                  warn(ep, "superclass is an instance; Object is used instead")
+                  superclass = Type::Builtin[:obj]
+                end
+              else # module
+                superclass = nil
               end
               klass = new_class(cbase, id, superclass)
             end

@@ -93,6 +93,12 @@ module TypeProfiler
       puts
     end
 
+    def show_class_or_module(obj, classes)
+      kind = obj.klass.kind
+      name = obj.screen_name(@scratch)
+      classes[name] ||= { kind: kind, ivars: {}, cvars: {}, methods: {} }
+    end
+
     def show(stat_eps)
       show_errors
       show_gvars
@@ -101,22 +107,18 @@ module TypeProfiler
       stat_methods = {}
       classes = {}
       @ivar_write.each do |(recv, var), ty|
-        recv = recv.screen_name(@scratch)
-        classes[recv] ||= { ivars: {}, cvars: {}, methods: {} }
-        classes[recv][:ivars][var] = ty.screen_name(@scratch)
+        entry = show_class_or_module(recv, classes)
+        entry[:ivars][var] = ty.screen_name(@scratch)
       end
       @cvar_write.each do |(klass, var), ty|
-        klass = Type::Instance.new(klass).screen_name(@scratch)
-        classes[klass] ||= { ivars: {}, cvars: {}, methods: {} }
-        classes[klass][:cvars][var] = ty.screen_name(@scratch)
+        entry = show_class_or_module(Type::Instance.new(klass), classes)
+        entry[:cvars][var] = ty.screen_name(@scratch)
       end
       @sig_fargs.each do |ctx, fargs|
         next unless ctx.mid && ctx.iseq && fargs
         ret_tys = @sig_ret[ctx]
 
-        recv = ctx.cref.klass
-        recv = Type::Instance.new(recv)
-        recv = recv.screen_name(@scratch)
+        entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
 
         method_name = ctx.mid
         method_name = "self.#{ method_name }" if ctx.singleton
@@ -126,20 +128,19 @@ module TypeProfiler
           fargs << show_block(ctx)
         end
 
-        classes[recv] ||= { ivars: {}, cvars: {}, methods: {} }
-        classes[recv][:methods][method_name] ||= []
-        classes[recv][:methods][method_name] << show_signature(fargs, ret_tys)
+        entry[:methods][method_name] ||= []
+        entry[:methods][method_name] << show_signature(fargs, ret_tys)
 
-        stat_classes[recv] = true
-        stat_methods[[recv, method_name]] = true
+        #stat_classes[recv] = true
+        #stat_methods[[recv, method_name]] = true
       end
 
-      puts "# Classes"
+      puts "# Classes" # and Modules
       first = true
       classes.each do |recv, cls|
         puts unless first
         first = false
-        puts "class #{ recv }"
+        puts "#{ cls[:kind] } #{ recv }"
         cls[:ivars].each do |var, tys|
           puts "  #{ var } : #{ tys }"
         end
