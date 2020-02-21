@@ -93,10 +93,6 @@ module TypeProfiler
       end
     end
 
-    def object_rand(recv, mid, aargs, ep, env, scratch, &ctn)
-      ctn[Type::Instance.new(Type::Builtin[:float]), ep, env]
-    end
-
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
       arg = aargs.lead_tys[0]
       scratch.include_module(recv, arg)
@@ -392,7 +388,6 @@ module TypeProfiler
     scratch.add_custom_method(klass_obj, :p, Builtin.method(:reveal_type))
     scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
     scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
-    scratch.add_custom_method(klass_obj, :rand, Builtin.method(:object_rand))
 
     scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
     scratch.add_custom_method(klass_module, :extend, Builtin.method(:module_extend))
