@@ -1,0 +1,3 @@
+[submodule "ruby-signature"]
+	path = ruby-signature
+	url = https://github.com/ruby/ruby-signature.git
