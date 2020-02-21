@@ -224,6 +224,7 @@ module TypeProfiler
         @kind = kind
         @superclass = superclass
         @included_modules = []
+        @extended_modules = []
         @name = name
         @consts = {}
         @methods = {}
@@ -239,6 +240,13 @@ module TypeProfiler
         end
       end
 
+      def extend_module(mod)
+        # XXX: need to check if mod is already included by the ancestors?
+        unless @extended_modules.include?(mod)
+          @extended_modules << mod
+        end
+      end
+
       def get_constant(name)
         @consts[name] || Type.any # XXX: warn?
       end
@@ -251,7 +259,6 @@ module TypeProfiler
       end
 
       def get_method(mid)
-        # TODO: support multiple methods?
         if @methods.key?(mid)
           @methods[mid]
         else
@@ -270,7 +277,15 @@ module TypeProfiler
       end
 
       def get_singleton_method(mid)
-        @singleton_methods[mid]
+        if @singleton_methods.key?(mid)
+          @singleton_methods[mid]
+        else
+          @extended_modules.reverse_each do |mod|
+            mhtd = mod.get_method(mid)
+            return mhtd if mhtd
+          end
+          nil
+        end
       end
 
       def add_singleton_method(mid, mdef)
@@ -284,6 +299,16 @@ module TypeProfiler
       included_mod = @class_defs[included_mod.idx]
       if included_mod && included_mod.kind == :module
         including_mod.include_module(included_mod)
+      else
+        warn "including something that is not a module"
+      end
+    end
+
+    def extend_module(extending_mod, extended_mod)
+      extending_mod = @class_defs[extending_mod.idx]
+      extended_mod = @class_defs[extended_mod.idx]
+      if extended_mod && extended_mod.kind == :module
+        extending_mod.extend_module(extended_mod)
       else
         warn "including something that is not a module"
       end

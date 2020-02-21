@@ -103,6 +103,12 @@ module TypeProfiler
       ctn[recv, ep, env]
     end
 
+    def module_extend(recv, mid, aargs, ep, env, scratch, &ctn)
+      arg = aargs.lead_tys[0]
+      scratch.extend_module(recv, arg)
+      ctn[recv, ep, env]
+    end
+
     def add_attr_reader(sym, cref, scratch)
       iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][2]
       scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
@@ -389,6 +395,7 @@ module TypeProfiler
     scratch.add_custom_method(klass_obj, :rand, Builtin.method(:object_rand))
 
     scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
+    scratch.add_custom_method(klass_module, :extend, Builtin.method(:module_extend))
 
     scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
     scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
