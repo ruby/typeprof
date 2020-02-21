@@ -1,5 +1,5 @@
 PATH
-  remote: ../../work/ruby-signature
+  remote: ruby-signature
   specs:
     ruby-signature (0.1.0)
 
