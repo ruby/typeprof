@@ -13,7 +13,7 @@ module TypeProfiler
 
     def import_ruby_signatures(scratch)
       classes = []
-      STDLIB_SIGS.each do |classpath, superclass, methods, singleton_methods|
+      STDLIB_SIGS.each do |classpath, superclass, included_modules, methods, singleton_methods|
         next if classpath == [:BasicObject]
         next if classpath == [:NilClass]
         if classpath != [:Object]
@@ -33,10 +33,14 @@ module TypeProfiler
         else
           klass = Type::Builtin[:obj]
         end
-        classes << [klass, methods, singleton_methods]
+        classes << [klass, included_modules, methods, singleton_methods]
       end
 
-      classes.each do |klass, methods, singleton_methods|
+      classes.each do |klass, included_modules, methods, singleton_methods|
+        included_modules.each do |mod|
+          mod = path_to_klass(scratch, mod)
+          scratch.include_module(klass, mod)
+        end
         methods.each do |method_name, mdef|
           mdef = translate_typed_method_def(scratch, false, method_name, mdef)
           scratch.add_method(klass, method_name, mdef)
