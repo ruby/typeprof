@@ -70,7 +70,7 @@ class TypeProfiler
         singleton_methods = []
 
         if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass].include?(type_name.name)
-          rs_klass = @builder.build_instance(type_name)
+          rs_klass = @builder.build_one_instance(type_name)
           methods = rs_klass.methods.map do |name, rs_method|
             # XXX
             case type_name.name
@@ -79,10 +79,10 @@ class TypeProfiler
             when :Array
               next unless [:empty?, :size].include?(name)
             when :Numeric
-              next if name == :class
+              #next if name == :class
               #next unless [:step].include?(name)
             when :Integer
-              next if name == :class
+              #next if name == :class
               #next unless [:+, :-, :*, :/, :<, :>, :-@, :<<, :>>, :|, :&, :to_f].include?(name)
             when :Float
               #next unless [:+, :-, :*, :/, :<, :>, :-@].include?(name)
@@ -97,7 +97,7 @@ class TypeProfiler
             [name, translate_typed_method_def(rs_klass.type_params, rs_method)]
           end.compact
 
-          singleton_methods = @builder.build_singleton(type_name).methods.map do |name, rs_method|
+          singleton_methods = @builder.build_one_singleton(type_name).methods.map do |name, rs_method|
             case type_name.name
             when :Object, :Array, :Numeric, :Integer, :Float, :Range, :TrueClass, :FalseClass
               next
