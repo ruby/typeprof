@@ -263,8 +263,8 @@ module TypeProfiler
           @methods[mid]
         else
           @included_modules.reverse_each do |mod|
-            mhtd = mod.get_method(mid)
-            return mhtd if mhtd
+            meth = mod.get_method(mid)
+            return meth if meth
           end
           nil
         end
@@ -281,8 +281,8 @@ module TypeProfiler
           @singleton_methods[mid]
         else
           @extended_modules.reverse_each do |mod|
-            mhtd = mod.get_method(mid)
-            return mhtd if mhtd
+            meth = mod.get_method(mid)
+            return meth if meth
           end
           nil
         end
