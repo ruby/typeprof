@@ -74,7 +74,7 @@ class TypeProfiler
         methods = []
         singleton_methods = []
 
-        if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass, :Kernel].include?(type_name.name)
+        if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass, :Kernel].include?(type_name.name) || true
           decl = @env.find_class(type_name)
 
           case decl
@@ -93,33 +93,14 @@ class TypeProfiler
                   case type_name.name
                   when :Object
                     next if name == :class
-                    #next unless [:freeze, :block_given?, :respond_to?, :nil?, :fail, :kind_of?, :to_s].include?(name)
                   when :Array
                     next unless [:empty?, :size].include?(name)
-                  when :Numeric
-                    #next if name == :class
-                    #next unless [:step].include?(name)
-                  when :Integer
-                    #next if name == :class
-                    #next unless [:+, :-, :*, :/, :<, :>, :-@, :<<, :>>, :|, :&, :to_f].include?(name)
-                  when :Float
-                    #next unless [:+, :-, :*, :/, :<, :>, :-@].include?(name)
-                  when :Math
-                    #next
-                  when :TrueClass, :FalseClass
-                    #next unless [:!].include?(name)
-                  when :Range
-                    next #unless [:each].include?(name)
-                  when :Kernel
-                    next unless [:rand, :loop].include?(name)
-                  end
-                end
-                if member.singleton?
-                  case type_name.name
-                  when :Object, :Array, :Numeric, :Integer, :Float, :Range, :TrueClass, :FalseClass
-                    next
-                  when :Math
-                    next unless [:sqrt, :sin, :cos].include?(name)
+                  when :Hash
+                    next unless [:empty?, :size].include?(name)
+                  when :Module
+                    next if name == :include
+                  when :Proc
+                    next if name == :call || name == :[]
                   end
                 end
 
@@ -146,9 +127,6 @@ class TypeProfiler
               when AST::Members::Alias
                 #raise NotImplementedError # support soon!
               when AST::Members::Include
-                # ad-hoc filter
-                next if member.name.name != :Kernel
-
                 name = @env.absolute_type_name(member.name, namespace: type_name.namespace)
                 mod = name.namespace.path + [name.name]
                 included_modules << mod
@@ -244,6 +222,8 @@ class TypeProfiler
           [:true]
         when false
           [:false]
+        when Symbol
+          [:sym, ty.literal]
         else
           p ty.literal
           raise NotImplementedError

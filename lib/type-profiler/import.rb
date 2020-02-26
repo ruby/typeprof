@@ -27,6 +27,7 @@ module TypeProfiler
             when [:NilClass] then Type::Builtin[:nil] = klass
             when [:Integer]  then Type::Builtin[:int] = klass
             when [:String]   then Type::Builtin[:str] = klass
+            when [:Symbol]   then Type::Builtin[:sym] = klass
             when [:Array]    then Type::Builtin[:ary] = klass
             end
           end
@@ -102,6 +103,8 @@ module TypeProfiler
         Type::Instance.new(Type::Builtin[:int])
       when :str
         Type::Instance.new(Type::Builtin[:str])
+      when :sym
+        Type::Symbol.new(ty.last, Type::Instance.new(Type::Builtin[:sym]))
       when :nil
         Type.nil
       when :true

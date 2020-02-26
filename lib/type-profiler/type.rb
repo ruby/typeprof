@@ -102,8 +102,8 @@ module TypeProfiler
         raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
         tys.each do |ty|
-          raise if ty.is_a?(Type::Array)
-          raise if ty.is_a?(Type::Hash)
+          #raise if ty.is_a?(Type::Array)
+          #raise if ty.is_a?(Type::Hash)
         end
         @array_elems = ary_elems # Type::Array::Elements
         @hash_elems = hash_elems # Type::Array::Elements

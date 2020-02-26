@@ -120,6 +120,8 @@ module TypeProfiler
               # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
               scratch.add_return_type!(dummy_ctx, ret_ty)
             end
+            # scratch.add_return_type!(dummy_ctx, ret_ty) ?
+            # This makes `def foo; 1.times { return "str" }; end` return Integer|String
           else
             # XXX: a block is passed to a method that does not accept block.
             # Should we call the passed block with any arguments?
