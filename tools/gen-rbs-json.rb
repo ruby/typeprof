@@ -194,7 +194,13 @@ class TypeProfiler
     def convert_type(ty)
       case ty
       when Ruby::Signature::Types::ClassInstance
-        [:instance, ty.name.namespace.path + [ty.name.name]]
+        klass = ty.name.namespace.path + [ty.name.name]
+        if klass == [:Array]
+          raise if ty.args.size != 1
+          [:array, [], convert_type(ty.args.first)]
+        else
+          [:instance, klass]
+        end
       when Ruby::Signature::Types::Bases::Bool
         [:bool]
       when Ruby::Signature::Types::Bases::Any
