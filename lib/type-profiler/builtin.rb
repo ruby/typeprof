@@ -257,8 +257,14 @@ module TypeProfiler
       raise NotImplementedError if aargs.lead_tys.size != 1
       key = aargs.lead_tys.first
       # XXX: recv may be a union
-      ty = scratch.get_hash_elem_type(env, ep, recv.id, key)
-      ctn[ty, ep, env]
+      recv.each_child do |recv|
+        if recv == Type::Instance.new(Type::Builtin[:hash])
+          ty = Type.any
+        else
+          ty = scratch.get_hash_elem_type(env, ep, recv.id, key)
+        end
+        ctn[ty, ep, env]
+      end
     end
 
     def hash_aset(recv, mid, aargs, ep, env, scratch, &ctn)
