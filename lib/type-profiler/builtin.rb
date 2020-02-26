@@ -271,6 +271,7 @@ module TypeProfiler
       raise NotImplementedError if aargs.lead_tys.size != 2
 
       idx = aargs.lead_tys.first
+      idx = scratch.globalize_type(idx, env, ep)
       ty = aargs.lead_tys.last
 
       unless recv.is_a?(Type::LocalHash)

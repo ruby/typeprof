@@ -620,7 +620,7 @@ module TypeProfiler
       elems = get_container_elem_types(env, ep, id)
 
       if elems
-        elems[key_ty || Type.any]
+        elems[globalize_type(key_ty, env, ep) || Type.any]
       else
         Type.any
       end
