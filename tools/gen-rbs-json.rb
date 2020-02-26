@@ -92,7 +92,8 @@ class TypeProfiler
                 if member.instance?
                   case type_name.name
                   when :Object
-                    next unless [:freeze, :block_given?, :respond_to?, :nil?, :fail, :kind_of?, :to_s].include?(name)
+                    next if name == :class
+                    #next unless [:freeze, :block_given?, :respond_to?, :nil?, :fail, :kind_of?, :to_s].include?(name)
                   when :Array
                     next unless [:empty?, :size].include?(name)
                   when :Numeric

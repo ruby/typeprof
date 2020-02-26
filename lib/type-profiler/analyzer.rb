@@ -537,11 +537,15 @@ module TypeProfiler
     end
 
     def add_ivar_read!(recv, var, ep, &ctn)
-      @ivar_table.add_read!([recv, var], ep, &ctn)
+      recv.each_child do |recv|
+        @ivar_table.add_read!([recv, var], ep, &ctn)
+      end
     end
 
     def add_ivar_write!(recv, var, ty, &ctn)
-      @ivar_table.add_write!([recv, var], ty, &ctn)
+      recv.each_child do |recv|
+        @ivar_table.add_write!([recv, var], ty, &ctn)
+      end
     end
 
     def add_cvar_read!(klass, var, ep, &ctn)

@@ -94,8 +94,14 @@ module TypeProfiler
     end
 
     def show_class_or_module(obj, classes)
-      kind = obj.klass.kind
-      name = obj.screen_name(@scratch)
+      if obj.is_a?(Type::Class)
+        kind = obj.kind
+        name = Type::Instance.new(obj).screen_name(@scratch)
+        name = "singleton(#{ name })"
+      else
+        kind = obj.klass.kind
+        name = obj.screen_name(@scratch)
+      end
       classes[name] ||= { kind: kind, ivars: {}, cvars: {}, methods: {} }
     end
 
