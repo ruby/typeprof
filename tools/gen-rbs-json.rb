@@ -125,12 +125,19 @@ class TypeProfiler
               when AST::Members::AttrReader, AST::Members::AttrAccessor, AST::Members::AttrWriter
                 raise NotImplementedError
               when AST::Members::Alias
-                #raise NotImplementedError # support soon!
+                if member.instance?
+                  _, method_def = methods.find {|n,| n == member.old_name }
+                  methods << [member.new_name, method_def] if method_def
+                end
+                if member.singleton?
+                  _, method_def = singleton_methods.find {|n,| n == member.old_name }
+                  raise unless method_def
+                  singleton_methods << [member.new_name, method_def]
+                end
               when AST::Members::Include
                 name = @env.absolute_type_name(member.name, namespace: type_name.namespace)
                 mod = name.namespace.path + [name.name]
                 included_modules << mod
-                #raise NotImplementedError # support next!
               when AST::Members::InstanceVariable
                 raise NotImplementedError
               when AST::Members::ClassVariable
