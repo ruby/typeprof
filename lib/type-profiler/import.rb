@@ -29,6 +29,7 @@ module TypeProfiler
             when [:String]   then Type::Builtin[:str] = klass
             when [:Symbol]   then Type::Builtin[:sym] = klass
             when [:Array]    then Type::Builtin[:ary] = klass
+            when [:Hash]     then Type::Builtin[:hash] = klass
             end
           end
         else
@@ -116,6 +117,15 @@ module TypeProfiler
         lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
         rest_ty = convert_type(scratch, rest_ty)
         Type::Array.new(Type::Array::Elements.new(lead_tys, rest_ty), Type::Instance.new(Type::Builtin[:ary]))
+      when :hash
+        _, *map_tys = ty
+        Type.gen_hash do |h|
+          map_tys.each do |k, v|
+            k_ty = convert_type(scratch, k)
+            v_ty = convert_type(scratch, v)
+            h[k_ty] = v_ty
+          end
+        end
       when :union
         tys = ty[1].reject {|ty2| ty2[1] == [:BigDecimal] } # XXX
         Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }], nil, nil) #  Array support

@@ -195,9 +195,14 @@ class TypeProfiler
       case ty
       when Ruby::Signature::Types::ClassInstance
         klass = ty.name.namespace.path + [ty.name.name]
-        if klass == [:Array]
+        case klass
+        when [:Array]
           raise if ty.args.size != 1
           [:array, [], convert_type(ty.args.first)]
+        when [:Hash]
+          raise if ty.args.size != 2
+          key, val = ty.args
+          [:hash, [convert_type(key), convert_type(val)]]
         else
           [:instance, klass]
         end
