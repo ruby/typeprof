@@ -758,7 +758,20 @@ module TypeProfiler
     def consistent_with_formal_arguments?(fargs)
       aargs = @lead_tys.dup
 
-      raise NotImplementedError if @rest_ty
+      if @rest_ty
+        if fargs.rest_ty
+        raise NotImplementedError
+        end
+        lower_bound = fargs.lead_tys.size + fargs.post_tys.size - aargs.size
+        upper_bound = lower_bound + fargs.opt_tys.size
+        (lower_bound..upper_bound).each do |n|
+          tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_ty, @blk_ty)
+          if tmp_aargs.consistent_with_formal_arguments?(fargs)
+            return true
+          end
+        end
+        return false
+      end
 
       return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
       return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
