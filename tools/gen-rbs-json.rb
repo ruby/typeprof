@@ -12,13 +12,25 @@ class TypeProfiler
       @env = Environment.new()
       loader.load(env: @env)
 
-      @dump = import_ruby_signatures
+      @dump = [import_rbs_classes, import_rbs_constants]
     end
 
     attr_reader :dump
 
-    def import_ruby_signatures
+    def import_rbs_constants
+      constants = {}
+      @env.each_constant do |name, decl|
+        #constants[name] = decl
+        klass = name.namespace.path + [name.name]
+        constants[klass] = convert_type(decl.type)
+      end
+      constants
+    end
+
+    def import_rbs_classes
       class2super = {}
+      # XXX: @env.each_extension {|a| p a }
+      # XXX: @env.each_global {|a| p a }
       @env.each_decl do |name, decl|
         if name.kind == :class
           next if name.name == :Object && name.namespace == Namespace.root
@@ -142,6 +154,9 @@ class TypeProfiler
                 raise NotImplementedError
               when AST::Members::ClassVariable
                 raise NotImplementedError
+              when AST::Members::Public, AST::Members::Private
+              else
+                p member
               end
             end
           end
@@ -200,6 +215,9 @@ class TypeProfiler
 
     def convert_type(ty)
       case ty
+      when Ruby::Signature::Types::ClassSingleton
+        klass = ty.name.namespace.path + [ty.name.name]
+        [:class, klass]
       when Ruby::Signature::Types::ClassInstance
         klass = ty.name.namespace.path + [ty.name.name]
         case klass

@@ -13,7 +13,8 @@ module TypeProfiler
 
     def import_ruby_signatures(scratch)
       classes = []
-      STDLIB_SIGS.each do |classpath, superclass, included_modules, methods, singleton_methods|
+      rbs_classes, rbs_constants = STDLIB_SIGS
+      rbs_classes.each do |classpath, superclass, included_modules, methods, singleton_methods|
         next if classpath == [:BasicObject]
         next if classpath == [:NilClass]
         if classpath != [:Object]
@@ -52,6 +53,12 @@ module TypeProfiler
           scratch.add_singleton_method(klass, method_name, mdef)
         end
       end
+
+      rbs_constants.each do |classpath, value|
+        base_klass = path_to_klass(scratch, classpath[0..-2])
+        value = convert_type(scratch, value)
+        scratch.add_constant(base_klass, classpath[-1], value)
+      end
     end
 
     def translate_typed_method_def(scratch, singleton, method_name, mdef)
@@ -88,6 +95,8 @@ module TypeProfiler
 
     def convert_type(scratch, ty)
       case ty.first
+      when :class
+        path_to_klass(scratch, ty[1])
       when :instance
         begin
           Type::Instance.new(path_to_klass(scratch, ty[1]))
