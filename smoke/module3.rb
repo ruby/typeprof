@@ -19,6 +19,10 @@ C.new.foo
 
 __END__
 # Classes
+class C
+  include M1
+  include M2
+end
 module M2
   foo : () -> :m2
 end

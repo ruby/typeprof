@@ -41,7 +41,7 @@ module TypeProfiler
       classes.each do |klass, included_modules, methods, singleton_methods|
         included_modules.each do |mod|
           mod = path_to_klass(scratch, mod)
-          scratch.include_module(klass, mod)
+          scratch.include_module(klass, mod, false)
         end
         methods.each do |method_name, mdef|
           mdef = translate_typed_method_def(scratch, false, method_name, mdef)

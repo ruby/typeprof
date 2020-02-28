@@ -191,6 +191,8 @@ module TypeProfiler
       @cvar_table = VarTable.new
       @gvar_table = VarTable.new
 
+      @include_relations = {}
+
       @errors = []
       @backward_edges = {}
     end
@@ -294,7 +296,12 @@ module TypeProfiler
       end
     end
 
-    def include_module(including_mod, included_mod)
+    def include_module(including_mod, included_mod, logging = true)
+      if logging
+        @include_relations[including_mod] ||= Utils::MutableSet.new
+        @include_relations[including_mod] << included_mod
+      end
+
       including_mod = @class_defs[including_mod.idx]
       included_mod = @class_defs[included_mod.idx]
       if included_mod && included_mod.kind == :module
@@ -640,7 +647,9 @@ module TypeProfiler
         step(@ep) # TODO: deletemin
       end
       RubySignatureExporter.new(
-        self, @errors, @gvar_table.write, @ivar_table.write, @cvar_table.write,
+        self, @errors,
+        @gvar_table.write, @ivar_table.write, @cvar_table.write,
+        @include_relations,
         @sig_fargs, @sig_ret, @yields, @backward_edges,
       ).show(stat_eps)
     end

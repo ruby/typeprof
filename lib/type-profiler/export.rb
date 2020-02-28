@@ -1,6 +1,6 @@
 module TypeProfiler
   class RubySignatureExporter
-    def initialize(scratch, errors, gvar_write, ivar_write, cvar_write, sig_fargs, sig_ret, yields, backward_edges)
+    def initialize(scratch, errors, gvar_write, ivar_write, cvar_write, include_relations, sig_fargs, sig_ret, yields, backward_edges)
       @scratch = scratch
       @errors = errors
       @sig_fargs = sig_fargs
@@ -10,6 +10,7 @@ module TypeProfiler
       @gvar_write = gvar_write
       @ivar_write = ivar_write
       @cvar_write = cvar_write
+      @include_relations = include_relations
     end
 
     def show_types(tys)
@@ -94,15 +95,10 @@ module TypeProfiler
     end
 
     def show_class_or_module(obj, classes)
-      if obj.is_a?(Type::Class)
-        kind = obj.kind
-        name = Type::Instance.new(obj).screen_name(@scratch)
-        name = "singleton(#{ name })"
-      else
-        kind = obj.klass.kind
-        name = obj.screen_name(@scratch)
-      end
-      classes[name] ||= { kind: kind, ivars: {}, cvars: {}, methods: {} }
+      obj = Type::Instance.new(obj) if obj.is_a?(Type::Class)
+      kind = obj.klass.kind
+      name = obj.screen_name(@scratch)
+      classes[name] ||= { kind: kind, includes: [], ivars: {}, cvars: {}, methods: {} }
     end
 
     def show(stat_eps)
@@ -112,8 +108,13 @@ module TypeProfiler
       stat_classes = {}
       stat_methods = {}
       classes = {}
+      @include_relations.each do |including_mod, included_mods|
+        entry = show_class_or_module(including_mod, classes)
+        entry[:includes].concat(included_mods.to_a.map {|mod| Type::Instance.new(mod).screen_name(@scratch) })
+      end
       @ivar_write.each do |(recv, var), ty|
         entry = show_class_or_module(recv, classes)
+        var = "self.#{ var }" if recv.is_a?(Type::Class)
         entry[:ivars][var] = ty.screen_name(@scratch)
       end
       @cvar_write.each do |(klass, var), ty|
@@ -147,6 +148,9 @@ module TypeProfiler
         puts unless first
         first = false
         puts "#{ cls[:kind] } #{ recv }"
+        cls[:includes].sort.each do |tys|
+          puts "  include #{ tys }"
+        end
         cls[:ivars].each do |var, tys|
           puts "  #{ var } : #{ tys }"
         end

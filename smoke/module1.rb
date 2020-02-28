@@ -19,6 +19,9 @@ C.new.bar
 
 __END__
 # Classes
+class C
+  include M
+end
 module M
   foo : () -> :foo
   bar : () -> :bar
