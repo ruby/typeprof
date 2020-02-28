@@ -7,3 +7,8 @@ class Foo
   end
 end
 Foo.new.foo
+__END__
+# Classes
+class Foo
+  foo : () -> Integer
+end

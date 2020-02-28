@@ -264,6 +264,6 @@ class TypeProfiler
   end
 end
 
-target = File.join(__dir__, "../lib/type-profiler/rbs.json")
+target = File.join(__dir__, "../lib/type-profiler/rbs.dat")
 stdlib = TypeProfiler::RubySignatureReader.new
-File.write(target, JSON.generate(stdlib.dump))
+File.binwrite(target, Marshal.dump(stdlib.dump))

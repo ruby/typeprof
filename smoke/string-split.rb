@@ -3,3 +3,9 @@ def foo
 end
 
 foo
+
+__END__
+# Classes
+class Object
+  foo : () -> Array[Integer]
+end
