@@ -62,7 +62,7 @@ module TypeProfiler
     end
 
     def translate_typed_method_def(scratch, singleton, method_name, mdef)
-      sig_rets = mdef.map do |lead_tys, opt_tys, blk, ret_ty|
+      sig_rets = mdef.map do |lead_tys, opt_tys, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty|
         if blk
           blk = translate_typed_block(scratch, blk)
         else
@@ -72,7 +72,11 @@ module TypeProfiler
         begin
           lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
           opt_tys = opt_tys.map {|ty| convert_type(scratch, ty) }
-          fargs = FormalArguments.new(lead_tys, opt_tys, nil, [], nil, nil, blk)
+          kw_tys = []
+          req_kw_tys.each {|key, ty| kw_tys << [true, key, convert_type(scratch, ty)] }
+          opt_kw_tys.each {|key, ty| kw_tys << [false, key, convert_type(scratch, ty)] }
+          kw_rest_ty = convert_type(scratch, rest_kw_ty) if rest_kw_ty
+          fargs = FormalArguments.new(lead_tys, opt_tys, nil, [], kw_tys, kw_rest_ty, blk)
           ret_ty = convert_type(scratch, ret_ty)
           [fargs, ret_ty]
         rescue UnsupportedType

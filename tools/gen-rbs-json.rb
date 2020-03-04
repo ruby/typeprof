@@ -184,13 +184,17 @@ class TypeProfiler
           opt_tys = type.type.optional_positionals.map do |type|
             convert_type(type.type)
           end
-          # XXX: support keywords
-          ##p opt_kw_tys = type.type.optional_keywords
-          #p req_kw_tys = type.type.required_keywords
-          #p rest_kw_ty = type.type.rest_keywords
+          opt_kw_tys = type.type.optional_keywords.to_h do |key, type|
+            [key, convert_type(type.type)]
+          end
+          req_kw_tys = type.type.required_keywords.to_h do |key, type|
+            [key, convert_type(type.type)]
+          end
+          rest_kw_ty = type.type.rest_keywords
+          raise NotImplementedError if rest_kw_ty
 
           ret_ty = convert_type(type.type.return_type)
-          [lead_tys, opt_tys, blk, ret_ty]
+          [lead_tys, opt_tys, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty]
         rescue UnsupportedType
           nil
         end
