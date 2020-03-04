@@ -106,12 +106,12 @@ module TypeProfiler
     end
 
     def add_attr_reader(sym, cref, scratch)
-      iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][2]
+      iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][1][1]
       scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
     end
 
     def add_attr_writer(sym, cref, scratch)
-      iseq_setter = ISeq.compile_str("def #{ sym }=(x); @#{ sym } = x; end").insns[0][2]
+      iseq_setter = ISeq.compile_str("def #{ sym }=(x); @#{ sym } = x; end").insns[0][1][1]
       scratch.add_iseq_method(cref.klass, :"#{ sym }=", iseq_setter, cref)
     end
 

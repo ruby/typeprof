@@ -683,7 +683,7 @@ module TypeProfiler
       env = @ep2env[ep]
       raise "nil env" unless env
 
-      insn, *operands = ep.ctx.iseq.insns[ep.pc]
+      insn, operands = ep.ctx.iseq.insns[ep.pc]
 
       if ENV["TP_DEBUG"]
         p [ep.pc, ep.ctx.iseq.name, ep.source_location, insn, operands]

@@ -37,7 +37,7 @@ module TypeProfiler
 
       setup_iseq(insns)
 
-      translate_insns
+      merge_branches
     end
 
     def <=>(other)
@@ -80,7 +80,7 @@ module TypeProfiler
             end
           end
 
-          @insns << [insn, *operands]
+          @insns << [insn, operands]
           @linenos << lineno
         else
           raise "unknown iseq entry: #{ e }"
@@ -90,19 +90,24 @@ module TypeProfiler
       @fargs_format[:opt] = @fargs_format[:opt].map {|l| labels[l] } if @fargs_format[:opt]
     end
 
-    def translate_insns
+    def merge_branches
       @insns.size.times do |i|
-        insn, *operands = @insns[i]
+        insn, operands = @insns[i]
         case insn
         when :branchif
-          @insns[i] = [:branch, :if] + operands
+          @insns[i] = [:branch, [:if] + operands]
         when :branchunless
-          @insns[i] = [:branch, :unless] + operands
+          @insns[i] = [:branch, [:unless] + operands]
         when :branchnil
-          @insns[i] = [:branch, :nil] + operands
+          @insns[i] = [:branch, [:nil] + operands]
         end
       end
+    end
 
+    def determine_stack
+    end
+
+    def make_special_send
       #(@insns.size - 1).times do |i|
       #  insn, *operands = @insns[i]
       #  if insn == :send && operands[0][:mid] == :is_a?
