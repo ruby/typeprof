@@ -93,6 +93,21 @@ module TypeProfiler
       end
     end
 
+    def object_send(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size >= 1
+        mid_ty, = aargs.lead_tys
+      else
+        mid_ty = aargs.rest_ty
+      end
+      aargs = ActualArguments.new(aargs.lead_tys[1..-1], aargs.rest_ty, aargs.kw_ty, aargs.blk_ty)
+      mid_ty.each_child do |mid|
+        if mid.is_a?(Type::Symbol)
+          mid = mid.sym
+          scratch.do_send(recv, mid, aargs, ep, env)
+        end
+      end
+    end
+
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
       arg = aargs.lead_tys[0]
       scratch.include_module(recv, arg)
@@ -395,6 +410,7 @@ module TypeProfiler
     scratch.add_custom_method(klass_obj, :p, Builtin.method(:reveal_type))
     scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
     scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
+    scratch.add_custom_method(klass_obj, :send, Builtin.method(:object_send))
 
     scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
     scratch.add_custom_method(klass_module, :extend, Builtin.method(:module_extend))

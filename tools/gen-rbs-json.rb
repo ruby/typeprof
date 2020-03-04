@@ -105,6 +105,7 @@ class TypeProfiler
                   case type_name.name
                   when :Object
                     next if name == :class
+                    next if name == :send
                   when :Array
                     next unless [:empty?, :size].include?(name)
                   when :Hash

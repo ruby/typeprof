@@ -833,18 +833,7 @@ module TypeProfiler
       when :send
         env, recvs, mid, aargs = setup_actual_arguments(operands, ep, env)
         recvs.each_child do |recv|
-          meths = recv.get_method(mid, self)
-          if meths
-            meths.each do |meth|
-              meth.do_send(recv, mid, aargs, ep, env, self)
-            end
-          else
-            if recv != Type.any # XXX: should be configurable
-              error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
-            end
-            nenv = env.push(Type.any)
-            merge_env(ep.next, nenv)
-          end
+          do_send(recv, mid, aargs, ep, env)
         end
         return
       #when :send_is_a_and_branch
@@ -1351,6 +1340,21 @@ module TypeProfiler
       end
 
       return env, recv, mid, aargs
+    end
+
+    def do_send(recv, mid, aargs, ep, env)
+      meths = recv.get_method(mid, self)
+      if meths
+        meths.each do |meth|
+          meth.do_send(recv, mid, aargs, ep, env, self)
+        end
+      else
+        if recv != Type.any # XXX: should be configurable
+          error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
+        end
+        nenv = env.push(Type.any)
+        merge_env(ep.next, nenv)
+      end
     end
 
     def do_invoke_block(given_block, blk, aargs, ep, env, &ctn)

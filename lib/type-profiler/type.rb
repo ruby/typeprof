@@ -638,7 +638,7 @@ module TypeProfiler
       @blk_ty = blk_ty
     end
 
-    attr_reader :lead_tys, :rest_ty, :blk_ty
+    attr_reader :lead_tys, :rest_ty, :kw_ty, :blk_ty
 
     def globalize(caller_env, visited)
       lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited) }
