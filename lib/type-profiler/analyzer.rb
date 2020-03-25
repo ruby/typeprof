@@ -940,8 +940,11 @@ module TypeProfiler
           # TODO: jump to ensure?
         when 4 # retry
           tmp_ep = ep.outer
-          pp tmp_ep.ctx.iseq.catch_table
-          raise NotImplementedError
+          _type, _iseq, stack_depth, cont = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc].find {|type,| type == :retry }
+          nenv = @return_envs[tmp_ep]
+          nenv, = nenv.pop(nenv.stack.size - stack_depth)
+          tmp_ep = tmp_ep.jump(cont)
+          merge_env(tmp_ep, nenv)
         else
           p throwtype
           raise NotImplementedError

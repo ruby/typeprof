@@ -39,13 +39,11 @@ module TypeProfiler
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        if iseq
-          iseq = ISeq.new(iseq)
-          entry = [type, iseq, labels[cont], stack_depth]
-          labels[first].upto(labels[last]) do |i|
-            @catch_table[i] ||= []
-            @catch_table[i] << entry
-          end
+        iseq = iseq ? ISeq.new(iseq) : nil
+        entry = [type, iseq, labels[cont], stack_depth]
+        labels[first].upto(labels[last]) do |i|
+          @catch_table[i] ||= []
+          @catch_table[i] << entry
         end
       end
 
