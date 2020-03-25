@@ -925,30 +925,31 @@ module TypeProfiler
         throwtype, = operands
         env, (ty,) = env.pop(1)
         _no_escape = !!(throwtype & 0x8000)
-        case throwtype & 0xff
-        when 0 # none
+        throwtype = [:none, :return, :break, :next, :retry, :redo][throwtype & 0xff]
+        case throwtype
+        when :none
 
-        when 1 # return
+        when :return
           ty = globalize_type(ty, env, ep)
           tmp_ep = ep
           tmp_ep = tmp_ep.outer while tmp_ep.outer
           add_return_type!(tmp_ep.ctx, ty)
           return
-        when 2 # break
+        when :break
           tmp_ep = ep.outer
           nenv = @return_envs[tmp_ep].push(ty)
           merge_env(tmp_ep.next, nenv)
           # TODO: jump to ensure?
-        when 3 # next
+        when :next, :redo
           # begin; rescue; next; end
           tmp_ep = ep.outer
-          _type, _iseq, cont, stack_depth = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc].find {|type,| type == :next }
+          _type, _iseq, cont, stack_depth = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc].find {|type,| type == throwtype }
           nenv = @return_envs[tmp_ep]
           nenv, = nenv.pop(nenv.stack.size - stack_depth)
-          nenv = nenv.push(ty)
+          nenv = nenv.push(ty) if throwtype == :next
           tmp_ep = tmp_ep.jump(cont)
           merge_env(tmp_ep, nenv)
-        when 4 # retry
+        when :retry
           tmp_ep = ep.outer
           _type, _iseq, cont, stack_depth = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc].find {|type,| type == :retry }
           nenv = @return_envs[tmp_ep]
