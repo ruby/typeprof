@@ -924,6 +924,7 @@ module TypeProfiler
       when :throw
         throwtype, = operands
         env, (ty,) = env.pop(1)
+        _no_escape = !!(throwtype & 0x8000)
         case throwtype & 0xff
         when 0 # none
 
@@ -938,9 +939,18 @@ module TypeProfiler
           nenv = @return_envs[tmp_ep].push(ty)
           merge_env(tmp_ep.next, nenv)
           # TODO: jump to ensure?
+        when 3 # next
+          # begin; rescue; next; end
+          tmp_ep = ep.outer
+          _type, _iseq, cont, stack_depth = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc].find {|type,| type == :next }
+          nenv = @return_envs[tmp_ep]
+          nenv, = nenv.pop(nenv.stack.size - stack_depth)
+          nenv = nenv.push(ty)
+          tmp_ep = tmp_ep.jump(cont)
+          merge_env(tmp_ep, nenv)
         when 4 # retry
           tmp_ep = ep.outer
-          _type, _iseq, stack_depth, cont = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc].find {|type,| type == :retry }
+          _type, _iseq, cont, stack_depth = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc].find {|type,| type == :retry }
           nenv = @return_envs[tmp_ep]
           nenv, = nenv.pop(nenv.stack.size - stack_depth)
           tmp_ep = tmp_ep.jump(cont)
