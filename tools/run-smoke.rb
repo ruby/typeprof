@@ -27,7 +27,7 @@ files.each do |f|
   begin
     exp = File.foreach(f).drop_while {|s| s.chomp != "__END__" }.drop(1).map {|s| s.chomp }
     act = run(f)
-  rescue RuntimeError, StandardError
+  rescue RuntimeError, StandardError, NotImplementedError
     puts "# NG: #{ f }"
     puts $!.inspect
     $!.backtrace.each {|s| puts s }

@@ -30,12 +30,24 @@ module TypeProfiler
 
       _magic, _major_version, _minor_version, _format_type, _misc,
         @name, @path, @absolute_path, @start_lineno, @type,
-        @locals, @fargs_format, _catch_table, insns = *iseq
+        @locals, @fargs_format, catch_table, insns = *iseq
 
       @insns = []
       @linenos = []
 
-      setup_iseq(insns)
+      labels = setup_iseq(insns)
+
+      @catch_table = []
+      catch_table.map do |type, iseq, first, last, cont, stack_depth|
+        if iseq
+          iseq = ISeq.new(iseq)
+          entry = [type, iseq, labels[cont], stack_depth]
+          labels[first].upto(labels[last]) do |i|
+            @catch_table[i] ||= []
+            @catch_table[i] << entry
+          end
+        end
+      end
 
       merge_branches
     end
@@ -88,6 +100,8 @@ module TypeProfiler
       end
 
       @fargs_format[:opt] = @fargs_format[:opt].map {|l| labels[l] } if @fargs_format[:opt]
+
+      labels
     end
 
     def merge_branches
@@ -124,7 +138,7 @@ module TypeProfiler
       "#{ @path }:#{ @linenos[pc] }"
     end
 
-    attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :fargs_format, :insns, :linenos
+    attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns, :linenos
     attr_reader :id
 
     def pretty_print(q)

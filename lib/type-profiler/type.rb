@@ -495,6 +495,7 @@ module TypeProfiler
       when ::Float
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:float]))
       when ::Class
+        return Type.any if obj < Exception
         raise "unknown class: #{ obj.inspect }" if !obj.equal?(Object)
         Type::Builtin[:obj]
       when ::TrueClass

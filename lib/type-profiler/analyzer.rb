@@ -686,7 +686,7 @@ module TypeProfiler
       insn, operands = ep.ctx.iseq.insns[ep.pc]
 
       if ENV["TP_DEBUG"]
-        p [ep.pc, ep.ctx.iseq.name, ep.source_location, insn, operands]
+        p [ep.pc, ep.ctx.iseq.name, ep.source_location, env.stack.size, insn, operands]
       end
 
       case insn
@@ -832,6 +832,7 @@ module TypeProfiler
         return
       when :send
         env, recvs, mid, aargs = setup_actual_arguments(operands, ep, env)
+        recvs = Type.any if recvs == Type.bot
         recvs.each_child do |recv|
           do_send(recv, mid, aargs, ep, env)
         end
@@ -923,7 +924,9 @@ module TypeProfiler
       when :throw
         throwtype, = operands
         env, (ty,) = env.pop(1)
-        case throwtype
+        case throwtype & 0xff
+        when 0 # none
+
         when 1 # return
           ty = globalize_type(ty, env, ep)
           tmp_ep = ep
@@ -935,6 +938,10 @@ module TypeProfiler
           nenv = @return_envs[tmp_ep].push(ty)
           merge_env(tmp_ep.next, nenv)
           # TODO: jump to ensure?
+        when 4 # retry
+          tmp_ep = ep.outer
+          pp tmp_ep.ctx.iseq.catch_table
+          raise NotImplementedError
         else
           p throwtype
           raise NotImplementedError
@@ -1133,8 +1140,9 @@ module TypeProfiler
           raise NotImplementedError if array
           env, = env.pop(2)
           env = env.push(Type.bool)
-        when 3
-          raise NotImplementedError
+        when 3 # VM_CHECKMATCH_TYPE_RESCUE
+          env, = env.pop(2)
+          env = env.push(Type.bool)
         else
           raise "unknown checkmatch flag"
         end
@@ -1217,6 +1225,25 @@ module TypeProfiler
 
       add_edge(ep, ep)
       merge_env(ep.next, env)
+
+      if ep.ctx.iseq.catch_table[ep.pc]
+        ep.ctx.iseq.catch_table[ep.pc].each do |type, iseq, cont, stack_depth|
+          next if type != :rescue && type != :ensure
+          next if env.stack.size < stack_depth
+          cont_ep = ep.jump(cont)
+          cont_env, = env.pop(env.stack.size - stack_depth)
+          nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
+          nep = ExecutionPoint.new(nctx, 0, cont_ep)
+          locals = [Type.nil] * iseq.locals.size
+          nenv = Env.new(env.recv_ty, env.blk_ty, locals, [], Utils::HashWrapper.new({}))
+          merge_env(nep, nenv)
+          add_callsite!(nep.ctx, nil, cont_ep, cont_env) do |ret_ty, ep, env|
+            nenv, ret_ty = localize_type(ret_ty, env, ep)
+            nenv = nenv.push(ret_ty)
+            merge_env(ep.jump(cont), nenv)
+          end
+        end
+      end
     end
 
     private def do_expand_array(ep, env, elems, num, splat, from_head)
