@@ -65,7 +65,6 @@ class Vec
 #  make_inline_method  :vnormalize
 end
 
-
 class Sphere
   def initialize(center, radius)
     @center = center
@@ -307,3 +306,8 @@ def top
 end
 
 top
+
+if _dummy = false
+  v = Vec.new(0.0, 0.0, 0.0)
+  v.vadd(v)
+end

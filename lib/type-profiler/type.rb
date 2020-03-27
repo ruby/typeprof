@@ -116,9 +116,9 @@ module TypeProfiler
           @types.each {|ty| return ty }
         elsif @types.size == 0
           if @array_elems && !@hash_elems
-            Type::Array.new(@array_elems, Type.any)
+            Type::Array.new(@array_elems, Type::Instance.new(Type::Builtin[:ary]))
           elsif !@array_elems && @hash_elems
-            Type::Hash.new(@hash_elems, Type.any)
+            Type::Hash.new(@hash_elems, Type::Instance.new(Type::Builtin[:hash]))
           else
             self
           end

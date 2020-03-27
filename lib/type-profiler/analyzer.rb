@@ -470,12 +470,18 @@ module TypeProfiler
         self
       else
         if singleton
-          get_singleton_method(klass, old).each do |mdef|
-            @class_defs[klass.idx].add_singleton_method(new, mdef)
+          mdefs = get_singleton_method(klass, old)
+          if mdefs
+            mdefs.each do |mdef|
+              @class_defs[klass.idx].add_singleton_method(new, mdef)
+            end
           end
         else
-          get_method(klass, old).each do |mdef|
-            @class_defs[klass.idx].add_method(new, mdef)
+          mdefs = get_method(klass, old)
+          if mdefs
+            mdefs.each do |mdef|
+              @class_defs[klass.idx].add_method(new, mdef)
+            end
           end
         end
       end
@@ -653,12 +659,12 @@ module TypeProfiler
           step(@ep) # TODO: deletemin
         end
         begin
-          puts "trigger dummy execution: rest #{ @pending_dummy_executions.size }" if ENV["TP_DEBUG"]
           iseq, dummy_executions = @pending_dummy_executions.first
           break if !iseq
           @pending_dummy_executions.delete(iseq)
         end while @executed_iseqs.include?(iseq)
         break if !iseq
+        puts "DEBUG: trigger dummy execution (#{ iseq.name }): rest #{ @pending_dummy_executions.size }" if ENV["TP_DEBUG"]
         dummy_executions.each do |ep, env|
           merge_env(ep, env)
         end
@@ -712,7 +718,8 @@ module TypeProfiler
       insn, operands = ep.ctx.iseq.insns[ep.pc]
 
       if ENV["TP_DEBUG"]
-        p [ep.pc, ep.ctx.iseq.name, ep.source_location, env.stack.size, insn, operands]
+        puts "DEBUG: stack=%p" % [env.stack]
+        puts "DEBUG: %s (%s) PC=%d insn=%s sp=%d" % [ep.source_location, ep.ctx.iseq.name, ep.pc, insn, env.stack.size]
       end
 
       case insn
@@ -1427,7 +1434,7 @@ module TypeProfiler
         nctx = Context.new(blk_iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
         nep = ExecutionPoint.new(nctx, 0, ep)
         nlocals = [Type.any] * blk_iseq.locals.size
-        nenv = Env.new(env.recv_ty, Type.any, nlocals, [], Utils::HashWrapper.new({}))
+        nenv = Env.new(env.recv_ty, Type.any, nlocals, [], nil)
         pend_dummy_execution(blk_iseq, nep, nenv)
         merge_return_env(ep) {|tenv| tenv ? tenv.merge(env) : env }
       end
