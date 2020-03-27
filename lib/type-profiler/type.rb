@@ -114,6 +114,14 @@ module TypeProfiler
       def normalize
         if @types.size == 1 && !@array_elems && !@hash_elems
           @types.each {|ty| return ty }
+        elsif @types.size == 0
+          if @array_elems && !@hash_elems
+            Type::Array.new(@array_elems, Type.any)
+          elsif !@array_elems && @hash_elems
+            Type::Hash.new(@hash_elems, Type.any)
+          else
+            self
+          end
         else
           self
         end
@@ -683,7 +691,7 @@ module TypeProfiler
       if @rest_ty
         lower_bound = [lead_num + post_num - @lead_tys.size, 0].max
         upper_bound = lead_num + post_num - @lead_tys.size + (opt ? opt.size - 1 : 0) + (rest_acceptable ? 1 : 0)
-        rest_elem = @rest_ty.eql?(Type.any) ? Type.any : @rest_ty.elems.squash
+        rest_elem = @rest_ty.is_a?(Type::Array) ? @rest_ty.elems.squash : Type.any
       else
         lower_bound = upper_bound = 0
       end

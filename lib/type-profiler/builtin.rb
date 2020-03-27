@@ -2,8 +2,11 @@ module TypeProfiler
   module Builtin
     module_function
 
-    def get_sym(target, ty)
-      raise "symbol expected" unless ty.is_a?(Type::Symbol)
+    def get_sym(target, ty, ep, scratch)
+      unless ty.is_a?(Type::Symbol)
+        scratch.warn(ep, "symbol expected")
+        return
+      end
       sym = ty.sym
       unless sym
         scratch.warn(ep, "dynamic symbol is given to #{ target }; ignored")
@@ -14,8 +17,8 @@ module TypeProfiler
 
     def vmcore_set_method_alias(recv, mid, aargs, ep, env, scratch, &ctn)
       klass, new_mid, old_mid = aargs.lead_tys
-      new_sym = get_sym("alias", new_mid) or return
-      old_sym = get_sym("alias", old_mid) or return
+      new_sym = get_sym("alias", new_mid, ep, scratch) or return
+      old_sym = get_sym("alias", old_mid, ep, scratch) or return
       scratch.alias_method(klass, ep.ctx.singleton, new_sym, old_sym)
       ctn[Type.nil, ep, env]
     end
@@ -132,7 +135,7 @@ module TypeProfiler
 
     def module_attr_accessor(recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        sym = get_sym("attr_accessor", aarg) or next
+        sym = get_sym("attr_accessor", aarg, ep, scratch) or next
         cref = ep.ctx.cref
         add_attr_reader(sym, cref, scratch)
         add_attr_writer(sym, cref, scratch)
@@ -142,7 +145,7 @@ module TypeProfiler
 
     def module_attr_reader(recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        sym = get_sym("attr_reader", aarg) or next
+        sym = get_sym("attr_reader", aarg, ep, scratch) or next
         cref = ep.ctx.cref
         add_attr_reader(sym, cref, scratch)
       end
@@ -151,7 +154,7 @@ module TypeProfiler
 
     def module_attr_writer(recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        sym = get_sym("attr_writer", aarg) or next
+        sym = get_sym("attr_writer", aarg, ep, scratch) or next
         cref = ep.ctx.cref
         add_attr_writer(sym, cref, scratch)
       end
@@ -257,7 +260,8 @@ module TypeProfiler
 
     def array_pop(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 0
-        env[Type.any, ep, env]
+        ctn[Type.any, ep, env]
+        return
       end
 
       ty = scratch.get_array_elem_type(env, ep, recv.id)
@@ -355,7 +359,7 @@ module TypeProfiler
       end
 
       result = Type::Instance.new(Type::Builtin[:true])
-      scratch[result, ep, env]
+      ctn[result, ep, env]
     end
   end
 

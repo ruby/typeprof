@@ -195,6 +195,9 @@ module TypeProfiler
 
       @errors = []
       @backward_edges = {}
+
+      @pending_dummy_executions = {}
+      @executed_iseqs = Utils::MutableSet.new
     end
 
     attr_reader :return_envs
@@ -483,6 +486,8 @@ module TypeProfiler
     end
 
     def add_callsite!(callee_ctx, fargs, caller_ep, caller_env, &ctn)
+      @executed_iseqs << callee_ctx.iseq
+
       @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx][caller_ep] = ctn
       merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
@@ -508,7 +513,7 @@ module TypeProfiler
       @sig_ret[callee_ctx] ||= Type.bot
       @sig_ret[callee_ctx] = @sig_ret[callee_ctx].union(ret_ty)
 
-      #@callsites[callee_ctx] ||= {} # needed?
+      @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx].each do |caller_ep, ctn|
         ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
       end
@@ -636,15 +641,27 @@ module TypeProfiler
     def type_profile
       counter = 0
       stat_eps = Utils::MutableSet.new
-      until @worklist.empty?
-        counter += 1
-        if counter % 1000 == 0
-          puts "iter %d, remain: %d" % [counter, @worklist.size]
+      while true
+        until @worklist.empty?
+          counter += 1
+          if counter % 1000 == 0
+            puts "iter %d, remain: %d" % [counter, @worklist.size]
+          end
+          @ep = @worklist.deletemin
+          @env = @ep2env[@ep]
+          stat_eps << @ep
+          step(@ep) # TODO: deletemin
         end
-        @ep = @worklist.deletemin
-        @env = @ep2env[@ep]
-        stat_eps << @ep
-        step(@ep) # TODO: deletemin
+        begin
+          puts "trigger dummy execution: rest #{ @pending_dummy_executions.size }" if ENV["TP_DEBUG"]
+          iseq, dummy_executions = @pending_dummy_executions.first
+          break if !iseq
+          @pending_dummy_executions.delete(iseq)
+        end while @executed_iseqs.include?(iseq)
+        break if !iseq
+        dummy_executions.each do |ep, env|
+          merge_env(ep, env)
+        end
       end
       RubySignatureExporter.new(
         self, @errors,
@@ -675,6 +692,15 @@ module TypeProfiler
         return env, ty
       else
         return ty.localize(env, alloc_site)
+      end
+    end
+
+    def pend_dummy_execution(iseq, nep, nenv)
+      @pending_dummy_executions[iseq] ||= {}
+      if @pending_dummy_executions[iseq][nep]
+        @pending_dummy_executions[iseq][nep] = @pending_dummy_executions[iseq][nep].merge(nenv)
+      else
+        @pending_dummy_executions[iseq][nep] = nenv
       end
     end
 
@@ -764,11 +790,27 @@ module TypeProfiler
         else
           add_iseq_method(cref.klass, mid, iseq, cref)
         end
+
+        # pending dummy execution
+        nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.singleton, mid)
+        nep = ExecutionPoint.new(nctx, 0, nil)
+        nlocals = [Type.any] * iseq.locals.size
+        recv = env.recv_ty
+        recv = Type::Instance.new(recv) if ep.ctx.singleton && recv != Type.any # why?
+        nenv = Env.new(recv, Type.any, nlocals, [], Utils::HashWrapper.new({}))
+        pend_dummy_execution(iseq, nep, nenv)
       when :definesmethod
         mid, iseq = operands
         env, (recv,) = env.pop(1)
         cref = ep.ctx.cref
         add_singleton_iseq_method(recv, mid, iseq, cref)
+
+        # pending dummy execution
+        nctx = Context.new(iseq, ep.ctx.cref, true, mid)
+        nep = ExecutionPoint.new(nctx, 0, nil)
+        nlocals = [Type.any] * iseq.locals.size
+        nenv = Env.new(recv, Type.any, nlocals, [], Utils::HashWrapper.new({}))
+        pend_dummy_execution(iseq, nep, nenv)
       when :defineclass
         id, iseq, flags = operands
         env, (cbase, superclass) = env.pop(2)
@@ -886,7 +928,7 @@ module TypeProfiler
         when blk.eql?(Type.nil)
           env = env.push(Type.any)
         when blk.eql?(Type.any)
-          warn(ep, "block is any")
+          #warn(ep, "block is any")
           env = env.push(Type.any)
         else # Proc
           blk_nil = Type.nil
@@ -1151,7 +1193,7 @@ module TypeProfiler
         when 1
           raise NotImplementedError
         when 2 # VM_CHECKMATCH_TYPE_CASE
-          raise NotImplementedError if array
+          #raise NotImplementedError if array
           env, = env.pop(2)
           env = env.push(Type.bool)
         when 3 # VM_CHECKMATCH_TYPE_RESCUE
@@ -1208,11 +1250,11 @@ module TypeProfiler
           if ary2.is_a?(Type::LocalArray)
             elems2 = get_container_elem_types(env, ep, ary2.id)
             elems = Type::Array::Elements.new([], elems1.squash.union(elems2.squash))
-            env = env.update_container_elem_types(ary1.id, elems)
+            env = update_container_elem_types(env, ep, ary1.id) { elems }
             env = env.push(ary1)
           else
             elems = Type::Array::Elements.new([], Type.any)
-            env = env.update_container_elem_types(ary1.id, elems)
+            env = update_container_elem_types(env, ep, ary1.id) { elems }
             env = env.push(ary1)
           end
         else
@@ -1378,6 +1420,16 @@ module TypeProfiler
         aargs = ActualArguments.new(aargs, nil, kw_ty, blk_ty)
       else
         aargs = ActualArguments.new(aargs, nil, nil, blk_ty)
+      end
+
+      if blk_iseq
+        # pending dummy execution
+        nctx = Context.new(blk_iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
+        nep = ExecutionPoint.new(nctx, 0, ep)
+        nlocals = [Type.any] * blk_iseq.locals.size
+        nenv = Env.new(env.recv_ty, Type.any, nlocals, [], Utils::HashWrapper.new({}))
+        pend_dummy_execution(blk_iseq, nep, nenv)
+        merge_return_env(ep) {|tenv| tenv ? tenv.merge(env) : env }
       end
 
       return env, recv, mid, aargs
