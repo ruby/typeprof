@@ -112,6 +112,7 @@ class TypeProfiler
                     next unless [:empty?, :size].include?(name)
                   when :Module
                     next if name == :include
+                    next if name == :module_function
                   when :Proc
                     next if name == :call || name == :[]
                   end

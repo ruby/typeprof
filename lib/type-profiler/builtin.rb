@@ -123,6 +123,21 @@ module TypeProfiler
       ctn[recv, ep, env]
     end
 
+    def module_module_function(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.empty?
+        #raise NotImplementedError
+      else
+        aargs.lead_tys.each do |aarg|
+          sym = get_sym("module_function", aarg, ep, scratch) or next
+          meths = Type::Instance.new(recv).get_method(sym, scratch)
+          meths.each do |mdef|
+            scratch.add_singleton_method(recv, sym, mdef)
+          end
+        end
+      end
+      ctn[recv, ep, env]
+    end
+
     def add_attr_reader(sym, cref, scratch)
       iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][1][1]
       scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
@@ -418,6 +433,7 @@ module TypeProfiler
 
     scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
     scratch.add_custom_method(klass_module, :extend, Builtin.method(:module_extend))
+    scratch.add_custom_method(klass_module, :module_function, Builtin.method(:module_module_function))
 
     scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
     scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
