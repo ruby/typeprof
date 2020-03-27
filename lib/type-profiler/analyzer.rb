@@ -2,19 +2,20 @@ module TypeProfiler
   class CRef
     include Utils::StructuralEquality
 
-    def initialize(outer, klass)
+    def initialize(outer, klass, singleton)
       @outer = outer
       @klass = klass
+      @singleton = singleton
       # flags
       # scope_visi (= method_visi * module_func_flag)
       # refinements
     end
 
-    def extend(klass)
-      CRef.new(self, klass)
+    def extend(klass, singleton)
+      CRef.new(self, klass, singleton)
     end
 
-    attr_reader :outer, :klass
+    attr_reader :outer, :klass, :singleton
 
     def pretty_print(q)
       q.text "CRef["
@@ -26,14 +27,13 @@ module TypeProfiler
   class Context
     include Utils::StructuralEquality
 
-    def initialize(iseq, cref, singleton, mid)
+    def initialize(iseq, cref, mid)
       @iseq = iseq
       @cref = cref
-      @singleton = singleton
       @mid = mid
     end
 
-    attr_reader :iseq, :cref, :singleton, :mid
+    attr_reader :iseq, :cref, :mid
   end
 
   class ExecutionPoint
@@ -407,7 +407,7 @@ module TypeProfiler
       idx = @class_defs[idx].superclass
       while idx
         class_def = @class_defs[idx]
-        mthd = ctx.singleton ? class_def.get_singleton_method(mid) : class_def.get_method(mid)
+        mthd = ctx.cref.singleton ? class_def.get_singleton_method(mid) : class_def.get_method(mid)
         return mthd if mthd
         idx = class_def.superclass
       end
@@ -459,11 +459,11 @@ module TypeProfiler
     end
 
     def add_iseq_method(klass, mid, iseq, cref)
-      add_method(klass, mid, ISeqMethodDef.new(iseq, cref, false))
+      add_method(klass, mid, ISeqMethodDef.new(iseq, cref))
     end
 
     def add_singleton_iseq_method(klass, mid, iseq, cref)
-      add_singleton_method(klass, mid, ISeqMethodDef.new(iseq, cref, true))
+      add_singleton_method(klass, mid, ISeqMethodDef.new(iseq, cref))
     end
 
     def add_typed_method(recv_ty, mid, fargs, ret_ty)
@@ -809,7 +809,8 @@ module TypeProfiler
       when :definemethod
         mid, iseq = operands
         cref = ep.ctx.cref
-        if ep.ctx.singleton
+        #p [env.static_env.recv_ty, mid], cref
+        if ep.ctx.cref.singleton
           add_singleton_iseq_method(cref.klass, mid, iseq, cref)
         else
           add_iseq_method(cref.klass, mid, iseq, cref)
@@ -819,11 +820,11 @@ module TypeProfiler
         end
 
         # pending dummy execution
-        nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.singleton, mid)
+        nctx = Context.new(iseq, ep.ctx.cref, mid)
         nep = ExecutionPoint.new(nctx, 0, nil)
         nlocals = [Type.any] * iseq.locals.size
         recv = env.static_env.recv_ty
-        recv = Type::Instance.new(recv) if ep.ctx.singleton && recv != Type.any # why?
+        recv = Type::Instance.new(recv) if ep.ctx.cref.singleton && recv != Type.any # why?
         nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
         pend_dummy_execution(iseq, nep, nenv)
       when :definesmethod
@@ -833,7 +834,7 @@ module TypeProfiler
         add_singleton_iseq_method(recv, mid, iseq, cref)
 
         # pending dummy execution
-        nctx = Context.new(iseq, ep.ctx.cref, true, mid)
+        nctx = Context.new(iseq, ep.ctx.cref, mid)
         nep = ExecutionPoint.new(nctx, 0, nil)
         nlocals = [Type.any] * iseq.locals.size
         nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
@@ -885,10 +886,10 @@ module TypeProfiler
         else
           raise NotImplementedError, "unknown defineclass flag: #{ flags }"
         end
-        ncref = ep.ctx.cref.extend(klass)
+        ncref = ep.ctx.cref.extend(klass, singleton)
         recv = singleton ? Type.any : klass
         blk = env.static_env.blk_ty
-        nctx = Context.new(iseq, ncref, singleton, nil)
+        nctx = Context.new(iseq, ncref, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
         locals = [Type.nil] * iseq.locals.size
         nenv = Env.new(StaticEnv.new(recv, blk, false), locals, [], Utils::HashWrapper.new({}))
@@ -1033,7 +1034,7 @@ module TypeProfiler
       when :once
         iseq, = operands
 
-        nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
+        nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.mid)
         nep = ExecutionPoint.new(nctx, 0, ep)
         raise if iseq.locals != []
         nenv = Env.new(env.static_env, [], [], nil)
@@ -1313,7 +1314,7 @@ module TypeProfiler
           next if env.stack.size < stack_depth
           cont_ep = ep.jump(cont)
           cont_env, = env.pop(env.stack.size - stack_depth)
-          nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
+          nctx = Context.new(iseq, ep.ctx.cref, ep.ctx.mid)
           nep = ExecutionPoint.new(nctx, 0, cont_ep)
           locals = [Type.nil] * iseq.locals.size
           nenv = Env.new(env.static_env, locals, [], Utils::HashWrapper.new({}))
@@ -1449,7 +1450,7 @@ module TypeProfiler
 
       if blk_iseq
         # pending dummy execution
-        nctx = Context.new(blk_iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
+        nctx = Context.new(blk_iseq, ep.ctx.cref, ep.ctx.mid)
         nep = ExecutionPoint.new(nctx, 0, ep)
         nlocals = [Type.any] * blk_iseq.locals.size
         nsenv = StaticEnv.new(env.static_env.recv_ty, Type.any, env.static_env.mod_func)
@@ -1509,7 +1510,7 @@ module TypeProfiler
         locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
         env_blk = blk_env.static_env.blk_ty
         nfargs = FormalArguments.new(aargs_, [], nil, [], nil, nil, env_blk) # XXX: aargs_ -> fargs
-        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil, nil)
+        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(blk_env.static_env, locals, [], nil)
         alloc_site = AllocationSite.new(nep)

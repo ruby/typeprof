@@ -128,7 +128,7 @@ module TypeProfiler
         entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
 
         method_name = ctx.mid
-        method_name = "self.#{ method_name }" if ctx.singleton
+        #method_name = "self.#{ method_name }" if ctx.singleton
 
         fargs = fargs.screen_name(@scratch)
         if @yields[ctx]

@@ -19,7 +19,7 @@ module TypeProfiler
       klass, new_mid, old_mid = aargs.lead_tys
       new_sym = get_sym("alias", new_mid, ep, scratch) or return
       old_sym = get_sym("alias", old_mid, ep, scratch) or return
-      scratch.alias_method(klass, ep.ctx.singleton, new_sym, old_sym)
+      scratch.alias_method(klass, ep.ctx.cref.singleton, new_sym, old_sym)
       ctn[Type.nil, ep, env]
     end
 

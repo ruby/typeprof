@@ -16,11 +16,10 @@ module TypeProfiler
   end
 
   class ISeqMethodDef < MethodDef
-    def initialize(iseq, cref, singleton)
+    def initialize(iseq, cref)
       @iseq = iseq
       raise if iseq.nil?
       @cref = cref
-      @singleton = singleton
     end
 
     def do_send_core(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
@@ -41,7 +40,7 @@ module TypeProfiler
           next
         end
 
-        ctx = Context.new(@iseq, @cref, @singleton, mid) # XXX: to support opts, rest, etc
+        ctx = Context.new(@iseq, @cref, mid) # XXX: to support opts, rest, etc
         callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
         locals = [Type.nil] * @iseq.locals.size
@@ -108,7 +107,7 @@ module TypeProfiler
         ret_ty = recv if ret_ty.is_a?(Type::Self)
         found = true
         if aargs.blk_ty.is_a?(Type::ISeqProc)
-          dummy_ctx = Context.new(nil, nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo
+          dummy_ctx = Context.new(nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
           dummy_env = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), [], [], Utils::HashWrapper.new({}))
           if fargs.blk_ty.is_a?(Type::TypedProc)
