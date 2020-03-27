@@ -125,7 +125,9 @@ module TypeProfiler
 
     def module_module_function(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.empty?
-        #raise NotImplementedError
+        senv = StaticEnv.new(env.static_env.recv_ty, env.static_env.blk_ty, true)
+        env = Env.new(senv, env.locals, env.stack, env.type_params)
+        ctn[recv, ep, env]
       else
         aargs.lead_tys.each do |aarg|
           sym = get_sym("module_function", aarg, ep, scratch) or next
@@ -134,8 +136,8 @@ module TypeProfiler
             scratch.add_singleton_method(recv, sym, mdef)
           end
         end
+        ctn[recv, ep, env]
       end
-      ctn[recv, ep, env]
     end
 
     def add_attr_reader(sym, cref, scratch)

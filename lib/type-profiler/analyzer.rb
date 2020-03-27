@@ -72,17 +72,19 @@ module TypeProfiler
   class StaticEnv
     include Utils::StructuralEquality
 
-    def initialize(recv_ty, blk_ty)
+    def initialize(recv_ty, blk_ty, mod_func)
       @recv_ty = recv_ty
       @blk_ty = blk_ty
+      @mod_func = mod_func
     end
 
-    attr_reader :recv_ty, :blk_ty
+    attr_reader :recv_ty, :blk_ty, :mod_func
 
     def merge(other)
       recv_ty = @recv_ty.union(other.recv_ty)
       blk_ty = @blk_ty.union(other.blk_ty)
-      StaticEnv.new(recv_ty, blk_ty)
+      mod_func = @mod_func & other.mod_func # ??
+      StaticEnv.new(recv_ty, blk_ty, mod_func)
     end
   end
 
@@ -811,6 +813,9 @@ module TypeProfiler
           add_singleton_iseq_method(cref.klass, mid, iseq, cref)
         else
           add_iseq_method(cref.klass, mid, iseq, cref)
+          if env.static_env.mod_func
+            add_singleton_iseq_method(cref.klass, mid, iseq, cref)
+          end
         end
 
         # pending dummy execution
@@ -819,7 +824,7 @@ module TypeProfiler
         nlocals = [Type.any] * iseq.locals.size
         recv = env.static_env.recv_ty
         recv = Type::Instance.new(recv) if ep.ctx.singleton && recv != Type.any # why?
-        nenv = Env.new(StaticEnv.new(recv, Type.any), nlocals, [], Utils::HashWrapper.new({}))
+        nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
         pend_dummy_execution(iseq, nep, nenv)
       when :definesmethod
         mid, iseq = operands
@@ -831,7 +836,7 @@ module TypeProfiler
         nctx = Context.new(iseq, ep.ctx.cref, true, mid)
         nep = ExecutionPoint.new(nctx, 0, nil)
         nlocals = [Type.any] * iseq.locals.size
-        nenv = Env.new(StaticEnv.new(recv, Type.any), nlocals, [], Utils::HashWrapper.new({}))
+        nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
         pend_dummy_execution(iseq, nep, nenv)
       when :defineclass
         id, iseq, flags = operands
@@ -886,7 +891,7 @@ module TypeProfiler
         nctx = Context.new(iseq, ncref, singleton, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
         locals = [Type.nil] * iseq.locals.size
-        nenv = Env.new(StaticEnv.new(recv, blk), locals, [], Utils::HashWrapper.new({}))
+        nenv = Env.new(StaticEnv.new(recv, blk, false), locals, [], Utils::HashWrapper.new({}))
         merge_env(nep, nenv)
         add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)
@@ -1447,7 +1452,8 @@ module TypeProfiler
         nctx = Context.new(blk_iseq, ep.ctx.cref, ep.ctx.singleton, ep.ctx.mid)
         nep = ExecutionPoint.new(nctx, 0, ep)
         nlocals = [Type.any] * blk_iseq.locals.size
-        nenv = Env.new(StaticEnv.new(env.static_env.recv_ty, Type.any), nlocals, [], nil)
+        nsenv = StaticEnv.new(env.static_env.recv_ty, Type.any, env.static_env.mod_func)
+        nenv = Env.new(nsenv, nlocals, [], nil)
         pend_dummy_execution(blk_iseq, nep, nenv)
         merge_return_env(ep) {|tenv| tenv ? tenv.merge(env) : env }
       end
