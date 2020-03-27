@@ -59,7 +59,7 @@ module TypeProfiler
     end
 
     def proc_call(recv, mid, aargs, ep, env, scratch, &ctn)
-      given_block = env.blk_ty == recv
+      given_block = env.static_env.blk_ty == recv
       scratch.do_invoke_block(given_block, recv, aargs, ep, env, &ctn)
     end
 

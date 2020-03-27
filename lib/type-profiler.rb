@@ -20,7 +20,7 @@ module TypeProfiler
 
     prologue_ctx = Context.new(nil, nil, nil, nil)
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
-    prologue_env = Env.new(:top, Type.nil, [], [], Utils::HashWrapper.new({}))
+    prologue_env = Env.new(StaticEnv.new(:top, Type.nil), [], [], Utils::HashWrapper.new({}))
     scratch.add_callsite!(main_ep.ctx, nil, prologue_ep, prologue_env) {|ty, ep| }
     scratch.type_profile
   end
@@ -31,7 +31,7 @@ module TypeProfiler
     ctx = Context.new(iseq, cref, nil, nil)
     ep = ExecutionPoint.new(ctx, 0, nil)
     locals = [Type.nil] * iseq.locals.size
-    env = Env.new(recv, Type.nil, locals, [], Utils::HashWrapper.new({}))
+    env = Env.new(StaticEnv.new(recv, Type.nil), locals, [], Utils::HashWrapper.new({}))
 
     return ep, env
   end

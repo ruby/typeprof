@@ -45,7 +45,7 @@ module TypeProfiler
         callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
         locals = [Type.nil] * @iseq.locals.size
-        nenv = Env.new(recv, fargs.blk_ty, locals, [], Utils::HashWrapper.new({}))
+        nenv = Env.new(StaticEnv.new(recv, fargs.blk_ty), locals, [], Utils::HashWrapper.new({}))
         alloc_site = AllocationSite.new(callee_ep)
         idx = 0
         fargs.lead_tys.each_with_index do |ty, i|
@@ -110,7 +110,7 @@ module TypeProfiler
         if aargs.blk_ty.is_a?(Type::ISeqProc)
           dummy_ctx = Context.new(nil, nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
-          dummy_env = Env.new(recv, fargs.blk_ty, [], [], Utils::HashWrapper.new({}))
+          dummy_env = Env.new(StaticEnv.new(recv, fargs.blk_ty), [], [], Utils::HashWrapper.new({}))
           if fargs.blk_ty.is_a?(Type::TypedProc)
             scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
             nfargs = fargs.blk_ty.fargs
