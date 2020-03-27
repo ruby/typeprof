@@ -25,11 +25,11 @@ Bar.new.bar
 
 __END__
 # Classes
-class Foo
-  foo : () -> (:sym2 | Integer)
-end
 class Common
   func : (:sym | String, &(Proc[(Integer) -> Integer] & Proc[(Integer) -> :sym2])) -> (:sym2 | Integer)
+end
+class Foo
+  foo : () -> (:sym2 | Integer)
 end
 class Bar
   bar : () -> (:sym2 | Integer)

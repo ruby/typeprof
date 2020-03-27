@@ -15,6 +15,6 @@ foo(42)
 __END__
 # Classes
 class Object
-  foo : (Integer) -> (Integer | String)
   bar : (Integer | String) -> (Integer | String)
+  foo : (Integer) -> (Integer | String)
 end

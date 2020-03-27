@@ -9,5 +9,5 @@ end
 __END__
 # Classes
 class Object
-  foo : (Integer) -> Integer
+  foo : (Integer) -> (Integer | any)
 end

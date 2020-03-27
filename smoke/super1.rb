@@ -33,15 +33,15 @@ Baz.new.f(A.new)
 
 __END__
 # Classes
-class Baz
-  f : (A) -> Z
-end
-class Bar
-  f : (B) -> Y
+class Object
+  log : (Baz) -> NilClass
 end
 class Foo
   f : (C) -> X
 end
-class Object
-  log : (Baz) -> NilClass
+class Bar
+  f : (B) -> Y
+end
+class Baz
+  f : (A) -> Z
 end

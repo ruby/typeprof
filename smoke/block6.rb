@@ -15,6 +15,6 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> (Integer | String)
   bar : (&Proc[() -> String]) -> String
+  foo : () -> (Integer | String)
 end

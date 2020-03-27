@@ -203,6 +203,8 @@ module TypeProfiler
 
       @class_defs = {}
 
+      @iseq_method_calls = {}
+
       @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
       @ivar_table = VarTable.new
       @cvar_table = VarTable.new
@@ -253,7 +255,7 @@ module TypeProfiler
         @singleton_methods = {}
       end
 
-      attr_reader :kind, :included_modules, :name, :methods, :superclass
+      attr_reader :kind, :included_modules, :name, :methods, :singleton_methods, :superclass
 
       def include_module(mod)
         # XXX: need to check if mod is already included by the ancestors?
@@ -401,13 +403,13 @@ module TypeProfiler
       get_method(Type::Builtin[:class], mid)
     end
 
-    def get_super_method(ctx)
+    def get_super_method(ctx, singleton)
       idx = ctx.cref.klass.idx
       mid = ctx.mid
       idx = @class_defs[idx].superclass
       while idx
         class_def = @class_defs[idx]
-        mthd = ctx.cref.singleton ? class_def.get_singleton_method(mid) : class_def.get_method(mid)
+        mthd = singleton ? class_def.get_singleton_method(mid) : class_def.get_method(mid)
         return mthd if mthd
         idx = class_def.superclass
       end
@@ -506,6 +508,11 @@ module TypeProfiler
 
     def add_edge(ep, next_ep)
       (@backward_edges[next_ep] ||= {})[ep] = true
+    end
+
+    def add_iseq_method_call!(iseq_mdef, ctx)
+      @iseq_method_calls[iseq_mdef] ||= Utils::MutableSet.new
+      @iseq_method_calls[iseq_mdef] << ctx
     end
 
     def add_callsite!(callee_ctx, fargs, caller_ep, caller_env, &ctn)
@@ -686,11 +693,12 @@ module TypeProfiler
           merge_env(ep, env)
         end
       end
+
       RubySignatureExporter.new(
         self, @errors,
         @gvar_table.write, @ivar_table.write, @cvar_table.write,
         @include_relations,
-        @sig_fargs, @sig_ret, @yields, @backward_edges,
+        @class_defs, @iseq_method_calls, @sig_fargs, @sig_ret, @yields, @backward_edges,
       ).show(stat_eps)
     end
 
@@ -970,8 +978,9 @@ module TypeProfiler
 
         recv = env.static_env.recv_ty
         mid  = ep.ctx.mid
+        singleton = !recv.is_a?(Type::Instance) # TODO: any?
         # XXX: need to support included module...
-        meths = get_super_method(ep.ctx) # TODO: multiple return values
+        meths = get_super_method(ep.ctx, singleton) # TODO: multiple return values
         if meths
           meths.each do |meth|
             meth.do_send(recv, mid, aargs, ep, env, self)

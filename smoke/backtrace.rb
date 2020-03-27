@@ -25,7 +25,7 @@ __END__
 smoke/backtrace.rb:2: [error] undefined method: Object#unknown_method
 # Classes
 class Object
-  baz : () -> any
-  bar : () -> any
   foo : () -> any
+  bar : () -> any
+  baz : () -> any
 end

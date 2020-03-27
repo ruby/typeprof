@@ -15,6 +15,6 @@ bar
 __END__
 # Classes
 class Object
-  bar : () -> (:sym | Integer)
   foo : (:sym | Integer | NilClass | String) -> Integer
+  bar : () -> (:sym | Integer)
 end

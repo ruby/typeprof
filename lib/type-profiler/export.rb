@@ -1,8 +1,15 @@
 module TypeProfiler
   class RubySignatureExporter
-    def initialize(scratch, errors, gvar_write, ivar_write, cvar_write, include_relations, sig_fargs, sig_ret, yields, backward_edges)
+    def initialize(
+      scratch, errors,
+      gvar_write, ivar_write, cvar_write,
+      include_relations,
+      class_defs, iseq_method_calls, sig_fargs, sig_ret, yields, backward_edges
+    )
       @scratch = scratch
       @errors = errors
+      @class_defs = class_defs
+      @iseq_method_calls = iseq_method_calls
       @sig_fargs = sig_fargs
       @sig_ret = sig_ret
       @yields = yields
@@ -121,25 +128,37 @@ module TypeProfiler
         entry = show_class_or_module(Type::Instance.new(klass), classes)
         entry[:cvars][var] = ty.screen_name(@scratch)
       end
-      @sig_fargs.each do |ctx, fargs|
-        next unless ctx.mid && ctx.iseq && fargs
-        ret_tys = @sig_ret[ctx]
+      @class_defs.each_value do |class_def|
+        [[class_def.methods, false], [class_def.singleton_methods, true]].each do |methods, singleton|
+          methods.each do |mid, mdefs|
+            mdefs.each do |mdef|
+              ctxs = @iseq_method_calls[mdef]
+              next unless ctxs
 
-        entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
+              ctxs.each do |ctx|
+                next if mid != ctx.mid
+                fargs = @sig_fargs[ctx]
+                ret_tys = @sig_ret[ctx]
 
-        method_name = ctx.mid
-        #method_name = "self.#{ method_name }" if ctx.singleton
+                entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
 
-        fargs = fargs.screen_name(@scratch)
-        if @yields[ctx]
-          fargs << show_block(ctx)
+                method_name = ctx.mid
+                method_name = "self.#{ method_name }" if singleton
+
+                fargs = fargs.screen_name(@scratch)
+                if @yields[ctx]
+                  fargs << show_block(ctx)
+                end
+
+                entry[:methods][method_name] ||= []
+                entry[:methods][method_name] << show_signature(fargs, ret_tys)
+
+                #stat_classes[recv] = true
+                #stat_methods[[recv, method_name]] = true
+              end
+            end
+          end
         end
-
-        entry[:methods][method_name] ||= []
-        entry[:methods][method_name] << show_signature(fargs, ret_tys)
-
-        #stat_classes[recv] = true
-        #stat_methods[[recv, method_name]] = true
       end
 
       puts "# Classes" # and Modules

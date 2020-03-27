@@ -33,6 +33,6 @@ class Foo
   a : () -> Integer
   b= : (Integer) -> Integer
   get_b : () -> Integer
-  c= : (Integer) -> Integer
   c : () -> Integer
+  c= : (Integer) -> Integer
 end

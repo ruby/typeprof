@@ -23,4 +23,5 @@ class Bar
 end
 module Foo
   foo : (:x | :y) -> (:x | :y)
+  self.foo : (:x | :y) -> (:x | :y)
 end

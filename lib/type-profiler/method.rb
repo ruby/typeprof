@@ -84,6 +84,7 @@ module TypeProfiler
         nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
 
         scratch.merge_env(callee_ep, nenv)
+        scratch.add_iseq_method_call!(self, callee_ep.ctx)
         scratch.add_callsite!(callee_ep.ctx, fargs, caller_ep, caller_env, &ctn)
       end
     end

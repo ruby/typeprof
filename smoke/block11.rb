@@ -31,9 +31,9 @@ bar
 __END__
 # Classes
 class Object
-  foo : () -> (Integer | NilClass)
   log1 : (Integer | NilClass) -> NilClass
-  bar : () -> (Integer | NilClass)
-  test_yield : (&Proc[() -> NilClass]) -> NilClass
   log2 : (Integer | NilClass) -> NilClass
+  foo : () -> (Integer | NilClass)
+  test_yield : (&Proc[() -> NilClass]) -> NilClass
+  bar : () -> (Integer | NilClass)
 end
