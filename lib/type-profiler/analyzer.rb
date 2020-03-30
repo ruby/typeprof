@@ -213,6 +213,7 @@ module TypeProfiler
       @include_relations = {}
 
       @errors = []
+      @reveal_types = {}
       @backward_edges = {}
 
       @pending_dummy_executions = {}
@@ -616,9 +617,14 @@ module TypeProfiler
       @errors << [ep, "[warning] " + msg]
     end
 
-    def reveal_type(ep, msg)
+    def reveal_type(ep, ty)
+      key = ep.source_location
+      if @reveal_types[key]
+        @reveal_types[key] = @reveal_types[key].union(ty)
+      else
+        @reveal_types[key] = ty
+      end
       p [ep.source_location, "[p] " + msg] if ENV["TP_DEBUG"]
-      @errors << [ep, "[p] " + msg]
     end
 
     def get_container_elem_types(env, ep, id)
@@ -695,7 +701,7 @@ module TypeProfiler
       end
 
       RubySignatureExporter.new(
-        self, @errors,
+        self, @errors, @reveal_types,
         @gvar_table.write, @ivar_table.write, @cvar_table.write,
         @include_relations,
         @class_defs, @iseq_method_calls, @sig_fargs, @sig_ret, @yields, @backward_edges,

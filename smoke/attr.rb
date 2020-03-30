@@ -20,10 +20,10 @@ foo.c = 3
 p(foo.c)
 
 __END__
-# Errors
-smoke/attr.rb:16: [p] Integer
-smoke/attr.rb:18: [p] Integer
-smoke/attr.rb:20: [p] Integer
+# Revealed types
+#  smoke/attr.rb:16 #=> Integer
+#  smoke/attr.rb:18 #=> Integer
+#  smoke/attr.rb:20 #=> Integer
 # Classes
 class Foo
   @a : Integer

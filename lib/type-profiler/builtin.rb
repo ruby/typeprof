@@ -178,9 +178,9 @@ module TypeProfiler
       ctn[Type.nil, ep, env]
     end
 
-    def reveal_type(recv, mid, aargs, ep, env, scratch, &ctn)
+    def kernel_p(recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
-        scratch.reveal_type(ep, scratch.globalize_type(aarg, env, ep).screen_name(scratch))
+        scratch.reveal_type(ep, scratch.globalize_type(aarg, env, ep))
       end
       ctn[aargs.lead_tys.size == 1 ? aargs.lead_tys.first : Type.any, ep, env]
     end
@@ -428,7 +428,7 @@ module TypeProfiler
     scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
     scratch.add_singleton_custom_method(klass_obj, :"attr_reader", Builtin.method(:module_attr_reader))
     scratch.add_singleton_custom_method(klass_obj, :"attr_writer", Builtin.method(:module_attr_writer))
-    scratch.add_custom_method(klass_obj, :p, Builtin.method(:reveal_type))
+    scratch.add_custom_method(klass_obj, :p, Builtin.method(:kernel_p))
     scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
     scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
     scratch.add_custom_method(klass_obj, :send, Builtin.method(:object_send))

@@ -1,13 +1,14 @@
 module TypeProfiler
   class RubySignatureExporter
     def initialize(
-      scratch, errors,
+      scratch, errors, reveal_types,
       gvar_write, ivar_write, cvar_write,
       include_relations,
       class_defs, iseq_method_calls, sig_fargs, sig_ret, yields, backward_edges
     )
       @scratch = scratch
       @errors = errors
+      @reveal_types = reveal_types
       @class_defs = class_defs
       @iseq_method_calls = iseq_method_calls
       @sig_fargs = sig_fargs
@@ -115,6 +116,13 @@ module TypeProfiler
       stat_classes = {}
       stat_methods = {}
       classes = {}
+      unless @reveal_types.empty?
+        puts "# Revealed types"
+        @reveal_types.each do |source_location, ty|
+          puts "#  #{ source_location } #=> #{ ty.screen_name(@scratch) }"
+        end
+        puts
+      end
       @include_relations.each do |including_mod, included_mods|
         entry = show_class_or_module(including_mod, classes)
         entry[:includes].concat(included_mods.to_a.map {|mod| Type::Instance.new(mod).screen_name(@scratch) })
