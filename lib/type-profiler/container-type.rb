@@ -2,14 +2,15 @@ module TypeProfiler
   class AllocationSite
     include Utils::StructuralEquality
 
-    def initialize(val, parent: nil)
+    def initialize(val, parent: nil, global_id: nil)
       raise if !val.is_a?(Utils::StructuralEquality) && !val.is_a?(Integer) && !val.is_a?(Symbol)
       @val = val
       @parent = parent
+      @global_id = global_id
       @_hash ||= (@val.hash ^ @parent.hash)
     end
 
-    attr_reader :val, :parent
+    attr_reader :val, :parent, :global_id
 
     def hash
       @_hash
@@ -67,6 +68,11 @@ module TypeProfiler
         end
 
         attr_reader :lead_tys, :rest_ty
+
+        def to_local_type(id)
+          base_ty = Type::Instance.new(Type::Builtin[:ary])
+          Type::LocalArray.new(id, base_ty)
+        end
 
         def globalize(env, visited)
           lead_tys = []
@@ -295,10 +301,17 @@ module TypeProfiler
 
         def initialize(map_tys)
           raise unless map_tys.all? {|k_ty, v_ty| k_ty.is_a?(Type) && v_ty.is_a?(Type) }
+          raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::LocalArray) }
+          raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::LocalHash) }
           @map_tys = map_tys
         end
 
         attr_reader :map_tys
+
+        def to_local_type(id)
+          base_ty = Type::Instance.new(Type::Builtin[:hash])
+          Type::LocalHash.new(id, base_ty)
+        end
 
         def globalize(env, visited)
           map_tys = {}
@@ -317,8 +330,7 @@ module TypeProfiler
         def localize(env, alloc_site)
           map_tys = @map_tys.to_h do |k_ty, v_ty|
             alloc_site2 = alloc_site.add_id(k_ty)
-            env, k_ty = k_ty.localize(env, alloc_site2.add_id(:key))
-            env, v_ty = v_ty.localize(env, alloc_site2.add_id(:val))
+            env, v_ty = v_ty.localize(env, alloc_site2)
             [k_ty, v_ty]
           end
           return env, Elements.new(map_tys)

@@ -629,7 +629,6 @@ module TypeProfiler
       else
         @reveal_types[key] = ty
       end
-      p [ep.source_location, "[p] " + msg] if ENV["TP_DEBUG"]
     end
 
     def get_container_elem_types(env, ep, id)
@@ -648,13 +647,23 @@ module TypeProfiler
         merge_return_env(tmp_ep) do |menv|
           elems = menv.get_container_elem_types(id)
           elems = yield elems
-          menv.update_container_elem_types(id, elems)
+          menv = menv.update_container_elem_types(id, elems)
+          if id.global_id
+            ty = globalize_type(elems.to_local_type(id), env, ep)
+            add_ivar_write!(*id.global_id, ty)
+          end
+          menv
         end
         env
       else
         elems = env.get_container_elem_types(id)
         elems = yield elems
-        env.update_container_elem_types(id, elems)
+        env = env.update_container_elem_types(id, elems)
+        if id.global_id
+          ty = globalize_type(elems.to_local_type(id), env, ep)
+          add_ivar_write!(*id.global_id, ty)
+        end
+        env
       end
     end
 
@@ -1097,7 +1106,8 @@ module TypeProfiler
         recv = env.static_env.recv_ty
         # TODO: deal with inheritance?
         add_ivar_read!(recv, var, ep) do |ty, ep|
-          nenv, ty = localize_type(ty, env, ep)
+          alloc_site = AllocationSite.new(ep, global_id: [recv, var])
+          nenv, ty = localize_type(ty, env, ep, alloc_site)
           merge_env(ep.next, nenv.push(ty))
         end
         return
