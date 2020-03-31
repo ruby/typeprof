@@ -2,7 +2,7 @@ module TypeProfiler
   class AllocationSite
     include Utils::StructuralEquality
 
-    def initialize(val, parent = nil)
+    def initialize(val, parent: nil)
       raise if !val.is_a?(Utils::StructuralEquality) && !val.is_a?(Integer) && !val.is_a?(Symbol)
       @val = val
       @parent = parent
@@ -16,7 +16,7 @@ module TypeProfiler
     end
 
     def add_id(val)
-      AllocationSite.new(val, self)
+      AllocationSite.new(val, parent: self)
     end
   end
 

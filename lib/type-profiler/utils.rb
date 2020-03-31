@@ -23,6 +23,9 @@ module TypeProfiler
         def klass.new(*args)
           (TABLE[self] ||= {})[args] ||= super
         end
+        class << klass
+          ruby2_keywords :new
+        end
       end
     end
 
