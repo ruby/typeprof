@@ -125,9 +125,7 @@ module TypeProfiler
 
     def module_module_function(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.empty?
-        senv = StaticEnv.new(env.static_env.recv_ty, env.static_env.blk_ty, true)
-        env = Env.new(senv, env.locals, env.stack, env.type_params)
-        ctn[recv, ep, env]
+        ctn[recv, ep, env.enable_module_function]
       else
         aargs.lead_tys.each do |aarg|
           sym = get_sym("module_function", aarg, ep, scratch) or next

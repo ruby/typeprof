@@ -186,6 +186,11 @@ module TypeProfiler
       Env.new(@static_env, @locals, @stack, type_params)
     end
 
+    def enable_module_function
+      senv = StaticEnv.new(@static_env.recv_ty, @static_env.blk_ty, true)
+      Env.new(senv, @locals, @stack, @type_params)
+    end
+
     def inspect
       "Env[#{ @static_env.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.internal_hash.inspect }]"
     end
