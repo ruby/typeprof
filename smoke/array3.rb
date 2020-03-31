@@ -12,14 +12,14 @@ class Foo
   end
 end
 
-Foo.new.foo # bug...
+Foo.new.foo
 Foo.new.bar
 
 __END__
 # Classes
 class Foo
-  @ary : [Integer, String, :sym]
+  @ary : [Integer, NilClass | String, :sym]
   initialize : () -> [Integer, String, :sym]
-  foo : () -> String
+  foo : () -> (NilClass | String)
   bar : () -> NilClass
 end
