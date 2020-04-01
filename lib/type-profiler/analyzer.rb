@@ -46,7 +46,7 @@ module TypeProfiler
     end
 
     def key
-      [@ctx.iseq, @pc, @sig]
+      [@ctx.iseq, @pc]
     end
 
     attr_reader :ctx, :pc, :outer
