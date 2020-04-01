@@ -192,7 +192,7 @@ module TypeProfiler
     end
 
     def inspect
-      "Env[#{ @static_env.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ @type_params.internal_hash.inspect }]"
+      "Env[#{ @static_env.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ (@type_params&.internal_hash).inspect }]"
     end
   end
 
