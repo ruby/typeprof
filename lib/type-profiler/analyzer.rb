@@ -700,7 +700,6 @@ module TypeProfiler
             puts "iter %d, remain: %d" % [counter, @worklist.size]
           end
           @ep = @worklist.deletemin
-          @env = @ep2env[@ep]
           stat_eps << @ep
           step(@ep) # TODO: deletemin
         end
