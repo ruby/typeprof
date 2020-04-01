@@ -106,6 +106,7 @@ module TypeProfiler
         raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
         tys.each do |ty|
+          raise if !ty.is_a?(Type)
           #raise if ty.is_a?(Type::Array)
           #raise if ty.is_a?(Type::Hash)
         end
@@ -716,7 +717,7 @@ module TypeProfiler
           when kw.size == 2 # optional keyword (default value is a literal)
             key, default_ty = *kw
             default_ty = Type.guess_literal_type(default_ty)
-            default_ty = default_ty.lit if default_ty.is_a?(Type::Literal)
+            default_ty = default_ty.type if default_ty.is_a?(Type::Literal)
             req = false
           else # optional keyword (default value is an expression)
             key, = kw
