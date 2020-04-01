@@ -325,6 +325,8 @@ module TypeProfiler
     end
 
     def include_module(including_mod, included_mod, logging = true)
+      return if included_mod == Type.any
+
       if logging
         @include_relations[including_mod] ||= Utils::MutableSet.new
         @include_relations[including_mod] << included_mod
