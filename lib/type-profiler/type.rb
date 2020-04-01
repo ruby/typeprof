@@ -715,7 +715,8 @@ module TypeProfiler
             req = true
           when kw.size == 2 # optional keyword (default value is a literal)
             key, default_ty = *kw
-            default_ty = Type.guess_literal_type(default_ty).globalize(nil, nil)
+            default_ty = Type.guess_literal_type(default_ty)
+            default_ty = default_ty.lit if default_ty.is_a?(Type::Literal)
             req = false
           else # optional keyword (default value is an expression)
             key, = kw
