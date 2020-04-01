@@ -1283,24 +1283,28 @@ module TypeProfiler
         env, (ary,) = env.pop(1)
         splat = flag & 1 == 1
         from_head = flag & 2 == 0
-        case ary
-        when Type::LocalArray
-          elems = get_container_elem_types(env, ep, ary.id)
-          elems ||= Type::Array::Elements.new([], Type.any) # XXX
-          do_expand_array(ep, env, elems, num, splat, from_head)
-          return
-        when Type::Any
-          splat = flag & 1 == 1
-          num += 1 if splat
-          num.times do
-            env = env.push(Type.any)
+        ary.each_child do |ary|
+          case ary
+          when Type::LocalArray
+            elems = get_container_elem_types(env, ep, ary.id)
+            elems ||= Type::Array::Elements.new([], Type.any) # XXX
+            do_expand_array(ep, env, elems, num, splat, from_head)
+          when Type::Any
+            splat = flag & 1 == 1
+            num += 1 if splat
+            nenv = env
+            num.times do
+              nenv = nenv.push(Type.any)
+            end
+            add_edge(ep, ep)
+            merge_env(ep.next, nenv)
+          else
+            # TODO: call to_ary (or to_a?)
+            elems = Type::Array::Elements.new([ary], Type.bot)
+            do_expand_array(ep, env, elems, num, splat, from_head)
           end
-        else
-          # TODO: call to_ary (or to_a?)
-          elems = Type::Array::Elements.new([ary], Type.bot)
-          do_expand_array(ep, env, elems, num, splat, from_head)
-          return
         end
+        return
       when :concatarray
         env, (ary1, ary2) = env.pop(2)
         if ary1.is_a?(Type::LocalArray)
