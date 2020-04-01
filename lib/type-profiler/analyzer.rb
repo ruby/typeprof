@@ -853,7 +853,7 @@ module TypeProfiler
         nep = ExecutionPoint.new(nctx, 0, nil)
         nlocals = [Type.any] * iseq.locals.size
         recv = env.static_env.recv_ty
-        recv = Type::Instance.new(recv) if ep.ctx.cref.singleton && recv != Type.any # why?
+        recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
         nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
         pend_dummy_execution(iseq, nep, nenv)
       when :definesmethod
