@@ -301,6 +301,7 @@ module TypeProfiler
 
         def initialize(map_tys)
           raise unless map_tys.all? {|k_ty, v_ty| k_ty.is_a?(Type) && v_ty.is_a?(Type) }
+          raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::Union) }
           raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::LocalArray) }
           raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::LocalHash) }
           @map_tys = map_tys
@@ -316,7 +317,6 @@ module TypeProfiler
         def globalize(env, visited)
           map_tys = {}
           @map_tys.each do |k_ty, v_ty|
-            k_ty = k_ty.globalize(env, visited)
             v_ty = v_ty.globalize(env, visited)
             if map_tys[k_ty]
               map_tys[k_ty] = map_tys[k_ty].union(v_ty)
@@ -372,10 +372,12 @@ module TypeProfiler
 
         def update(idx, ty)
           map_tys = @map_tys.dup
-          if map_tys[idx]
-            map_tys[idx] = map_tys[idx].union(ty)
-          else
-            map_tys[idx] = ty
+          idx.each_child_global do |idx|
+            if map_tys[idx]
+              map_tys[idx] = map_tys[idx].union(ty)
+            else
+              map_tys[idx] = ty
+            end
           end
           Elements.new(map_tys)
         end

@@ -30,6 +30,10 @@ module TypeProfiler
       yield self
     end
 
+    def each_child_global
+      yield self
+    end
+
     def union(other)
       return self if self == other # fastpath
 
@@ -127,11 +131,15 @@ module TypeProfiler
         end
       end
 
-      def each_child(&blk)
+      def each_child(&blk) # local
         @types.each(&blk)
-        if @array_elems
-          raise
-        end
+        raise if @array_elems || @hash_elems
+      end
+
+      def each_child_global(&blk)
+        @types.each(&blk)
+        yield Type::Array.new(@array_elems, Type::Instance.new(Type::Builtin[:ary])) if @array_elems
+        yield Type::Hash.new(@hash_elems, Type::Instance.new(Type::Builtin[:hash])) if @hash_elems
       end
 
       def inspect
@@ -479,10 +487,12 @@ module TypeProfiler
       attr_reader :map_tys
 
       def []=(k_ty, v_ty)
-        if @map_tys[k_ty]
-          @map_tys[k_ty] = @map_tys[k_ty].union(v_ty)
-        else
-          @map_tys[k_ty] = v_ty
+        k_ty.each_child_global do |k_ty|
+          if @map_tys[k_ty]
+            @map_tys[k_ty] = @map_tys[k_ty].union(v_ty)
+          else
+            @map_tys[k_ty] = v_ty
+          end
         end
       end
     end

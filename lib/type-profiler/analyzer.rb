@@ -802,6 +802,7 @@ module TypeProfiler
 
         ty = Type.gen_hash do |h|
           tys.each_slice(2) do |k_ty, v_ty|
+            k_ty = globalize_type(k_ty, env, ep)
             h[k_ty] = v_ty
           end
         end
