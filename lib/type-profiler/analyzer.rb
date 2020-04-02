@@ -1290,10 +1290,10 @@ module TypeProfiler
             elems ||= Type::Array::Elements.new([], Type.any) # XXX
             do_expand_array(ep, env, elems, num, splat, from_head)
           when Type::Any
-            splat = flag & 1 == 1
-            num += 1 if splat
+            nnum = num
+            nnum += 1 if splat
             nenv = env
-            num.times do
+            nnum.times do
               nenv = nenv.push(Type.any)
             end
             add_edge(ep, ep)
