@@ -349,6 +349,10 @@ module TypeProfiler
         feature = feature.lit
 
         begin
+          if TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch, feature)
+            result = Type::Instance.new(Type::Builtin[:true])
+            return ctn[result, ep, env]
+          end
           filetype, path = $LOAD_PATH.resolve_feature_path(feature)
           if filetype == :rb
             # TODO: if there is RBS file for the library, do not read the source code
