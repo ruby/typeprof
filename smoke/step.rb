@@ -12,6 +12,6 @@ __END__
 # Classes
 class Object
   log1 : (Integer | Numeric) -> NilClass
-  log2 : (Integer) -> NilClass
+  log2 : (any) -> NilClass
   log3 : (Enumerator) -> NilClass
 end

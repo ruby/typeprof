@@ -1,5 +1,5 @@
 def foo
-  loop do
+  loop do |_|
     return 42
   end
   nil
