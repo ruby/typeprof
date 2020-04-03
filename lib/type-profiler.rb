@@ -1,5 +1,4 @@
 require_relative "type-profiler/insns-def"
-require_relative "type-profiler/stdlib-sigs"
 require_relative "type-profiler/utils"
 require_relative "type-profiler/type"
 require_relative "type-profiler/container-type"

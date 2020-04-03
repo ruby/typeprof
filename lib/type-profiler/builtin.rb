@@ -401,7 +401,7 @@ module TypeProfiler
     Type::Builtin[:false] = klass_false
     Type::Builtin[:nil]   = klass_nil
 
-    TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch)
+    TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch, "builtin")
 
     klass_vmcore    = scratch.new_class(klass_obj, :VMCore, klass_obj)
     klass_int       = scratch.get_constant(klass_obj, :Integer)

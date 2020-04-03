@@ -11,10 +11,18 @@ module TypeProfiler
       klass
     end
 
-    def import_ruby_signatures(scratch)
+    CACHE = {}
+
+    def import_ruby_signatures(scratch, feature)
+      CACHE[feature] ||=
+        begin
+          file = File.join(__dir__, "../../rbsc/#{ feature }.rbsc")
+          return unless File.readable?(file)
+          Marshal.load(File.binread(file))
+        end
+      rbs_classes, rbs_constants = CACHE[feature]
       classes = []
-      rbs_classes, rbs_constants = STDLIB_SIGS
-      rbs_classes.each do |classpath, superclass, included_modules, methods, singleton_methods|
+      rbs_classes.each do |classpath, (superclass, included_modules, methods, singleton_methods)|
         next if classpath == [:BasicObject]
         next if classpath == [:NilClass]
         if classpath != [:Object]
@@ -59,6 +67,8 @@ module TypeProfiler
         value = convert_type(scratch, value)
         scratch.add_constant(base_klass, classpath[-1], value)
       end
+
+      true
     end
 
     def translate_typed_method_def(scratch, singleton, method_name, mdef)

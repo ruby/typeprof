@@ -7,16 +7,22 @@ class TypeProfiler
   class RubySignatureReader
     include Ruby::Signature
 
-    def initialize
-      loader = EnvironmentLoader.new(stdlib_root: Pathname("sigs/stdlib/"))
+    def initialize(library = nil, builtin = nil)
+      loader = EnvironmentLoader.new(stdlib_root: Pathname("vendor/sigs/stdlib/"))
       @env = Environment.new()
+      loader.add(library: library) if library != "builtin"
       loader.load(env: @env)
 
       @dump = [import_rbs_classes, import_rbs_constants]
+
+      remove_builtin_definitions(builtin) if builtin
     end
 
     attr_reader :dump
 
+    # constant_name = [Symbol]
+    #
+    # { constant_name => type }
     def import_rbs_constants
       constants = {}
       @env.each_constant do |name, decl|
@@ -27,6 +33,17 @@ class TypeProfiler
       constants
     end
 
+    # class_name = [Symbol]
+    # method_name = Symbol
+    # method_def = [...]
+    #
+    # { class_name =>
+    #   [ super_class: class_name,
+    #     included_modules: [class_name],
+    #     methods: { method_name => [method_def] },
+    #     singleton_methods: { method_name => [method_def] },
+    #   ]
+    # }
     def import_rbs_classes
       class2super = {}
       # XXX: @env.each_extension {|a| p a }
@@ -81,7 +98,8 @@ class TypeProfiler
         end
       end
 
-      classes = classes.map do |type_name, klass, superclass|
+      result = {}
+      classes.each do |type_name, klass, superclass|
         included_modules = []
         methods = []
         singleton_methods = []
@@ -93,8 +111,8 @@ class TypeProfiler
           when AST::Declarations::Extension, AST::Declarations::Interface
             raise NotImplementedError
           when AST::Declarations::Class, AST::Declarations::Module
-            methods = []
-            singleton_methods = []
+            methods = {}
+            singleton_methods = {}
             decl.members.each do |member|
               case member
               when AST::Members::MethodDefinition
@@ -122,7 +140,9 @@ class TypeProfiler
                   case method_type
                   when MethodType
                     method_type.map_type do |type|
-                      @env.absolute_type(type, namespace: type_name.to_namespace)
+                      @env.absolute_type(type, namespace: type_name.to_namespace) do |ty|
+                        ty.name
+                      end
                     end
                   when :super
                     raise NotImplementedError
@@ -131,22 +151,21 @@ class TypeProfiler
 
                 method_def = translate_typed_method_def(method_types)
                 if member.instance?
-                  methods << [name, method_def]
+                  methods[name] = method_def
                 end
                 if member.singleton?
-                  singleton_methods << [name, method_def]
+                  singleton_methods[name] = method_def
                 end
               when AST::Members::AttrReader, AST::Members::AttrAccessor, AST::Members::AttrWriter
                 raise NotImplementedError
               when AST::Members::Alias
                 if member.instance?
-                  _, method_def = methods.find {|n,| n == member.old_name }
-                  methods << [member.new_name, method_def] if method_def
+                  method_def = methods[member.old_name]
+                  methods[member.new_name] = method_def if method_def
                 end
                 if member.singleton?
-                  _, method_def = singleton_methods.find {|n,| n == member.old_name }
-                  raise unless method_def
-                  singleton_methods << [member.new_name, method_def]
+                  singleton_method_def = singleton_methods[member.old_name]
+                  singleton_methods[member.new_name] = singleton_method_def if singleton_method_def
                 end
               when AST::Members::Include
                 name = @env.absolute_type_name(member.name, namespace: type_name.namespace)
@@ -164,10 +183,10 @@ class TypeProfiler
           end
         end
 
-        [klass, superclass, included_modules, methods, singleton_methods]
+        result[klass] = [superclass, included_modules, methods, singleton_methods]
       end.compact
 
-      classes
+      result
     end
 
     def translate_typed_method_def(rs_method_types)
@@ -285,9 +304,59 @@ class TypeProfiler
         raise NotImplementedError
       end
     end
+
+    def remove_builtin_definitions(builtin)
+      builtin[0].each do |name, (_super_class, included_modules, methods, singleton_methods)|
+        _, new_included_modules, new_methods, new_singleton_methods = @dump[0][name]
+        if new_included_modules
+          new_included_modules -= included_modules
+          @dump[0][name][1] = new_included_modules
+        end
+        if new_methods
+          methods.each do |method_name, method_defs|
+            new_method_defs = new_methods[method_name]
+            if new_method_defs
+              new_method_defs -= method_defs
+              if new_method_defs.empty?
+                new_methods.delete(method_name)
+              else
+                new_methods[method_name] = new_method_defs
+              end
+            end
+          end
+        end
+        if new_singleton_methods
+          singleton_methods.each do |method_name, method_defs|
+            new_method_defs = new_singleton_methods[method_name]
+            if new_method_defs
+              new_method_defs -= method_defs
+              if new_method_defs.empty?
+                new_singleton_methods.delete(method_name)
+              end
+            end
+          end
+        end
+        if @dump[0][name][1].empty? && new_methods.empty? && new_singleton_methods.empty?
+          @dump[0].delete(name)
+        end
+      end
+
+      builtin[1].each do |name, type|
+        new_type = @dump[1][name]
+        if new_type
+          if type == new_type
+            @dump[1].delete(name)
+          end
+        end
+      end
+    end
   end
 end
 
-target = File.join(__dir__, "../lib/type-profiler/rbs.dat")
-stdlib = TypeProfiler::RubySignatureReader.new
-File.binwrite(target, Marshal.dump(stdlib.dump))
+builtin = nil
+%w(builtin pathname).each do |lib|
+  target = File.join(__dir__, "../rbsc/#{ lib }.rbsc")
+  stdlib = TypeProfiler::RubySignatureReader.new(lib, builtin)
+  builtin ||= stdlib.dump
+  File.binwrite(target, Marshal.dump(stdlib.dump))
+end
