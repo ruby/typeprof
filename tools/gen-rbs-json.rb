@@ -46,7 +46,6 @@ class TypeProfiler
     # }
     def import_rbs_classes
       class2super = {}
-      # XXX: @env.each_extension {|a| p a }
       # XXX: @env.each_global {|a| p a }
       @env.each_decl do |name, decl|
         if name.kind == :class
@@ -105,12 +104,9 @@ class TypeProfiler
         singleton_methods = []
 
         if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass, :Kernel].include?(type_name.name) || true
-          decl = @env.find_class(type_name)
+          [@env.find_class(type_name), *@env.find_extensions(type_name)].each do |decl|
+            raise NotImplementedError if decl.is_a?(AST::Declarations::Interface)
 
-          case decl
-          when AST::Declarations::Extension, AST::Declarations::Interface
-            raise NotImplementedError
-          when AST::Declarations::Class, AST::Declarations::Module
             methods = {}
             singleton_methods = {}
             decl.members.each do |member|
