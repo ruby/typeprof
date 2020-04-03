@@ -65,7 +65,7 @@ module TypeProfiler
 
     def object_new(recv, mid, aargs, ep, env, scratch, &ctn)
       ty = Type::Instance.new(recv)
-      meths = scratch.get_method(recv, :initialize)
+      meths = scratch.get_method(recv, false, :initialize)
       meths.flat_map do |meth|
         meth.do_send(ty, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
           ctn[Type::Instance.new(recv), ep, env]
@@ -131,7 +131,7 @@ module TypeProfiler
           sym = get_sym("module_function", aarg, ep, scratch) or next
           meths = Type::Instance.new(recv).get_method(sym, scratch)
           meths.each do |mdef|
-            scratch.add_singleton_method(recv, sym, mdef)
+            scratch.add_method(recv, sym, true, mdef)
           end
         end
         ctn[recv, ep, env]
@@ -465,22 +465,10 @@ module TypeProfiler
     scratch.add_custom_method(klass_hash, :[], Builtin.method(:hash_aref))
     scratch.add_custom_method(klass_hash, :[]=, Builtin.method(:hash_aset))
 
-    i = -> t { Type::Instance.new(t) }
-
-    scratch.add_typed_method(i[klass_obj], :==, FormalArguments.new([Type.any], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
-    scratch.add_typed_method(i[klass_obj], :!=, FormalArguments.new([Type.any], [], nil, [], nil, nil, i[klass_nil]), Type.bool)
-    scratch.add_typed_method(i[klass_obj], :initialize, FormalArguments.new([], [], nil, [], nil, nil, Type.any), Type.any)
-    scratch.add_typed_method(i[klass_str], :to_s, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_sym], :to_s, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
-    scratch.add_typed_method(i[klass_str], :to_sym, FormalArguments.new([], [], nil, [], nil, nil, i[klass_nil]), i[klass_sym])
-    scratch.add_typed_method(i[klass_str], :+ , FormalArguments.new([i[klass_str]], [], nil, [], nil, nil, i[klass_nil]), i[klass_str])
-
-    fargs1 = FormalArguments.new([i[klass_int]], [], nil, [], nil, nil, i[klass_nil])
-    fargs2 = FormalArguments.new([i[klass_str]], [], nil, [], nil, nil, i[klass_nil])
-    mdef = TypedMethodDef.new([[fargs1, i[klass_int]], [fargs2, i[klass_int]]])
-    scratch.add_method(klass_obj, :Integer, mdef)
-
     scratch.add_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
     scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
+
+    fargs, ret_ty = FormalArguments.new([], [], nil, [], nil, nil, Type.any), Type.any
+    scratch.add_method(klass_obj, :initialize, false, TypedMethodDef.new([[fargs, ret_ty]]))
   end
 end

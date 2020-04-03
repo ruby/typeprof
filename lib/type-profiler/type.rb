@@ -280,7 +280,7 @@ module TypeProfiler
       end
 
       def get_method(mid, scratch)
-        scratch.get_singleton_method(self, mid)
+        scratch.get_method(self, true, mid)
       end
 
       def consistent?(other)
@@ -325,7 +325,7 @@ module TypeProfiler
       end
 
       def get_method(mid, scratch)
-        scratch.get_method(@klass, mid)
+        scratch.get_method(@klass, false, mid)
       end
 
       def consistent?(other)

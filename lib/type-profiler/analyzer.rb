@@ -253,27 +253,25 @@ module TypeProfiler
       def initialize(kind, name, superclass)
         @kind = kind
         @superclass = superclass
-        @included_modules = []
-        @extended_modules = []
+        @modules = { true => [], false => [] }
         @name = name
         @consts = {}
         @methods = {}
-        @singleton_methods = {}
       end
 
-      attr_reader :kind, :included_modules, :name, :methods, :singleton_methods, :superclass
+      attr_reader :kind, :modules, :name, :methods, :superclass
 
       def include_module(mod)
         # XXX: need to check if mod is already included by the ancestors?
-        unless @included_modules.include?(mod)
-          @included_modules << mod
+        unless @modules[false].include?(mod)
+          @modules[false] << mod
         end
       end
 
       def extend_module(mod)
         # XXX: need to check if mod is already included by the ancestors?
-        unless @extended_modules.include?(mod)
-          @extended_modules << mod
+        unless @modules[true].include?(mod)
+          @modules[true] << mod
         end
       end
 
@@ -288,39 +286,20 @@ module TypeProfiler
         @consts[name] = ty
       end
 
-      def get_method(mid)
-        if @methods.key?(mid)
-          @methods[mid]
-        else
-          @included_modules.reverse_each do |mod|
-            meth = mod.get_method(mid)
+      def get_method(mid, singleton)
+        @methods[[singleton, mid]] || begin
+          @modules[singleton].reverse_each do |mod|
+            meth = mod.get_method(mid, false)
             return meth if meth
           end
           nil
         end
       end
 
-      def add_method(mid, mdef)
-        @methods[mid] ||= Utils::MutableSet.new
-        @methods[mid] << mdef
+      def add_method(mid, singleton, mdef)
+        @methods[[singleton, mid]] ||= Utils::MutableSet.new
+        @methods[[singleton, mid]] << mdef
         # Need to restart...?
-      end
-
-      def get_singleton_method(mid)
-        if @singleton_methods.key?(mid)
-          @singleton_methods[mid]
-        else
-          @extended_modules.reverse_each do |mod|
-            meth = mod.get_method(mid)
-            return meth if meth
-          end
-          nil
-        end
-      end
-
-      def add_singleton_method(mid, mdef)
-        @singleton_methods[mid] ||= Utils::MutableSet.new
-        @singleton_methods[mid] << mdef
       end
     end
 
@@ -386,29 +365,17 @@ module TypeProfiler
       end
     end
 
-    def get_method(klass, mid)
+    def get_method(klass, singleton, mid)
       idx = klass.idx
       while idx
         class_def = @class_defs[idx]
-        mthd = class_def.get_method(mid)
+        mthd = class_def.get_method(mid, singleton)
         # Need to be conservative to include all super candidates...?
         return mthd if mthd
         idx = class_def.superclass
       end
+      return get_method(Type::Builtin[:class], false, mid) if singleton
       nil
-    end
-
-    def get_singleton_method(klass, mid)
-      idx = klass.idx
-      while idx
-        class_def = @class_defs[idx]
-        mthd = class_def.get_singleton_method(mid)
-        # Need to be conservative to include all super candidates...?
-        return mthd if mthd
-        idx = class_def.superclass
-      end
-      # fallback to methods of Class class
-      get_method(Type::Builtin[:class], mid)
     end
 
     def get_super_method(ctx, singleton)
@@ -417,7 +384,7 @@ module TypeProfiler
       idx = @class_defs[idx].superclass
       while idx
         class_def = @class_defs[idx]
-        mthd = singleton ? class_def.get_singleton_method(mid) : class_def.get_method(mid)
+        mthd = class_def.get_method(mid, singleton)
         return mthd if mthd
         idx = class_def.superclass
       end
@@ -452,63 +419,46 @@ module TypeProfiler
       end
     end
 
-    def add_method(klass, mid, mdef)
+    def add_method(klass, mid, singleton, mdef)
       if klass == Type.any
         self # XXX warn
       else
-        @class_defs[klass.idx].add_method(mid, mdef)
-      end
-    end
-
-    def add_singleton_method(klass, mid, mdef)
-      if klass == Type.any
-        self # XXX warn
-      else
-        @class_defs[klass.idx].add_singleton_method(mid, mdef)
+        @class_defs[klass.idx].add_method(mid, singleton, mdef)
       end
     end
 
     def add_iseq_method(klass, mid, iseq, cref)
-      add_method(klass, mid, ISeqMethodDef.new(iseq, cref))
+      add_method(klass, mid, false, ISeqMethodDef.new(iseq, cref))
     end
 
     def add_singleton_iseq_method(klass, mid, iseq, cref)
-      add_singleton_method(klass, mid, ISeqMethodDef.new(iseq, cref))
+      add_method(klass, mid, true, ISeqMethodDef.new(iseq, cref))
     end
 
     def add_typed_method(recv_ty, mid, fargs, ret_ty)
-      add_method(recv_ty.klass, mid, TypedMethodDef.new([[fargs, ret_ty]]))
+      add_method(recv_ty.klass, mid, false, TypedMethodDef.new([[fargs, ret_ty]]))
     end
 
     def add_singleton_typed_method(recv_ty, mid, fargs, ret_ty)
-      add_singleton_method(recv_ty.klass, mid, TypedMethodDef.new([[fargs, ret_ty]]))
+      add_method(recv_ty.klass, mid, true, TypedMethodDef.new([[fargs, ret_ty]]))
     end
 
     def add_custom_method(klass, mid, impl)
-      add_method(klass, mid, CustomMethodDef.new(impl))
+      add_method(klass, mid, false, CustomMethodDef.new(impl))
     end
 
     def add_singleton_custom_method(klass, mid, impl)
-      add_singleton_method(klass, mid, CustomMethodDef.new(impl))
+      add_method(klass, mid, true, CustomMethodDef.new(impl))
     end
 
     def alias_method(klass, singleton, new, old)
       if klass == Type.any
         self
       else
-        if singleton
-          mdefs = get_singleton_method(klass, old)
-          if mdefs
-            mdefs.each do |mdef|
-              @class_defs[klass.idx].add_singleton_method(new, mdef)
-            end
-          end
-        else
-          mdefs = get_method(klass, old)
-          if mdefs
-            mdefs.each do |mdef|
-              @class_defs[klass.idx].add_method(new, mdef)
-            end
+        mdefs = get_method(klass, singleton, old)
+        if mdefs
+          mdefs.each do |mdef|
+            @class_defs[klass.idx].add_method(new, singleton, mdef)
           end
         end
       end

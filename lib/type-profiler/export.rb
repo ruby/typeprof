@@ -137,33 +137,31 @@ module TypeProfiler
         entry[:cvars][var] = ty.screen_name(@scratch)
       end
       @class_defs.each_value do |class_def|
-        [[class_def.methods, false], [class_def.singleton_methods, true]].each do |methods, singleton|
-          methods.each do |mid, mdefs|
-            mdefs.each do |mdef|
-              ctxs = @iseq_method_calls[mdef]
-              next unless ctxs
+        class_def.methods.each do |(singleton, mid), mdefs|
+          mdefs.each do |mdef|
+            ctxs = @iseq_method_calls[mdef]
+            next unless ctxs
 
-              ctxs.each do |ctx|
-                next if mid != ctx.mid
-                fargs = @sig_fargs[ctx]
-                ret_tys = @sig_ret[ctx]
+            ctxs.each do |ctx|
+              next if mid != ctx.mid
+              fargs = @sig_fargs[ctx]
+              ret_tys = @sig_ret[ctx]
 
-                entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
+              entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
 
-                method_name = ctx.mid
-                method_name = "self.#{ method_name }" if singleton
+              method_name = ctx.mid
+              method_name = "self.#{ method_name }" if singleton
 
-                fargs = fargs.screen_name(@scratch)
-                if @yields[ctx]
-                  fargs << show_block(ctx)
-                end
-
-                entry[:methods][method_name] ||= []
-                entry[:methods][method_name] << show_signature(fargs, ret_tys)
-
-                #stat_classes[recv] = true
-                #stat_methods[[recv, method_name]] = true
+              fargs = fargs.screen_name(@scratch)
+              if @yields[ctx]
+                fargs << show_block(ctx)
               end
+
+              entry[:methods][method_name] ||= []
+              entry[:methods][method_name] << show_signature(fargs, ret_tys)
+
+              #stat_classes[recv] = true
+              #stat_methods[[recv, method_name]] = true
             end
           end
         end

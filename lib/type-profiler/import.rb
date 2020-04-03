@@ -54,11 +54,7 @@ module TypeProfiler
         end
         methods.each do |(singleton, method_name), mdef|
           mdef = translate_typed_method_def(scratch, method_name, mdef)
-          if singleton
-            scratch.add_singleton_method(klass, method_name, mdef)
-          else
-            scratch.add_method(klass, method_name, mdef)
-          end
+          scratch.add_method(klass, method_name, singleton, mdef)
         end
       end
 
