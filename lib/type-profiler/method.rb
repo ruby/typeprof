@@ -105,6 +105,7 @@ module TypeProfiler
         # XXX: support self type in fargs
         next unless aargs.consistent_with_formal_arguments?(fargs)
         # XXX: support self type in container type like Array[Self]
+        # XXX: support Union[Self, something]
         ret_ty = recv if ret_ty.is_a?(Type::Self)
         found = true
         if aargs.blk_ty.is_a?(Type::ISeqProc)
@@ -114,6 +115,9 @@ module TypeProfiler
           if fargs.blk_ty.is_a?(Type::TypedProc)
             scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
             nfargs = fargs.blk_ty.fargs
+            nfargs = nfargs.map do |nfarg|
+              nfarg.is_a?(Type::Self) ? recv : nfarg # XXX
+            end
             naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
             scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |_ret_ty, _ep, _env|
               # XXX: check the return type from the block
