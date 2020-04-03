@@ -34,14 +34,13 @@ class TypeProfiler
     end
 
     # class_name = [Symbol]
-    # method_name = Symbol
+    # method_name = [singleton: true|false, Symbol}
     # method_def = [...]
     #
     # { class_name =>
     #   [ super_class: class_name,
     #     included_modules: [class_name],
     #     methods: { method_name => [method_def] },
-    #     singleton_methods: { method_name => [method_def] },
     #   ]
     # }
     def import_rbs_classes
@@ -101,14 +100,12 @@ class TypeProfiler
       classes.each do |type_name, klass, superclass|
         included_modules = []
         methods = []
-        singleton_methods = []
 
         if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass, :Kernel].include?(type_name.name) || true
           [@env.find_class(type_name), *@env.find_extensions(type_name)].each do |decl|
             raise NotImplementedError if decl.is_a?(AST::Declarations::Interface)
 
             methods = {}
-            singleton_methods = {}
             decl.members.each do |member|
               case member
               when AST::Members::MethodDefinition
@@ -146,22 +143,18 @@ class TypeProfiler
                 end
 
                 method_def = translate_typed_method_def(method_types)
-                if member.instance?
-                  methods[name] = method_def
-                end
-                if member.singleton?
-                  singleton_methods[name] = method_def
-                end
+                methods[[false, name]] = method_def if member.instance?
+                methods[[true, name]] = method_def if member.singleton?
               when AST::Members::AttrReader, AST::Members::AttrAccessor, AST::Members::AttrWriter
                 raise NotImplementedError
               when AST::Members::Alias
                 if member.instance?
-                  method_def = methods[member.old_name]
-                  methods[member.new_name] = method_def if method_def
+                  method_def = methods[[false, member.old_name]]
+                  methods[[false, member.new_name]] = method_def if method_def
                 end
                 if member.singleton?
-                  singleton_method_def = singleton_methods[member.old_name]
-                  singleton_methods[member.new_name] = singleton_method_def if singleton_method_def
+                  method_def = methods[[true, member.old_name]]
+                  methods[[true, member.new_name]] = method_def if method_def
                 end
               when AST::Members::Include
                 name = @env.absolute_type_name(member.name, namespace: type_name.namespace)
@@ -179,7 +172,7 @@ class TypeProfiler
           end
         end
 
-        result[klass] = [superclass, included_modules, methods, singleton_methods]
+        result[klass] = [superclass, included_modules, methods]
       end.compact
 
       result
@@ -302,8 +295,8 @@ class TypeProfiler
     end
 
     def remove_builtin_definitions(builtin)
-      builtin[0].each do |name, (_super_class, included_modules, methods, singleton_methods)|
-        _, new_included_modules, new_methods, new_singleton_methods = @dump[0][name]
+      builtin[0].each do |name, (_super_class, included_modules, methods)|
+        _, new_included_modules, new_methods = @dump[0][name]
         if new_included_modules
           new_included_modules -= included_modules
           @dump[0][name][1] = new_included_modules
@@ -321,18 +314,7 @@ class TypeProfiler
             end
           end
         end
-        if new_singleton_methods
-          singleton_methods.each do |method_name, method_defs|
-            new_method_defs = new_singleton_methods[method_name]
-            if new_method_defs
-              new_method_defs -= method_defs
-              if new_method_defs.empty?
-                new_singleton_methods.delete(method_name)
-              end
-            end
-          end
-        end
-        if @dump[0][name][1].empty? && new_methods.empty? && new_singleton_methods.empty?
+        if @dump[0][name][1].empty? && new_methods.empty?
           @dump[0].delete(name)
         end
       end

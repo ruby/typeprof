@@ -22,7 +22,7 @@ module TypeProfiler
         end
       rbs_classes, rbs_constants = CACHE[feature]
       classes = []
-      rbs_classes.each do |classpath, (superclass, included_modules, methods, singleton_methods)|
+      rbs_classes.each do |classpath, (superclass, included_modules, methods)|
         next if classpath == [:BasicObject]
         next if classpath == [:NilClass]
         if classpath != [:Object]
@@ -44,21 +44,21 @@ module TypeProfiler
         else
           klass = Type::Builtin[:obj]
         end
-        classes << [klass, included_modules, methods, singleton_methods]
+        classes << [klass, included_modules, methods]
       end
 
-      classes.each do |klass, included_modules, methods, singleton_methods|
+      classes.each do |klass, included_modules, methods|
         included_modules.each do |mod|
           mod = path_to_klass(scratch, mod)
           scratch.include_module(klass, mod, false)
         end
-        methods.each do |method_name, mdef|
-          mdef = translate_typed_method_def(scratch, false, method_name, mdef)
-          scratch.add_method(klass, method_name, mdef)
-        end
-        singleton_methods.each do |method_name, mdef|
-          mdef = translate_typed_method_def(scratch, true, method_name, mdef)
-          scratch.add_singleton_method(klass, method_name, mdef)
+        methods.each do |(singleton, method_name), mdef|
+          mdef = translate_typed_method_def(scratch, method_name, mdef)
+          if singleton
+            scratch.add_singleton_method(klass, method_name, mdef)
+          else
+            scratch.add_method(klass, method_name, mdef)
+          end
         end
       end
 
@@ -71,7 +71,7 @@ module TypeProfiler
       true
     end
 
-    def translate_typed_method_def(scratch, singleton, method_name, mdef)
+    def translate_typed_method_def(scratch, method_name, mdef)
       sig_rets = mdef.map do |lead_tys, opt_tys, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty|
         if blk
           blk = translate_typed_block(scratch, blk)
