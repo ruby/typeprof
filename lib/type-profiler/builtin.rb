@@ -256,7 +256,11 @@ module TypeProfiler
     def array_map(recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 0
       # TODO: get_array_elem_type does squash, but tuple part may be preserved
-      ty = scratch.get_array_elem_type(env, ep, recv.id)
+      if recv.is_a?(Type::LocalArray)
+        ty = scratch.get_array_elem_type(env, ep, recv.id)
+      else
+        ty = Type.any
+      end
       naargs = ActualArguments.new([ty], nil, nil, Type.nil)
       scratch.do_invoke_block(false, aargs.blk_ty, naargs, ep, env) do |ret_ty, ep|
         base_ty = Type::Instance.new(Type::Builtin[:ary])
