@@ -194,6 +194,8 @@ class TypeProfiler
           opt_tys = type.type.optional_positionals.map do |type|
             convert_type(type.type)
           end
+          rest_ty = type.type.rest_positionals
+          rest_ty = convert_type(rest_ty.type) if rest_ty
           opt_kw_tys = type.type.optional_keywords.to_h do |key, type|
             [key, convert_type(type.type)]
           end
@@ -204,7 +206,7 @@ class TypeProfiler
           raise NotImplementedError if rest_kw_ty
 
           ret_ty = convert_type(type.type.return_type)
-          [lead_tys, opt_tys, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty]
+          [lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty]
         rescue UnsupportedType
           nil
         end

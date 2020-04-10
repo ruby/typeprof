@@ -101,7 +101,7 @@ module TypeProfiler
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
       @sigs.each do |fargs, ret_ty|
         # XXX: need to interpret args more correctly
-        #pp [aargs, fargs]
+        #pp [mid, aargs, fargs]
         # XXX: support self type in fargs
         next unless aargs.consistent_with_formal_arguments?(fargs)
         # XXX: support self type in container type like Array[Self]

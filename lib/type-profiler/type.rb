@@ -780,9 +780,6 @@ module TypeProfiler
       aargs = @lead_tys.dup
 
       if @rest_ty
-        if fargs.rest_ty
-        raise NotImplementedError
-        end
         lower_bound = fargs.lead_tys.size + fargs.post_tys.size - aargs.size
         upper_bound = lower_bound + fargs.opt_tys.size
         (lower_bound..upper_bound).each do |n|
@@ -794,16 +791,33 @@ module TypeProfiler
         return false
       end
 
-      return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
-      return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
-      aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
-        return false unless aarg.consistent?(farg)
-      end
-      aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
-        return false unless aarg.consistent?(farg)
-      end
-      aargs.zip(fargs.opt_tys) do |aarg, farg|
-        return false unless aarg.consistent?(farg)
+      if fargs.rest_ty
+        return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
+        aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
+          return false unless aarg.consistent?(farg)
+        end
+        aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
+          return false unless aarg.consistent?(farg)
+        end
+        fargs.opt_tys.each do |farg|
+          aarg = aargs.shift
+          return false unless aarg.consistent?(farg)
+        end
+        aargs.each do |aarg|
+          return false unless aarg.consistent?(fargs.rest_ty)
+        end
+      else
+        return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
+        return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
+        aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
+          return false unless aarg.consistent?(farg)
+        end
+        aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
+          return false unless aarg.consistent?(farg)
+        end
+        aargs.zip(fargs.opt_tys) do |aarg, farg|
+          return false unless aarg.consistent?(farg)
+        end
       end
       # XXX: fargs.keyword_tys
 
