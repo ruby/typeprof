@@ -208,7 +208,7 @@ module TypeProfiler
 
       @class_defs = {}
 
-      @iseq_method_calls = {}
+      @iseq_method_to_ctx = {}
 
       @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
       @block_to_ctx = {}
@@ -470,8 +470,8 @@ module TypeProfiler
     end
 
     def add_iseq_method_call!(iseq_mdef, ctx)
-      @iseq_method_calls[iseq_mdef] ||= Utils::MutableSet.new
-      @iseq_method_calls[iseq_mdef] << ctx
+      @iseq_method_to_ctx[iseq_mdef] ||= Utils::MutableSet.new
+      @iseq_method_to_ctx[iseq_mdef] << ctx
     end
 
     def add_callsite!(callee_ctx, fargs, caller_ep, caller_env, &ctn)
