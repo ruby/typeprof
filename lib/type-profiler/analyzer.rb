@@ -701,7 +701,7 @@ module TypeProfiler
     end
 
     def report(stat_eps)
-      Reporters.show_error(@errors)
+      Reporters.show_error(@errors, @backward_edges)
 
       Reporters.show_reveal_types(self, @reveal_types)
 
@@ -715,7 +715,7 @@ module TypeProfiler
       RubySignatureExporter.new(
         self,
         @include_relations,
-        @class_defs, @iseq_method_to_ctx, @sig_fargs, @sig_ret, @yields, @backward_edges,
+        @class_defs, @iseq_method_to_ctx, @sig_fargs, @sig_ret, @yields,
       ).show(stat_eps)
     end
 

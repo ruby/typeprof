@@ -2,6 +2,21 @@ module TypeProfiler
   module Reporters
     module_function
 
+    def generate_analysis_trace(state, visited, backward_edge)
+      return nil if visited[state]
+      visited[state] = true
+      prev_states = backward_edges[state]
+      if prev_states
+        prev_states.each_key do |pstate|
+          trace = generate_analysis_trace(pstate, visited, backward_edge)
+          return [state] + trace if trace
+        end
+        nil
+      else
+        []
+      end
+    end
+
     def filter_backtrace(trace)
       ntrace = [trace.first]
       trace.each_cons(2) do |ep1, ep2|
@@ -10,13 +25,13 @@ module TypeProfiler
       ntrace
     end
 
-    def show_error(errors)
+    def show_error(errors, backward_edge)
       return if errors.empty?
 
       puts "# Errors"
       errors.each do |ep, msg|
         if ENV["TYPE_PROFILER_DETAIL"]
-          backtrace = filter_backtrace(generate_analysis_trace(ep, {}))
+          backtrace = filter_backtrace(generate_analysis_trace(ep, {}, backward_edge))
         else
           backtrace = [ep]
         end
@@ -137,7 +152,7 @@ module TypeProfiler
     def initialize(
       scratch,
       include_relations,
-      class_defs, iseq_method_calls, sig_fargs, sig_ret, yields, backward_edges
+      class_defs, iseq_method_calls, sig_fargs, sig_ret, yields
     )
       @scratch = scratch
       @class_defs = class_defs
@@ -145,7 +160,6 @@ module TypeProfiler
       @sig_fargs = sig_fargs
       @sig_ret = sig_ret
       @yields = yields
-      @backward_edges = backward_edges
       @include_relations = include_relations
     end
 
@@ -174,21 +188,6 @@ module TypeProfiler
         blk_tys["Proc[#{ show_signature(blk_fargs, @sig_ret[blk_ctx]) }]"] = true
       end
       blk_tys.size == 1 ? "&#{ blk_tys.keys.first }" : "&(#{ blk_tys.keys.join(" & ") })"
-    end
-
-    def generate_analysis_trace(state, visited)
-      return nil if visited[state]
-      visited[state] = true
-      prev_states = @backward_edges[state]
-      if prev_states
-        prev_states.each_key do |pstate|
-          trace = generate_analysis_trace(pstate, visited)
-          return [state] + trace if trace
-        end
-        nil
-      else
-        []
-      end
     end
 
     def show_class_or_module(obj, classes)
