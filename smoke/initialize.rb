@@ -14,12 +14,12 @@ A.new(nil)
 
 __END__
 # Classes
+class Object
+  def log : (A) -> NilClass
+end
 class A
   @int : Integer
   @str : String
   @val : Integer | NilClass | String
   def initialize : (Integer | NilClass | String) -> (Integer | NilClass | String)
-end
-class Object
-  def log : (A) -> NilClass
 end

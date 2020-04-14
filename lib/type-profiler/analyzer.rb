@@ -212,7 +212,6 @@ module TypeProfiler
 
       @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
       @block_to_ctx = {}
-      @ivar_table = VarTable.new
       @cvar_table = VarTable.new
       @gvar_table = VarTable.new
 
@@ -258,9 +257,11 @@ module TypeProfiler
         @name = name
         @consts = {}
         @methods = {}
+        @ivars = VarTable.new
       end
 
-      attr_reader :kind, :modules, :name, :methods, :superclass
+      attr_reader :kind, :modules, :name, :methods, :superclass, :ivars
+      attr_accessor :klass_obj
 
       def include_module(mod, visible)
         # XXX: need to check if mod is already included by the ancestors?
@@ -346,6 +347,7 @@ module TypeProfiler
         end
         @class_defs[idx] = ClassDef.new(:class, show_name, superclass_idx)
         klass = Type::Class.new(:class, idx, superclass, show_name)
+        @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
         add_constant(cbase, name, klass)
         return klass
@@ -353,6 +355,7 @@ module TypeProfiler
         # module
         @class_defs[idx] = ClassDef.new(:module, show_name, nil)
         mod = Type::Class.new(:module, idx, nil, show_name)
+        @class_defs[idx].klass_obj = mod
         add_constant(cbase, name, mod)
         return mod
       end
@@ -542,15 +545,30 @@ module TypeProfiler
       end
     end
 
+    def get_ivar(recv)
+      if recv.is_a?(Type::Class)
+        [@class_defs[recv.idx], true]
+      elsif recv.is_a?(Type::Instance)
+        [@class_defs[recv.klass.idx], false]
+      else
+        warn "???"
+        return
+      end
+    end
+
     def add_ivar_read!(recv, var, ep, &ctn)
       recv.each_child do |recv|
-        @ivar_table.add_read!([recv, var], ep, &ctn)
+        class_def, singleton = get_ivar(recv)
+        next unless class_def
+        class_def.ivars.add_read!([singleton, var], ep, &ctn)
       end
     end
 
     def add_ivar_write!(recv, var, ty, &ctn)
       recv.each_child do |recv|
-        @ivar_table.add_write!([recv, var], ty, &ctn)
+        class_def, singleton = get_ivar(recv)
+        next unless class_def
+        class_def.ivars.add_write!([singleton, var], ty, &ctn)
       end
     end
 
@@ -688,7 +706,7 @@ module TypeProfiler
       #return
       RubySignatureExporter.new(
         self,
-        @ivar_table.write, @cvar_table.write,
+        @cvar_table.write,
         @include_relations,
         @class_defs, @iseq_method_to_ctx, @sig_fargs, @sig_ret, @yields, @backward_edges,
       ).show(stat_eps)

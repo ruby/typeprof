@@ -18,11 +18,11 @@ log(Foo.new.foo)
 
 __END__
 # Classes
+class Object
+  def log : (Integer | String) -> NilClass
+end
 class Foo
   @foo : Integer | String
   def foo= : (Integer | String) -> (Integer | String)
   def foo : () -> (Integer | String)
-end
-class Object
-  def log : (Integer | String) -> NilClass
 end
