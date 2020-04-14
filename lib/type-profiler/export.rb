@@ -181,10 +181,9 @@ module TypeProfiler
       blk_tys.size == 1 ? "&#{ blk_tys.keys.first }" : "&(#{ blk_tys.keys.join(" & ") })"
     end
 
-    def show_class_or_module(obj, classes)
-      obj = Type::Instance.new(obj) if obj.is_a?(Type::Class)
-      kind = obj.klass.kind
-      name = obj.screen_name(@scratch)
+    def show_class_or_module(class_def, classes)
+      kind = class_def.kind
+      name = class_def.name
       classes[name] ||= { kind: kind, includes: [], ivars: {}, cvars: {}, methods: {} }
     end
 
@@ -194,16 +193,16 @@ module TypeProfiler
       classes = {}
       @class_defs.each_value do |class_def|
         included_mods = class_def.modules[false].filter_map do |visible, mod_def|
-          Type::Instance.new(mod_def.klass_obj).screen_name(@scratch) if visible
+          mod_def.name if visible
         end
         unless included_mods.empty?
-          entry = show_class_or_module(class_def.klass_obj, classes)
+          entry = show_class_or_module(class_def, classes)
           entry[:includes].concat(included_mods)
         end
 
         ivars = class_def.ivars.write
         unless ivars.empty?
-          entry = show_class_or_module(class_def.klass_obj, classes)
+          entry = show_class_or_module(class_def, classes)
           ivars.each do |(singleton, var), ty|
             var = "self.#{ var }" if singleton
             entry[:ivars][var] = ty.screen_name(@scratch)
@@ -212,7 +211,7 @@ module TypeProfiler
 
         cvars = class_def.cvars.write
         unless cvars.empty?
-          entry = show_class_or_module(class_def.klass_obj, classes)
+          entry = show_class_or_module(class_def, classes)
           cvars.each do |var, ty|
             entry[:cvars][var] = ty.screen_name(@scratch)
           end
@@ -228,7 +227,7 @@ module TypeProfiler
               fargs = @sig_fargs[ctx]
               ret_tys = @sig_ret[ctx]
 
-              entry = show_class_or_module(class_def.klass_obj, classes)
+              entry = show_class_or_module(class_def, classes)
 
               method_name = ctx.mid
               method_name = "self.#{ method_name }" if singleton
