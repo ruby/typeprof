@@ -81,35 +81,6 @@ module TypeProfiler
       @yields = yields
     end
 
-    def show_signature(farg_tys, blk_ctxs, ret_ty)
-      s = "(#{ farg_tys.join(", ") }) "
-      s << "{ #{ show_block_signature(blk_ctxs) } } " if blk_ctxs
-      s << "-> "
-      s << (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty)
-    end
-
-    def show_block_signature(blk_ctxs)
-      blk_tys = {}
-      all_farg_tys = all_ret_tys = nil
-      blk_ctxs.each do |blk_ctx, farg_tys|
-        if all_farg_tys
-          all_farg_tys = all_farg_tys.merge(farg_tys)
-        else
-          all_farg_tys = farg_tys
-        end
-
-        if all_ret_tys
-          all_ret_tys = all_ret_tys.union(@sig_ret[blk_ctx])
-        else
-          all_ret_tys = @sig_ret[blk_ctx]
-        end
-      end
-      all_farg_tys = all_farg_tys.screen_name(@scratch)
-      all_ret_tys = all_ret_tys.screen_name(@scratch)
-      # XXX: should support @yields[blk_ctx] (block's block)
-      show_signature(all_farg_tys, nil, all_ret_tys)
-    end
-
     def show(stat_eps)
       puts "# Classes" # and Modules
 
@@ -142,11 +113,11 @@ module TypeProfiler
               method_name = ctx.mid
               method_name = "self.#{ method_name }" if singleton
 
-              fargs = @sig_fargs[ctx].screen_name(@scratch)
-              ret_tys = @sig_ret[ctx].screen_name(@scratch)
+              fargs = @sig_fargs[ctx]
+              ret_tys = @sig_ret[ctx]
 
               methods[method_name] ||= []
-              methods[method_name] << show_signature(fargs, @yields[ctx], ret_tys)
+              methods[method_name] << @scratch.show_signature(fargs, @yields[ctx], ret_tys)
 
               #stat_classes[recv] = true
               #stat_methods[[recv, method_name]] = true

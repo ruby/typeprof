@@ -1570,18 +1570,42 @@ module TypeProfiler
     end
 
     def proc_screen_name(blk)
-      blk_tys = {}
-      (@block_to_ctx[blk] || []).each do |ctx|
-        farg_tys = @sig_fargs[ctx].screen_name(self)
-        ret_tys = @sig_ret[ctx].screen_name(self)
-        if @yields[ctx]
-          fargs << show_block(ctx) # XXX
-        end
-        s = "(#{ farg_tys.join(", ") }) -> "
-        s += (ret_tys.include?("|") ? "(#{ ret_tys })" : ret_tys)
-        blk_tys["Proc[#{ s }]"] = true
+      return "Proc" unless @block_to_ctx[blk]
+      blk_ctxs = []
+      @block_to_ctx[blk].each do |ctx|
+        blk_ctxs << [ctx, @sig_fargs[ctx]]
       end
-      blk_tys.size == 1 ? "&#{ blk_tys.keys.first }" : "&(#{ blk_tys.keys.join(" & ") })"
+      "Proc[#{ show_block_signature(blk_ctxs) }]"
+    end
+
+    def show_signature(farg_tys, blk_ctxs, ret_ty)
+      farg_tys = farg_tys.screen_name(self)
+      ret_ty = ret_ty.screen_name(self)
+      s = "(#{ farg_tys.join(", ") }) "
+      s << "{ #{ show_block_signature(blk_ctxs) } } " if blk_ctxs
+      s << "-> "
+      s << (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty)
+    end
+
+    def show_block_signature(blk_ctxs)
+      blk_tys = {}
+      all_farg_tys = all_ret_tys = nil
+      blk_ctxs.each do |blk_ctx, farg_tys|
+        if all_farg_tys
+          all_farg_tys = all_farg_tys.merge(farg_tys)
+        else
+          all_farg_tys = farg_tys
+        end
+
+        if all_ret_tys
+          all_ret_tys = all_ret_tys.union(@sig_ret[blk_ctx])
+        else
+          all_ret_tys = @sig_ret[blk_ctx]
+        end
+      end
+      return "" if !all_farg_tys
+      # XXX: should support @yields[blk_ctx] (block's block)
+      show_signature(all_farg_tys, nil, all_ret_tys)
     end
   end
 end
