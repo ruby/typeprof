@@ -17,11 +17,11 @@ A.new.foo
 
 __END__
 # Classes
-class A
-  @@var : Integer
-  def foo : () -> NilClass
-end
 class Object
   def log1 : (Integer) -> NilClass
   def log2 : (Integer) -> NilClass
+end
+class A
+  @@var : Integer
+  def foo : () -> NilClass
 end

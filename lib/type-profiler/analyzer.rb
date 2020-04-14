@@ -212,7 +212,6 @@ module TypeProfiler
 
       @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
       @block_to_ctx = {}
-      @cvar_table = VarTable.new
       @gvar_table = VarTable.new
 
       @include_relations = {}
@@ -258,9 +257,10 @@ module TypeProfiler
         @consts = {}
         @methods = {}
         @ivars = VarTable.new
+        @cvars = VarTable.new
       end
 
-      attr_reader :kind, :modules, :name, :methods, :superclass, :ivars
+      attr_reader :kind, :modules, :name, :methods, :superclass, :ivars, :cvars
       attr_accessor :klass_obj
 
       def include_module(mod, visible)
@@ -573,11 +573,19 @@ module TypeProfiler
     end
 
     def add_cvar_read!(klass, var, ep, &ctn)
-      @cvar_table.add_read!([klass, var], ep, &ctn)
+      klass.each_child do |klass|
+        class_def = @class_defs[klass.idx]
+        next unless class_def
+        class_def.cvars.add_read!(var, ep, &ctn)
+      end
     end
 
     def add_cvar_write!(klass, var, ty, &ctn)
-      @cvar_table.add_write!([klass, var], ty, &ctn)
+      klass.each_child do |klass|
+        class_def = @class_defs[klass.idx]
+        next unless class_def
+        class_def.cvars.add_write!(var, ty, &ctn)
+      end
     end
 
     def add_gvar_read!(var, ep, &ctn)
@@ -706,7 +714,6 @@ module TypeProfiler
       #return
       RubySignatureExporter.new(
         self,
-        @cvar_table.write,
         @include_relations,
         @class_defs, @iseq_method_to_ctx, @sig_fargs, @sig_ret, @yields, @backward_edges,
       ).show(stat_eps)

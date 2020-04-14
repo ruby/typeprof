@@ -136,7 +136,6 @@ module TypeProfiler
   class RubySignatureExporter
     def initialize(
       scratch,
-      cvar_write,
       include_relations,
       class_defs, iseq_method_calls, sig_fargs, sig_ret, yields, backward_edges
     )
@@ -147,7 +146,6 @@ module TypeProfiler
       @sig_ret = sig_ret
       @yields = yields
       @backward_edges = backward_edges
-      @cvar_write = cvar_write
       @include_relations = include_relations
     end
 
@@ -208,10 +206,10 @@ module TypeProfiler
         entry = show_class_or_module(including_mod, classes)
         entry[:includes].concat(included_mods.to_a.map {|mod| Type::Instance.new(mod).screen_name(@scratch) })
       end
-      @cvar_write.each do |(klass, var), ty|
-        entry = show_class_or_module(Type::Instance.new(klass), classes)
-        entry[:cvars][var] = ty.screen_name(@scratch)
-      end
+      #@cvar_write.each do |(klass, var), ty|
+      #  entry = show_class_or_module(Type::Instance.new(klass), classes)
+      #  entry[:cvars][var] = ty.screen_name(@scratch)
+      #end
       @class_defs.each_value do |class_def|
         ivars = class_def.ivars.write
         unless ivars.empty?
@@ -219,6 +217,13 @@ module TypeProfiler
           ivars.each do |(singleton, var), ty|
             var = "self.#{ var }" if singleton
             entry[:ivars][var] = ty.screen_name(@scratch)
+          end
+        end
+        cvars = class_def.cvars.write
+        unless cvars.empty?
+          entry = show_class_or_module(class_def.klass_obj, classes)
+          cvars.each do |var, ty|
+            entry[:cvars][var] = ty.screen_name(@scratch)
           end
         end
         class_def.methods.each do |(singleton, mid), mdefs|
