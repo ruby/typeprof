@@ -671,11 +671,26 @@ module TypeProfiler
         end
       end
 
+      report(stat_eps)
+    end
+
+    def report(stat_eps)
+      Reporters.show_error(@errors)
+
+      Reporters.show_reveal_types(self, @reveal_types)
+
+      Reporters.show_gvars(self, @gvar_table.write)
+
+      #RubySignatureExporter2.new(
+      #  self, @include_relations, @ivar_table.write, @cvar_table.write, @class_defs
+      #).show
+
+      #return
       RubySignatureExporter.new(
-        self, @errors, @reveal_types,
-        @gvar_table.write, @ivar_table.write, @cvar_table.write,
+        self,
+        @ivar_table.write, @cvar_table.write,
         @include_relations,
-        @class_defs, @iseq_method_calls, @sig_fargs, @sig_ret, @yields, @backward_edges,
+        @class_defs, @iseq_method_to_ctx, @sig_fargs, @sig_ret, @yields, @backward_edges,
       ).show(stat_eps)
     end
 

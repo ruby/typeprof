@@ -1,21 +1,152 @@
 module TypeProfiler
+  module Reporters
+    module_function
+
+    def filter_backtrace(trace)
+      ntrace = [trace.first]
+      trace.each_cons(2) do |ep1, ep2|
+        ntrace << ep2 if ep1.ctx != ep2.ctx
+      end
+      ntrace
+    end
+
+    def show_error(errors)
+      return if errors.empty?
+
+      puts "# Errors"
+      errors.each do |ep, msg|
+        if ENV["TYPE_PROFILER_DETAIL"]
+          backtrace = filter_backtrace(generate_analysis_trace(ep, {}))
+        else
+          backtrace = [ep]
+        end
+        loc, *backtrace = backtrace.map do |ep|
+          ep.source_location
+        end
+        puts "#{ loc }: #{ msg }"
+        backtrace.each do |loc|
+          puts "        from #{ loc }"
+        end
+      end
+      puts
+    end
+
+    def show_reveal_types(scratch, reveal_types)
+      return if reveal_types.empty?
+
+      puts "# Revealed types"
+      reveal_types.each do |source_location, ty|
+        puts "#  #{ source_location } #=> #{ ty.screen_name(scratch) }"
+      end
+      puts
+    end
+
+    def show_gvars(scratch, gvar_write)
+      # A signature for global variables is not supported in RBS
+      return if gvar_write.empty?
+
+      puts "# Global variables"
+      gvar_write.each do |gvar_name, tys|
+        puts "#  #{ gvar_name } : #{ tys.screen_name(scratch) }"
+      end
+      puts
+    end
+  end
+
+  class RubySignatureExporter2
+    class Module
+      def initialize(name, kind)
+        @name = name
+        @kind = kind
+        @includes = []
+        @ivars = {}
+        @cvars = {}
+        @methods = {}
+      end
+
+      def add_includes(included_mods)
+        @includes.concat(included_mods)
+      end
+
+      def add_ivar(name, ty)
+        @ivars[name] = ty
+      end
+
+      def add_cvar(name, ty)
+        @cvars[name] = ty
+      end
+    end
+
+    def initialize(scratch)
+      @scratch = scratch
+      @mods = {}
+    end
+
+    def new_mod(including_mod)
+      obj = Type::Instance.new(obj) if obj.is_a?(Type::Class)
+      name = obj.screen_name(@scratch)
+      @mods[name] ||= Module.new(name, kind)
+    end
+
+    def compile(include_relations, ivar_write, cvar_write, class_defs)
+      include_relations.each do |including_mod, included_mods|
+        new_mod(including_mod).add_includes(included_mods)
+      end
+      ivar_write.each do |(recv, var), ty|
+        var = "self.#{ var }" if recv.is_a?(Type::Class)
+        new_mod(recv).add_ivar(var, ty)
+      end
+      cvar_write.each do |(klass, var), ty|
+        new_mod(klass).add_cvar(var, ty)
+      end
+      class_defs.each_value do |class_def|
+        class_def.methods.each do |(singleton, mid), mdefs|
+          mdefs.each do |mdef|
+            ctxs = @iseq_method_calls[mdef]
+            next unless ctxs
+
+            ctxs.each do |ctx|
+              next if mid != ctx.mid
+              fargs = @sig_fargs[ctx]
+              ret_tys = @sig_ret[ctx]
+
+              entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
+
+              method_name = ctx.mid
+              method_name = "self.#{ method_name }" if singleton
+
+              fargs = fargs.screen_name(@scratch)
+              if @yields[ctx]
+                fargs << show_block(ctx)
+              end
+
+              entry[:methods][method_name] ||= []
+              entry[:methods][method_name] << show_signature(fargs, ret_tys)
+
+              #stat_classes[recv] = true
+              #stat_methods[[recv, method_name]] = true
+            end
+          end
+        end
+      end
+
+    end
+  end
+
   class RubySignatureExporter
     def initialize(
-      scratch, errors, reveal_types,
-      gvar_write, ivar_write, cvar_write,
+      scratch,
+      ivar_write, cvar_write,
       include_relations,
       class_defs, iseq_method_calls, sig_fargs, sig_ret, yields, backward_edges
     )
       @scratch = scratch
-      @errors = errors
-      @reveal_types = reveal_types
       @class_defs = class_defs
       @iseq_method_calls = iseq_method_calls
       @sig_fargs = sig_fargs
       @sig_ret = sig_ret
       @yields = yields
       @backward_edges = backward_edges
-      @gvar_write = gvar_write
       @ivar_write = ivar_write
       @cvar_write = cvar_write
       @include_relations = include_relations
@@ -63,45 +194,6 @@ module TypeProfiler
       end
     end
 
-    def filter_backtrace(trace)
-      ntrace = [trace.first]
-      trace.each_cons(2) do |ep1, ep2|
-        ntrace << ep2 if ep1.ctx != ep2.ctx
-      end
-      ntrace
-    end
-
-    def show_errors
-      return if @errors.empty?
-
-      puts "# Errors"
-      @errors.each do |ep, msg|
-        if ENV["TYPE_PROFILER_DETAIL"]
-          backtrace = filter_backtrace(generate_analysis_trace(ep, {}))
-        else
-          backtrace = [ep]
-        end
-        loc, *backtrace = backtrace.map do |ep|
-          ep.source_location
-        end
-        puts "#{ loc }: #{ msg }"
-        backtrace.each do |loc|
-          puts "        from #{ loc }"
-        end
-      end
-      puts
-    end
-
-    def show_gvars
-      return if @gvar_write.empty?
-
-      puts "# Global variables"
-      @gvar_write.each do |gvar_name, tys|
-        puts "#{ gvar_name } : #{ tys.screen_name(@scratch) }"
-      end
-      puts
-    end
-
     def show_class_or_module(obj, classes)
       obj = Type::Instance.new(obj) if obj.is_a?(Type::Class)
       kind = obj.klass.kind
@@ -110,19 +202,9 @@ module TypeProfiler
     end
 
     def show(stat_eps)
-      show_errors
-      show_gvars
-
       stat_classes = {}
       stat_methods = {}
       classes = {}
-      unless @reveal_types.empty?
-        puts "# Revealed types"
-        @reveal_types.each do |source_location, ty|
-          puts "#  #{ source_location } #=> #{ ty.screen_name(@scratch) }"
-        end
-        puts
-      end
       @include_relations.each do |including_mod, included_mods|
         entry = show_class_or_module(including_mod, classes)
         entry[:includes].concat(included_mods.to_a.map {|mod| Type::Instance.new(mod).screen_name(@scratch) })
