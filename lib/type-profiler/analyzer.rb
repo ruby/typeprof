@@ -211,6 +211,7 @@ module TypeProfiler
       @iseq_method_calls = {}
 
       @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
+      @block_to_ctx = {}
       @ivar_table = VarTable.new
       @cvar_table = VarTable.new
       @gvar_table = VarTable.new
@@ -510,6 +511,11 @@ module TypeProfiler
     def add_yield!(caller_ctx, fargs, blk_ctx)
       @yields[caller_ctx] ||= Utils::MutableSet.new
       @yields[caller_ctx] << [blk_ctx, fargs]
+    end
+
+    def add_block_to_ctx!(blk, ctx)
+      @block_to_ctx[blk] ||= Utils::MutableSet.new
+      @block_to_ctx[blk] << ctx
     end
 
     class VarTable
@@ -1522,8 +1528,24 @@ module TypeProfiler
         # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
 
         add_yield!(ep.ctx, nfargs, nep.ctx) if given_block
-        add_callsite!(nep.ctx, nil, ep, env, &ctn)
+        add_block_to_ctx!(blk, nep.ctx)
+        add_callsite!(nep.ctx, nfargs, ep, env, &ctn)
       end
+    end
+
+    def proc_screen_name(blk)
+      blk_tys = {}
+      (@block_to_ctx[blk] || []).each do |ctx|
+        farg_tys = @sig_fargs[ctx].screen_name(self)
+        ret_tys = @sig_ret[ctx].screen_name(self)
+        if @yields[ctx]
+          fargs << show_block(ctx) # XXX
+        end
+        s = "(#{ farg_tys.join(", ") }) -> "
+        s += (ret_tys.include?("|") ? "(#{ ret_tys })" : ret_tys)
+        blk_tys["Proc[#{ s }]"] = true
+      end
+      blk_tys.size == 1 ? "&#{ blk_tys.keys.first }" : "&(#{ blk_tys.keys.join(" & ") })"
     end
   end
 end

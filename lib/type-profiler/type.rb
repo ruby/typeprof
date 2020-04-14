@@ -377,8 +377,8 @@ module TypeProfiler
         "#<ISeqProc>"
       end
 
-      def screen_name(_scratch)
-        "??ISeqProc??"
+      def screen_name(scratch)
+        scratch.proc_screen_name(self)
       end
 
       def get_method(mid, scratch)
