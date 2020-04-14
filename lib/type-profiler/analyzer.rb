@@ -712,11 +712,7 @@ module TypeProfiler
       #).show
 
       #return
-      RubySignatureExporter.new(
-        self,
-        @include_relations,
-        @class_defs, @iseq_method_to_ctxs, @sig_fargs, @sig_ret, @yields,
-      ).show(stat_eps)
+      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs, @sig_fargs, @sig_ret, @yields).show(stat_eps)
     end
 
     def globalize_type(ty, env, ep)

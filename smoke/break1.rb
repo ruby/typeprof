@@ -13,6 +13,6 @@ bar
 __END__
 # Classes
 class Object
-  def foo : (&Proc[(Integer) -> bot]) -> bot
+  def foo : () { (Integer) -> bot } -> bot
   def bar : () -> String
 end

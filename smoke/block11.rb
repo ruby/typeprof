@@ -34,6 +34,6 @@ class Object
   def log1 : (Integer | NilClass) -> NilClass
   def log2 : (Integer | NilClass) -> NilClass
   def foo : () -> (Integer | NilClass)
-  def test_yield : (&Proc[() -> NilClass]) -> NilClass
+  def test_yield : () { () -> NilClass } -> NilClass
   def bar : () -> (Integer | NilClass)
 end

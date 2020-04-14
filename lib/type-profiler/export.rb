@@ -61,97 +61,16 @@ module TypeProfiler
       return if gvar_write.empty?
 
       puts "# Global variables"
-      gvar_write.each do |gvar_name, tys|
-        puts "#  #{ gvar_name } : #{ tys.screen_name(scratch) }"
+      gvar_write.each do |gvar_name, ty|
+        puts "#  #{ gvar_name } : #{ ty.screen_name(scratch) }"
       end
       puts
-    end
-  end
-
-  class RubySignatureExporter2
-    class Module
-      def initialize(name, kind)
-        @name = name
-        @kind = kind
-        @includes = []
-        @ivars = {}
-        @cvars = {}
-        @methods = {}
-      end
-
-      def add_includes(included_mods)
-        @includes.concat(included_mods)
-      end
-
-      def add_ivar(name, ty)
-        @ivars[name] = ty
-      end
-
-      def add_cvar(name, ty)
-        @cvars[name] = ty
-      end
-    end
-
-    def initialize(scratch)
-      @scratch = scratch
-      @mods = {}
-    end
-
-    def new_mod(including_mod)
-      obj = Type::Instance.new(obj) if obj.is_a?(Type::Class)
-      name = obj.screen_name(@scratch)
-      @mods[name] ||= Module.new(name, kind)
-    end
-
-    def compile(include_relations, ivar_write, cvar_write, class_defs)
-      include_relations.each do |including_mod, included_mods|
-        new_mod(including_mod).add_includes(included_mods)
-      end
-      ivar_write.each do |(recv, var), ty|
-        var = "self.#{ var }" if recv.is_a?(Type::Class)
-        new_mod(recv).add_ivar(var, ty)
-      end
-      cvar_write.each do |(klass, var), ty|
-        new_mod(klass).add_cvar(var, ty)
-      end
-      class_defs.each_value do |class_def|
-        class_def.methods.each do |(singleton, mid), mdefs|
-          mdefs.each do |mdef|
-            ctxs = @iseq_method_to_ctxs[mdef]
-            next unless ctxs
-
-            ctxs.each do |ctx|
-              next if mid != ctx.mid
-              fargs = @sig_fargs[ctx]
-              ret_tys = @sig_ret[ctx]
-
-              entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
-
-              method_name = ctx.mid
-              method_name = "self.#{ method_name }" if singleton
-
-              fargs = fargs.screen_name(@scratch)
-              if @yields[ctx]
-                fargs << show_block(ctx)
-              end
-
-              entry[:methods][method_name] ||= []
-              entry[:methods][method_name] << show_signature(fargs, ret_tys)
-
-              #stat_classes[recv] = true
-              #stat_methods[[recv, method_name]] = true
-            end
-          end
-        end
-      end
-
     end
   end
 
   class RubySignatureExporter
     def initialize(
       scratch,
-      include_relations,
       class_defs, iseq_method_to_ctxs, sig_fargs, sig_ret, yields
     )
       @scratch = scratch
@@ -160,63 +79,58 @@ module TypeProfiler
       @sig_fargs = sig_fargs
       @sig_ret = sig_ret
       @yields = yields
-      @include_relations = include_relations
     end
 
-    def show_signature(farg_tys, ret_ty)
-      s = "(#{ farg_tys.join(", ") }) -> "
-      ret_tys = ret_ty.screen_name(@scratch)
-      s + (ret_tys.include?("|") ? "(#{ ret_tys })" : ret_tys)
+    def show_signature(farg_tys, blk_ctxs, ret_ty)
+      s = "(#{ farg_tys.join(", ") }) "
+      s << "{ #{ show_block_signature(blk_ctxs) } } " if blk_ctxs
+      s << "-> "
+      s << (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty)
     end
 
-    def show_block(ctx)
+    def show_block_signature(blk_ctxs)
       blk_tys = {}
-      @yields[ctx].each do |blk_ctx, fargs|
-        blk_fargs = fargs.lead_tys.map {|ty| ty.screen_name(@scratch) } # XXX: other arguments but lead_tys?
-        if @yields[blk_ctx]
-          blk_fargs << show_block(blk_ctx)
+      all_farg_tys = all_ret_tys = nil
+      blk_ctxs.each do |blk_ctx, farg_tys|
+        if all_farg_tys
+          all_farg_tys = all_farg_tys.merge(farg_tys)
+        else
+          all_farg_tys = farg_tys
         end
-        blk_tys["Proc[#{ show_signature(blk_fargs, @sig_ret[blk_ctx]) }]"] = true
-      end
-      blk_tys.size == 1 ? "&#{ blk_tys.keys.first }" : "&(#{ blk_tys.keys.join(" & ") })"
-    end
 
-    def show_class_or_module(class_def, classes)
-      kind = class_def.kind
-      name = class_def.name
-      classes[name] ||= { kind: kind, includes: [], ivars: {}, cvars: {}, methods: {} }
+        if all_ret_tys
+          all_ret_tys = all_ret_tys.union(@sig_ret[blk_ctx])
+        else
+          all_ret_tys = @sig_ret[blk_ctx]
+        end
+      end
+      all_farg_tys = all_farg_tys.screen_name(@scratch)
+      all_ret_tys = all_ret_tys.screen_name(@scratch)
+      # XXX: should support @yields[blk_ctx] (block's block)
+      show_signature(all_farg_tys, nil, all_ret_tys)
     end
 
     def show(stat_eps)
+      puts "# Classes" # and Modules
+
       stat_classes = {}
       stat_methods = {}
-      classes = {}
+      first = true
       @class_defs.each_value do |class_def|
         included_mods = class_def.modules[false].filter_map do |visible, mod_def|
           mod_def.name if visible
         end
-        unless included_mods.empty?
-          entry = show_class_or_module(class_def, classes)
-          entry[:includes].concat(included_mods)
+
+        ivars = class_def.ivars.write.map do |(singleton, var), ty|
+          var = "self.#{ var }" if singleton
+          [var, ty.screen_name(@scratch)]
         end
 
-        ivars = class_def.ivars.write
-        unless ivars.empty?
-          entry = show_class_or_module(class_def, classes)
-          ivars.each do |(singleton, var), ty|
-            var = "self.#{ var }" if singleton
-            entry[:ivars][var] = ty.screen_name(@scratch)
-          end
+        cvars = class_def.cvars.write.map do |var, ty|
+          [var, ty.screen_name(@scratch)]
         end
 
-        cvars = class_def.cvars.write
-        unless cvars.empty?
-          entry = show_class_or_module(class_def, classes)
-          cvars.each do |var, ty|
-            entry[:cvars][var] = ty.screen_name(@scratch)
-          end
-        end
-
+        methods = {}
         class_def.methods.each do |(singleton, mid), mdefs|
           mdefs.each do |mdef|
             ctxs = @iseq_method_to_ctxs[mdef]
@@ -224,45 +138,38 @@ module TypeProfiler
 
             ctxs.each do |ctx|
               next if mid != ctx.mid
-              fargs = @sig_fargs[ctx]
-              ret_tys = @sig_ret[ctx]
-
-              entry = show_class_or_module(class_def, classes)
 
               method_name = ctx.mid
               method_name = "self.#{ method_name }" if singleton
 
-              fargs = fargs.screen_name(@scratch)
-              if @yields[ctx]
-                fargs << show_block(ctx)
-              end
+              fargs = @sig_fargs[ctx].screen_name(@scratch)
+              ret_tys = @sig_ret[ctx].screen_name(@scratch)
 
-              entry[:methods][method_name] ||= []
-              entry[:methods][method_name] << show_signature(fargs, ret_tys)
+              methods[method_name] ||= []
+              methods[method_name] << show_signature(fargs, @yields[ctx], ret_tys)
 
               #stat_classes[recv] = true
               #stat_methods[[recv, method_name]] = true
             end
           end
         end
-      end
 
-      puts "# Classes" # and Modules
-      first = true
-      classes.each do |recv, cls|
+        next if included_mods.empty? && ivars.empty? && cvars.empty? && methods.empty?
+
         puts unless first
         first = false
-        puts "#{ cls[:kind] } #{ recv }"
-        cls[:includes].sort.each do |tys|
-          puts "  include #{ tys }"
+
+        puts "#{ class_def.kind } #{ class_def.name }"
+        included_mods.sort.each do |ty|
+          puts "  include #{ ty }"
         end
-        cls[:ivars].each do |var, tys|
-          puts "  #{ var } : #{ tys }"
+        ivars.each do |var, ty|
+          puts "  #{ var } : #{ ty }"
         end
-        cls[:cvars].each do |var, tys|
-          puts "  #{ var } : #{ tys }"
+        cvars.each do |var, ty|
+          puts "  #{ var } : #{ ty }"
         end
-        cls[:methods].each do |method_name, sigs|
+        methods.each do |method_name, sigs|
           sigs = sigs.sort.join("\n" + " " * (method_name.size + 3) + "| ")
           puts "  def #{ method_name } : #{ sigs }"
         end

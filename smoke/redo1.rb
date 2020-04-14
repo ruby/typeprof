@@ -17,5 +17,5 @@ __END__
 # Classes
 class Object
   def bar : (Integer | String) -> (Integer | String)
-  def foo : (&Proc[(Integer) -> String]) -> String
+  def foo : () { (Integer) -> String } -> String
 end
