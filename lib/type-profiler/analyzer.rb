@@ -262,17 +262,17 @@ module TypeProfiler
 
       attr_reader :kind, :modules, :name, :methods, :superclass
 
-      def include_module(mod)
+      def include_module(mod, visible)
         # XXX: need to check if mod is already included by the ancestors?
         unless @modules[false].include?(mod)
-          @modules[false] << mod
+          @modules[false] << [visible, mod]
         end
       end
 
-      def extend_module(mod)
+      def extend_module(mod, visible)
         # XXX: need to check if mod is already included by the ancestors?
         unless @modules[true].include?(mod)
-          @modules[true] << mod
+          @modules[true] << [visible, mod]
         end
       end
 
@@ -289,7 +289,7 @@ module TypeProfiler
 
       def get_method(mid, singleton)
         @methods[[singleton, mid]] || begin
-          @modules[singleton].reverse_each do |mod|
+          @modules[singleton].reverse_each do |_visible, mod|
             meth = mod.get_method(mid, false)
             return meth if meth
           end
@@ -304,10 +304,10 @@ module TypeProfiler
       end
     end
 
-    def include_module(including_mod, included_mod, logging = true)
+    def include_module(including_mod, included_mod, visible = true)
       return if included_mod == Type.any
 
-      if logging
+      if visible
         @include_relations[including_mod] ||= Utils::MutableSet.new
         @include_relations[including_mod] << included_mod
       end
@@ -315,19 +315,19 @@ module TypeProfiler
       including_mod = @class_defs[including_mod.idx]
       included_mod = @class_defs[included_mod.idx]
       if included_mod && included_mod.kind == :module
-        including_mod.include_module(included_mod)
+        including_mod.include_module(included_mod, visible)
       else
         warn "including something that is not a module"
       end
     end
 
-    def extend_module(extending_mod, extended_mod)
+    def extend_module(extending_mod, extended_mod, visible = true)
       extending_mod = @class_defs[extending_mod.idx]
       extended_mod = @class_defs[extended_mod.idx]
       if extended_mod && extended_mod.kind == :module
-        extending_mod.extend_module(extended_mod)
+        extending_mod.extend_module(extended_mod, visible)
       else
-        warn "including something that is not a module"
+        warn "extending something that is not a module"
       end
     end
 
