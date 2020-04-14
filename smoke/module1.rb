@@ -19,10 +19,10 @@ C.new.bar
 
 __END__
 # Classes
-class C
-  include M
-end
 module M
   def foo : () -> :foo
   def bar : () -> :bar
+end
+class C
+  include M
 end

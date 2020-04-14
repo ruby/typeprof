@@ -19,10 +19,10 @@ C.new.foo
 
 __END__
 # Classes
+module M2
+  def foo : () -> :m2
+end
 class C
   include M1
   include M2
-end
-module M2
-  def foo : () -> :m2
 end

@@ -202,15 +202,15 @@ module TypeProfiler
       stat_classes = {}
       stat_methods = {}
       classes = {}
-      @include_relations.each do |including_mod, included_mods|
-        entry = show_class_or_module(including_mod, classes)
-        entry[:includes].concat(included_mods.to_a.map {|mod| Type::Instance.new(mod).screen_name(@scratch) })
-      end
-      #@cvar_write.each do |(klass, var), ty|
-      #  entry = show_class_or_module(Type::Instance.new(klass), classes)
-      #  entry[:cvars][var] = ty.screen_name(@scratch)
-      #end
       @class_defs.each_value do |class_def|
+        included_mods = class_def.modules[false].filter_map do |visible, mod_def|
+          Type::Instance.new(mod_def.klass_obj).screen_name(@scratch) if visible
+        end
+        unless included_mods.empty?
+          entry = show_class_or_module(class_def.klass_obj, classes)
+          entry[:includes].concat(included_mods)
+        end
+
         ivars = class_def.ivars.write
         unless ivars.empty?
           entry = show_class_or_module(class_def.klass_obj, classes)
@@ -219,6 +219,7 @@ module TypeProfiler
             entry[:ivars][var] = ty.screen_name(@scratch)
           end
         end
+
         cvars = class_def.cvars.write
         unless cvars.empty?
           entry = show_class_or_module(class_def.klass_obj, classes)
@@ -226,6 +227,7 @@ module TypeProfiler
             entry[:cvars][var] = ty.screen_name(@scratch)
           end
         end
+
         class_def.methods.each do |(singleton, mid), mdefs|
           mdefs.each do |mdef|
             ctxs = @iseq_method_calls[mdef]
