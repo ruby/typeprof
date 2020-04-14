@@ -117,7 +117,7 @@ module TypeProfiler
       class_defs.each_value do |class_def|
         class_def.methods.each do |(singleton, mid), mdefs|
           mdefs.each do |mdef|
-            ctxs = @iseq_method_calls[mdef]
+            ctxs = @iseq_method_to_ctxs[mdef]
             next unless ctxs
 
             ctxs.each do |ctx|
@@ -152,24 +152,15 @@ module TypeProfiler
     def initialize(
       scratch,
       include_relations,
-      class_defs, iseq_method_calls, sig_fargs, sig_ret, yields
+      class_defs, iseq_method_to_ctxs, sig_fargs, sig_ret, yields
     )
       @scratch = scratch
       @class_defs = class_defs
-      @iseq_method_calls = iseq_method_calls
+      @iseq_method_to_ctxs = iseq_method_to_ctxs
       @sig_fargs = sig_fargs
       @sig_ret = sig_ret
       @yields = yields
       @include_relations = include_relations
-    end
-
-    def show_types(tys)
-      tys = tys.to_a
-      if tys.empty?
-        "bot"
-      else
-        tys.map {|ty| ty.screen_name(@scratch) }.sort.uniq.join(" | ")
-      end
     end
 
     def show_signature(farg_tys, ret_ty)
@@ -229,7 +220,7 @@ module TypeProfiler
 
         class_def.methods.each do |(singleton, mid), mdefs|
           mdefs.each do |mdef|
-            ctxs = @iseq_method_calls[mdef]
+            ctxs = @iseq_method_to_ctxs[mdef]
             next unless ctxs
 
             ctxs.each do |ctx|
@@ -237,7 +228,7 @@ module TypeProfiler
               fargs = @sig_fargs[ctx]
               ret_tys = @sig_ret[ctx]
 
-              entry = show_class_or_module(Type::Instance.new(ctx.cref.klass), classes)
+              entry = show_class_or_module(class_def.klass_obj, classes)
 
               method_name = ctx.mid
               method_name = "self.#{ method_name }" if singleton
