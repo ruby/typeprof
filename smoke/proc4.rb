@@ -7,5 +7,5 @@ foo(-> x { "str" })
 __END__
 # Classes
 class Object
-  foo : (&Proc[(Integer) -> String]) -> String
+  def foo : (&Proc[(Integer) -> String]) -> String
 end

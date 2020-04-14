@@ -6,5 +6,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> (FalseClass | TrueClass)
+  def foo : () -> (FalseClass | TrueClass)
 end

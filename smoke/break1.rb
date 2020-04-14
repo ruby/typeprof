@@ -13,6 +13,6 @@ bar
 __END__
 # Classes
 class Object
-  foo : (&Proc[(Integer) -> bot]) -> bot
-  bar : () -> String
+  def foo : (&Proc[(Integer) -> bot]) -> bot
+  def bar : () -> String
 end

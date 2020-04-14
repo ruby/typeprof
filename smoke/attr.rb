@@ -29,10 +29,10 @@ class Foo
   @a : Integer
   @b : Integer
   @c : Integer
-  initialize : (Integer) -> Integer
-  a : () -> Integer
-  b= : (Integer) -> Integer
-  get_b : () -> Integer
-  c : () -> Integer
-  c= : (Integer) -> Integer
+  def initialize : (Integer) -> Integer
+  def a : () -> Integer
+  def b= : (Integer) -> Integer
+  def get_b : () -> Integer
+  def c : () -> Integer
+  def c= : (Integer) -> Integer
 end

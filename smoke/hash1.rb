@@ -13,6 +13,6 @@ bar
 __END__
 # Classes
 class Object
-  foo : () -> {:int=>Integer, :str=>String}
-  bar : () -> ({Integer=>Integer | String, String=>String})
+  def foo : () -> {:int=>Integer, :str=>String}
+  def bar : () -> ({Integer=>Integer | String, String=>String})
 end

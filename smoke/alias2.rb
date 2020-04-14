@@ -15,5 +15,5 @@ class Foo
   @a : :x
   @b : :y
   @c : :z
-  initialize : (:x, :y, :z) -> [:x, :y, :z]
+  def initialize : (:x, :y, :z) -> [:x, :y, :z]
 end

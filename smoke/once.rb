@@ -8,5 +8,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> ([Regexp, Integer | NilClass])
+  def foo : () -> ([Regexp, Integer | NilClass])
 end

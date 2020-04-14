@@ -11,5 +11,5 @@ end
 __END__
 # Classes
 class Object
-  log : (bot) -> NilClass
+  def log : (bot) -> NilClass
 end

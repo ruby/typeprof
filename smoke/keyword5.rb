@@ -10,5 +10,5 @@ __END__
 smoke/keyword5.rb:5: [error] no argument for required keywords
 # Classes
 class Object
-  foo : (req: Integer) -> Integer
+  def foo : (req: Integer) -> Integer
 end

@@ -11,6 +11,6 @@ one_argument(1)
 __END__
 # Classes
 class Object
-  no_argument : () -> String
-  one_argument : (Integer) -> NilClass
+  def no_argument : () -> String
+  def one_argument : (Integer) -> NilClass
 end

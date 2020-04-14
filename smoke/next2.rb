@@ -12,5 +12,5 @@ end
 __END__
 # Classes
 class Object
-  foo : (&Proc[() -> (Integer | String)]) -> (Integer | String)
+  def foo : (&Proc[() -> (Integer | String)]) -> (Integer | String)
 end

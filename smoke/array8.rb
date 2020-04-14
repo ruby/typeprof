@@ -9,5 +9,5 @@ end
 __END__
 # Classes
 class Foo
-  self.foo : ([]) -> []
+  def self.foo : ([]) -> []
 end

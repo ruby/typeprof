@@ -9,5 +9,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> Pathname
+  def foo : () -> Pathname
 end

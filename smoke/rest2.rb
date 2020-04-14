@@ -26,5 +26,5 @@ foo(*a)
 __END__
 # Classes
 class Object
-  foo : (:s | Integer | String, :s | Integer | String, :s | Integer | String) -> ([:s | Integer | String, :s | Integer | String, :s | Integer | String])
+  def foo : (:s | Integer | String, :s | Integer | String, :s | Integer | String) -> ([:s | Integer | String, :s | Integer | String, :s | Integer | String])
 end

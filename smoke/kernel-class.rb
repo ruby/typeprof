@@ -8,5 +8,5 @@ foo("")
 __END__
 # Classes
 class Object
-  foo : (Integer | String) -> (Integer.class | String.class)
+  def foo : (Integer | String) -> (Integer.class | String.class)
 end

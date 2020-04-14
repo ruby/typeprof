@@ -10,5 +10,5 @@ __END__
 smoke/any1.rb:2: [error] undefined method: Integer#undefined_method
 # Classes
 class Object
-  foo : () -> any
+  def foo : () -> any
 end

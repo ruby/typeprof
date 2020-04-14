@@ -23,6 +23,6 @@ class C
   include M
 end
 module M
-  foo : () -> :foo
-  bar : () -> :bar
+  def foo : () -> :foo
+  def bar : () -> :bar
 end

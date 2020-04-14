@@ -7,5 +7,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> Array[Integer]
+  def foo : () -> Array[Integer]
 end

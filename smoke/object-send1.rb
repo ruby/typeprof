@@ -16,7 +16,7 @@ dispatch(:bar)
 __END__
 # Classes
 class Object
-  foo : (Integer) -> Integer
-  bar : (Integer) -> Integer
-  dispatch : (:bar | :foo) -> Integer
+  def foo : (Integer) -> Integer
+  def bar : (Integer) -> Integer
+  def dispatch : (:bar | :foo) -> Integer
 end

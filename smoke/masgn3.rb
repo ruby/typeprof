@@ -8,5 +8,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> [Integer, NilClass, NilClass]
+  def foo : () -> [Integer, NilClass, NilClass]
 end

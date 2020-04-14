@@ -12,6 +12,6 @@ bar
 __END__
 # Classes
 class Object
-  foo : () -> any
-  bar : () -> Integer
+  def foo : () -> any
+  def bar : () -> Integer
 end

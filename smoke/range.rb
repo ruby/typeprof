@@ -9,5 +9,5 @@ foo(1, 2)
 __END__
 # Classes
 class Object
-  foo : (Integer, Integer) -> Range
+  def foo : (Integer, Integer) -> Range
 end

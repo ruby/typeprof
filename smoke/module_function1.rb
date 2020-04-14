@@ -19,9 +19,9 @@ __END__
 # Classes
 class Bar
   include Foo
-  bar : () -> (:x | :y)
+  def bar : () -> (:x | :y)
 end
 module Foo
-  foo : (:x | :y) -> (:x | :y)
-  self.foo : (:x | :y) -> (:x | :y)
+  def foo : (:x | :y) -> (:x | :y)
+  def self.foo : (:x | :y) -> (:x | :y)
 end

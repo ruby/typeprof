@@ -14,6 +14,6 @@ __END__
 # Classes
 class Foo
   @a : Integer
-  self.new : (Integer) -> Foo
-  initialize : (Integer) -> Integer
+  def self.new : (Integer) -> Foo
+  def initialize : (Integer) -> Integer
 end

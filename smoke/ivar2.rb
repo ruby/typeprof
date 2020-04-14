@@ -25,8 +25,8 @@ __END__
 class Foo
   @array : Array[:sym | Integer | String]
   @hash : {:a=>Integer, :b=>String, :c=>:sym}
-  initialize : () -> {}
-  set : () -> :sym
-  array : () -> (Array[:sym | Integer | String])
-  hash : () -> {:a=>Integer, :b=>String, :c=>:sym}
+  def initialize : () -> {}
+  def set : () -> :sym
+  def array : () -> (Array[:sym | Integer | String])
+  def hash : () -> {:a=>Integer, :b=>String, :c=>:sym}
 end

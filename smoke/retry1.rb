@@ -15,6 +15,6 @@ foo(42)
 __END__
 # Classes
 class Object
-  bar : (Integer | String) -> (Integer | String)
-  foo : (Integer) -> (Integer | String)
+  def bar : (Integer | String) -> (Integer | String)
+  def foo : (Integer) -> (Integer | String)
 end

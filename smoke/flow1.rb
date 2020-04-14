@@ -12,10 +12,9 @@ foo("str")
 
 __END__
 # Errors
-smoke/flow1.rb:5: [error] failed to resolve overload: Integer#+
-smoke/flow1.rb:3: [error] failed to resolve overload: String#+
-smoke/flow1.rb:5: [error] failed to resolve overload: Integer#+
+smoke/flow1.rb:6: [error] failed to resolve overload: Integer#+
+smoke/flow1.rb:6: [error] failed to resolve overload: Integer#+
 # Classes
 class Object
-  foo : (Integer | String) -> (Integer | String | any)
+  def foo : (Integer | String) -> (Integer | String | any)
 end

@@ -8,5 +8,5 @@ __END__
 $foo : Integer | String
 # Classes
 class Object
-  log : (Integer | String) -> NilClass
+  def log : (Integer | String) -> NilClass
 end

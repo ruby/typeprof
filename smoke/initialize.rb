@@ -18,8 +18,8 @@ class A
   @int : Integer
   @str : String
   @val : Integer | NilClass | String
-  initialize : (Integer | NilClass | String) -> (Integer | NilClass | String)
+  def initialize : (Integer | NilClass | String) -> (Integer | NilClass | String)
 end
 class Object
-  log : (A) -> NilClass
+  def log : (A) -> NilClass
 end

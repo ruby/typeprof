@@ -13,6 +13,6 @@ bar(&blk)
 __END__
 # Classes
 class Object
-  foo : (&Proc[(String) -> (:sym | String)]) -> (:sym | String)
-  bar : (&Proc[(:sym) -> (:sym | String)]) -> (:sym | String)
+  def foo : (&Proc[(String) -> (:sym | String)]) -> (:sym | String)
+  def bar : (&Proc[(:sym) -> (:sym | String)]) -> (:sym | String)
 end

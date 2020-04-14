@@ -9,5 +9,5 @@ __END__
 smoke/flow2.rb:5: [error] undefined method: Object#unknown
 # Classes
 class Object
-  foo : (any) -> Integer
+  def foo : (any) -> Integer
 end

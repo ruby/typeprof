@@ -9,5 +9,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> [any]
+  def foo : () -> [any]
 end

@@ -7,5 +7,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> [Integer]
+  def foo : () -> [Integer]
 end

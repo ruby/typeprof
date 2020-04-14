@@ -18,9 +18,9 @@ B.new.foo("str")
 __END__
 # Classes
 class A
-  foo : (Integer | String) -> NilClass
-  bar : (Integer | String) -> NilClass
+  def foo : (Integer | String) -> NilClass
+  def bar : (Integer | String) -> NilClass
 end
 class B
-  bar : (Integer | String) -> NilClass
+  def bar : (Integer | String) -> NilClass
 end

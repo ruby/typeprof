@@ -20,9 +20,9 @@ __END__
 # Classes
 class Foo
   @foo : Integer | String
-  foo= : (Integer | String) -> (Integer | String)
-  foo : () -> (Integer | String)
+  def foo= : (Integer | String) -> (Integer | String)
+  def foo : () -> (Integer | String)
 end
 class Object
-  log : (Integer | String) -> NilClass
+  def log : (Integer | String) -> NilClass
 end

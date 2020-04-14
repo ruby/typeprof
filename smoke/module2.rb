@@ -22,5 +22,5 @@ class C
   include M2
 end
 module M1
-  foo : () -> :foo
+  def foo : () -> :foo
 end

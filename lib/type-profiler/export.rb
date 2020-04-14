@@ -184,7 +184,7 @@ module TypeProfiler
         end
         cls[:methods].each do |method_name, sigs|
           sigs = sigs.sort.join("\n" + " " * (method_name.size + 3) + "| ")
-          puts "  #{ method_name } : #{ sigs }"
+          puts "  def #{ method_name } : #{ sigs }"
         end
         puts "end"
       end

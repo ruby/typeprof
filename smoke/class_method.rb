@@ -20,6 +20,6 @@ Test.bar("str")
 __END__
 # Classes
 class Test
-  self.foo : (Integer) -> Integer
-  self.bar : (String) -> String
+  def self.foo : (Integer) -> Integer
+  def self.bar : (String) -> String
 end

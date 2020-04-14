@@ -19,7 +19,7 @@ __END__
 # Classes
 class Foo
   @ary : [Integer, NilClass | String, :sym]
-  initialize : () -> [Integer, String, :sym]
-  foo : () -> (NilClass | String)
-  bar : () -> NilClass
+  def initialize : () -> [Integer, String, :sym]
+  def foo : () -> (NilClass | String)
+  def bar : () -> NilClass
 end

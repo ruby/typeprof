@@ -9,5 +9,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> {:int=>Integer, :str=>String}
+  def foo : () -> {:int=>Integer, :str=>String}
 end

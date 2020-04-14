@@ -17,6 +17,6 @@ bar
 __END__
 # Classes
 class Object
-  foo : () -> [:foo]
-  bar : () -> [:bar]
+  def foo : () -> [:foo]
+  def bar : () -> [:bar]
 end

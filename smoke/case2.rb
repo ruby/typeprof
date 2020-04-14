@@ -13,5 +13,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> (:sym | Integer | NilClass)
+  def foo : () -> (:sym | Integer | NilClass)
 end

@@ -7,5 +7,5 @@ foo([1, 2, 3])
 __END__
 # Classes
 class Object
-  foo : ([Integer, Integer, Integer]) -> Array[String]
+  def foo : ([Integer, Integer, Integer]) -> Array[String]
 end

@@ -10,5 +10,5 @@ __END__
 smoke/typed_method.rb:6: [error] undefined method: Object#unknown
 # Classes
 class Object
-  foo : () -> Float
+  def foo : () -> Float
 end

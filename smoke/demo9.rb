@@ -14,5 +14,5 @@ end
 __END__
 # Classes
 class Object
-  foo : (&Proc[(:sym) -> String]) -> String
+  def foo : (&Proc[(:sym) -> String]) -> String
 end

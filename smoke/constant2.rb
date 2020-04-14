@@ -23,9 +23,9 @@ smoke/constant2.rb:8: [error] the class "C" is String
 smoke/constant2.rb:15: [warning] already initialized constant Object::BAR
 # Classes
 class Object
-  foo : (Integer | any) -> NilClass
-  log : (String) -> NilClass
+  def foo : (Integer | any) -> NilClass
+  def log : (String) -> NilClass
 end
 class C(dummy)
-  foo : () -> NilClass
+  def foo : () -> NilClass
 end

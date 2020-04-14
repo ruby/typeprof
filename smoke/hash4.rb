@@ -6,5 +6,5 @@ foo
 __END__
 # Classes
 class Object
-  foo : () -> Hash
+  def foo : () -> Hash
 end

@@ -11,7 +11,7 @@ log3(1.step(5))
 __END__
 # Classes
 class Object
-  log1 : (Integer | Numeric) -> NilClass
-  log2 : (any) -> NilClass
-  log3 : (Enumerator) -> NilClass
+  def log1 : (Integer | Numeric) -> NilClass
+  def log2 : (any) -> NilClass
+  def log3 : (Enumerator) -> NilClass
 end

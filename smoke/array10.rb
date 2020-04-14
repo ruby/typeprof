@@ -12,5 +12,5 @@ __END__
 <builtin>: [warning] complex parameter passing of block is not implemented
 # Classes
 class Object
-  foo : ([:a, :b, :c]) -> :a
+  def foo : ([:a, :b, :c]) -> :a
 end

@@ -18,9 +18,9 @@ quux(a[n])
 __END__
 # Classes
 class Object
-  foo : ([Integer, String]) -> Integer
-  bar : (Integer) -> NilClass
-  baz : (String) -> NilClass
-  qux : (NilClass) -> NilClass
-  quux : (Integer | String) -> NilClass
+  def foo : ([Integer, String]) -> Integer
+  def bar : (Integer) -> NilClass
+  def baz : (String) -> NilClass
+  def qux : (NilClass) -> NilClass
+  def quux : (Integer | String) -> NilClass
 end

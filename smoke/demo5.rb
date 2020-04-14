@@ -9,5 +9,5 @@ B.foo(Integer)
 __END__
 # Classes
 class A
-  self.foo : (Integer | Integer.class) -> String
+  def self.foo : (Integer | Integer.class) -> String
 end

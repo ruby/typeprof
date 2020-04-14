@@ -21,7 +21,7 @@ log(a)
 __END__
 # Classes
 class Object
-  foo : () -> [[String]]
-  bar : ([[Integer]]) -> [[String]]
-  log : ([[Integer]]) -> NilClass
+  def foo : () -> [[String]]
+  def bar : ([[Integer]]) -> [[String]]
+  def log : ([[Integer]]) -> NilClass
 end

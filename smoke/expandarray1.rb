@@ -16,5 +16,5 @@ smoke/expandarray1.rb:3: [error] undefined method: Object#unknown
 #  smoke/expandarray1.rb:11 #=> :a | any
 # Classes
 class Object
-  foo : () -> ([:a, [:b, :c]] | any)
+  def foo : () -> ([:a, [:b, :c]] | any)
 end

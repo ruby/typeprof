@@ -7,5 +7,5 @@ foo("x", "x")
 __END__
 # Classes
 class Object
-  foo : (?String, *String) -> [Array[String]]
+  def foo : (?String, *String) -> [Array[String]]
 end

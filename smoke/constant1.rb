@@ -31,8 +31,8 @@ Foo::Bar.new.get4 # Integer
 __END__
 # Classes
 class Foo::Bar
-  get1 : () -> String
-  get2 : () -> Integer
-  get3 : () -> Integer
-  get4 : () -> Integer
+  def get1 : () -> String
+  def get2 : () -> Integer
+  def get3 : () -> Integer
+  def get4 : () -> Integer
 end

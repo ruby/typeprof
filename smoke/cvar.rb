@@ -19,9 +19,9 @@ __END__
 # Classes
 class A
   @@var : Integer
-  foo : () -> NilClass
+  def foo : () -> NilClass
 end
 class Object
-  log1 : (Integer) -> NilClass
-  log2 : (Integer) -> NilClass
+  def log1 : (Integer) -> NilClass
+  def log2 : (Integer) -> NilClass
 end

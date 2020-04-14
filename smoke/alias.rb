@@ -20,10 +20,10 @@ Test.new.qux("str")
 __END__
 # Classes
 class Object
-  foo : (Integer) -> Integer
-  bar : (String) -> String
+  def foo : (Integer) -> Integer
+  def bar : (String) -> String
 end
 class Test
-  baz : (Integer) -> Integer
-  qux : (String) -> String
+  def baz : (Integer) -> Integer
+  def qux : (String) -> String
 end
