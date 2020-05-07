@@ -37,6 +37,9 @@ module TypeProfiler
 
       labels = setup_iseq(insns)
 
+      # checkmatch->branch
+      # send->branch
+
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
         iseq = iseq ? ISeq.new(iseq) : nil
@@ -48,6 +51,8 @@ module TypeProfiler
       end
 
       merge_branches
+
+      analyze_stack
     end
 
     def <=>(other)
@@ -116,22 +121,6 @@ module TypeProfiler
       end
     end
 
-    def determine_stack
-    end
-
-    def make_special_send
-      #(@insns.size - 1).times do |i|
-      #  insn, *operands = @insns[i]
-      #  if insn == :send && operands[0][:mid] == :is_a?
-      #    insn2, *operands2 = @insns[i + 1]
-      #    if insn2 == :branch
-      #      @insns[i] = [:nop]
-      #      @insns[i + 1] = [:send_is_a_and_branch, operands, operands2]
-      #    end
-      #  end
-      #end
-    end
-
     def source_location(pc)
       "#{ @path }:#{ @linenos[pc] }"
     end
@@ -169,6 +158,167 @@ module TypeProfiler
         q.breakable
       end
       q.text "]"
+    end
+
+    def analyze_stack
+      # find a pattern: getlocal, ..., send (is_a?, respond_to?), branch
+      send_branch_list = []
+      (@insns.size - 1).times do |i|
+        insn, operands = @insns[i]
+        if insn == :getlocal && operands[1] == 0
+          j = i + 1
+          sp = 1
+          while @insns[j]
+            sp = check_send_branch(sp, j)
+            if sp == :match
+              send_branch_list << [i, j]
+              break
+            end
+            break if !sp
+            j += 1
+          end
+        end
+      end
+      send_branch_list.each do |i, j|
+        _insn, getlocal_operands = @insns[i]
+        _insn, send_operands = @insns[j]
+        _insn, branch_operands = @insns[j + 1]
+        @insns[j] = [:nop]
+        @insns[j + 1] = [:send_branch, [getlocal_operands, send_operands, branch_operands]]
+      end
+    end
+
+    def check_send_branch(sp, j)
+      insn, operands = @insns[j]
+
+      case insn
+      when :putspecialobject, :putnil, :putobject, :duparray, :putstring,
+           :putself
+        sp += 1
+      when :newarray, :newarraykwsplat, :newhash, :concatstrings
+        len, = operands
+        sp =- len
+        return nil if sp <= 0
+        sp += 1
+      when :newhashfromarray
+        raise NotImplementedError, "newhashfromarray"
+      when :newrange, :tostring
+        sp -= 2
+        return nil if sp <= 0
+        sp += 1
+      when :freezestring
+        # XXX: should leverage this information?
+      when :toregexp
+        _regexp_opt, len = operands
+        sp -= len
+        return nil if sp <= 0
+        sp += 1
+      when :intern
+        sp -= 1
+        return nil if sp <= 0
+        sp += 1
+      when :definemethod, :definesmethod
+      when :defineclass
+        sp -= 2
+      when :send, :invokesuper
+        opt, = operands
+        flags = opt[:flag]
+        mid = opt[:mid]
+        kw_arg = opt[:kw_arg]
+        argc = opt[:orig_argc]
+        argc += 1 # receiver
+        argc += kw_arg.size if kw_arg
+        sp -= argc
+        return :match if insn == :send && sp == 0 && @insns[j + 1][0] == :branch
+        sp += 1
+      when :invokeblock
+        opt, = operands
+        sp -= opt[:orig_argc]
+        return nil if sp <= 0
+        sp += 1
+      when :invokebuiltin
+        raise NotImplementedError
+      when :leave, :throw
+        return
+      when :once
+        return # not implemented
+      when :branch, :jump
+        return # not implemented
+      when :setinstancevariable, :setclassvariable, :setglobal
+        sp -= 1
+      when :setlocal, :setblockparam
+        return # conservative
+      when :getinstancevariable, :getclassvariable, :getglobal,
+           :getlocal, :getblockparam, :getblockparamproxy
+        sp += 1
+      when :getconstant
+        sp -= 2
+        return nil if sp <= 0
+        sp += 1
+      when :setconstant
+        sp -= 2
+      when :getspecial
+        sp += 1
+      when :setspecial
+        # flip-flop
+        raise NotImplementedError, "setspecial"
+      when :dup
+        sp += 1
+      when :duphash
+        sp += 1
+      when :dupn
+        n, = operands
+        sp += n
+      when :pop
+        sp -= 1
+      when :swap
+        sp -= 2
+        return nil if sp <= 0
+        sp += 2
+      when :reverse
+        raise NotImplementedError, "reverse"
+      when :defined
+        sp -= 1
+        return nil if sp <= 0
+        sp += 1
+      when :checkmatch
+        sp -= 2
+        return nil if sp <= 0
+        sp += 1
+      when :checkkeyword
+        sp += 1
+      when :adjuststack
+        n, = operands
+        sp -= n
+      when :nop
+      when :setn
+        return nil # not implemented
+      when :topn
+        sp += 1
+      when :splatarray
+        sp -= 1
+        return nil if sp <= 0
+        sp += 1
+      when :expandarray
+        num, flag = operands
+        splat = flag & 1 == 1
+        sp -= 1
+        return nil if sp <= 0
+        sp += num + (splat ? 1 : 0)
+      when :concatarray
+        sp -= 2
+        return nil if sp <= 0
+        sp += 1
+      when :checktype
+        sp -= 1
+        return nil if sp <= 0
+        sp += 1
+      else
+        raise "Unknown insn: #{ insn }"
+      end
+
+      return nil if sp <= 0
+      sp
     end
   end
 end

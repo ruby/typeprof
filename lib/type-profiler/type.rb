@@ -287,7 +287,7 @@ module TypeProfiler
         case other
         when Type::Any then true
         when Type::Union
-          other.types.each_child do |ty|
+          other.types.each do |ty|
             return true if consistent?(ty)
           end
           return false

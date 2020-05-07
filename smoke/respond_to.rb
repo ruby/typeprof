@@ -1,10 +1,22 @@
-def foo
-  1.respond_to?(:foo)
+def foo(n)
+  if n.respond_to?(:times)
+    n.times {|_| n = :sym }
+  elsif n.respond_to?(:+)
+    n + "foo"
+  else
+    n & false
+  end
 end
 
-foo
+
+foo(1)
+foo("str")
+foo(true)
+
+# no error expected
+
 __END__
 # Classes
 class Object
-  def foo : () -> (FalseClass | TrueClass)
+  def foo : (Integer | String | TrueClass) -> (FalseClass | Integer | String | TrueClass)
 end

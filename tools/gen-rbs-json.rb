@@ -117,6 +117,8 @@ class TypeProfiler
                   when :Object
                     next if name == :class
                     next if name == :send
+                    next if name == :is_a?
+                    next if name == :respond_to?
                   when :Array
                     next unless [:empty?, :size].include?(name)
                   when :Hash

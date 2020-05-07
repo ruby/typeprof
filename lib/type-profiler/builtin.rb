@@ -88,6 +88,22 @@ module TypeProfiler
       end
     end
 
+    def object_respond_to?(recv, mid, aargs, ep, env, scratch, &ctn)
+      raise unless aargs.lead_tys.size != 0
+      sym = get_sym("respond_to?", aargs.lead_tys[0], ep, scratch)
+      if sym
+        if recv.get_method(sym, scratch)
+          true_val = Type::Instance.new(Type::Builtin[:true])
+          ctn[true_val, ep, env]
+        else
+          false_val = Type::Instance.new(Type::Builtin[:false])
+          ctn[false_val, ep, env]
+        end
+      else
+        ctn[Type.bool. ep. env]
+      end
+    end
+
     def object_class(recv, mid, aargs, ep, env, scratch, &ctn)
       if recv.is_a?(Type::Instance)
         ctn[recv.klass, ep, env]
@@ -106,7 +122,11 @@ module TypeProfiler
       mid_ty.each_child do |mid|
         if mid.is_a?(Type::Symbol)
           mid = mid.sym
-          scratch.do_send(recv, mid, aargs, ep, env)
+          scratch.do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
+            nenv, ret_ty, = scratch.localize_type(ret_ty, env, ep)
+            nenv = nenv.push(ret_ty)
+            scratch.merge_env(ep.next, nenv)
+          end
         end
       end
     end
@@ -443,6 +463,7 @@ module TypeProfiler
     scratch.add_singleton_custom_method(klass_obj, :"attr_writer", Builtin.method(:module_attr_writer))
     scratch.add_custom_method(klass_obj, :p, Builtin.method(:kernel_p))
     scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
+    scratch.add_custom_method(klass_obj, :respond_to?, Builtin.method(:object_respond_to?))
     scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
     scratch.add_custom_method(klass_obj, :send, Builtin.method(:object_send))
 

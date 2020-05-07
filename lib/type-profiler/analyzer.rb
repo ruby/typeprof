@@ -853,14 +853,20 @@ module TypeProfiler
         mid, iseq = operands
         env, (recv,) = env.pop(1)
         cref = ep.ctx.cref
-        add_singleton_iseq_method(recv, mid, iseq, cref)
+        recv.each_child do |recv|
+          if recv.is_a?(Type::Class)
+            add_singleton_iseq_method(recv, mid, iseq, cref)
+          else
+            recv = Type.any
+          end
 
-        # pending dummy execution
-        nctx = Context.new(iseq, ep.ctx.cref, mid)
-        nep = ExecutionPoint.new(nctx, 0, nil)
-        nlocals = [Type.any] * iseq.locals.size
-        nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
-        pend_dummy_execution(iseq, nep, nenv)
+          # pending dummy execution
+          nctx = Context.new(iseq, ep.ctx.cref, mid)
+          nep = ExecutionPoint.new(nctx, 0, nil)
+          nlocals = [Type.any] * iseq.locals.size
+          nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
+          pend_dummy_execution(iseq, nep, nenv)
+        end
       when :defineclass
         id, iseq, flags = operands
         env, (cbase, superclass) = env.pop(2)
@@ -926,47 +932,41 @@ module TypeProfiler
         env, recvs, mid, aargs = setup_actual_arguments(operands, ep, env)
         recvs = Type.any if recvs == Type.bot
         recvs.each_child do |recv|
-          do_send(recv, mid, aargs, ep, env)
+          do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
+            nenv, ret_ty, = localize_type(ret_ty, env, ep)
+            nenv = nenv.push(ret_ty)
+            merge_env(ep.next, nenv)
+          end
         end
         return
-      #when :send_is_a_and_branch
-      #  send_operands, (branch_type, target,) = *operands
-      #  env, recvs, mid, aargs = setup_actual_arguments(send_operands, ep, env)
-      #  recvs.each_child do |recv|
-      #    meths = recv.get_method(mid, self)
-      #    if meths
-      #      meths.each do |meth|
-      #        meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
-      #          is_true = ret_ty.eql?(Type::Instance.new(Type::Builtin[:true]))
-      #          is_false = ret_ty.eql?(Type::Instance.new(Type::Builtin[:false]))
-      #          if branch_type != :nil && (is_true || is_false)
-      #            if is_true == (branch_type == :if)
-      #              nep = ep.jump(target)
-      #              merge_env(nep, env)
-      #            else
-      #              nep = ep.next
-      #              merge_env(nep, env)
-      #            end
-      #          else
-      #            ep_then = ep.next
-      #            ep_else = ep.jump(target)
+      when :send_branch
+        getlocal_operands, send_operands, branch_operands = operands
+        env, recvs, mid, aargs = setup_actual_arguments(send_operands, ep, env)
+        recvs = Type.any if recvs == Type.bot
+        recvs.each_child do |recv|
+          do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
+            env, ret_ty, = localize_type(ret_ty, env, ep)
 
-      #            merge_env(ep_then, env)
-      #            merge_env(ep_else, env)
-      #          end
-      #        end
-      #      end
-      #    else
-      #      if recv != Type.any # XXX: should be configurable
-      #        error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
-      #      end
-      #      ep_then = ep.next
-      #      ep_else = ep.jump(target)
-      #      merge_env(ep_then, env)
-      #      merge_env(ep_else, env)
-      #    end
-      #  end
-      #  return
+            branchtype, target, = branch_operands
+            # branchtype: :if or :unless or :nil
+            ep_then = ep.next
+            ep_else = ep.jump(target)
+
+            var_idx, _scope_idx, _escaped = getlocal_operands
+            flow_env = env.local_update(-var_idx+2, recv)
+
+            case ret_ty
+            when Type::Instance.new(Type::Builtin[:true])
+              merge_env(branchtype == :if ? ep_else : ep_then, flow_env)
+            when Type::Instance.new(Type::Builtin[:false])
+              merge_env(branchtype == :if ? ep_then : ep_else, flow_env)
+            else
+              merge_env(ep_then, env)
+              merge_env(ep_else, env)
+            end
+          end
+        end
+        return
       when :invokeblock
         # XXX: need block parameter, unknown block, etc.  Use setup_actual_arguments
         opt, = operands
@@ -997,7 +997,11 @@ module TypeProfiler
         meths = get_super_method(ep.ctx, singleton) # TODO: multiple return values
         if meths
           meths.each do |meth|
-            meth.do_send(recv, mid, aargs, ep, env, self)
+            meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
+              nenv, ret_ty, = localize_type(ret_ty, env, ep)
+              nenv = nenv.push(ret_ty)
+              merge_env(ep.next, nenv)
+            end
           end
           return
         else
@@ -1454,8 +1458,11 @@ module TypeProfiler
           kw_ty = ty
         when Type::Union
           kw_ty = Type::Hash.new(ty.hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+        when Type::Any
+          aargs = aargs[0..-2]
+          kw_ty = ty
         else
-          warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
+          warn(ep, "non hash is passed to **kwarg?")
           kw_ty = nil
         end
         aargs = ActualArguments.new(aargs, nil, kw_ty, blk_ty)
@@ -1490,18 +1497,17 @@ module TypeProfiler
       return env, recv, mid, aargs
     end
 
-    def do_send(recv, mid, aargs, ep, env)
+    def do_send(recv, mid, aargs, ep, env, &ctn)
       meths = recv.get_method(mid, self)
       if meths
         meths.each do |meth|
-          meth.do_send(recv, mid, aargs, ep, env, self)
+          meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
         end
       else
         if recv != Type.any # XXX: should be configurable
           error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
         end
-        nenv = env.push(Type.any)
-        merge_env(ep.next, nenv)
+        ctn[Type.any, ep, env]
       end
     end
 

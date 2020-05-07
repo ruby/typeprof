@@ -37,5 +37,5 @@ class Object
   def foo : (k: Integer) -> NilClass
   def bar : (int: Integer, str: String) -> NilClass
   def baz : (**{:int=>Integer, :str=>String}) -> NilClass
-  def qux : (**{any=>any}) -> NilClass
+  def qux : (**any) -> NilClass
 end
