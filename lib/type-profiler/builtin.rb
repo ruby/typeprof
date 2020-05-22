@@ -139,7 +139,11 @@ module TypeProfiler
 
     def module_extend(recv, mid, aargs, ep, env, scratch, &ctn)
       arg = aargs.lead_tys[0]
-      scratch.extend_module(recv, arg)
+      arg.each_child do |arg|
+        if arg.is_a?(Type::Class)
+          scratch.extend_module(recv, arg)
+        end
+      end
       ctn[recv, ep, env]
     end
 

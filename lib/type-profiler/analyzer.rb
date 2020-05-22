@@ -886,13 +886,18 @@ module TypeProfiler
               klass = existing_klass
             else
               if type == :class
-                if superclass == Type.any
+                if superclass.is_a?(Type::Class)
+                  # okay
+                elsif superclass == Type.any
                   warn(ep, "superclass is any; Object is used instead")
                   superclass = Type::Builtin[:obj]
                 elsif superclass.eql?(Type.nil)
                   superclass = Type::Builtin[:obj]
                 elsif superclass.is_a?(Type::Instance)
                   warn(ep, "superclass is an instance; Object is used instead")
+                  superclass = Type::Builtin[:obj]
+                else
+                  warn(ep, "superclass is not a class; Object is used instead")
                   superclass = Type::Builtin[:obj]
                 end
               else # module

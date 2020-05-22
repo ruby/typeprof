@@ -294,6 +294,9 @@ module TypeProfiler
         when Type::Class
           ty = self
           loop do
+            # ad-hoc
+            return false if !ty || !other # module
+
             return true if ty.idx == other.idx
             return false if ty.idx == 0 # Object
             ty = ty.superclass
