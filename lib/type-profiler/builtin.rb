@@ -431,31 +431,27 @@ module TypeProfiler
 
     TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch, "builtin")
 
-    klass_vmcore    = scratch.new_class(klass_obj, :VMCore, klass_obj)
-    klass_int       = scratch.get_constant(klass_obj, :Integer)
-    klass_float     = scratch.get_constant(klass_obj, :Float)
-    klass_sym       = scratch.get_constant(klass_obj, :Symbol)
-    klass_str       = scratch.get_constant(klass_obj, :String)
-    klass_ary       = scratch.get_constant(klass_obj, :Array)
-    klass_hash      = scratch.get_constant(klass_obj, :Hash)
-    klass_proc      = scratch.get_constant(klass_obj, :Proc)
-    klass_range     = scratch.get_constant(klass_obj, :Range)
-    klass_regexp    = scratch.get_constant(klass_obj, :Regexp)
-    klass_matchdata = scratch.get_constant(klass_obj, :MatchData)
-    klass_class     = scratch.get_constant(klass_obj, :Class)
-    klass_module    = scratch.get_constant(klass_obj, :Module)
+    Type::Builtin[:vmcore]    = scratch.new_class(klass_obj, :VMCore, klass_obj)
+    Type::Builtin[:int]       = scratch.get_constant(klass_obj, :Integer)
+    Type::Builtin[:float]     = scratch.get_constant(klass_obj, :Float)
+    Type::Builtin[:sym]       = scratch.get_constant(klass_obj, :Symbol)
+    Type::Builtin[:str]       = scratch.get_constant(klass_obj, :String)
+    Type::Builtin[:ary]       = scratch.get_constant(klass_obj, :Array)
+    Type::Builtin[:hash]      = scratch.get_constant(klass_obj, :Hash)
+    Type::Builtin[:io]        = scratch.get_constant(klass_obj, :IO)
+    Type::Builtin[:proc]      = scratch.get_constant(klass_obj, :Proc)
+    Type::Builtin[:range]     = scratch.get_constant(klass_obj, :Range)
+    Type::Builtin[:regexp]    = scratch.get_constant(klass_obj, :Regexp)
+    Type::Builtin[:matchdata] = scratch.get_constant(klass_obj, :MatchData)
+    Type::Builtin[:class]     = scratch.get_constant(klass_obj, :Class)
+    Type::Builtin[:module]    = scratch.get_constant(klass_obj, :Module)
+    Type::Builtin[:exc]       = scratch.get_constant(klass_obj, :Exception)
 
-    Type::Builtin[:vmcore]    = klass_vmcore
-    Type::Builtin[:float]     = klass_float
-    Type::Builtin[:sym]       = klass_sym
-    Type::Builtin[:str]       = klass_str
-    Type::Builtin[:hash]      = klass_hash
-    Type::Builtin[:proc]      = klass_proc
-    Type::Builtin[:range]     = klass_range
-    Type::Builtin[:regexp]    = klass_regexp
-    Type::Builtin[:matchdata] = klass_matchdata
-    Type::Builtin[:class]     = klass_class
-    Type::Builtin[:module]    = klass_module
+    klass_vmcore = Type::Builtin[:vmcore]
+    klass_ary    = Type::Builtin[:ary]
+    klass_hash   = Type::Builtin[:hash]
+    klass_proc   = Type::Builtin[:proc]
+    klass_module = Type::Builtin[:module]
 
     scratch.add_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
     scratch.add_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))

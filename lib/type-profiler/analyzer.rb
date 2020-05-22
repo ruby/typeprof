@@ -1141,13 +1141,20 @@ module TypeProfiler
 
       when :getglobal
         var, = operands
-        add_gvar_read!(var, ep) do |ty, ep|
-          ty = Type.nil if ty == Type.bot # HACK
-          nenv, ty = localize_type(ty, env, ep)
-          merge_env(ep.next, nenv.push(ty))
+        ty = Type.builtin_global_variable_type(var)
+        if ty
+          ty = get_constant(Type::Builtin[:obj], ty) if ty.is_a?(Symbol)
+          env, ty = localize_type(ty, env, ep)
+          env = env.push(ty)
+        else
+          add_gvar_read!(var, ep) do |ty, ep|
+            ty = Type.nil if ty == Type.bot # HACK
+            nenv, ty = localize_type(ty, env, ep)
+            merge_env(ep.next, nenv.push(ty))
+          end
+          # need to return default nil of global variables
+          return
         end
-        # need to return default nil of global variables
-        return
 
       when :getlocal, :getblockparam, :getblockparamproxy
         var_idx, scope_idx, _escaped = operands

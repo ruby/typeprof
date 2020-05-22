@@ -548,6 +548,49 @@ module TypeProfiler
         raise "unknown object: #{ obj.inspect }"
       end
     end
+
+    def self.builtin_global_variable_type(var)
+      case var
+      when :$_, :$/, :$\, :$,, :$;
+        Type.optional(Type::Instance.new(Type::Builtin[:str]))
+      when :$0, :$PROGRAM_NAME
+        Type::Instance.new(Type::Builtin[:str])
+      when :$~
+        Type.optional(Type::Instance.new(Type::Builtin[:matchdata]))
+      when :$., :$$
+        Type::Instance.new(Type::Builtin[:int])
+      when :$?
+        Type.optional(Type::Instance.new(Type::Builtin[:int]))
+      when :$!
+        Type.optional(Type::Instance.new(Type::Builtin[:exc]))
+      when :$@
+        str = Type::Instance.new(Type::Builtin[:str])
+        base_ty = Type::Instance.new(Type::Builtin[:ary])
+        Type.optional(Type::Array.new(Type::Array::Elements.new([], str), base_ty))
+      when :$*, :$:, :$LOAD_PATH, :$", :$LOADED_FEATURES
+        str = Type::Instance.new(Type::Builtin[:str])
+        base_ty = Type::Instance.new(Type::Builtin[:ary])
+        Type::Array.new(Type::Array::Elements.new([], str), base_ty)
+      when :$<
+        :ARGF
+      when :$>
+        :STDOUT
+      when :$DEBUG
+        Type.bool
+      when :$FILENAME
+        Type::Instance.new(Type::Builtin[:str])
+      when :$stdin
+        :STDIN
+      when :$stdout
+        :STDOUT
+      when :$stderr
+        :STDERR
+      when :$VERBOSE
+        Type.bool.union(Type.nil)
+      else
+        nil
+      end
+    end
   end
 
   # Arguments for callee side
