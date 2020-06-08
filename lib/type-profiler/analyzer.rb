@@ -618,6 +618,7 @@ module TypeProfiler
 
     def reveal_type(ep, ty)
       key = ep.source_location
+      p [ty.screen_name(self)] if ENV["TP_DEBUG"]
       if @reveal_types[key]
         @reveal_types[key] = @reveal_types[key].union(ty)
       else
@@ -1439,13 +1440,15 @@ module TypeProfiler
         end
       end
 
-      case blk_ty
-      when Type.nil
-      when Type.any
-      when Type::ISeqProc
-      else
-        error(ep, "wrong argument type #{ blk_ty.screen_name(self) } (expected Proc)")
-        blk_ty = Type.any
+      blk_ty.each_child do |blk_ty|
+        case blk_ty
+        when Type.nil
+        when Type.any
+        when Type::ISeqProc
+        else
+          error(ep, "wrong argument type #{ blk_ty.screen_name(self) } (expected Proc)")
+          blk_ty = Type.any
+        end
       end
 
       if flag_args_splat
@@ -1633,9 +1636,13 @@ module TypeProfiler
     def proc_screen_name(blk)
       blk_ctxs = []
       blk.each_child_global do |blk|
-        return "Proc" unless @block_to_ctx[blk]
-        @block_to_ctx[blk].each do |ctx|
-          blk_ctxs << [ctx, @sig_fargs[ctx]]
+        if @block_to_ctx[blk]
+          @block_to_ctx[blk].each do |ctx|
+            blk_ctxs << [ctx, @sig_fargs[ctx]]
+          end
+        else
+          # uncalled proc? dummy execution doesn't work?
+          #p blk
         end
       end
       show_block_signature(blk_ctxs)
