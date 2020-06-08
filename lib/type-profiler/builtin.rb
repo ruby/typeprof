@@ -131,6 +131,25 @@ module TypeProfiler
       end
     end
 
+    def object_instance_eval(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size >= 1
+        scratch.warn(ep, "instance_eval with arguments are ignored")
+        ctn[type.any, ep, env]
+        return
+      end
+      naargs = ActualArguments.new([recv], nil, nil, nil)
+      given_block = env.static_env.blk_ty == recv
+      nblk_ty = Type.bot
+      aargs.blk_ty.each_child do |blk|
+        next unless blk.is_a?(Type::ISeqProc)
+        nenv = blk.env.replace_recv_ty(recv)
+        nblk_ty = nblk_ty.union(Type::ISeqProc.new(blk.iseq, blk.ep, nenv, blk.type))
+      end
+      scratch.do_invoke_block(given_block, nblk_ty, naargs, ep, env) do |_ret_ty, ep|
+        ctn[recv, ep, scratch.return_envs[ep]]
+      end
+    end
+
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
       arg = aargs.lead_tys[0]
       scratch.include_module(recv, arg)
@@ -470,6 +489,7 @@ module TypeProfiler
     scratch.add_custom_method(klass_obj, :respond_to?, Builtin.method(:object_respond_to?))
     scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
     scratch.add_custom_method(klass_obj, :send, Builtin.method(:object_send))
+    scratch.add_custom_method(klass_obj, :instance_eval, Builtin.method(:object_instance_eval))
 
     scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
     scratch.add_custom_method(klass_module, :extend, Builtin.method(:module_extend))

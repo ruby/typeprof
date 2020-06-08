@@ -191,6 +191,11 @@ module TypeProfiler
       Env.new(senv, @locals, @stack, @type_params)
     end
 
+    def replace_recv_ty(ty)
+      senv = StaticEnv.new(ty, @static_env.blk_ty, @static_env.mod_func)
+      Env.new(senv, @locals, @stack, @type_params)
+    end
+
     def inspect
       "Env[#{ @static_env.inspect }, locals:#{ @locals.inspect }, stack:#{ @stack.inspect }, type_params:#{ (@type_params&.internal_hash).inspect }]"
     end

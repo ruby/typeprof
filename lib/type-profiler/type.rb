@@ -374,7 +374,7 @@ module TypeProfiler
         @type = type
       end
 
-      attr_reader :iseq, :ep, :env
+      attr_reader :iseq, :ep, :env, :type
 
       def inspect
         "#<ISeqProc>"
