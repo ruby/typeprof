@@ -367,14 +367,13 @@ module TypeProfiler
     end
 
     class ISeqProc < Type
-      def initialize(iseq, ep, env, type)
+      def initialize(iseq, ep, type)
         @iseq = iseq
         @ep = ep
-        @env = env
         @type = type
       end
 
-      attr_reader :iseq, :ep, :env, :type
+      attr_reader :iseq, :ep, :type
 
       def inspect
         "#<ISeqProc>"

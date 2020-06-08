@@ -1434,7 +1434,7 @@ module TypeProfiler
         env, (recv, *aargs) = env.pop(argc)
         if blk_iseq
           # check
-          blk_ty = Type::ISeqProc.new(blk_iseq, ep, env, Type::Instance.new(Type::Builtin[:proc]))
+          blk_ty = Type::ISeqProc.new(blk_iseq, ep, Type::Instance.new(Type::Builtin[:proc]))
         else
           blk_ty = Type.nil
         end
@@ -1556,7 +1556,7 @@ module TypeProfiler
         end
         blk_iseq = blk.iseq
         blk_ep = blk.ep
-        blk_env = blk.env
+        blk_env = @return_envs[blk_ep]
         arg_blk = aargs.blk_ty
         aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
         argc = blk_iseq.fargs_format[:lead_num] || 0
