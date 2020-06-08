@@ -1000,7 +1000,11 @@ module TypeProfiler
           blk_nil = Type.nil
           #
           aargs = ActualArguments.new(aargs, nil, nil, blk_nil)
-          do_invoke_block(true, env.static_env.blk_ty, aargs, ep, env)
+          do_invoke_block(true, env.static_env.blk_ty, aargs, ep, env) do |ret_ty, ep, env|
+            nenv, ret_ty, = localize_type(ret_ty, env, ep)
+            nenv = nenv.push(ret_ty)
+            merge_env(ep.next, nenv)
+          end
           return
         end
       when :invokesuper
@@ -1536,19 +1540,7 @@ module TypeProfiler
       end
     end
 
-    def do_invoke_block(given_block, blk, aargs, ep, env, &ctn)
-      if ctn
-        do_invoke_block_core(given_block, blk, aargs, ep, env, &ctn)
-      else
-        do_invoke_block_core(given_block, blk, aargs, ep, env) do |ret_ty, ep, env|
-          nenv, ret_ty, = localize_type(ret_ty, env, ep)
-          nenv = nenv.push(ret_ty)
-          merge_env(ep.next, nenv)
-        end
-      end
-    end
-
-    private def do_invoke_block_core(given_block, blk, aargs, ep, env, &ctn)
+    def do_invoke_block(given_block, blk, aargs, ep, env, replace_recv_ty: nil, &ctn)
       blk.each_child do |blk|
         unless blk.is_a?(Type::ISeqProc)
           warn(ep, "non-iseq-proc is passed as a block")
@@ -1557,6 +1549,7 @@ module TypeProfiler
         blk_iseq = blk.iseq
         blk_ep = blk.ep
         blk_env = @return_envs[blk_ep]
+        blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
         arg_blk = aargs.blk_ty
         aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
         argc = blk_iseq.fargs_format[:lead_num] || 0

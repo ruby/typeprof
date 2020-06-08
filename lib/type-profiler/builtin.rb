@@ -139,14 +139,7 @@ module TypeProfiler
       end
       naargs = ActualArguments.new([recv], nil, nil, nil)
       given_block = env.static_env.blk_ty == recv
-      nblk_ty = Type.bot
-      aargs.blk_ty.each_child do |blk|
-        next unless blk.is_a?(Type::ISeqProc)
-        #nenv = blk.env.replace_recv_ty(recv)
-        nblk_ty = nblk_ty.union(blk)
-        raise "TODO"
-      end
-      scratch.do_invoke_block(given_block, nblk_ty, naargs, ep, env) do |_ret_ty, ep|
+      scratch.do_invoke_block(given_block, aargs.blk_ty, naargs, ep, env, replace_recv_ty: recv) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]]
       end
     end

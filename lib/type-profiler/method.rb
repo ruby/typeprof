@@ -1,18 +1,6 @@
 module TypeProfiler
   class MethodDef
     include Utils::StructuralEquality
-
-    def do_send(recv, mid, aargs, ep, env, scratch, &ctn)
-      if ctn
-        do_send_core(recv, mid, aargs, ep, env, scratch, &ctn)
-      else
-        do_send_core(recv, mid, aargs, ep, env, scratch) do |ret_ty, ep, env|
-          nenv, ret_ty, = scratch.localize_type(ret_ty, env, ep)
-          nenv = nenv.push(ret_ty)
-          scratch.merge_env(ep.next, nenv)
-        end
-      end
-    end
   end
 
   class ISeqMethodDef < MethodDef
@@ -22,7 +10,7 @@ module TypeProfiler
       @cref = cref
     end
 
-    def do_send_core(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+    def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       lead_num = @iseq.fargs_format[:lead_num] || 0
       post_start = @iseq.fargs_format[:post_start]
       rest_start = @iseq.fargs_format[:rest_start]
@@ -95,7 +83,7 @@ module TypeProfiler
       @sigs = sigs
     end
 
-    def do_send_core(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+    def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = scratch.globalize_type(recv, caller_env, caller_ep)
       found = false
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
@@ -148,7 +136,7 @@ module TypeProfiler
       @impl = impl
     end
 
-    def do_send_core(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+    def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       # XXX: ctn?
       scratch.merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env } # for Kernel#lambda
       @impl[recv, mid, aargs, caller_ep, caller_env, scratch, &ctn]
