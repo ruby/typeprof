@@ -8,8 +8,6 @@ end
 foo([:a, :b, :c])
 
 __END__
-# Errors
-<builtin>: [warning] complex parameter passing of block is not implemented
 # Classes
 class Object
   def foo : ([:a, :b, :c]) -> :a

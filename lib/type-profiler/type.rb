@@ -381,7 +381,7 @@ module TypeProfiler
       end
 
       def screen_name(scratch)
-        scratch.proc_screen_name(self)
+        "Proc[#{ scratch.proc_screen_name(self) }]" # TODO: use RBS syntax
       end
 
       def get_method(mid, scratch)
@@ -706,11 +706,27 @@ module TypeProfiler
 
     attr_reader :lead_tys, :rest_ty, :kw_ty, :blk_ty
 
+    def merge(aargs)
+      len = [@lead_tys.size, aargs.lead_tys.size].min
+      lead_tys = @lead_tys[0, len].zip(aargs.lead_tys[0, len]).map do |ty1, ty2|
+        ty1.union(ty2)
+      end
+      rest_ty = @rest_ty || Type.bot
+      rest_ty = rest_ty.union(aargs.rest_ty) if aargs.rest_ty
+      (@lead_tys[len..] + aargs.lead_tys[len..]).each do |ty|
+        rest_ty = rest_ty.union(ty)
+      end
+      rest_ty = nil if rest_ty == Type.bot
+      #kw_ty = @kw_ty.union(aargs.kw_ty) # TODO
+      blk_ty = @blk_ty.union(aargs.blk_ty)
+      ActualArguments.new(lead_tys, rest_ty, kw_ty, blk_ty)
+    end
+
     def globalize(caller_env, visited)
       lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited) }
       rest_ty = @rest_ty.globalize(caller_env, visited) if @rest_ty
       kw_ty = @kw_ty.globalize(caller_env, visited) if @kw_ty
-      ActualArguments.new(lead_tys, rest_ty, kw_ty, blk_ty)
+      ActualArguments.new(lead_tys, rest_ty, kw_ty, @blk_ty)
     end
 
     def each_formal_arguments(fargs_format)
@@ -877,6 +893,19 @@ module TypeProfiler
         raise "unknown typo of formal block signature"
       end
       true
+    end
+
+    def screen_name(scratch)
+      aargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
+      if @rest_ty
+        aargs << ("*" + @rest_ty.screen_name(scratch))
+      end
+      if @kw_ty
+        aargs << ("**" + @kw_ty.screen_name(scratch)) # TODO: Hash notation -> keyword notation
+      end
+      s = "(#{ aargs.join(", ") })"
+      s << " { #{ scratch.proc_screen_name(@blk_ty) } }" if @blk_ty != Type.nil
+      s
     end
   end
 end

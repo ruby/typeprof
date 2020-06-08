@@ -511,9 +511,14 @@ module TypeProfiler
       end
     end
 
-    def add_yield!(caller_ctx, fargs, blk_ctx)
-      @yields[caller_ctx] ||= Utils::MutableSet.new
-      @yields[caller_ctx] << [blk_ctx, fargs]
+    def add_yield!(caller_ctx, aargs, blk_ctx)
+      aargs_acc, = @yields[caller_ctx]
+      if aargs_acc
+        @yields[caller_ctx][0] = aargs_acc.merge(aargs)
+      else
+        @yields[caller_ctx] = [aargs, Utils::MutableSet.new]
+      end
+      @yields[caller_ctx][1] << blk_ctx
     end
 
     def add_block_to_ctx!(blk, ctx)
@@ -1547,10 +1552,43 @@ module TypeProfiler
         arg_blk = aargs.blk_ty
         aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
         argc = blk_iseq.fargs_format[:lead_num] || 0
-        if argc != aargs_.size
-          warn(ep, "complex parameter passing of block is not implemented")
+        # actual argc == 1, not array, formal argc == 1: yield 42         => do |x|   : x=42
+        # actual argc == 1,     array, formal argc == 1: yield [42,43,44] => do |x|   : x=[42,43,44]
+        # actual argc >= 2,            formal argc == 1: yield 42,43,44   => do |x|   : x=42
+        # actual argc == 1, not array, formal argc >= 2: yield 42         => do |x,y| : x,y=42,nil
+        # actual argc == 1,     array, formal argc >= 2: yield [42,43,44] => do |x,y| : x,y=42,43
+        # actual argc >= 2,            formal argc >= 2: yield 42,43,44   => do |x,y| : x,y=42,43
+        if aargs_.size >= 2 || argc == 0
           aargs_.pop while argc < aargs_.size
-          aargs_ << Type.any while argc > aargs_.size
+          aargs_ << Type.nil while argc > aargs_.size
+        else
+          aarg_ty, = aargs_
+          if argc == 1
+            aargs_ = [aarg_ty || Type.nil]
+          else # actual argc == 1 && formal argc >= 2
+            ary_elems = nil
+            any_ty = nil
+            case aarg_ty
+            when Type::Union
+              ary_elems = aarg_ty.array_elems
+              aarg_ty = Type::Union.new(aarg_ty.types, nil, aarg_ty.hash_elems)
+              any_ty = Type.any if aarg_ty.types.include?(Type.any)
+            when Type::Array
+              ary_elems = aarg_ty.elems
+              aarg_ty = nil
+            when Type::Any
+              any_ty = Type.any
+            end
+            aargs_ = [Type.bot] * argc
+            aargs_[0] = aargs_[0].union(aarg_ty) if aarg_ty
+            argc.times do |i|
+              ty = aargs_[i]
+              ty = ty.union(ary_elems[i]) if ary_elems
+              ty = ty.union(Type.any) if any_ty
+              ty = ty.union(Type.nil) if i >= 1 && aarg_ty
+              aargs_[i] = ty
+            end
+          end
         end
         locals = [Type.nil] * blk_iseq.locals.size
         locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
@@ -1581,28 +1619,21 @@ module TypeProfiler
         # So, a context can have two blocks.
         # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
 
-        add_yield!(ep.ctx, nfargs, nep.ctx) if given_block
+        add_yield!(ep.ctx, globalize_type(aargs, env, ep), nep.ctx) if given_block
         add_block_to_ctx!(blk, nep.ctx)
         add_callsite!(nep.ctx, nfargs, ep, env, &ctn)
       end
     end
 
     def proc_screen_name(blk)
-      return "Proc" unless @block_to_ctx[blk]
       blk_ctxs = []
-      @block_to_ctx[blk].each do |ctx|
-        blk_ctxs << [ctx, @sig_fargs[ctx]]
+      blk.each_child_global do |blk|
+        return "Proc" unless @block_to_ctx[blk]
+        @block_to_ctx[blk].each do |ctx|
+          blk_ctxs << [ctx, @sig_fargs[ctx]]
+        end
       end
-      "Proc[#{ show_block_signature(blk_ctxs) }]"
-    end
-
-    def show_signature(farg_tys, blk_ctxs, ret_ty)
-      farg_tys = farg_tys.screen_name(self)
-      ret_ty = ret_ty.screen_name(self)
-      s = "(#{ farg_tys.join(", ") }) "
-      s << "{ #{ show_block_signature(blk_ctxs) } } " if blk_ctxs
-      s << "-> "
-      s << (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty)
+      show_block_signature(blk_ctxs)
     end
 
     def show_block_signature(blk_ctxs)
@@ -1624,6 +1655,24 @@ module TypeProfiler
       return "" if !all_farg_tys
       # XXX: should support @yields[blk_ctx] (block's block)
       show_signature(all_farg_tys, nil, all_ret_tys)
+    end
+
+    def show_signature(farg_tys, yield_data, ret_ty)
+      farg_tys = farg_tys.screen_name(self)
+      ret_ty = ret_ty.screen_name(self)
+      s = "(#{ farg_tys.join(", ") }) "
+      if yield_data
+        aargs, blk_ctxs = yield_data
+        all_blk_ret_ty = Type.bot
+        blk_ctxs.each do |blk_ctx|
+          all_blk_ret_ty = all_blk_ret_ty.union(@sig_ret[blk_ctx])
+        end
+        all_blk_ret_ty = all_blk_ret_ty.screen_name(self)
+        all_blk_ret_ty = all_blk_ret_ty.include?("|") ? "(#{ all_blk_ret_ty })" : all_blk_ret_ty
+        s << "{ #{ aargs.screen_name(self) } -> #{ all_blk_ret_ty } } " if aargs
+      end
+      s << "-> "
+      s << (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty)
     end
   end
 end
