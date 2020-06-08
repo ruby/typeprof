@@ -186,6 +186,16 @@ module TypeProfiler
         @insns[j] = [:nop]
         @insns[j + 1] = [:send_branch, [getlocal_operands, send_operands, branch_operands]]
       end
+
+      # find a pattern: getlocal, branch
+      (@insns.size - 1).times do |i|
+        insn0, getlocal_operands = @insns[i]
+        insn1, branch_operands = @insns[i + 1]
+        if [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0 && insn1 == :branch
+          @insns[i    ] = [:nop]
+          @insns[i + 1] = [:getlocal_branch, [getlocal_operands, branch_operands]]
+        end
+      end
     end
 
     def check_send_branch(sp, j)
