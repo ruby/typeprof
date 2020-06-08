@@ -377,6 +377,10 @@ module TypeProfiler
             result = Type::Instance.new(Type::Builtin[:true])
             return ctn[result, ep, env]
           end
+          begin
+            gem feature
+          rescue Gem::MissingSpecError
+          end
           filetype, path = $LOAD_PATH.resolve_feature_path(feature)
           if filetype == :rb
             # TODO: if there is RBS file for the library, do not read the source code
@@ -387,7 +391,7 @@ module TypeProfiler
             scratch.warn(ep, "cannnot load a .so file: #{ path }")
           end
         rescue LoadError
-          scratch.warn(ep, "failed to load: #{ path }")
+          scratch.warn(ep, "failed to require: #{ feature }")
         end
       else
         scratch.warn(ep, "require target cannot be identified statically")
