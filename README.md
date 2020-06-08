@@ -1,7 +1,18 @@
 # Ruby Type Profiler
 
-WARNING: Use Ruby 2.7.0
+WARNING: Use Ruby 2.7.1
 WARNING: This implementation is very preliminary.
+
+## Setup
+
+```
+git clone https://github.com/mame/ruby-type-profiler.git
+git submodule init
+bundle install
+bundle exec rbs vendor --stdlib
+bundle exec tools/gen-rbs-json.rb
+ruby exe/type-profiler target.rb
+```
 
 ## Demo
 

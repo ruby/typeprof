@@ -1,11 +1,11 @@
 #!/usr/bin/env ruby
 
-require "ruby/signature"
+require "rbs"
 require "json"
 
 class TypeProfiler
   class RubySignatureReader
-    include Ruby::Signature
+    include RBS
 
     def initialize(library = nil, builtin = nil)
       loader = EnvironmentLoader.new(stdlib_root: Pathname("vendor/sigs/stdlib/"))
@@ -233,10 +233,10 @@ class TypeProfiler
 
     def convert_type(ty)
       case ty
-      when Ruby::Signature::Types::ClassSingleton
+      when RBS::Types::ClassSingleton
         klass = ty.name.namespace.path + [ty.name.name]
         [:class, klass]
-      when Ruby::Signature::Types::ClassInstance
+      when RBS::Types::ClassInstance
         klass = ty.name.namespace.path + [ty.name.name]
         case klass
         when [:Array]
@@ -249,24 +249,24 @@ class TypeProfiler
         else
           [:instance, klass]
         end
-      when Ruby::Signature::Types::Bases::Bool
+      when RBS::Types::Bases::Bool
         [:bool]
-      when Ruby::Signature::Types::Bases::Any
+      when RBS::Types::Bases::Any
         [:any]
-      when Ruby::Signature::Types::Bases::Void
+      when RBS::Types::Bases::Void
         [:any]
-      when Ruby::Signature::Types::Bases::Self
+      when RBS::Types::Bases::Self
         [:self]
-      when Ruby::Signature::Types::Bases::Nil
+      when RBS::Types::Bases::Nil
         [:nil]
-      when Ruby::Signature::Types::Bases::Bottom
+      when RBS::Types::Bases::Bottom
         [:union, []]
-      when Ruby::Signature::Types::Variable
+      when RBS::Types::Variable
         [:any] # temporal
-      when Ruby::Signature::Types::Tuple
+      when RBS::Types::Tuple
         tys = ty.types.map {|ty2| convert_type(ty2) }
         [:array, tys, [:union, []]]
-      when Ruby::Signature::Types::Literal
+      when RBS::Types::Literal
         case ty.literal
         when Integer
           [:int]
@@ -282,15 +282,15 @@ class TypeProfiler
           p ty.literal
           raise NotImplementedError
         end
-      when Ruby::Signature::Types::Literal
-      when Ruby::Signature::Types::Alias
+      when RBS::Types::Literal
+      when RBS::Types::Alias
         ty = @env.absolute_type(@env.find_alias(ty.name).type, namespace: ty.name.namespace)
         convert_type(ty)
-      when Ruby::Signature::Types::Union
+      when RBS::Types::Union
         [:union, ty.types.map {|ty2| convert_type(ty2) }]
-      when Ruby::Signature::Types::Optional
+      when RBS::Types::Optional
         [:optional, convert_type(ty.type)]
-      when Ruby::Signature::Types::Interface
+      when RBS::Types::Interface
         [:any]
       else
         pp ty

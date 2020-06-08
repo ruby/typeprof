@@ -1,7 +1,7 @@
 PATH
-  remote: ruby-signature
+  remote: rbs
   specs:
-    ruby-signature (0.1.0)
+    rbs (0.3.1)
 
 GEM
   remote: https://rubygems.org/
@@ -12,8 +12,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  ruby-signature!
+  rbs!
   stackprof
 
 BUNDLED WITH
-   2.1.2
+   2.1.4
