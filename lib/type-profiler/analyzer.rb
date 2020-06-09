@@ -1185,7 +1185,7 @@ module TypeProfiler
         env = env.push(ty)
       when :getlocal_branch
         getlocal_operands, branch_operands = operands
-        var_idx, scope_idx, _escaped = getlocal_operands
+        var_idx, _scope_idx, _escaped = getlocal_operands
         ret_ty = env.get_local(-var_idx+2)
 
         branchtype, target, = branch_operands

@@ -161,6 +161,18 @@ module TypeProfiler
     end
 
     def analyze_stack
+      # gather branch targets
+      # TODO: catch_table should be also considered
+      branch_targets = {}
+      @insns.each do |insn, operands|
+        case insn
+        when :branch
+          branch_targets[operands[1]] = true
+        when :jump
+          branch_targets[operands[0]] = true
+        end
+      end
+
       # find a pattern: getlocal, ..., send (is_a?, respond_to?), branch
       send_branch_list = []
       (@insns.size - 1).times do |i|
@@ -180,6 +192,7 @@ module TypeProfiler
         end
       end
       send_branch_list.each do |i, j|
+        next if (i + 1 .. j).any? {|i| branch_targets[i] }
         _insn, getlocal_operands = @insns[i]
         _insn, send_operands = @insns[j]
         _insn, branch_operands = @insns[j + 1]
@@ -189,6 +202,7 @@ module TypeProfiler
 
       # find a pattern: getlocal, branch
       (@insns.size - 1).times do |i|
+        next if branch_targets[i + 1]
         insn0, getlocal_operands = @insns[i]
         insn1, branch_operands = @insns[i + 1]
         if [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0 && insn1 == :branch
