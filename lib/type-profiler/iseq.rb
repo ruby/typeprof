@@ -210,6 +210,40 @@ module TypeProfiler
           @insns[i + 1] = [:getlocal_branch, [getlocal_operands, branch_operands]]
         end
       end
+
+      # flow-sensitive analysis for `case var; when A; when B; when C; end`
+      # find a pattern: getlocal, (dup, putobject(true), getconstant(class name), checkmatch, branch)*
+      case_branch_list = []
+      (@insns.size - 1).times do |i|
+        insn0, getlocal_operands = @insns[i]
+        next unless [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0
+        nops = [i]
+        new_insns = []
+        j = i + 1
+        while true
+          case @insns[j]
+          when [:dup, []]
+            break unless @insns[j + 1] == [:putnil, []]
+            break unless @insns[j + 2] == [:putobject, [true]]
+            break unless @insns[j + 3][0] == :getconstant # TODO: support A::B::C
+            break unless @insns[j + 4] == [:checkmatch, [2]]
+            break unless @insns[j + 5][0] == :branch
+            nops << j << (j + 4)
+            new_insns << [j + 5, [:getlocal_checkmatch_branch, [getlocal_operands, @insns[j + 5][1]]]]
+            j += 6
+          when [:pop, []]
+            nops << j
+            case_branch_list << [nops, new_insns]
+            break
+          else
+            break
+          end
+        end
+      end
+      case_branch_list.each do |nops, new_insns|
+        nops.each {|i| @insns[i] = [:nop, []] }
+        new_insns.each {|i, insn| @insns[i] = insn }
+      end
     end
 
     def check_send_branch(sp, j)

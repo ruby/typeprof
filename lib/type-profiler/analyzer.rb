@@ -1208,6 +1208,34 @@ module TypeProfiler
           end
         end
         return
+      when :getlocal_checkmatch_branch
+        getlocal_operands, branch_operands = operands
+        var_idx, _scope_idx, _escaped = getlocal_operands
+        ret_ty = env.get_local(-var_idx+2)
+
+        env, (pattern_ty,) = env.pop(1)
+
+        branchtype, target, = branch_operands
+        # branchtype: :if or :unless or :nil
+        ep_then = ep.next
+        ep_else = ep.jump(target)
+
+        var_idx, _scope_idx, _escaped = getlocal_operands
+
+        ret_ty.each_child do |ret_ty|
+          flow_env = env.local_update(-var_idx+2, ret_ty)
+          if ret_ty.is_a?(Type::Instance)
+            if ret_ty.klass == pattern_ty # XXX: inheritance
+              merge_env(branchtype == :if ? ep_else : ep_then, flow_env)
+            else
+              merge_env(branchtype == :if ? ep_then : ep_else, flow_env)
+            end
+          else
+            merge_env(ep_then, env)
+            merge_env(ep_else, env)
+          end
+        end
+        return
       when :setlocal, :setblockparam
         var_idx, scope_idx, _escaped = operands
         env, (ty,) = env.pop(1)
