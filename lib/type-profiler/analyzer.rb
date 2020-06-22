@@ -215,6 +215,8 @@ module TypeProfiler
 
       @iseq_method_to_ctxs = {}
 
+      @alloc_site_to_global_id = {}
+
       @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
       @block_to_ctx = {}
       @gvar_table = VarTable.new
@@ -643,9 +645,10 @@ module TypeProfiler
           elems = menv.get_container_elem_types(id)
           elems = yield elems
           menv = menv.update_container_elem_types(id, elems)
-          if id.global_id
+          gid = @alloc_site_to_global_id[id]
+          if gid
             ty = globalize_type(elems.to_local_type(id), env, ep)
-            add_ivar_write!(*id.global_id, ty)
+            add_ivar_write!(*gid, ty)
           end
           menv
         end
@@ -654,9 +657,10 @@ module TypeProfiler
         elems = env.get_container_elem_types(id)
         elems = yield elems
         env = env.update_container_elem_types(id, elems)
-        if id.global_id
+        gid = @alloc_site_to_global_id[id]
+        if gid
           ty = globalize_type(elems.to_local_type(id), env, ep)
-          add_ivar_write!(*id.global_id, ty)
+          add_ivar_write!(*gid, ty)
         end
         env
       end
@@ -1124,8 +1128,12 @@ module TypeProfiler
         recv = env.static_env.recv_ty
         # TODO: deal with inheritance?
         add_ivar_read!(recv, var, ep) do |ty, ep|
-          alloc_site = AllocationSite.new(ep, global_id: [recv, var])
+          alloc_site = AllocationSite.new(ep)
           nenv, ty = localize_type(ty, env, ep, alloc_site)
+          case ty
+          when Type::LocalArray, Type::LocalHash
+            @alloc_site_to_global_id[ty.id] = [recv, var] # need overwrite check??
+          end
           merge_env(ep.next, nenv.push(ty))
         end
         return

@@ -2,15 +2,14 @@ module TypeProfiler
   class AllocationSite
     include Utils::StructuralEquality
 
-    def initialize(val, parent: nil, global_id: nil)
+    def initialize(val, parent: nil)
       raise if !val.is_a?(Utils::StructuralEquality) && !val.is_a?(Integer) && !val.is_a?(Symbol)
       @val = val
       @parent = parent
-      @global_id = global_id
       @_hash ||= (@val.hash ^ @parent.hash)
     end
 
-    attr_reader :val, :parent, :global_id
+    attr_reader :val, :parent
 
     def hash
       @_hash
