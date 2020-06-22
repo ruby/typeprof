@@ -158,6 +158,7 @@ module TypeProfiler
 
         def union(other)
           return self if self == other
+          raise "Hash::Elements merge Array::Elements" if other.is_a?(Hash::Elements)
 
           lead_count = [@lead_tys.size, other.lead_tys.size].min
           lead_tys = (0...lead_count).map do |i|
@@ -383,6 +384,7 @@ module TypeProfiler
 
         def union(other)
           return self if self == other
+          raise "Array::Elements merge Hash::Elements" if other.is_a?(Array::Elements)
 
           map_tys = @map_tys.dup
           other.map_tys.each do |k_ty, v_ty|
