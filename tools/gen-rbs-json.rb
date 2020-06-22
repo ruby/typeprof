@@ -128,6 +128,8 @@ class TypeProfiler
                     next if name == :module_function
                   when :Proc
                     next if name == :call || name == :[]
+                  when :Kernel
+                    next if name == :Array
                   end
                 end
 

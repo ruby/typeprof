@@ -432,6 +432,23 @@ module TypeProfiler
       result = Type::Instance.new(Type::Builtin[:true])
       ctn[result, ep, env]
     end
+
+    def kernel_Array(recv, mid, aargs, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.lead_tys.size != 1
+      ty = aargs.lead_tys.first
+      ty = scratch.globalize_type(ty, env, ep)
+      all_ty = Type.bot
+      ty.each_child_global do |ty|
+        if ty.is_a?(Type::Array)
+          all_ty = all_ty.union(ty)
+        else
+          base_ty = Type::Instance.new(Type::Builtin[:ary])
+          ret_ty = Type::Array.new(Type::Array::Elements.new([ty]), base_ty)
+          all_ty = all_ty.union(ret_ty)
+        end
+      end
+      ctn[all_ty, ep, env]
+    end
   end
 
   def self.setup_initial_global_env(scratch)
@@ -506,6 +523,7 @@ module TypeProfiler
 
     scratch.add_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
     scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
+    scratch.add_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
 
     fargs, ret_ty = FormalArguments.new([], [], nil, [], nil, nil, Type.any), Type.any
     scratch.add_method(klass_obj, :initialize, false, TypedMethodDef.new([[fargs, ret_ty]]))
