@@ -228,7 +228,9 @@ module TypeProfiler
             break unless @insns[j + 3][0] == :getconstant # TODO: support A::B::C
             break unless @insns[j + 4] == [:checkmatch, [2]]
             break unless @insns[j + 5][0] == :branch
-            nops << j << (j + 4)
+            target_pc = @insns[j + 5][1][1]
+            break unless @insns[target_pc] == [:pop, []]
+            nops << j << (j + 4) << target_pc
             new_insns << [j + 5, [:getlocal_checkmatch_branch, [getlocal_operands, @insns[j + 5][1]]]]
             j += 6
           when [:pop, []]
