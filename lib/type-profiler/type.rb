@@ -530,7 +530,7 @@ module TypeProfiler
       when ::Hash
         Type.gen_hash do |h|
           obj.each do |k, v|
-            k_ty = guess_literal_type(k)
+            k_ty = guess_literal_type(k).globalize(nil, {})
             v_ty = guess_literal_type(v)
             h[k_ty] = v_ty
           end
