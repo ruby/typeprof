@@ -49,6 +49,7 @@ module TypeProfiler
       end
 
       def localize(env, alloc_site)
+        alloc_site = alloc_site.add_id(:ary)
         env, elems = @elems.localize(env, alloc_site)
         env.deploy_array_type(alloc_site, elems, @base_type)
       end
@@ -288,6 +289,7 @@ module TypeProfiler
       end
 
       def localize(env, alloc_site)
+        alloc_site = alloc_site.add_id(:hash)
         env, elems = @elems.localize(env, alloc_site)
         env.deploy_hash_type(alloc_site, elems, @base_type)
       end

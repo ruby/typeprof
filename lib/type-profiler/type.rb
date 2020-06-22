@@ -198,15 +198,13 @@ module TypeProfiler
         if @array_elems
           base_ty = Type::Instance.new(Type::Builtin[:ary])
           ary_ty = Type::Array.new(@array_elems, base_ty)
-          alloc_site2 = alloc_site.add_id(:ary)
-          env, ary_ty = ary_ty.localize(env, alloc_site2)
+          env, ary_ty = ary_ty.localize(env, alloc_site)
           tys = tys.add(ary_ty)
         end
         if @hash_elems
           base_ty = Type::Instance.new(Type::Builtin[:hash])
           hash_ty = Type::Hash.new(@hash_elems, base_ty)
-          alloc_site2 = alloc_site.add_id(:hash)
-          env, hash_ty = hash_ty.localize(env, alloc_site2)
+          env, hash_ty = hash_ty.localize(env, alloc_site)
           tys = tys.add(hash_ty)
         end
         ty = Union.new(tys, nil, nil).normalize
