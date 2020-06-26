@@ -20,7 +20,9 @@ module TypeProfiler
       case other
       when Type::Any then true
       when Type::Union
-        other.types.include?(self)
+        other.types.each do |ty2|
+          return true if consistent?(ty2)
+        end
       else
         self == other
       end
