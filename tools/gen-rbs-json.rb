@@ -120,6 +120,7 @@ class TypeProfiler
                 name = member.name
 
                 # ad-hoc filter
+                @array_special_tyvar_handling = false
                 if member.instance?
                   case type_name.name
                   when :Object
@@ -128,7 +129,8 @@ class TypeProfiler
                     next if name == :is_a?
                     next if name == :respond_to?
                   when :Array
-                    next unless [:empty?, :size].include?(name)
+                    @array_special_tyvar_handling = true
+                    next unless [:empty?, :size, :*].include?(name)
                   when :Hash
                     next unless [:empty?, :size].include?(name)
                   when :Module
@@ -271,7 +273,11 @@ class TypeProfiler
       when RBS::Types::Bases::Bottom
         [:union, []]
       when RBS::Types::Variable
-        [:any] # temporal
+        if @array_special_tyvar_handling
+          [:var]
+        else
+          [:any]
+        end
       when RBS::Types::Tuple
         tys = ty.types.map {|ty2| convert_type(ty2) }
         [:array, tys, [:union, []]]
@@ -297,10 +303,14 @@ class TypeProfiler
         ty = @env.absolute_type(@resolver, @env.alias_decls[name].decl.type, context: [ty.name.namespace, RBS::Namespace.root])
         convert_type(ty)
       when RBS::Types::Union
-        [:union, ty.types.map {|ty2| convert_type(ty2) }]
+        [:union, ty.types.map {|ty2| begin convert_type(ty2); rescue UnsupportedType; end }.compact]
       when RBS::Types::Optional
         [:optional, convert_type(ty.type)]
       when RBS::Types::Interface
+        if @array_special_tyvar_handling
+          raise UnsupportedType if ty.to_s == "::_ToStr"
+          raise UnsupportedType if ty.to_s == "::_ToInt"
+        end
         [:any]
       else
         pp ty

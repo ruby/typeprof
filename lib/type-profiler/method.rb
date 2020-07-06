@@ -95,6 +95,9 @@ module TypeProfiler
         # XXX: support self type in container type like Array[Self]
         # XXX: support Union[Self, something]
         ret_ty = recv if ret_ty.is_a?(Type::Self)
+        if recv.is_a?(Type::Array)
+          ret_ty = ret_ty.substitute(Type::Var.new => recv.elems.squash)
+        end
         found = true
         if aargs.blk_ty.is_a?(Type::ISeqProc)
           dummy_ctx = Context.new(nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo

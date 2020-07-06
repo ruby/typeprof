@@ -58,6 +58,11 @@ module TypeProfiler
         raise
       end
 
+      def substitute(subst)
+        elems = @elems.substitute(subst)
+        Array.new(elems, @base_ty)
+      end
+
       class Elements
         include Utils::StructuralEquality
 
@@ -112,6 +117,12 @@ module TypeProfiler
               q.pp elem
             end
           end
+        end
+
+        def substitute(subst)
+          lead_tys = @lead_tys.map {|ty| ty.substitute(subst) }
+          rest_ty = @rest_ty.substitute(subst)
+          Elements.new(lead_tys, rest_ty)
         end
 
         def squash

@@ -82,6 +82,10 @@ module TypeProfiler
       end
     end
 
+    def substitute(subst)
+      raise "cannot substitute abstract type: #{ self.class }"
+    end
+
     class Any < Type
       def initialize
       end
@@ -257,6 +261,15 @@ module TypeProfiler
       ty.union(Type.nil)
     end
 
+    class Var < Type
+      def initialize
+      end
+
+      def substitute(subst)
+        subst[self] || self
+      end
+    end
+
     class Class < Type # or Module
       def initialize(kind, idx, superclass, name)
         @kind = kind # :class | :module
@@ -308,6 +321,10 @@ module TypeProfiler
           false
         end
       end
+
+      def substitute(subst)
+        self
+      end
     end
 
     class Instance < Type
@@ -347,6 +364,10 @@ module TypeProfiler
         else
           false
         end
+      end
+
+      def substitute(subst)
+        Instance.new(@klass.substitute(subst))
       end
     end
 

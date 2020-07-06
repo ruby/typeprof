@@ -151,6 +151,8 @@ module TypeProfiler
         Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }], nil, nil) #  Array support
       when :optional
         Type.optional(convert_type(scratch, ty[1]))
+      when :var
+        Type::Var.new # Currently, only for Array#* : (int | string) -> Array[Elem]
       else
         pp ty
         raise NotImplementedError
