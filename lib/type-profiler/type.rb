@@ -16,12 +16,13 @@ module TypeProfiler
       return env, self
     end
 
-    def consistent?(other)
+    def consistent?(other, subst)
       case other
       when Type::Any then true
+      when Type::Var then other.add_subst!(self, subst)
       when Type::Union
         other.types.each do |ty2|
-          return true if consistent?(ty2)
+          return true if consistent?(ty2, subst)
         end
       else
         self == other
@@ -102,7 +103,9 @@ module TypeProfiler
         nil
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
+        # need to create a type assignment if other is Var
+        other.add_subst!(self, subst) if other.is_a?(Type::Var)
         true
       end
     end
@@ -217,24 +220,32 @@ module TypeProfiler
         return env, ty
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
         case other
         when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
         when Type::Union
           @types.each do |ty1|
             other.types.each do |ty2|
-              return true if ty1.consistent?(ty2)
+              return true if ty1.consistent?(ty2, subst)
             end
           end
           # TODO: array argument?
           return false
         else
           @types.each do |ty1|
-            return true if ty1.consistent?(other)
+            return true if ty1.consistent?(other, subst)
           end
           # TODO: array argument?
           return false
         end
+      end
+
+      def substitute(subst)
+        types = @types.map {|ty| ty.substitute(subst) }
+        array_elems = @array_elems&.substitute(subst)
+        hash_elems = @hash_elems&.substitute(subst)
+        Union.new(types, array_elems, hash_elems)
       end
     end
 
@@ -268,6 +279,19 @@ module TypeProfiler
       def substitute(subst)
         subst[self] || self
       end
+
+      def consistent?(other, subst)
+        raise "should not be called"
+      end
+
+      def add_subst!(ty, subst)
+        if subst[self]
+          subst[self] = subst[self].union(ty)
+        else
+          subst[self] = ty
+        end
+        true
+      end
     end
 
     class Class < Type # or Module
@@ -296,12 +320,13 @@ module TypeProfiler
         scratch.get_method(self, true, mid)
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
         case other
         when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
         when Type::Union
           other.types.each do |ty|
-            return true if consistent?(ty)
+            return true if consistent?(ty, subst)
           end
           return false
         when Type::Class
@@ -348,16 +373,17 @@ module TypeProfiler
         scratch.get_method(@klass, false, mid)
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
         case other
         when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
         when Type::Union
           other.types.each do |ty|
-            return true if consistent?(ty)
+            return true if consistent?(ty, subst)
           end
           return false
         when Type::Instance
-          @klass.consistent?(other.klass)
+          @klass.consistent?(other.klass, subst)
         when Type::Class
           return true if @klass == Type::Builtin[:obj] || @klass == Type::Builtin[:class] || @klass == Type::Builtin[:module]
           return false
@@ -433,12 +459,14 @@ module TypeProfiler
         "Type::Symbol[#{ @sym ? @sym.inspect : "(dynamic symbol)" }, #{ @type.inspect }]"
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
         case other
+        when Var
+          other.add_subst!(self, subst)
         when Symbol
           @sym == other.sym
         else
-          @type.consistent?(other)
+          @type.consistent?(other, subst)
         end
       end
 
@@ -480,8 +508,8 @@ module TypeProfiler
         @type.get_method(mid, scratch)
       end
 
-      def consistent?(other)
-        @type.consistent?(other)
+      def consistent?(other, subst)
+        @type.consistent?(other, subst)
       end
     end
 
@@ -498,7 +526,7 @@ module TypeProfiler
         "self"
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
         raise "Self type should not be checked for consistent?"
       end
     end
@@ -630,22 +658,22 @@ module TypeProfiler
 
     attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :kw_tys, :kw_rest_ty, :blk_ty
 
-    def consistent?(fargs)
+    def consistent?(fargs, subst)
       warn "used?"
       return false if @lead_tys.size != fargs.lead_tys.size
-      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
+      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(ty2, subst) }
       return false if (@opt_tys || []) != (fargs.opt_tys || []) # ??
       if @rest_ty
-        return false unless @rest_ty.consistent?(fargs.rest_ty)
+        return false unless @rest_ty.consistent?(fargs.rest_ty, subst)
       end
       if @post_tys
         return false if @post_tys.size != fargs.post_tys.size
-        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2) }
+        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2, subst) }
       end
       return false if @kw_tys.size != fargs.kw_tys.size
-      return false unless @kw_tys.zip(fargs.kw_tys).all? {|(_, ty1), (_, ty2)| ty1.consistent?(ty2) }
+      return false unless @kw_tys.zip(fargs.kw_tys).all? {|(_, ty1), (_, ty2)| ty1.consistent?(ty2, subst) }
       if @kw_rest_ty
-        return false unless @kw_rest_ty.consistent?(fargs.kw_rest_ty)
+        return false unless @kw_rest_ty.consistent?(fargs.kw_rest_ty, subst)
       end
       # intentionally skip blk_ty
       true
@@ -858,7 +886,7 @@ module TypeProfiler
       end
     end
 
-    def consistent_with_formal_arguments?(fargs)
+    def consistent_with_formal_arguments?(fargs, subst)
       aargs = @lead_tys.dup
 
       if @rest_ty
@@ -866,7 +894,7 @@ module TypeProfiler
         upper_bound = lower_bound + fargs.opt_tys.size
         (lower_bound..upper_bound).each do |n|
           tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_ty, @blk_ty)
-          if tmp_aargs.consistent_with_formal_arguments?(fargs)
+          if tmp_aargs.consistent_with_formal_arguments?(fargs, subst)
             return true
           end
         end
@@ -876,29 +904,29 @@ module TypeProfiler
       if fargs.rest_ty
         return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
         aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
+          return false unless aarg.consistent?(farg, subst)
         end
         aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
+          return false unless aarg.consistent?(farg, subst)
         end
         fargs.opt_tys.each do |farg|
           aarg = aargs.shift
-          return false unless aarg.consistent?(farg)
+          return false unless aarg.consistent?(farg, subst)
         end
         aargs.each do |aarg|
-          return false unless aarg.consistent?(fargs.rest_ty)
+          return false unless aarg.consistent?(fargs.rest_ty, subst)
         end
       else
         return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
         return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
         aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
+          return false unless aarg.consistent?(farg, subst)
         end
         aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
+          return false unless aarg.consistent?(farg, subst)
         end
         aargs.zip(fargs.opt_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg)
+          return false unless aarg.consistent?(farg, subst)
         end
       end
       # XXX: fargs.keyword_tys

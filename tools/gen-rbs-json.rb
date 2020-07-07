@@ -130,7 +130,7 @@ class TypeProfiler
                     next if name == :respond_to?
                   when :Array
                     @array_special_tyvar_handling = true
-                    next unless [:empty?, :size, :*].include?(name)
+                    next unless [:empty?, :size, :*, :<<].include?(name)
                   when :Hash
                     next unless [:empty?, :size].include?(name)
                   when :Module
@@ -307,10 +307,8 @@ class TypeProfiler
       when RBS::Types::Optional
         [:optional, convert_type(ty.type)]
       when RBS::Types::Interface
-        if @array_special_tyvar_handling
-          raise UnsupportedType if ty.to_s == "::_ToStr"
-          raise UnsupportedType if ty.to_s == "::_ToInt"
-        end
+        raise UnsupportedType if ty.to_s == "::_ToStr" # XXX
+        raise UnsupportedType if ty.to_s == "::_ToInt" # XXX
         [:any]
       else
         pp ty

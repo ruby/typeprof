@@ -271,7 +271,7 @@ module TypeProfiler
         @base_type.get_method(mid, scratch)
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
         raise "must not be used"
       end
     end
@@ -376,7 +376,7 @@ module TypeProfiler
         def [](key_ty)
           val_ty = Type.bot
           @map_tys.each do |k_ty, v_ty|
-            if k_ty.consistent?(key_ty)
+            if k_ty.consistent?(key_ty, {})
               val_ty = val_ty.union(v_ty)
             end
           end
@@ -449,7 +449,7 @@ module TypeProfiler
         @base_type.get_method(mid, scratch)
       end
 
-      def consistent?(other)
+      def consistent?(other, subst)
         raise "must not be used"
       end
     end

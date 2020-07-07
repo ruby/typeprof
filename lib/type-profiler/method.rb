@@ -83,19 +83,26 @@ module TypeProfiler
       @sigs = sigs
     end
 
-    def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      recv = scratch.globalize_type(recv, caller_env, caller_ep)
+    def do_send(recv_orig, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      recv = scratch.globalize_type(recv_orig, caller_env, caller_ep)
       found = false
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
       @sigs.each do |fargs, ret_ty|
+        ncaller_env = caller_env
         # XXX: need to interpret args more correctly
         #pp [mid, aargs, fargs]
         # XXX: support self type in fargs
-        next unless aargs.consistent_with_formal_arguments?(fargs)
+        subst = {}
+        next unless aargs.consistent_with_formal_arguments?(fargs, subst)
         # XXX: support self type in container type like Array[Self]
         # XXX: support Union[Self, something]
         ret_ty = recv if ret_ty.is_a?(Type::Self)
-        if recv.is_a?(Type::Array)
+        if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+          if subst[Type::Var.new]
+            ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
+              elems.update(nil, subst[Type::Var.new])
+            end
+          end
           ret_ty = ret_ty.substitute(Type::Var.new => recv.elems.squash)
         end
         found = true
@@ -104,7 +111,7 @@ module TypeProfiler
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
           dummy_env = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), [], [], Utils::HashWrapper.new({}))
           if fargs.blk_ty.is_a?(Type::TypedProc)
-            scratch.add_callsite!(dummy_ctx, nil, caller_ep, caller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
+            scratch.add_callsite!(dummy_ctx, nil, caller_ep, ncaller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
             nfargs = fargs.blk_ty.fargs
             nfargs = nfargs.map do |nfarg|
               nfarg.is_a?(Type::Self) ? recv : nfarg # XXX
@@ -120,10 +127,10 @@ module TypeProfiler
           else
             # XXX: a block is passed to a method that does not accept block.
             # Should we call the passed block with any arguments?
-            ctn[ret_ty, caller_ep, caller_env]
+            ctn[ret_ty, caller_ep, ncaller_env]
           end
         else
-          ctn[ret_ty, caller_ep, caller_env]
+          ctn[ret_ty, caller_ep, ncaller_env]
         end
       end
 
