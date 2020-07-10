@@ -130,7 +130,7 @@ class TypeProfiler
                     next if name == :respond_to?
                   when :Array
                     @array_special_tyvar_handling = true
-                    next unless [:empty?, :size, :*, :<<].include?(name)
+                    next unless [:empty?, :size, :*, :<<, :replace].include?(name)
                   when :Hash
                     next unless [:empty?, :size].include?(name)
                   when :Module

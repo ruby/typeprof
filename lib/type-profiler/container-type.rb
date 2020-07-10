@@ -58,6 +58,21 @@ module TypeProfiler
         raise
       end
 
+      def consistent?(other, subst)
+        case other
+        when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
+        when Type::Union
+          other.types.each do |ty2|
+            return true if consistent?(ty2, subst)
+          end
+        when Type::Array
+          @base_type.consistent?(other.base_type, subst) && @elems.consistent?(other.elems, subst)
+        else
+          self == other
+        end
+      end
+
       def substitute(subst)
         elems = @elems.substitute(subst)
         Array.new(elems, @base_ty)
@@ -117,6 +132,16 @@ module TypeProfiler
               q.pp elem
             end
           end
+        end
+
+        def consistent?(other, subst)
+          n = [@lead_tys.size, other.lead_tys.size].min
+          n.times do |i|
+            return false unless @lead_tys[i].consistent?(other.lead_tys[i], subst)
+          end
+          rest_ty1 = @lead_tys[n..].inject(@rest_ty) {|ty1, ty2| ty1.union(ty2) }
+          rest_ty2 = other.lead_tys[n..].inject(other.rest_ty) {|ty1, ty2| ty1.union(ty2) }
+          rest_ty1.consistent?(rest_ty2, subst)
         end
 
         def substitute(subst)

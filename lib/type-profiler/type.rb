@@ -225,6 +225,8 @@ module TypeProfiler
         when Type::Any then true
         when Type::Var then other.add_subst!(self, subst)
         when Type::Union
+          # this is very conservative to create subst:
+          # consistent?( int | str, int | X) creates { X => int | str } but should be { X => str }???
           @types.each do |ty1|
             other.types.each do |ty2|
               return true if ty1.consistent?(ty2, subst)
