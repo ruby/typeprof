@@ -104,6 +104,8 @@ module TypeProfiler
             end
           end
           ret_ty = ret_ty.substitute(Type::Var.new => recv.elems.squash)
+        else
+          ret_ty = ret_ty.substitute(subst)
         end
         found = true
         if aargs.blk_ty.is_a?(Type::ISeqProc)

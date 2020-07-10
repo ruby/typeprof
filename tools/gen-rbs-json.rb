@@ -142,6 +142,13 @@ class TypeProfiler
                     next if name == :Array
                   end
                 end
+                if member.singleton?
+                  case type_name.name
+                  when :Array
+                    @array_special_tyvar_handling = true
+                    next unless [:[]].include?(name)
+                  end
+                end
 
                 method_types = member.types.map do |method_type|
                   case method_type

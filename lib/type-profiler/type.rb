@@ -108,6 +108,10 @@ module TypeProfiler
         other.add_subst!(self, subst) if other.is_a?(Type::Var)
         true
       end
+
+      def substitute(subst)
+        self
+      end
     end
 
     class Union < Type
@@ -232,6 +236,7 @@ module TypeProfiler
               return true if ty1.consistent?(ty2, subst)
             end
           end
+          return true if @types.size == 0 && other.types.size == 0 # XXX: is this okay?
           # TODO: array argument?
           return false
         else

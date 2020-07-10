@@ -337,11 +337,12 @@ module TypeProfiler
 
     def hash_aref(recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
-      key = aargs.lead_tys.first
+      idx = aargs.lead_tys.first
+      idx = scratch.globalize_type(idx, env, ep)
       # XXX: recv may be a union
       recv.each_child do |recv|
         if recv.is_a?(Type::LocalHash)
-          ty = scratch.get_hash_elem_type(env, ep, recv.id, key)
+          ty = scratch.get_hash_elem_type(env, ep, recv.id, idx)
         else
           ty = Type.any
         end

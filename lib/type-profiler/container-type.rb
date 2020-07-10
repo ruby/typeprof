@@ -27,6 +27,7 @@ module TypeProfiler
       def initialize(elems, base_type)
         raise unless elems.is_a?(Array::Elements)
         @elems = elems # Array::Elements
+        raise unless base_type
         @base_type = base_type
         # XXX: need infinite recursion
       end
@@ -75,7 +76,7 @@ module TypeProfiler
 
       def substitute(subst)
         elems = @elems.substitute(subst)
-        Array.new(elems, @base_ty)
+        Array.new(elems, @base_type)
       end
 
       class Elements
@@ -262,6 +263,7 @@ module TypeProfiler
     class LocalArray < Type
       def initialize(id, base_type)
         @id = id
+        raise unless base_type
         @base_type = base_type
       end
 
