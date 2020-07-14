@@ -15,8 +15,6 @@ class TypeProfiler
       loader.add(library: library) if library != "builtin"
       @env = Environment.from_loader(loader).resolve_type_names
 
-      @resolver = TypeNameResolver.from_env(@env)
-
       @dump = [import_rbs_classes, import_rbs_constants]
 
       remove_builtin_definitions(builtin) if builtin
@@ -80,13 +78,13 @@ class TypeProfiler
             decl.decls.each do |decl|
               decl = decl.decl
               next if decl.is_a?(AST::Declarations::Module)
-              until BuiltinNames::Object.name == decl.name.absolute!
+              until BuiltinNames::Object.name == decl.name
                 super_class = decl.super_class
                 break unless super_class
-                decls = @env.class_decls[super_class.name.absolute!].decls
+                decls = @env.class_decls[super_class.name].decls
                 raise if decls.size >= 2 # no need to check
                 decl = decls.first.decl
-                queue << [:visit, decl.name.absolute!]
+                queue << [:visit, decl.name]
               end
             end
             if !name.namespace.empty?
@@ -161,9 +159,7 @@ class TypeProfiler
                 method_types = member.types.map do |method_type|
                   case method_type
                   when MethodType
-                    method_type.map_type do |type|
-                      @env.absolute_type(@resolver, type, context: [type_name.to_namespace, RBS::Namespace.root])
-                    end
+                    method_type
                   when :super
                     raise NotImplementedError
                   end
@@ -184,8 +180,7 @@ class TypeProfiler
                   methods[[true, member.new_name]] = method_def if method_def
                 end
               when AST::Members::Include
-                #name = @env.absolute_type_name(@resolver, member.name, context: [type_name.namespace, RBS::Namespace.root])
-                name = @resolver.resolve(member.name, context: [type_name.namespace, RBS::Namespace.root])
+                name = member.name
                 mod = name.namespace.path + [name.name]
                 included_modules << mod
               when AST::Members::InstanceVariable
@@ -316,8 +311,6 @@ class TypeProfiler
         end
       when RBS::Types::Literal
       when RBS::Types::Alias
-        #name = @env.absolute_type_name(@resolver, ty.name, context: [ty.name.namespace, RBS::Namespace.root])
-        #ty = @env.absolute_type(@resolver, @env.alias_decls[name].decl.type, context: [ty.name.namespace, RBS::Namespace.root])
         ty = @env.alias_decls[ty.name].decl.type
         convert_type(ty)
       when RBS::Types::Union
