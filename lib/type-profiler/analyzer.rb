@@ -339,7 +339,7 @@ module TypeProfiler
       end
     end
 
-    def new_class(cbase, name, superclass)
+    def new_class(cbase, name, type_params, superclass)
       if cbase && cbase.idx != 0
         show_name = "#{ @class_defs[cbase.idx].name }::#{ name }"
       else
@@ -353,7 +353,7 @@ module TypeProfiler
           superclass_idx = superclass.idx
         end
         @class_defs[idx] = ClassDef.new(:class, show_name, superclass_idx)
-        klass = Type::Class.new(:class, idx, superclass, show_name)
+        klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
         add_constant(cbase, name, klass)
@@ -361,7 +361,7 @@ module TypeProfiler
       else
         # module
         @class_defs[idx] = ClassDef.new(:module, show_name, nil)
-        mod = Type::Class.new(:module, idx, nil, show_name)
+        mod = Type::Class.new(:module, idx, type_params, nil, show_name)
         @class_defs[idx].klass_obj = mod
         add_constant(cbase, name, mod)
         return mod
@@ -918,7 +918,7 @@ module TypeProfiler
               else # module
                 superclass = nil
               end
-              klass = new_class(cbase, id, superclass)
+              klass = new_class(cbase, id, [], superclass)
             end
           end
           singleton = false

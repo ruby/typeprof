@@ -22,7 +22,7 @@ module TypeProfiler
         end
       rbs_classes, rbs_constants = CACHE[feature]
       classes = []
-      rbs_classes.each do |classpath, (superclass, included_modules, methods)|
+      rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods)|
         next if classpath == [:BasicObject]
         next if classpath == [:NilClass]
         if classpath != [:Object]
@@ -31,7 +31,7 @@ module TypeProfiler
           superclass = path_to_klass(scratch, superclass) if superclass
           klass = scratch.get_constant(base_klass, name)
           if klass.is_a?(Type::Any)
-            klass = scratch.new_class(base_klass, name, superclass)
+            klass = scratch.new_class(base_klass, name, type_params, superclass)
             case classpath
             when [:NilClass] then Type::Builtin[:nil] = klass
             when [:Integer]  then Type::Builtin[:int] = klass
@@ -68,7 +68,7 @@ module TypeProfiler
     end
 
     def translate_typed_method_def(scratch, method_name, mdef)
-      sig_rets = mdef.map do |lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty|
+      sig_rets = mdef.map do |type_params, lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty|
         if blk
           blk = translate_typed_block(scratch, blk)
         else
@@ -152,7 +152,7 @@ module TypeProfiler
       when :optional
         Type.optional(convert_type(scratch, ty[1]))
       when :var
-        Type::Var.new # Currently, only for Array#* : (int | string) -> Array[Elem]
+        Type::Var.new(ty[1]) # Currently, only for Array#* : (int | string) -> Array[Elem]
       else
         pp ty
         raise NotImplementedError

@@ -98,12 +98,13 @@ module TypeProfiler
         # XXX: support Union[Self, something]
         ret_ty = recv if ret_ty.is_a?(Type::Self)
         if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
-          if subst[Type::Var.new]
+          tyvar_elem = Type::Var.new(:Elem)
+          if subst[tyvar_elem]
             ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
-              elems.update(nil, subst[Type::Var.new])
+              elems.update(nil, subst[tyvar_elem])
             end
           end
-          ret_ty = ret_ty.substitute(Type::Var.new => recv.elems.squash)
+          ret_ty = ret_ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash }))
         else
           ret_ty = ret_ty.substitute(subst)
         end

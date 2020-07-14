@@ -249,10 +249,24 @@ module TypeProfiler
       end
 
       def substitute(subst)
-        types = @types.map {|ty| ty.substitute(subst) }
+        unions = []
+        tys = Utils::Set[]
+        @types.each do |ty|
+          ty = ty.substitute(subst)
+          case ty
+          when Union
+            unions << ty
+          else
+            tys = tys.add(ty)
+          end
+        end
         array_elems = @array_elems&.substitute(subst)
         hash_elems = @hash_elems&.substitute(subst)
-        Union.new(types, array_elems, hash_elems)
+        ty = Union.new(tys, array_elems, hash_elems)
+        unions.each do |ty0|
+          ty = ty.union(ty0)
+        end
+        ty
       end
     end
 
@@ -280,7 +294,12 @@ module TypeProfiler
     end
 
     class Var < Type
-      def initialize
+      def initialize(name)
+        @name = name
+      end
+
+      def screen_name(scratch)
+        "Var[#{ @name }]"
       end
 
       def substitute(subst)
@@ -302,14 +321,15 @@ module TypeProfiler
     end
 
     class Class < Type # or Module
-      def initialize(kind, idx, superclass, name)
+      def initialize(kind, idx, type_params, superclass, name)
         @kind = kind # :class | :module
         @idx = idx
+        @type_params = type_params
         @superclass = superclass
         @_name = name
       end
 
-      attr_reader :kind, :idx, :superclass
+      attr_reader :kind, :idx, :type_params, :superclass
 
       def inspect
         if @_name

@@ -3,15 +3,17 @@
 require "rbs"
 require "json"
 
+# factory = RBS::Factory.new()
+# entry = env.class_decls[factory.type_name("::Object")]
+
 class TypeProfiler
   class RubySignatureReader
     include RBS
 
     def initialize(library = nil, builtin = nil)
       loader = EnvironmentLoader.new#(stdlib_root: Pathname("vendor/sigs/stdlib/"))
-      @env = Environment.new()
       loader.add(library: library) if library != "builtin"
-      loader.load(env: @env)
+      @env = Environment.from_loader(loader).resolve_type_names
 
       @resolver = TypeNameResolver.from_env(@env)
 
@@ -106,14 +108,20 @@ class TypeProfiler
       result = {}
       classes.each do |type_name, klass, superclass|
         included_modules = []
-        methods = []
+        methods = {}
+        type_params = nil
 
         if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass, :Kernel].include?(type_name.name) || true
           @env.class_decls[type_name].decls.each do |decl|
             decl = decl.decl
             raise NotImplementedError if decl.is_a?(AST::Declarations::Interface)
+            type_params2 = decl.type_params.params.map {|param| [param.name, param.variance] }
+            if type_params
+              raise if type_params != type_params2
+            else
+              type_params = type_params2
+            end
 
-            methods = {}
             decl.members.each do |member|
               case member
               when AST::Members::MethodDefinition
@@ -130,7 +138,7 @@ class TypeProfiler
                     next if name == :respond_to?
                   when :Array
                     @array_special_tyvar_handling = true
-                    next unless [:empty?, :size, :*, :<<, :replace].include?(name)
+                    next unless [:empty?, :size, :*, :<<, :replace, :+].include?(name)
                   when :Hash
                     next unless [:empty?, :size].include?(name)
                   when :Module
@@ -176,7 +184,8 @@ class TypeProfiler
                   methods[[true, member.new_name]] = method_def if method_def
                 end
               when AST::Members::Include
-                name = @env.absolute_type_name(@resolver, member.name, context: [type_name.namespace, RBS::Namespace.root])
+                #name = @env.absolute_type_name(@resolver, member.name, context: [type_name.namespace, RBS::Namespace.root])
+                name = @resolver.resolve(member.name, context: [type_name.namespace, RBS::Namespace.root])
                 mod = name.namespace.path + [name.name]
                 included_modules << mod
               when AST::Members::InstanceVariable
@@ -192,7 +201,7 @@ class TypeProfiler
           end
         end
 
-        result[klass] = [superclass, included_modules, methods]
+        result[klass] = [type_params, superclass, included_modules, methods]
       end.compact
 
       result
@@ -205,6 +214,7 @@ class TypeProfiler
         else
           blk = nil
         end
+        type_params = type.type_params
 
         singleton = false
         begin
@@ -226,7 +236,7 @@ class TypeProfiler
           raise NotImplementedError if rest_kw_ty
 
           ret_ty = convert_type(type.type.return_type)
-          [lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty]
+          [type_params, lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty]
         rescue UnsupportedType
           nil
         end
@@ -281,7 +291,7 @@ class TypeProfiler
         [:union, []]
       when RBS::Types::Variable
         if @array_special_tyvar_handling
-          [:var]
+          [:var, ty.name]
         else
           [:any]
         end
@@ -306,8 +316,9 @@ class TypeProfiler
         end
       when RBS::Types::Literal
       when RBS::Types::Alias
-        name = @env.absolute_type_name(@resolver, ty.name, context: [ty.name.namespace, RBS::Namespace.root])
-        ty = @env.absolute_type(@resolver, @env.alias_decls[name].decl.type, context: [ty.name.namespace, RBS::Namespace.root])
+        #name = @env.absolute_type_name(@resolver, ty.name, context: [ty.name.namespace, RBS::Namespace.root])
+        #ty = @env.absolute_type(@resolver, @env.alias_decls[name].decl.type, context: [ty.name.namespace, RBS::Namespace.root])
+        ty = @env.alias_decls[ty.name].decl.type
         convert_type(ty)
       when RBS::Types::Union
         [:union, ty.types.map {|ty2| begin convert_type(ty2); rescue UnsupportedType; end }.compact]
@@ -316,6 +327,9 @@ class TypeProfiler
       when RBS::Types::Interface
         raise UnsupportedType if ty.to_s == "::_ToStr" # XXX
         raise UnsupportedType if ty.to_s == "::_ToInt" # XXX
+        if ty.to_s == "::_ToAry[U]" # XXX
+          return [:array, [], [:var, :U]]
+        end
         [:any]
       else
         pp ty
@@ -324,8 +338,8 @@ class TypeProfiler
     end
 
     def remove_builtin_definitions(builtin)
-      builtin[0].each do |name, (_super_class, included_modules, methods)|
-        _, new_included_modules, new_methods = @dump[0][name]
+      builtin[0].each do |name, (_type_params, _super_class, included_modules, methods)|
+        _, _, new_included_modules, new_methods = @dump[0][name]
         if new_included_modules
           new_included_modules -= included_modules
           @dump[0][name][1] = new_included_modules

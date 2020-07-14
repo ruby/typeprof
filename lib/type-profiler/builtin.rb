@@ -402,7 +402,7 @@ module TypeProfiler
 
             scratch.warn(ep, "failed to load: #{ path }")
           else
-            scratch.warn(ep, "cannnot load a .so file: #{ path }")
+            scratch.warn(ep, "cannot load a .so file: #{ path }")
           end
         rescue LoadError
           scratch.warn(ep, "failed to require: #{ feature }")
@@ -453,11 +453,11 @@ module TypeProfiler
   end
 
   def self.setup_initial_global_env(scratch)
-    klass_obj = scratch.new_class(nil, :Object, :__root__) # cbase, name, superclass
+    klass_obj = scratch.new_class(nil, :Object, [], :__root__) # cbase, name, superclass
     scratch.add_constant(klass_obj, "Object", klass_obj)
-    klass_true  = scratch.new_class(klass_obj, :TrueClass, klass_obj) # ???
-    klass_false = scratch.new_class(klass_obj, :FalseClass, klass_obj) # ???
-    klass_nil = scratch.new_class(klass_obj, :NilClass, klass_obj) # ???
+    klass_true  = scratch.new_class(klass_obj, :TrueClass, [], klass_obj) # ???
+    klass_false = scratch.new_class(klass_obj, :FalseClass, [], klass_obj) # ???
+    klass_nil = scratch.new_class(klass_obj, :NilClass, [], klass_obj) # ???
 
     Type::Builtin[:obj]   = klass_obj
     Type::Builtin[:true]  = klass_true
@@ -466,7 +466,7 @@ module TypeProfiler
 
     TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch, "builtin")
 
-    Type::Builtin[:vmcore]    = scratch.new_class(klass_obj, :VMCore, klass_obj)
+    Type::Builtin[:vmcore]    = scratch.new_class(klass_obj, :VMCore, [], klass_obj)
     Type::Builtin[:int]       = scratch.get_constant(klass_obj, :Integer)
     Type::Builtin[:float]     = scratch.get_constant(klass_obj, :Float)
     Type::Builtin[:sym]       = scratch.get_constant(klass_obj, :Symbol)
@@ -515,7 +515,7 @@ module TypeProfiler
     #scratch.add_custom_method(klass_ary, :<<, Builtin.method(:array_ltlt))
     scratch.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
     scratch.add_custom_method(klass_ary, :map, Builtin.method(:array_map))
-    scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
+    #scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
     scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
     scratch.add_custom_method(klass_ary, :include?, Builtin.method(:array_include?))
 
