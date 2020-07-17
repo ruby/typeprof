@@ -518,7 +518,7 @@ module TypeProfiler
     #scratch.add_custom_method(klass_ary, :map, Builtin.method(:array_map))
     #scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
     scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
-    scratch.add_custom_method(klass_ary, :include?, Builtin.method(:array_include?))
+    #scratch.add_custom_method(klass_ary, :include?, Builtin.method(:array_include?))
 
     scratch.add_custom_method(klass_hash, :[], Builtin.method(:hash_aref))
     scratch.add_custom_method(klass_hash, :[]=, Builtin.method(:hash_aset))

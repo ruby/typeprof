@@ -754,7 +754,10 @@ module TypeProfiler
       raise if @post_tys.size != other.post_tys.size
       if @kw_tys
         raise if @kw_tys.size != other.kw_tys.size
-        @kw_tys.zip(other.kw_tys) {|(req1, k1, _), (req2, k2, _)| raise if req1 != req2 || k1 != k2 }
+        @kw_tys.zip(other.kw_tys) do
+          |(req1, k1, _), (req2, k2, _)|
+          raise if req1 != req2 || k1 != k2
+        end
       else
         raise if other.kw_tys
       end

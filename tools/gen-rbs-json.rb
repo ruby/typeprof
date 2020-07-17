@@ -136,7 +136,9 @@ class TypeProfiler
                     next if name == :respond_to?
                   when :Array
                     @array_special_tyvar_handling = true
-                    next unless [:empty?, :size, :*, :<<, :replace, :+, :map!, :collect!, :map, :collect, :each].include?(name)
+                    next if name == :[]
+                    next if name == :[]=
+                    next if name == :pop
                   when :Hash
                     next unless [:empty?, :size].include?(name)
                   when :Module

@@ -124,7 +124,7 @@ module TypeProfiler
               else
                 nfarg = nfarg.substitute(subst)
               end
-              nfarg
+              nfarg.remove_type_vars
             end
             naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
             scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
