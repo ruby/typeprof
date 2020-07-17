@@ -87,6 +87,15 @@ module TypeProfiler
       raise "cannot substitute abstract type: #{ self.class }"
     end
 
+    DummySubstitution = Object.new
+    def DummySubstitution.[](_)
+      Type.any
+    end
+
+    def remove_type_vars
+      substitute(DummySubstitution)
+    end
+
     class Any < Type
       def initialize
       end
@@ -508,6 +517,10 @@ module TypeProfiler
       def get_method(mid, scratch)
         @type.get_method(mid, scratch)
       end
+
+      def substitute(subst)
+        self # dummy
+      end
     end
 
     # local info
@@ -556,6 +569,10 @@ module TypeProfiler
       def consistent?(other, subst)
         raise "Self type should not be checked for consistent?"
       end
+
+      def remove_type_vars
+        self
+      end
     end
 
     class HashGenerator
@@ -589,6 +606,8 @@ module TypeProfiler
         Type::Symbol.new(obj, Type::Instance.new(Type::Builtin[:sym]))
       when ::Integer
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:int]))
+      when ::Rational
+        Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:rational]))
       when ::Float
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:float]))
       when ::Class

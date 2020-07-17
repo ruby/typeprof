@@ -336,6 +336,10 @@ module TypeProfiler
         raise
       end
 
+      def substitute(subst)
+        self # dummy
+      end
+
       class Elements
         include Utils::StructuralEquality
 

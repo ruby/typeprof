@@ -558,10 +558,13 @@ module TypeProfiler
     end
 
     def get_ivar(recv)
-      if recv.is_a?(Type::Class)
+      case recv
+      when Type::Class
         [@class_defs[recv.idx], true]
-      elsif recv.is_a?(Type::Instance)
+      when Type::Instance
         [@class_defs[recv.klass.idx], false]
+      when Type::Any
+        return
       else
         warn "???"
         return
@@ -620,7 +623,7 @@ module TypeProfiler
 
     def reveal_type(ep, ty)
       key = ep.source_location
-      p [ty.screen_name(self)] if ENV["TP_DEBUG"]
+      puts "reveal:#{ ep.source_location }:#{ ty.screen_name(self) }" if ENV["TP_DEBUG"]
       if @reveal_types[key]
         @reveal_types[key] = @reveal_types[key].union(ty)
       else

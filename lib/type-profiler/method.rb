@@ -117,11 +117,14 @@ module TypeProfiler
             scratch.add_callsite!(dummy_ctx, nil, caller_ep, ncaller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
             nfargs = fargs.blk_ty.fargs
             nfargs = nfargs.map do |nfarg|
+              nfarg = nfarg.is_a?(Type::Self) ? recv : nfarg # XXX
               if recv.is_a?(Type::Array)
                 tyvar_elem = Type::Var.new(:Elem)
                 nfarg = nfarg.substitute(subst.merge({ tyvar_elem => recv.elems.squash }))
+              else
+                nfarg = nfarg.substitute(subst)
               end
-              nfarg.is_a?(Type::Self) ? recv : nfarg # XXX
+              nfarg
             end
             naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
             scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
@@ -142,6 +145,7 @@ module TypeProfiler
               else
                 raise "???"
               end
+              ret_ty = ret_ty.remove_type_vars
               # XXX: check the return type from the block
               # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
               scratch.add_return_type!(dummy_ctx, ret_ty)
@@ -151,9 +155,11 @@ module TypeProfiler
           else
             # XXX: a block is passed to a method that does not accept block.
             # Should we call the passed block with any arguments?
+            ret_ty = ret_ty.remove_type_vars
             ctn[ret_ty, caller_ep, ncaller_env]
           end
         else
+          ret_ty = ret_ty.remove_type_vars
           ctn[ret_ty, caller_ep, ncaller_env]
         end
       end
