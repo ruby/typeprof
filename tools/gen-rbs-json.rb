@@ -154,7 +154,6 @@ class TypeProfiler
                   case type_name.name
                   when :Array
                     @array_special_tyvar_handling = true
-                    next unless [:[]].include?(name)
                   end
                 end
 
