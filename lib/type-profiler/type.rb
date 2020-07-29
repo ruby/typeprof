@@ -16,6 +16,10 @@ module TypeProfiler
       return env, self
     end
 
+    def limit_size(limit)
+      self
+    end
+
     def consistent?(other, subst)
       case other
       when Type::Any then true
@@ -136,6 +140,22 @@ module TypeProfiler
         @hash_elems = hash_elems # Type::Array::Elements
       end
 
+      def limit_size(limit)
+        tys = Utils::Set[]
+        @types.each do |ty|
+          tys = tys.add(ty.limit_size(limit - 1))
+        end
+        array_elems = @array_elems&.limit_size(limit - 1)
+        hash_elems = @hash_elems&.limit_size(limit - 1)
+        ret = Union.new(tys, array_elems, hash_elems)
+        if ret != self
+          puts
+          p ret
+          p self
+        end
+        ret
+      end
+
       attr_reader :types, :array_elems, :hash_elems
 
       def normalize
@@ -242,7 +262,13 @@ module TypeProfiler
           # consistent?( int | str, int | X) creates { X => int | str } but should be { X => str }???
           @types.each do |ty1|
             other.types.each do |ty2|
-              return true if ty1.consistent?(ty2, subst)
+              subst2 = subst.dup
+              if ty1.consistent?(ty2, subst2)
+                subst.replace(subst2)
+                # XXX: need to check other pairs to create conservative substitution??
+                # consistent?( X | :foo, str | int ) may return { X => str } or { X => int } but should be { X => str | int }?
+                return true
+              end
             end
           end
           return true if @types.size == 0 && other.types.size == 0 # XXX: is this okay?
@@ -468,6 +494,10 @@ module TypeProfiler
 
       def get_method(mid, scratch)
         @type.get_method(mid, scratch)
+      end
+
+      def substitute(_subst)
+        self # XXX
       end
     end
 
@@ -824,6 +854,10 @@ module TypeProfiler
       rest_ty = @rest_ty.globalize(caller_env, visited) if @rest_ty
       kw_ty = @kw_ty.globalize(caller_env, visited) if @kw_ty
       ActualArguments.new(lead_tys, rest_ty, kw_ty, @blk_ty)
+    end
+
+    def limit_size(limit)
+      self
     end
 
     def each_formal_arguments(fargs_format)

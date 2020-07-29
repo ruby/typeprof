@@ -139,8 +139,14 @@ class TypeProfiler
                     next if name == :[]
                     next if name == :[]=
                     next if name == :pop
+                  when :Enumerable
+                    @array_special_tyvar_handling = true
                   when :Hash
-                    next unless [:empty?, :size].include?(name)
+                    @array_special_tyvar_handling = true
+                    next if name == :[]
+                    next if name == :[]=
+                    next if name == :to_proc
+                    #next unless [:empty?, :size].include?(name)
                   when :Module
                     next if name == :include
                     next if name == :module_function

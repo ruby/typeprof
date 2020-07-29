@@ -336,7 +336,10 @@ module TypeProfiler
     end
 
     def hash_aref(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 1
+      if aargs.lead_tys.size != 1
+        ctn[Type.any, ep, env]
+        return
+      end
       idx = aargs.lead_tys.first
       idx = scratch.globalize_type(idx, env, ep)
       # XXX: recv may be a union

@@ -131,6 +131,7 @@ module TypeProfiler
     def push(*tys)
       tys.each do |ty|
         raise "nil cannot be pushed to the stack" if ty.nil?
+        ty = ty.limit_size(5)
         ty.each_child do |ty|
           raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
           raise "Hash cannot be pushed to the stack" if ty.is_a?(Type::Hash)
@@ -698,6 +699,7 @@ module TypeProfiler
           counter += 1
           if counter % 1000 == 0
             puts "iter %d, remain: %d" % [counter, @worklist.size]
+            #exit if counter == 20000
           end
           @ep = @worklist.deletemin
           stat_eps << @ep
@@ -739,7 +741,7 @@ module TypeProfiler
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         env = @return_envs[tmp_ep]
       end
-      ty.globalize(env, {})
+      ty.globalize(env, {}).limit_size(5)
     end
 
     def localize_type(ty, env, ep, alloc_site = AllocationSite.new(ep))

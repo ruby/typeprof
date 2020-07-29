@@ -55,6 +55,10 @@ module TypeProfiler
         env.deploy_array_type(alloc_site, elems, @base_type)
       end
 
+      def limit_size(limit)
+        Array.new(@elems.limit_size(limit - 1), @base_type)
+      end
+
       def get_method(mid, scratch)
         raise
       end
@@ -113,6 +117,10 @@ module TypeProfiler
           alloc_site_rest = alloc_site.add_id(:rest)
           env, rest_ty = @rest_ty.localize(env, alloc_site_rest)
           return env, Elements.new(lead_tys, rest_ty)
+        end
+
+        def limit_size(limit)
+          Elements.new(@lead_tys.map {|ty| ty.limit_size(limit) }, @rest_ty.limit_size(limit))
         end
 
         def screen_name(scratch)
@@ -332,12 +340,32 @@ module TypeProfiler
         env.deploy_hash_type(alloc_site, elems, @base_type)
       end
 
+      def limit_size(limit)
+        Hash.new(@elems.limit_size(limit - 1), @base_type)
+      end
+
       def get_method(mid, scratch)
         raise
       end
 
+      def consistent?(other, subst)
+        case other
+        when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
+        when Type::Union
+          other.types.each do |ty2|
+            return true if consistent?(ty2, subst)
+          end
+        when Type::Hash
+          @base_type.consistent?(other.base_type, subst) && @elems.consistent?(other.elems, subst)
+        else
+          self == other
+        end
+      end
+
       def substitute(subst)
-        self # dummy
+        elems = @elems.substitute(subst)
+        Hash.new(elems, @base_type)
       end
 
       class Elements
@@ -380,6 +408,20 @@ module TypeProfiler
           return env, Elements.new(map_tys)
         end
 
+        def limit_size(limit)
+          map_tys = {}
+          @map_tys.each do |k_ty, v_ty|
+            k_ty = k_ty.limit_size(limit)
+            v_ty = v_ty.limit_size(limit)
+            if map_tys[k_ty]
+              map_tys[k_ty] = map_tys[k_ty].union(v_ty)
+            else
+              map_tys[k_ty] = v_ty
+            end
+          end
+          Elements.new(map_tys)
+        end
+
         def screen_name(scratch)
           s = @map_tys.map do |k_ty, v_ty|
             k = k_ty.screen_name(scratch)
@@ -402,6 +444,51 @@ module TypeProfiler
               end
             end
           end
+        end
+
+        def consistent?(other, subst)
+          subst2 = subst.dup
+          other.map_tys.each do |k1, v1|
+            found = false
+            @map_tys.each do |k0, v0|
+              subst3 = subst2.dup
+              if k0.consistent?(k1, subst3) && v0.consistent?(v1, subst3)
+                subst2.replace(subst3)
+                found = true
+                break
+              end
+            end
+            return false unless found
+          end
+          subst.replace(subst2)
+          true
+        end
+
+        def substitute(subst)
+          map_tys = {}
+          @map_tys.each do |k_ty_orig, v_ty_orig|
+            k_ty = k_ty_orig.substitute(subst)
+            v_ty = v_ty_orig.substitute(subst)
+            changed = true if k_ty.object_id != k_ty_orig.object_id
+            changed = true if v_ty.object_id != v_ty_orig.object_id
+            k_ty.each_child_global do |k_ty|
+              if map_tys[k_ty]
+                map_tys[k_ty] = map_tys[k_ty].union(v_ty)
+              else
+                map_tys[k_ty] = v_ty
+              end
+            end
+          end
+          Elements.new(map_tys)
+        end
+
+        def squash
+          all_k_ty, all_v_ty = Type.bot, Type.bot
+          @map_tys.each do |k_ty, v_ty|
+            all_k_ty = all_k_ty.union(k_ty)
+            all_v_ty = all_v_ty.union(v_ty)
+          end
+          return all_k_ty, all_v_ty
         end
 
         def [](key_ty)

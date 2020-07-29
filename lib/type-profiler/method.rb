@@ -105,6 +105,14 @@ module TypeProfiler
             end
           end
           ret_ty = ret_ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash }))
+        elsif recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
+          tyvar_k = Type::Var.new(:K)
+          tyvar_v = Type::Var.new(:V)
+          # XXX: need to support destructive operation
+          k_ty, v_ty = recv.elems.squash
+          # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
+          ret_ty2 = ret_ty.substitute(subst.merge({ tyvar_k => k_ty, tyvar_v => v_ty }))
+          ret_ty = ret_ty
         else
           ret_ty = ret_ty.substitute(subst)
         end
