@@ -141,6 +141,8 @@ class TypeProfiler
                     next if name == :pop
                   when :Enumerable
                     @array_special_tyvar_handling = true
+                  when :Enumerator
+                    @array_special_tyvar_handling = true
                   when :Hash
                     @array_special_tyvar_handling = true
                     next if name == :[]
@@ -271,11 +273,14 @@ class TypeProfiler
         case klass
         when [:Array]
           raise if ty.args.size != 1
-          [:array, [], convert_type(ty.args.first)]
+          [:array, :Array, [], convert_type(ty.args.first)]
         when [:Hash]
           raise if ty.args.size != 2
           key, val = ty.args
-          [:hash, [convert_type(key), convert_type(val)]]
+          [:hash, :Hash, [convert_type(key), convert_type(val)]]
+        when [:Enumerator]
+          raise if ty.args.size != 2
+          [:array, :Enumerator, [], convert_type(ty.args.first)]
         else
           [:instance, klass]
         end
@@ -299,7 +304,7 @@ class TypeProfiler
         end
       when RBS::Types::Tuple
         tys = ty.types.map {|ty2| convert_type(ty2) }
-        [:array, tys, [:union, []]]
+        [:array, :Array, tys, [:union, []]]
       when RBS::Types::Literal
         case ty.literal
         when Integer
@@ -328,7 +333,7 @@ class TypeProfiler
         raise UnsupportedType if ty.to_s == "::_ToStr" # XXX
         raise UnsupportedType if ty.to_s == "::_ToInt" # XXX
         if ty.to_s == "::_ToAry[U]" # XXX
-          return [:array, [], [:var, :U]]
+          return [:array, :Array, [], [:var, :U]]
         end
         [:any]
       else

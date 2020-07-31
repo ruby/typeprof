@@ -40,7 +40,11 @@ module TypeProfiler
       end
 
       def screen_name(scratch)
-        @elems.screen_name(scratch)
+        str = @elems.screen_name(scratch)
+        if str.start_with?("*")
+          str = @base_type.screen_name(scratch) + str[1..]
+        end
+        str
       end
 
       def globalize(env, visited)
@@ -132,7 +136,7 @@ module TypeProfiler
             return "[#{ s.join(", ") }]"
           end
 
-          "Array[#{ squash.screen_name(scratch) }]"
+          "*[#{ squash.screen_name(scratch) }]"
         end
 
         def pretty_print(q)

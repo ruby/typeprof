@@ -133,18 +133,17 @@ module TypeProfiler
       when :false
         Type::Instance.new(Type::Builtin[:false])
       when :array
-        _, lead_tys, rest_ty = ty
+        _, klass, lead_tys, rest_ty = ty
         lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
         rest_ty = convert_type(scratch, rest_ty)
-        Type::Array.new(Type::Array::Elements.new(lead_tys, rest_ty), Type::Instance.new(Type::Builtin[:ary]))
+        base_type = Type::Instance.new(scratch.get_constant(Type::Builtin[:obj], klass))
+        Type::Array.new(Type::Array::Elements.new(lead_tys, rest_ty), base_type)
       when :hash
-        _, *map_tys = ty
+        _, _klass, (k, v) = ty
         Type.gen_hash do |h|
-          map_tys.each do |k, v|
-            k_ty = convert_type(scratch, k)
-            v_ty = convert_type(scratch, v)
-            h[k_ty] = v_ty
-          end
+          k_ty = convert_type(scratch, k)
+          v_ty = convert_type(scratch, v)
+          h[k_ty] = v_ty
         end
       when :union
         tys = ty[1].reject {|ty2| ty2[1] == [:BigDecimal] } # XXX
