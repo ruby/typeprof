@@ -9,6 +9,8 @@ require_relative "type-profiler/import"
 require_relative "type-profiler/export"
 require_relative "type-profiler/builtin"
 
+$TYPE_DEPTH_LIMIT = 3
+
 module TypeProfiler
   def self.type_profile(iseq)
     # TODO: resolve file path

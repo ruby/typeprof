@@ -341,7 +341,7 @@ module TypeProfiler
         return
       end
       idx = aargs.lead_tys.first
-      idx = scratch.globalize_type(idx, env, ep)
+      #idx = scratch.globalize_type(idx, env, ep)
       # XXX: recv may be a union
       recv.each_child do |recv|
         if recv.is_a?(Type::LocalHash)

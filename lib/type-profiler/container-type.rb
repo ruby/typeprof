@@ -47,19 +47,22 @@ module TypeProfiler
         str
       end
 
-      def globalize(env, visited)
-        elems = @elems.globalize(env, visited)
-        base_ty = @base_type.globalize(env, visited)
+      def globalize(env, visited, depth)
+        return Type.any if depth <= 0
+        elems = @elems.globalize(env, visited, depth - 1)
+        base_ty = @base_type.globalize(env, visited, depth - 1)
         Array.new(elems, base_ty)
       end
 
-      def localize(env, alloc_site)
+      def localize(env, alloc_site, depth)
+        return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:ary)
-        env, elems = @elems.localize(env, alloc_site)
+        env, elems = @elems.localize(env, alloc_site, depth - 1)
         env.deploy_array_type(alloc_site, elems, @base_type)
       end
 
       def limit_size(limit)
+        return Type.any if limit <= 0
         Array.new(@elems.limit_size(limit - 1), @base_type)
       end
 
@@ -82,8 +85,9 @@ module TypeProfiler
         end
       end
 
-      def substitute(subst)
-        elems = @elems.substitute(subst)
+      def substitute(subst, depth)
+        return Type.any if depth <= 0
+        elems = @elems.substitute(subst, depth - 1)
         Array.new(elems, @base_type)
       end
 
@@ -103,23 +107,23 @@ module TypeProfiler
           Type::LocalArray.new(id, base_ty)
         end
 
-        def globalize(env, visited)
+        def globalize(env, visited, depth)
           lead_tys = []
           @lead_tys.each do |ty|
-            lead_tys << ty.globalize(env, visited)
+            lead_tys << ty.globalize(env, visited, depth)
           end
-          rest_ty = @rest_ty&.globalize(env, visited)
+          rest_ty = @rest_ty&.globalize(env, visited, depth)
           Elements.new(lead_tys, rest_ty)
         end
 
-        def localize(env, alloc_site)
+        def localize(env, alloc_site, depth)
           lead_tys = @lead_tys.map.with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(i)
-            env, ty = ty.localize(env, alloc_site2)
+            env, ty = ty.localize(env, alloc_site2, depth)
             ty
           end
           alloc_site_rest = alloc_site.add_id(:rest)
-          env, rest_ty = @rest_ty.localize(env, alloc_site_rest)
+          env, rest_ty = @rest_ty.localize(env, alloc_site_rest, depth)
           return env, Elements.new(lead_tys, rest_ty)
         end
 
@@ -157,9 +161,9 @@ module TypeProfiler
           rest_ty1.consistent?(rest_ty2, subst)
         end
 
-        def substitute(subst)
-          lead_tys = @lead_tys.map {|ty| ty.substitute(subst) }
-          rest_ty = @rest_ty.substitute(subst)
+        def substitute(subst, depth)
+          lead_tys = @lead_tys.map {|ty| ty.substitute(subst, depth) }
+          rest_ty = @rest_ty.substitute(subst, depth)
           Elements.new(lead_tys, rest_ty)
         end
 
@@ -290,14 +294,14 @@ module TypeProfiler
         "LocalArray!"
       end
 
-      def globalize(env, visited)
-        if visited[self]
+      def globalize(env, visited, depth)
+        if visited[self] || depth <= 0
           Type.any
         else
           visited[self] = true
           elems = env.get_container_elem_types(@id)
           if elems
-            elems = elems.globalize(env, visited)
+            elems = elems.globalize(env, visited, depth - 1)
           else
             # TODO: currently out-of-scope array cannot be accessed
             elems = Array::Elements.new([], Type.any)
@@ -332,19 +336,22 @@ module TypeProfiler
         @elems.screen_name(scratch)
       end
 
-      def globalize(env, visited)
-        elems = @elems.globalize(env, visited)
-        base_ty = @base_type.globalize(env, visited)
+      def globalize(env, visited, depth)
+        return Type.any if depth <= 0
+        elems = @elems.globalize(env, visited, depth - 1)
+        base_ty = @base_type.globalize(env, visited, depth - 1)
         Hash.new(elems, base_ty)
       end
 
-      def localize(env, alloc_site)
+      def localize(env, alloc_site, depth)
+        return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:hash)
-        env, elems = @elems.localize(env, alloc_site)
+        env, elems = @elems.localize(env, alloc_site, depth - 1)
         env.deploy_hash_type(alloc_site, elems, @base_type)
       end
 
       def limit_size(limit)
+        return Type.any if limit <= 0
         Hash.new(@elems.limit_size(limit - 1), @base_type)
       end
 
@@ -367,8 +374,9 @@ module TypeProfiler
         end
       end
 
-      def substitute(subst)
-        elems = @elems.substitute(subst)
+      def substitute(subst, depth)
+        return Type.any if depth <= 0
+        elems = @elems.substitute(subst, depth - 1)
         Hash.new(elems, @base_type)
       end
 
@@ -376,10 +384,13 @@ module TypeProfiler
         include Utils::StructuralEquality
 
         def initialize(map_tys)
-          raise unless map_tys.all? {|k_ty, v_ty| k_ty.is_a?(Type) && v_ty.is_a?(Type) }
-          raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::Union) }
-          raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::LocalArray) }
-          raise if map_tys.any? {|k_ty,| k_ty.is_a?(Type::LocalHash) }
+          map_tys.each do |k_ty, v_ty|
+            raise unless k_ty.is_a?(Type)
+            raise unless v_ty.is_a?(Type)
+            raise if k_ty.is_a?(Type::Union)
+            raise if k_ty.is_a?(Type::LocalArray)
+            raise if k_ty.is_a?(Type::LocalHash)
+          end
           @map_tys = map_tys
         end
 
@@ -390,10 +401,10 @@ module TypeProfiler
           Type::LocalHash.new(id, base_ty)
         end
 
-        def globalize(env, visited)
+        def globalize(env, visited, depth)
           map_tys = {}
           @map_tys.each do |k_ty, v_ty|
-            v_ty = v_ty.globalize(env, visited)
+            v_ty = v_ty.globalize(env, visited, depth)
             if map_tys[k_ty]
               map_tys[k_ty] = map_tys[k_ty].union(v_ty)
             else
@@ -403,10 +414,10 @@ module TypeProfiler
           Elements.new(map_tys)
         end
 
-        def localize(env, alloc_site)
+        def localize(env, alloc_site, depth)
           map_tys = @map_tys.to_h do |k_ty, v_ty|
             alloc_site2 = alloc_site.add_id(k_ty)
-            env, v_ty = v_ty.localize(env, alloc_site2)
+            env, v_ty = v_ty.localize(env, alloc_site2, depth)
             [k_ty, v_ty]
           end
           return env, Elements.new(map_tys)
@@ -468,13 +479,11 @@ module TypeProfiler
           true
         end
 
-        def substitute(subst)
+        def substitute(subst, depth)
           map_tys = {}
           @map_tys.each do |k_ty_orig, v_ty_orig|
-            k_ty = k_ty_orig.substitute(subst)
-            v_ty = v_ty_orig.substitute(subst)
-            changed = true if k_ty.object_id != k_ty_orig.object_id
-            changed = true if v_ty.object_id != v_ty_orig.object_id
+            k_ty = k_ty_orig.substitute(subst, depth)
+            v_ty = v_ty_orig.substitute(subst, depth)
             k_ty.each_child_global do |k_ty|
               if map_tys[k_ty]
                 map_tys[k_ty] = map_tys[k_ty].union(v_ty)
@@ -552,14 +561,14 @@ module TypeProfiler
         "LocalHash!"
       end
 
-      def globalize(env, visited)
-        if visited[self]
+      def globalize(env, visited, depth)
+        if visited[self] || depth <= 0
           Type.any
         else
           visited[self] = true
           elems = env.get_container_elem_types(@id)
           if elems
-            elems = elems.globalize(env, visited)
+            elems = elems.globalize(env, visited, depth - 1)
           else
             elems = Hash::Elements.new({Type.any => Type.any})
           end

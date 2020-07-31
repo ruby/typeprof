@@ -8,11 +8,11 @@ module TypeProfiler
 
     Builtin = {}
 
-    def globalize(env, visited)
+    def globalize(_env, _visited, _depth)
       self
     end
 
-    def localize(env, _alloc_site)
+    def localize(env, _alloc_site, _depth)
       return env, self
     end
 
@@ -87,7 +87,7 @@ module TypeProfiler
       end
     end
 
-    def substitute(subst)
+    def substitute(_subst, _depth)
       raise "cannot substitute abstract type: #{ self.class }"
     end
 
@@ -97,7 +97,7 @@ module TypeProfiler
     end
 
     def remove_type_vars
-      substitute(DummySubstitution)
+      substitute(DummySubstitution, $TYPE_DEPTH_LIMIT)
     end
 
     class Any < Type
@@ -122,7 +122,7 @@ module TypeProfiler
         true
       end
 
-      def substitute(subst)
+      def substitute(_subst, _depth)
         self
       end
     end
@@ -131,29 +131,27 @@ module TypeProfiler
       def initialize(tys, ary_elems, hash_elems)
         raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
+        local = nil
         tys.each do |ty|
-          raise if !ty.is_a?(Type)
+          raise unless ty.is_a?(Type)
+          local = true if ty.is_a?(LocalArray) || ty.is_a?(LocalHash)
           #raise if ty.is_a?(Type::Array)
           #raise if ty.is_a?(Type::Hash)
         end
+        raise if local && (ary_elems || hash_elems)
         @array_elems = ary_elems # Type::Array::Elements
         @hash_elems = hash_elems # Type::Array::Elements
       end
 
       def limit_size(limit)
+        return Type.any if limit <= 0
         tys = Utils::Set[]
         @types.each do |ty|
           tys = tys.add(ty.limit_size(limit - 1))
         end
         array_elems = @array_elems&.limit_size(limit - 1)
         hash_elems = @hash_elems&.limit_size(limit - 1)
-        ret = Union.new(tys, array_elems, hash_elems)
-        if ret != self
-          puts
-          p ret
-          p self
-        end
-        ret
+        Union.new(tys, array_elems, hash_elems)
       end
 
       attr_reader :types, :array_elems, :hash_elems
@@ -213,12 +211,15 @@ module TypeProfiler
         end
       end
 
-      def globalize(env, visited)
+      def globalize(env, visited, depth)
+        return Type.any if depth <= 0
         tys = Utils::Set[]
-        array_elems = @array_elems&.globalize(env, visited)
-        hash_elems = @hash_elems&.globalize(env, visited)
+        raise if @array_elems
+        raise if @hash_elems
+        array_elems = @array_elems&.globalize(env, visited, depth - 1)
+        hash_elems = @hash_elems&.globalize(env, visited, depth - 1)
         @types.each do |ty|
-          ty = ty.globalize(env, visited)
+          ty = ty.globalize(env, visited, depth - 1)
           case ty
           when Array
             array_elems = union_elems(array_elems, ty.elems)
@@ -231,22 +232,23 @@ module TypeProfiler
         Type::Union.new(tys, array_elems, hash_elems).normalize
       end
 
-      def localize(env, alloc_site)
+      def localize(env, alloc_site, depth)
+        return env, Type.any if depth <= 0
         tys = @types.map do |ty|
           alloc_site2 = alloc_site.add_id(ty)
-          env, ty2 = ty.localize(env, alloc_site2)
+          env, ty2 = ty.localize(env, alloc_site2, depth - 1)
           ty2
         end
         if @array_elems
           base_ty = Type::Instance.new(Type::Builtin[:ary])
           ary_ty = Type::Array.new(@array_elems, base_ty)
-          env, ary_ty = ary_ty.localize(env, alloc_site)
+          env, ary_ty = ary_ty.localize(env, alloc_site, depth - 1)
           tys = tys.add(ary_ty)
         end
         if @hash_elems
           base_ty = Type::Instance.new(Type::Builtin[:hash])
           hash_ty = Type::Hash.new(@hash_elems, base_ty)
-          env, hash_ty = hash_ty.localize(env, alloc_site)
+          env, hash_ty = hash_ty.localize(env, alloc_site, depth - 1)
           tys = tys.add(hash_ty)
         end
         ty = Union.new(tys, nil, nil).normalize
@@ -283,11 +285,12 @@ module TypeProfiler
         end
       end
 
-      def substitute(subst)
+      def substitute(subst, depth)
+        return Type.any if depth <= 0
         unions = []
         tys = Utils::Set[]
         @types.each do |ty|
-          ty = ty.substitute(subst)
+          ty = ty.substitute(subst, depth - 1)
           case ty
           when Union
             unions << ty
@@ -295,8 +298,8 @@ module TypeProfiler
             tys = tys.add(ty)
           end
         end
-        array_elems = @array_elems&.substitute(subst)
-        hash_elems = @hash_elems&.substitute(subst)
+        array_elems = @array_elems&.substitute(subst, depth - 1)
+        hash_elems = @hash_elems&.substitute(subst, depth - 1)
         ty = Union.new(tys, array_elems, hash_elems)
         unions.each do |ty0|
           ty = ty.union(ty0)
@@ -337,12 +340,16 @@ module TypeProfiler
         "Var[#{ @name }]"
       end
 
-      def substitute(subst)
-        subst[self] || self
+      def substitute(subst, depth)
+        if subst[self]
+          subst[self].limit_size(depth)
+        else
+          self
+        end
       end
 
       def consistent?(other, subst)
-        raise "should not be called"
+        raise "should not be called: #{ self }"
       end
 
       def add_subst!(ty, subst)
@@ -409,7 +416,7 @@ module TypeProfiler
         end
       end
 
-      def substitute(subst)
+      def substitute(_subst, _depth)
         self
       end
     end
@@ -454,8 +461,8 @@ module TypeProfiler
         end
       end
 
-      def substitute(subst)
-        Instance.new(@klass.substitute(subst))
+      def substitute(subst, depth)
+        Instance.new(@klass.substitute(subst, depth))
       end
     end
 
@@ -496,7 +503,7 @@ module TypeProfiler
         @type.get_method(mid, scratch)
       end
 
-      def substitute(_subst)
+      def substitute(_subst, _depth)
         self # XXX
       end
     end
@@ -548,7 +555,7 @@ module TypeProfiler
         @type.get_method(mid, scratch)
       end
 
-      def substitute(subst)
+      def substitute(_subst, _depth)
         self # dummy
       end
     end
@@ -570,7 +577,7 @@ module TypeProfiler
         @type.screen_name(scratch) + "<#{ @lit.inspect }>"
       end
 
-      def globalize(env, visited)
+      def globalize(_env, _visited, _depth)
         @type
       end
 
@@ -655,7 +662,7 @@ module TypeProfiler
       when ::Hash
         Type.gen_hash do |h|
           obj.each do |k, v|
-            k_ty = guess_literal_type(k).globalize(nil, {})
+            k_ty = guess_literal_type(k).globalize(nil, {}, $TYPE_DEPTH_LIMIT)
             v_ty = guess_literal_type(v)
             h[k_ty] = v_ty
           end
@@ -849,10 +856,10 @@ module TypeProfiler
       ActualArguments.new(lead_tys, rest_ty, kw_ty, blk_ty)
     end
 
-    def globalize(caller_env, visited)
-      lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited) }
-      rest_ty = @rest_ty.globalize(caller_env, visited) if @rest_ty
-      kw_ty = @kw_ty.globalize(caller_env, visited) if @kw_ty
+    def globalize(caller_env, visited, depth)
+      lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited, depth) }
+      rest_ty = @rest_ty.globalize(caller_env, visited, depth) if @rest_ty
+      kw_ty = @kw_ty.globalize(caller_env, visited, depth) if @kw_ty
       ActualArguments.new(lead_tys, rest_ty, kw_ty, @blk_ty)
     end
 

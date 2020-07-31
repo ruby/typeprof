@@ -38,33 +38,33 @@ module TypeProfiler
         fargs.lead_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
           # nenv is top-level, so it is okay to call Type#localize directly
-          nenv, ty = ty.localize(nenv, alloc_site2)
+          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
           nenv = nenv.local_update(i, ty)
         end
         if fargs.opt_tys
           fargs.opt_tys.each_with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.localize(nenv, alloc_site2)
+            nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
             nenv = nenv.local_update(lead_num + i, ty)
           end
         end
         if fargs.rest_ty
           alloc_site2 = alloc_site.add_id(idx += 1)
           ty = Type::Array.new(Type::Array::Elements.new([], fargs.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
-          nenv, rest_ty = ty.localize(nenv, alloc_site2)
+          nenv, rest_ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
           nenv = nenv.local_update(rest_start, rest_ty)
         end
         if fargs.post_tys
           fargs.post_tys.each_with_index do |ty, i|
             alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.localize(nenv, alloc_site2)
+            nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
             nenv = nenv.local_update(post_start + i, ty)
           end
         end
         if fargs.kw_tys
           fargs.kw_tys.each_with_index do |(_, _, ty), i|
             alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.localize(nenv, alloc_site2)
+            nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
             nenv = nenv.local_update(kw_start + i, ty)
           end
         end
@@ -100,21 +100,23 @@ module TypeProfiler
         if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
           tyvar_elem = Type::Var.new(:Elem)
           if subst[tyvar_elem]
+            ty = subst[tyvar_elem]
+            alloc_site = AllocationSite.new(caller_ep).add_id(self)
+            ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
             ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
-              elems.update(nil, subst[tyvar_elem])
+              elems.update(nil, ty)
             end
           end
-          ret_ty = ret_ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash }))
+          ret_ty = ret_ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), $TYPE_DEPTH_LIMIT)
         elsif recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
           # XXX: need to support destructive operation
           k_ty, v_ty = recv.elems.squash
           # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
-          ret_ty2 = ret_ty.substitute(subst.merge({ tyvar_k => k_ty, tyvar_v => v_ty }))
-          ret_ty = ret_ty
+          ret_ty = ret_ty.substitute(subst.merge({ tyvar_k => k_ty, tyvar_v => v_ty }), $TYPE_DEPTH_LIMIT)
         else
-          ret_ty = ret_ty.substitute(subst)
+          ret_ty = ret_ty.substitute(subst, $TYPE_DEPTH_LIMIT)
         end
         found = true
         if aargs.blk_ty.is_a?(Type::ISeqProc)
@@ -124,15 +126,19 @@ module TypeProfiler
           if fargs.blk_ty.is_a?(Type::TypedProc)
             scratch.add_callsite!(dummy_ctx, nil, caller_ep, ncaller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
             nfargs = fargs.blk_ty.fargs
-            nfargs = nfargs.map do |nfarg|
+            alloc_site = AllocationSite.new(caller_ep).add_id(self)
+            nfargs = nfargs.map.with_index do |nfarg, i|
               nfarg = nfarg.is_a?(Type::Self) ? recv : nfarg # XXX
               if recv.is_a?(Type::Array)
                 tyvar_elem = Type::Var.new(:Elem)
-                nfarg = nfarg.substitute(subst.merge({ tyvar_elem => recv.elems.squash }))
+                nfarg = nfarg.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), $TYPE_DEPTH_LIMIT)
               else
-                nfarg = nfarg.substitute(subst)
+                nfarg = nfarg.substitute(subst, $TYPE_DEPTH_LIMIT)
               end
-              nfarg.remove_type_vars
+              nfarg = nfarg.remove_type_vars
+              alloc_site2 = alloc_site.add_id(i)
+              ncaller_env, nfarg = scratch.localize_type(nfarg, ncaller_env, caller_ep)
+              nfarg
             end
             naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
             scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
@@ -146,9 +152,9 @@ module TypeProfiler
                     end
                     scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                   end
-                  ret_ty = ret_ty.substitute(subst2)
+                  ret_ty = ret_ty.substitute(subst2, $TYPE_DEPTH_LIMIT)
                 else
-                  ret_ty = ret_ty.substitute(subst2)
+                  ret_ty = ret_ty.substitute(subst2, $TYPE_DEPTH_LIMIT)
                 end
               else
                 raise "???"

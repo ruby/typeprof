@@ -133,7 +133,6 @@ module TypeProfiler
     def push(*tys)
       tys.each do |ty|
         raise "nil cannot be pushed to the stack" if ty.nil?
-        ty = ty.limit_size(5)
         ty.each_child do |ty|
           raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
           raise "Hash cannot be pushed to the stack" if ty.is_a?(Type::Hash)
@@ -743,7 +742,7 @@ module TypeProfiler
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         env = @return_envs[tmp_ep]
       end
-      ty.globalize(env, {}).limit_size(5)
+      ty.globalize(env, {}, $TYPE_DEPTH_LIMIT)
     end
 
     def localize_type(ty, env, ep, alloc_site = AllocationSite.new(ep))
@@ -751,13 +750,13 @@ module TypeProfiler
         tmp_ep = ep
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         target_env = @return_envs[tmp_ep]
-        target_env, ty = ty.localize(target_env, alloc_site)
+        target_env, ty = ty.localize(target_env, alloc_site, $TYPE_DEPTH_LIMIT)
         merge_return_env(tmp_ep) do |env|
           env ? env.merge(target_env) : target_env
         end
         return env, ty
       else
-        return ty.localize(env, alloc_site)
+        return ty.localize(env, alloc_site, $TYPE_DEPTH_LIMIT)
       end
     end
 
