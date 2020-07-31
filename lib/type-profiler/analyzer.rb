@@ -104,8 +104,10 @@ module TypeProfiler
       raise if @locals.size != other.locals.size
       raise if @stack.size != other.stack.size
       static_env = @static_env.merge(other.static_env)
-      locals = @locals.zip(other.locals).map {|ty1, ty2| ty1.union(ty2) }
-      stack = @stack.zip(other.stack).map {|ty1, ty2| ty1.union(ty2) }
+      locals = []
+      @locals.zip(other.locals) {|ty1, ty2| locals << ty1.union(ty2) }
+      stack = []
+      @stack.zip(other.stack) {|ty1, ty2| stack << ty1.union(ty2) }
       if @type_params
         raise if !other.type_params
         if @type_params == other.type_params
