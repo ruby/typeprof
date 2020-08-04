@@ -621,6 +621,10 @@ module TypeProfiler
 
       def []=(k_ty, v_ty)
         k_ty.each_child_global do |k_ty|
+          # This is a temporal hack to mitigate type explosion
+          k_ty = Type.any if k_ty.is_a?(Type::Array)
+          k_ty = Type.any if k_ty.is_a?(Type::Hash)
+
           if @map_tys[k_ty]
             @map_tys[k_ty] = @map_tys[k_ty].union(v_ty)
           else

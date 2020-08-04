@@ -390,6 +390,8 @@ module TypeProfiler
             raise if k_ty.is_a?(Type::Union)
             raise if k_ty.is_a?(Type::LocalArray)
             raise if k_ty.is_a?(Type::LocalHash)
+            raise if k_ty.is_a?(Type::Array)
+            raise if k_ty.is_a?(Type::Hash)
           end
           @map_tys = map_tys
         end
@@ -517,6 +519,10 @@ module TypeProfiler
         def update(idx, ty)
           map_tys = @map_tys.dup
           idx.each_child_global do |idx|
+            # This is a temporal hack to mitigate type explosion
+            idx = Type.any if idx.is_a?(Type::Array)
+            idx = Type.any if idx.is_a?(Type::Hash)
+
             if map_tys[idx]
               map_tys[idx] = map_tys[idx].union(ty)
             else
