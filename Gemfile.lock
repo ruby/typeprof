@@ -1,7 +1,7 @@
 PATH
   remote: rbs
   specs:
-    rbs (0.4.0)
+    rbs (0.9.0)
 
 GEM
   remote: https://rubygems.org/

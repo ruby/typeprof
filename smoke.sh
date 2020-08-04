@@ -1,3 +1,3 @@
 #!/bin/bash
 
-ruby tools/run-smoke.rb $@
+bundle exec ruby tools/run-smoke.rb $@
