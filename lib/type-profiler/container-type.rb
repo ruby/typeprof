@@ -286,7 +286,7 @@ module TypeProfiler
       attr_reader :id, :base_type
 
       def inspect
-        "Type::LocalArray[#{ @id }]"
+        "Type::LocalArray[#{ @id }, base_type: #{ @base_type.inspect }]"
       end
 
       def screen_name(scratch)
