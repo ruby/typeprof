@@ -23,10 +23,8 @@ Foo.new.set
 __END__
 # Classes
 class Foo
-  @array : Array[:sym | Integer | String]
-  @hash : {:a=>Integer, :b=>String, :c=>:sym}
+  attr_reader array : Array[:sym | Integer | String]
+  attr_reader hash : {:a=>Integer, :b=>String, :c=>:sym}
   def initialize : () -> {}
   def set : () -> :sym
-  def array : () -> (Array[:sym | Integer | String])
-  def hash : () -> {:a=>Integer, :b=>String, :c=>:sym}
 end

@@ -92,40 +92,53 @@ module TypeProfiler
           mod_def.name if visible
         end
 
+        iseq_methods = {}
+        attr_methods = {}
+        class_def.methods.each do |(singleton, mid), mdefs|
+          mdefs.each do |mdef|
+            case mdef
+            when ISeqMethodDef
+              ctxs = @iseq_method_to_ctxs[mdef]
+              next unless ctxs
+
+              ctxs.each do |ctx|
+                next if mid != ctx.mid
+
+                method_name = ctx.mid
+                method_name = "self.#{ method_name }" if singleton
+
+                fargs = @sig_fargs[ctx]
+                ret_tys = @sig_ret[ctx]
+
+                iseq_methods[method_name] ||= []
+                iseq_methods[method_name] << @scratch.show_signature(fargs, @yields[ctx], ret_tys)
+              end
+            when AttrMethodDef
+              method_name = mdef.ivar.to_s[1..]
+              method_name = "self.#{ method_name }" if singleton
+              if attr_methods[method_name]
+                if attr_methods[method_name][0] != mdef.kind
+                  attr_methods[method_name][0] = :accessor
+                end
+              else
+                ty = class_def.ivars.write[[singleton, mdef.ivar]] || Type.any
+                attr_methods[method_name] = [mdef.kind, ty.screen_name(@scratch)]
+              end
+            end
+          end
+        end
+
         ivars = class_def.ivars.write.map do |(singleton, var), ty|
           var = "self.#{ var }" if singleton
+          next if attr_methods[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..]]
           [var, ty.screen_name(@scratch)]
-        end
+        end.compact
 
         cvars = class_def.cvars.write.map do |var, ty|
           [var, ty.screen_name(@scratch)]
         end
 
-        methods = {}
-        class_def.methods.each do |(singleton, mid), mdefs|
-          mdefs.each do |mdef|
-            ctxs = @iseq_method_to_ctxs[mdef]
-            next unless ctxs
-
-            ctxs.each do |ctx|
-              next if mid != ctx.mid
-
-              method_name = ctx.mid
-              method_name = "self.#{ method_name }" if singleton
-
-              fargs = @sig_fargs[ctx]
-              ret_tys = @sig_ret[ctx]
-
-              methods[method_name] ||= []
-              methods[method_name] << @scratch.show_signature(fargs, @yields[ctx], ret_tys)
-
-              #stat_classes[recv] = true
-              #stat_methods[[recv, method_name]] = true
-            end
-          end
-        end
-
-        next if included_mods.empty? && ivars.empty? && cvars.empty? && methods.empty?
+        next if included_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
 
         puts unless first
         first = false
@@ -140,7 +153,10 @@ module TypeProfiler
         cvars.each do |var, ty|
           puts "  #{ var } : #{ ty }"
         end
-        methods.each do |method_name, sigs|
+        attr_methods.each do |method_name, (kind, ty)|
+          puts "  attr_#{ kind } #{ method_name } : #{ ty }"
+        end
+        iseq_methods.each do |method_name, sigs|
           sigs = sigs.sort.join("\n" + " " * (method_name.size + 3) + "| ")
           puts "  def #{ method_name } : #{ sigs }"
         end

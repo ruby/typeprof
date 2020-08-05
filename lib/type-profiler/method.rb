@@ -78,6 +78,30 @@ module TypeProfiler
     end
   end
 
+  class AttrMethodDef < MethodDef
+    def initialize(ivar, kind)
+      @ivar = :"@#{ ivar }"
+      @kind = kind # :reader | :writer
+    end
+
+    attr_reader :ivar, :kind
+
+    def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      case @kind
+      when :reader
+        raise if aargs.lead_tys.size != 0
+        scratch.get_instance_variable(recv, @ivar, caller_ep, caller_env) do |ty, nenv|
+          ctn[ty, caller_ep, nenv]
+        end
+      when :writer
+        raise if aargs.lead_tys.size != 1
+        ty = aargs.lead_tys[0]
+        scratch.set_instance_variable(recv, @ivar, ty, caller_ep, caller_env)
+        ctn[ty, caller_ep, caller_env]
+      end
+    end
+  end
+
   class TypedMethodDef < MethodDef
     def initialize(sigs) # sigs: Array<[FormalArguments, (return)Type]>
       @sigs = sigs

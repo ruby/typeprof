@@ -11,7 +11,7 @@ class TypeProfiler
     include RBS
 
     def initialize(library = nil, builtin = nil)
-      loader = EnvironmentLoader.new#(stdlib_root: Pathname("vendor/sigs/stdlib/"))
+      loader = EnvironmentLoader.new
       loader.add(library: library) if library != "builtin"
       @env = Environment.from_loader(loader).resolve_type_names
 

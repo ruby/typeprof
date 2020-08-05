@@ -175,22 +175,11 @@ module TypeProfiler
       end
     end
 
-    def add_attr_reader(sym, cref, scratch)
-      iseq_getter = ISeq.compile_str("def #{ sym }(); @#{ sym }; end").insns[0][1][1]
-      scratch.add_iseq_method(cref.klass, sym, iseq_getter, cref)
-    end
-
-    def add_attr_writer(sym, cref, scratch)
-      iseq_setter = ISeq.compile_str("def #{ sym }=(x); @#{ sym } = x; end").insns[0][1][1]
-      scratch.add_iseq_method(cref.klass, :"#{ sym }=", iseq_setter, cref)
-    end
-
     def module_attr_accessor(recv, mid, aargs, ep, env, scratch, &ctn)
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_accessor", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        add_attr_reader(sym, cref, scratch)
-        add_attr_writer(sym, cref, scratch)
+        scratch.add_attr_method(cref.klass, sym, :accessor)
       end
       ctn[Type.nil, ep, env]
     end
@@ -199,7 +188,7 @@ module TypeProfiler
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_reader", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        add_attr_reader(sym, cref, scratch)
+        scratch.add_attr_method(cref.klass, sym, :reader)
       end
       ctn[Type.nil, ep, env]
     end
@@ -208,7 +197,7 @@ module TypeProfiler
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_writer", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        add_attr_writer(sym, cref, scratch)
+        scratch.add_attr_method(cref.klass, sym, :writer)
       end
       ctn[Type.nil, ep, env]
     end

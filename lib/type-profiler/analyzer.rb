@@ -440,6 +440,15 @@ module TypeProfiler
       end
     end
 
+    def add_attr_method(klass, mid, kind)
+      if kind == :reader || kind == :accessor
+        add_method(klass, mid, false, AttrMethodDef.new(mid, :reader))
+      end
+      if kind == :writer || kind == :accessor
+        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(mid, :writer))
+      end
+    end
+
     def add_iseq_method(klass, mid, iseq, cref)
       add_method(klass, mid, false, ISeqMethodDef.new(iseq, cref))
     end
@@ -767,6 +776,23 @@ module TypeProfiler
       else
         @pending_dummy_executions[iseq][nep] = nenv
       end
+    end
+
+    def get_instance_variable(recv, var, ep, env)
+      add_ivar_read!(recv, var, ep) do |ty, ep|
+        alloc_site = AllocationSite.new(ep)
+        nenv, ty = localize_type(ty, env, ep, alloc_site)
+        case ty
+        when Type::LocalArray, Type::LocalHash
+          @alloc_site_to_global_id[ty.id] = [recv, var] # need overwrite check??
+        end
+        yield ty, nenv
+      end
+    end
+
+    def set_instance_variable(recv, var, ty, ep, env)
+      ty = globalize_type(ty, env, ep)
+      add_ivar_write!(recv, var, ty)
     end
 
     def step(ep)
@@ -1126,20 +1152,12 @@ module TypeProfiler
         var, = operands
         env, (ty,) = env.pop(1)
         recv = env.static_env.recv_ty
-        ty = globalize_type(ty, env, ep)
-        add_ivar_write!(recv, var, ty)
+        set_instance_variable(recv, var, ty, ep, env)
 
       when :getinstancevariable
         var, = operands
         recv = env.static_env.recv_ty
-        # TODO: deal with inheritance?
-        add_ivar_read!(recv, var, ep) do |ty, ep|
-          alloc_site = AllocationSite.new(ep)
-          nenv, ty = localize_type(ty, env, ep, alloc_site)
-          case ty
-          when Type::LocalArray, Type::LocalHash
-            @alloc_site_to_global_id[ty.id] = [recv, var] # need overwrite check??
-          end
+        get_instance_variable(recv, var, ep, env) do |ty, nenv|
           merge_env(ep.next, nenv.push(ty))
         end
         return
