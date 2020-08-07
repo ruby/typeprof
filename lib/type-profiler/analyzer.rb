@@ -438,6 +438,7 @@ module TypeProfiler
       else
         @class_defs[klass.idx].add_method(mid, singleton, mdef)
       end
+      mdef
     end
 
     def add_attr_method(klass, mid, kind)
@@ -715,15 +716,40 @@ module TypeProfiler
           stat_eps << @ep
           step(@ep) # TODO: deletemin
         end
+
+        # XXX: it would be good to provide no-dummy-execution mode.
+        # It should work as a bit smarter "rbs prototype rb";
+        # show all method definitions as "untyped" arguments and return values
+
         begin
-          iseq, dummy_executions = @pending_dummy_executions.first
+          iseq, (kind, dummy_continuation) = @pending_dummy_executions.first
           break if !iseq
           @pending_dummy_executions.delete(iseq)
         end while @executed_iseqs.include?(iseq)
-        break if !iseq
+
         puts "DEBUG: trigger dummy execution (#{ iseq.name }): rest #{ @pending_dummy_executions.size }" if ENV["TP_DEBUG"]
-        dummy_executions.each do |ep, env|
+
+        break if !iseq
+        case kind
+        when :method
+          meth, ep, env = dummy_continuation
           merge_env(ep, env)
+          add_iseq_method_call!(meth, ep.ctx)
+
+          fargs_format = iseq.fargs_format
+          lead_tys = [Type.any] * (fargs_format[:lead_num] || 0)
+          opt_tys = fargs_format[:opt] ? [] : nil
+          post_tys = [Type.any] * (fargs_format[:post_num] || 0)
+          fargs = FormalArguments.new(lead_tys, opt_tys, nil, post_tys, nil, nil, nil)
+          add_callsite!(ep.ctx, fargs, nil, nil) do |_ret_ty, _ep, _env|
+            # ignore
+          end
+
+        when :block
+          epenvs = dummy_continuation
+          epenvs.each do |ep, env|
+            merge_env(ep, env)
+          end
         end
       end
 
@@ -769,12 +795,21 @@ module TypeProfiler
       end
     end
 
-    def pend_dummy_execution(iseq, nep, nenv)
-      @pending_dummy_executions[iseq] ||= {}
-      if @pending_dummy_executions[iseq][nep]
-        @pending_dummy_executions[iseq][nep] = @pending_dummy_executions[iseq][nep].merge(nenv)
+    def pend_method_dummy_execution(iseq, meth, recv, mid, cref)
+      ctx = Context.new(iseq, cref, mid)
+      ep = ExecutionPoint.new(ctx, 0, nil)
+      locals = [Type.any] * iseq.locals.size
+      env = Env.new(StaticEnv.new(recv, Type.any, false), locals, [], Utils::HashWrapper.new({}))
+
+      @pending_dummy_executions[iseq] ||= [:method, [meth, ep, env]]
+    end
+
+    def pend_block_dummy_execution(iseq, nep, nenv)
+      @pending_dummy_executions[iseq] ||= [:block, {}]
+      if @pending_dummy_executions[iseq][1][nep]
+        @pending_dummy_executions[iseq][1][nep] = @pending_dummy_executions[iseq][1][nep].merge(nenv)
       else
-        @pending_dummy_executions[iseq][nep] = nenv
+        @pending_dummy_executions[iseq][1][nep] = nenv
       end
     end
 
@@ -880,39 +915,29 @@ module TypeProfiler
         cref = ep.ctx.cref
         #p [env.static_env.recv_ty, mid], cref
         if ep.ctx.cref.singleton
-          add_singleton_iseq_method(cref.klass, mid, iseq, cref)
+          meth = add_singleton_iseq_method(cref.klass, mid, iseq, cref)
         else
-          add_iseq_method(cref.klass, mid, iseq, cref)
+          meth = add_iseq_method(cref.klass, mid, iseq, cref)
           if env.static_env.mod_func
             add_singleton_iseq_method(cref.klass, mid, iseq, cref)
           end
         end
 
-        # pending dummy execution
-        nctx = Context.new(iseq, ep.ctx.cref, mid)
-        nep = ExecutionPoint.new(nctx, 0, nil)
-        nlocals = [Type.any] * iseq.locals.size
         recv = env.static_env.recv_ty
         recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
-        nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
-        pend_dummy_execution(iseq, nep, nenv)
+        pend_method_dummy_execution(iseq, meth, recv, mid, ep.ctx.cref)
+
       when :definesmethod
         mid, iseq = operands
         env, (recv,) = env.pop(1)
         cref = ep.ctx.cref
         recv.each_child do |recv|
           if recv.is_a?(Type::Class)
-            add_singleton_iseq_method(recv, mid, iseq, cref)
+            meth = add_singleton_iseq_method(recv, mid, iseq, cref)
+            pend_method_dummy_execution(iseq, meth, recv, mid, ep.ctx.cref)
           else
             recv = Type.any
           end
-
-          # pending dummy execution
-          nctx = Context.new(iseq, ep.ctx.cref, mid)
-          nep = ExecutionPoint.new(nctx, 0, nil)
-          nlocals = [Type.any] * iseq.locals.size
-          nenv = Env.new(StaticEnv.new(recv, Type.any, false), nlocals, [], Utils::HashWrapper.new({}))
-          pend_dummy_execution(iseq, nep, nenv)
         end
       when :defineclass
         id, iseq, flags = operands
@@ -1604,7 +1629,7 @@ module TypeProfiler
         nlocals = [Type.any] * blk_iseq.locals.size
         nsenv = StaticEnv.new(env.static_env.recv_ty, Type.any, env.static_env.mod_func)
         nenv = Env.new(nsenv, nlocals, [], nil)
-        pend_dummy_execution(blk_iseq, nep, nenv)
+        pend_block_dummy_execution(blk_iseq, nep, nenv)
         merge_return_env(ep) {|tenv| tenv ? tenv.merge(env) : env }
       end
 
