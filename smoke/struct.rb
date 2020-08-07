@@ -4,6 +4,6 @@ end
 Foo.new.a = 1
 __END__
 # Classes
-class (Struct)
+class (Struct) < Struct
   attr_accessor a() : any
 end

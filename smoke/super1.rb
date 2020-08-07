@@ -39,9 +39,9 @@ end
 class Foo
   def f : (C) -> X
 end
-class Bar
+class Bar < Foo
   def f : (B) -> Y
 end
-class Baz
+class Baz < Bar
   def f : (A) -> Z
 end

@@ -73,6 +73,6 @@ class A
   def foo : (Integer | String) -> NilClass
   def bar : (Integer | String) -> NilClass
 end
-class B
+class B < A
   def bar : (Integer | String) -> NilClass
 end

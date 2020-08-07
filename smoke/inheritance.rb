@@ -28,6 +28,6 @@ class A
   def bar : (Integer | String) -> NilClass
   def self.test : (Integer | String) -> NilClass
 end
-class B
+class B < A
   def bar : (Integer | NilClass | String) -> NilClass
 end

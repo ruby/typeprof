@@ -148,11 +148,11 @@ module TypeProfiler
 
         name = class_def.name
         if class_def.superclass
-          struct = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:struct]
-          superclass = " < #{ @class_defs[class_def.superclass].name }"
+          object = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj]
+          superclass = object ? "" : " < #{ @class_defs[class_def.superclass].name }"
         end
 
-        puts "#{ class_def.kind } #{ class_def.name }"#{ superclass }"
+        puts "#{ class_def.kind } #{ class_def.name }#{ superclass }"
         included_mods.sort.each do |ty|
           puts "  include #{ ty }"
         end
