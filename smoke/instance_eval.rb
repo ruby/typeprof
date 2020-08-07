@@ -14,5 +14,5 @@ __END__
 # Classes
 class C
   def self.foo : () -> C
-  def log : (Integer) -> NilClass
+  def log : (Integer) -> nil
 end

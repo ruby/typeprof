@@ -453,7 +453,13 @@ module TypeProfiler
       end
 
       def screen_name(scratch)
-        scratch.get_class_name(@klass)
+        case @klass
+        when Type::Builtin[:nil] then "nil"
+        when Type::Builtin[:true] then "true"
+        when Type::Builtin[:false] then "false"
+        else
+          scratch.get_class_name(@klass)
+        end
       end
 
       def get_method(mid, scratch)

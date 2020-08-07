@@ -10,6 +10,6 @@ __END__
 smoke/arguments.rb:6: [error] wrong number of arguments (given 2, expected 1)
 # Classes
 class Object
-  def foo : (any) -> NilClass
-  def bar : (any) -> NilClass
+  def foo : (any) -> nil
+  def bar : (any) -> nil
 end

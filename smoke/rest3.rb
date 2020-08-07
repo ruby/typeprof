@@ -27,10 +27,10 @@ grault(*string_array)
 __END__
 # Classes
 class Object
-  def foo : (*String) -> NilClass
-  def bar : (*Integer | String) -> NilClass
-  def baz : (String, *String) -> NilClass
-  def qux : (Integer, *String) -> NilClass
-  def corge : (*Integer | String, Integer | String) -> NilClass
-  def grault : (String, ?String, *String, String) -> NilClass
+  def foo : (*String) -> nil
+  def bar : (*Integer | String) -> nil
+  def baz : (String, *String) -> nil
+  def qux : (Integer, *String) -> nil
+  def corge : (*Integer | String, Integer | String) -> nil
+  def grault : (String, ?String, *String, String) -> nil
 end

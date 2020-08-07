@@ -34,7 +34,7 @@ Baz.new.f(A.new)
 __END__
 # Classes
 class Object
-  def log : (Baz) -> NilClass
+  def log : (Baz) -> nil
 end
 class Foo
   def f : (C) -> X

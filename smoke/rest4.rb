@@ -13,6 +13,6 @@ bar(1, *a, :s)
 __END__
 # Classes
 class Object
-  def foo : (*:s | Integer | String) -> NilClass
-  def bar : (Integer, :s | String, :s | String) -> NilClass
+  def foo : (*:s | Integer | String) -> nil
+  def bar : (Integer, :s | String, :s | String) -> nil
 end

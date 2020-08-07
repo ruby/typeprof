@@ -70,9 +70,9 @@ class Object
   def fib : (Integer) -> Integer
 end
 class A
-  def foo : (Integer | String) -> NilClass
-  def bar : (Integer | String) -> NilClass
+  def foo : (Integer | String) -> nil
+  def bar : (Integer | String) -> nil
 end
 class B < A
-  def bar : (Integer | String) -> NilClass
+  def bar : (Integer | String) -> nil
 end

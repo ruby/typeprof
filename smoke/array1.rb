@@ -19,8 +19,8 @@ __END__
 # Classes
 class Object
   def foo : ([Integer, String]) -> Integer
-  def bar : (Integer) -> NilClass
-  def baz : (String) -> NilClass
-  def qux : (NilClass) -> NilClass
-  def quux : (Integer | String) -> NilClass
+  def bar : (Integer) -> nil
+  def baz : (String) -> nil
+  def qux : (nil) -> nil
+  def quux : (Integer | String) -> nil
 end

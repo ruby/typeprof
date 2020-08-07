@@ -8,5 +8,5 @@ foo([:a])
 __END__
 # Classes
 class Object
-  def foo : (Array[:a | :b | :c]) -> NilClass
+  def foo : (Array[:a | :b | :c]) -> nil
 end

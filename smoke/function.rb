@@ -12,5 +12,5 @@ __END__
 # Classes
 class Object
   def no_argument : () -> String
-  def one_argument : (Integer) -> NilClass
+  def one_argument : (Integer) -> nil
 end

@@ -19,8 +19,8 @@ v.foo
 __END__
 # Classes
 class ForWin
-  def self.foo : () -> NilClass
+  def self.foo : () -> nil
 end
 class ForLinux
-  def self.foo : () -> NilClass
+  def self.foo : () -> nil
 end

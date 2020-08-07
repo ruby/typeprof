@@ -6,5 +6,5 @@ foo(Integer("str"))
 __END__
 # Classes
 class Object
-  def foo : (Integer) -> NilClass
+  def foo : (Integer) -> nil
 end

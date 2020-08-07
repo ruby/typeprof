@@ -31,9 +31,9 @@ bar
 __END__
 # Classes
 class Object
-  def log1 : (Integer?) -> NilClass
-  def log2 : (Integer?) -> NilClass
+  def log1 : (Integer?) -> nil
+  def log2 : (Integer?) -> nil
   def foo : () -> Integer?
-  def test_yield : () { () -> NilClass } -> NilClass
+  def test_yield : () { () -> nil } -> nil
   def bar : () -> Integer?
 end

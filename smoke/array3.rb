@@ -21,5 +21,5 @@ class Foo
   @ary : [Integer, String?, :sym]
   def initialize : () -> [Integer, String, :sym]
   def foo : () -> String?
-  def bar : () -> NilClass
+  def bar : () -> nil
 end

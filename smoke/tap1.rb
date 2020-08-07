@@ -12,6 +12,6 @@ foo(1)
 __END__
 # Classes
 class Object
-  def bar : (Integer) -> NilClass
+  def bar : (Integer) -> nil
   def foo : (Integer) -> Integer
 end

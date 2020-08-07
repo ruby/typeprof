@@ -24,10 +24,10 @@ B.test("str")
 __END__
 # Classes
 class A
-  def foo : (Integer | String) -> NilClass
-  def bar : (Integer | String) -> NilClass
-  def self.test : (Integer | String) -> NilClass
+  def foo : (Integer | String) -> nil
+  def bar : (Integer | String) -> nil
+  def self.test : (Integer | String) -> nil
 end
 class B < A
-  def bar : ((Integer | String)?) -> NilClass
+  def bar : ((Integer | String)?) -> nil
 end

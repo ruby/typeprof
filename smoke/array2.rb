@@ -23,5 +23,5 @@ __END__
 class Object
   def foo : () -> [[String]]
   def bar : ([[Integer]]) -> [[String]]
-  def log : ([[Integer]]) -> NilClass
+  def log : ([[Integer]]) -> nil
 end

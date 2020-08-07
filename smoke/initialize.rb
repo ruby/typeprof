@@ -15,7 +15,7 @@ A.new(nil)
 __END__
 # Classes
 class Object
-  def log : (A) -> NilClass
+  def log : (A) -> nil
 end
 class A
   @int : Integer

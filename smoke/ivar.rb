@@ -19,7 +19,7 @@ log(Foo.new.foo)
 __END__
 # Classes
 class Object
-  def log : (Integer | String) -> NilClass
+  def log : (Integer | String) -> nil
 end
 class Foo
   @foo : Integer | String
