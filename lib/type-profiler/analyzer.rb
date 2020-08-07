@@ -1795,7 +1795,7 @@ module TypeProfiler
     def show_signature(farg_tys, yield_data, ret_ty)
       farg_tys = farg_tys.screen_name(self)
       ret_ty = ret_ty.screen_name(self)
-      s = "(#{ farg_tys.join(", ") }) "
+      s = farg_tys.empty? ? "" : "(#{ farg_tys.join(", ") }) "
       if yield_data
         aargs, blk_ctxs = yield_data
         all_blk_ret_ty = Type.bot

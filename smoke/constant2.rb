@@ -27,5 +27,5 @@ class Object
   def log : (String) -> nil
 end
 class C(dummy)
-  def foo : () -> nil
+  def foo : -> nil
 end

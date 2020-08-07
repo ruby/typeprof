@@ -12,6 +12,6 @@ foo
 __END__
 # Classes
 class Object
-  def ary : () -> [Integer, String, :sym, Float]
-  def foo : () -> [Integer, [String, :sym], Float]
+  def ary : -> [Integer, String, :sym, Float]
+  def foo : -> [Integer, [String, :sym], Float]
 end

@@ -7,5 +7,5 @@ foo
 __END__
 # Classes
 class Object
-  def foo : () -> (:sym | Integer | String)
+  def foo : -> (:sym | Integer | String)
 end

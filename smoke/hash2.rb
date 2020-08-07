@@ -8,5 +8,5 @@ foo
 __END__
 # Classes
 class Object
-  def foo : () -> Integer
+  def foo : -> Integer
 end

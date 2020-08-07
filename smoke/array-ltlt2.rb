@@ -12,5 +12,5 @@ foo
 __END__
 # Classes
 class Object
-  def foo : () -> (Array[Integer | String])
+  def foo : -> (Array[Integer | String])
 end

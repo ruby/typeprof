@@ -11,5 +11,5 @@ __END__
 # Classes
 class Foo
   @var : Array[Integer]
-  def foo : () -> Array[Integer]
+  def foo : -> Array[Integer]
 end

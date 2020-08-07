@@ -17,5 +17,5 @@ __END__
 class Foo
   @foo : Integer | String
   def foo= : (Integer | String) -> (Integer | String)
-  def foo : () -> (Integer | String)
+  def foo : -> (Integer | String)
 end

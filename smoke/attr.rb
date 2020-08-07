@@ -24,5 +24,5 @@ class Foo
   attr_writer b : :bbb
   attr_accessor c : :ccc
   def initialize : (:aaa) -> :aaa
-  def get_b : () -> :bbb
+  def get_b : -> :bbb
 end

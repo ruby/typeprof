@@ -9,5 +9,5 @@ foo
 __END__
 # Classes
 class Object
-  def foo : () -> [Integer, [String, :sym], nil]
+  def foo : -> [Integer, [String, :sym], nil]
 end

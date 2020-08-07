@@ -11,5 +11,5 @@ __END__
 smoke/super2.rb:3: [error] no superclass method: Foo#f
 # Classes
 class Foo
-  def f : () -> any
+  def f : -> any
 end

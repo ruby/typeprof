@@ -8,5 +8,5 @@ foo
 __END__
 # Classes
 class Object
-  def foo : () -> [String?, String?]
+  def foo : -> [String?, String?]
 end

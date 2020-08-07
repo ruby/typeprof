@@ -14,10 +14,10 @@ foobar.bar = :sym
 __END__
 # Classes
 class Object
-  def gen_foobar : () -> FooBar
+  def gen_foobar : -> FooBar
 end
 class FooBar < Struct
   attr_accessor foo() : Integer | String
   attr_accessor bar() : :sym?
-  def my_foo : () -> (Integer | String)
+  def my_foo : -> (Integer | String)
 end

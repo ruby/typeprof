@@ -10,5 +10,5 @@ Foo.new.foo
 __END__
 # Classes
 class Foo
-  def foo : () -> Integer
+  def foo : -> Integer
 end

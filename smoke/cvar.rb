@@ -23,5 +23,5 @@ class Object
 end
 class A
   @@var : Integer
-  def foo : () -> nil
+  def foo : -> nil
 end
