@@ -20,6 +20,6 @@ end
 class A
   @int : Integer
   @str : String
-  @val : Integer | NilClass | String
-  def initialize : (Integer | NilClass | String) -> (Integer | NilClass | String)
+  @val : (Integer | String)?
+  def initialize : ((Integer | String)?) -> ((Integer | String)?)
 end

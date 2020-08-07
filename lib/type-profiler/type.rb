@@ -205,9 +205,24 @@ module TypeProfiler
         if types.size == 0
           "bot"
         else
-          types.to_a.map do |ty|
-            ty.screen_name(scratch)
-          end.sort.join (" | ")
+          optional = false
+          types = types.to_a.map do |ty|
+            if ty == Type::Instance.new(Type::Builtin[:nil])
+              optional = true
+              nil
+            else
+              ty.screen_name(scratch)
+            end
+          end.compact.sort
+          if optional
+            if types.size == 1
+              types.first + "?"
+            else
+              "(#{ types.join (" | ") })?"
+            end
+          else
+            types.join (" | ")
+          end
         end
       end
 

@@ -17,6 +17,6 @@ bar
 __END__
 # Classes
 class Object
-  def foo : (:sym | Integer | NilClass | String) -> Integer
+  def foo : ((:sym | Integer | String)?) -> Integer
   def bar : () -> Integer
 end

@@ -18,8 +18,8 @@ Foo.new.bar
 __END__
 # Classes
 class Foo
-  @ary : [Integer, NilClass | String, :sym]
+  @ary : [Integer, String?, :sym]
   def initialize : () -> [Integer, String, :sym]
-  def foo : () -> (NilClass | String)
+  def foo : () -> String?
   def bar : () -> NilClass
 end

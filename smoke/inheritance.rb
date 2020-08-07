@@ -29,5 +29,5 @@ class A
   def self.test : (Integer | String) -> NilClass
 end
 class B < A
-  def bar : (Integer | NilClass | String) -> NilClass
+  def bar : ((Integer | String)?) -> NilClass
 end

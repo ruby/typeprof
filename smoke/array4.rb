@@ -10,5 +10,5 @@ foo
 __END__
 # Classes
 class Object
-  def foo : () -> (NilClass | [Integer])
+  def foo : () -> [Integer]?
 end

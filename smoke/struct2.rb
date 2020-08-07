@@ -18,6 +18,6 @@ class Object
 end
 class FooBar < Struct
   attr_accessor foo() : Integer | String
-  attr_accessor bar() : :sym | NilClass
+  attr_accessor bar() : :sym?
   def my_foo : () -> (Integer | String)
 end

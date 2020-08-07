@@ -10,5 +10,5 @@ log(nil)
 __END__
 # Classes
 class Object
-  def log : (:sym | Integer | NilClass | String) -> NilClass
+  def log : ((:sym | Integer | String)?) -> NilClass
 end
