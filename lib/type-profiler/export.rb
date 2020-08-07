@@ -114,8 +114,10 @@ module TypeProfiler
                 iseq_methods[method_name] << @scratch.show_signature(fargs, @yields[ctx], ret_tys)
               end
             when AttrMethodDef
-              method_name = mdef.ivar.to_s[1..]
-              method_name = "self.#{ method_name }" if singleton
+              mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
+              method_name = mid
+              method_name = "self.#{ mid }" if singleton
+              method_name = [method_name, :"@#{ mid }" != mdef.ivar]
               if attr_methods[method_name]
                 if attr_methods[method_name][0] != mdef.kind
                   attr_methods[method_name][0] = :accessor
@@ -129,8 +131,9 @@ module TypeProfiler
         end
 
         ivars = class_def.ivars.write.map do |(singleton, var), ty|
+          next unless var.to_s.start_with?("@")
           var = "self.#{ var }" if singleton
-          next if attr_methods[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..]]
+          next if attr_methods[[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]
           [var, ty.screen_name(@scratch)]
         end.compact
 
@@ -143,18 +146,24 @@ module TypeProfiler
         puts unless first
         first = false
 
-        puts "#{ class_def.kind } #{ class_def.name }"
+        name = class_def.name
+        if class_def.superclass
+          struct = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:struct]
+          superclass = " < #{ @class_defs[class_def.superclass].name }"
+        end
+
+        puts "#{ class_def.kind } #{ class_def.name }"#{ superclass }"
         included_mods.sort.each do |ty|
           puts "  include #{ ty }"
         end
         ivars.each do |var, ty|
-          puts "  #{ var } : #{ ty }"
+          puts "  #{ var } : #{ ty }" unless var.start_with?("_")
         end
         cvars.each do |var, ty|
           puts "  #{ var } : #{ ty }"
         end
-        attr_methods.each do |method_name, (kind, ty)|
-          puts "  attr_#{ kind } #{ method_name } : #{ ty }"
+        attr_methods.each do |(method_name, hidden), (kind, ty)|
+          puts "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
         end
         iseq_methods.each do |method_name, sigs|
           sigs = sigs.sort.join("\n" + " " * (method_name.size + 3) + "| ")

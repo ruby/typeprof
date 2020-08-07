@@ -149,6 +149,8 @@ class TypeProfiler
                     next if name == :[]=
                     next if name == :to_proc
                     #next unless [:empty?, :size].include?(name)
+                  when :Struct
+                    next if name == :initialize
                   when :Module
                     next if name == :include
                     next if name == :module_function

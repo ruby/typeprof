@@ -80,7 +80,7 @@ module TypeProfiler
 
   class AttrMethodDef < MethodDef
     def initialize(ivar, kind)
-      @ivar = :"@#{ ivar }"
+      @ivar = ivar
       @kind = kind # :reader | :writer
     end
 

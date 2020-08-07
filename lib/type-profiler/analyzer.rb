@@ -214,6 +214,7 @@ module TypeProfiler
       @ep2env = {}
 
       @class_defs = {}
+      @struct_defs = {}
 
       @iseq_method_to_ctxs = {}
 
@@ -269,8 +270,8 @@ module TypeProfiler
         @cvars = VarTable.new
       end
 
-      attr_reader :kind, :modules, :name, :methods, :superclass, :ivars, :cvars
-      attr_accessor :klass_obj
+      attr_reader :kind, :modules, :methods, :superclass, :ivars, :cvars
+      attr_accessor :name, :klass_obj
 
       def include_module(mod, visible)
         # XXX: need to check if mod is already included by the ancestors?
@@ -370,6 +371,20 @@ module TypeProfiler
       end
     end
 
+    def new_struct(ep)
+      return @struct_defs[ep] if @struct_defs[ep]
+
+      idx = @class_defs.size
+      superclass = Type::Builtin[:struct]
+      @class_defs[idx] = ClassDef.new(:class, "(Struct)", superclass.idx)
+      klass = Type::Class.new(:class, idx, [], superclass, "(Struct)")
+      @class_defs[idx].klass_obj = klass
+
+      @struct_defs[ep] = klass
+
+      klass
+    end
+
     def get_class_name(klass)
       if klass == Type.any
         "???"
@@ -441,12 +456,12 @@ module TypeProfiler
       mdef
     end
 
-    def add_attr_method(klass, mid, kind)
+    def add_attr_method(klass, mid, ivar, kind)
       if kind == :reader || kind == :accessor
-        add_method(klass, mid, false, AttrMethodDef.new(mid, :reader))
+        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader))
       end
       if kind == :writer || kind == :accessor
-        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(mid, :writer))
+        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer))
       end
     end
 
@@ -1327,6 +1342,11 @@ module TypeProfiler
         old_ty = get_constant(cbase, name)
         if old_ty != Type.any # XXX???
           warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(self) }::#{ name }")
+        end
+        ty.each_child do |ty|
+          if ty.is_a?(Type::Class) && ty.superclass == Type::Builtin[:struct]
+            @class_defs[ty.idx].name = name.to_s
+          end
         end
         add_constant(cbase, name, globalize_type(ty, env, ep))
 

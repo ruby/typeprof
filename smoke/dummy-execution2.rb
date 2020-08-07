@@ -11,5 +11,6 @@ end
 __END__
 # Classes
 class Foo
-  def foo : (Integer) -> (Integer | any)
+  def foo : (Integer | any) -> (Integer | any)
+  def self.bar : () -> (Integer | any)
 end

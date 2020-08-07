@@ -63,7 +63,7 @@ module TypeProfiler
       scratch.do_invoke_block(given_block, recv, aargs, ep, env, &ctn)
     end
 
-    def object_new(recv, mid, aargs, ep, env, scratch, &ctn)
+    def object_s_new(recv, mid, aargs, ep, env, scratch, &ctn)
       ty = Type::Instance.new(recv)
       meths = scratch.get_method(recv, false, :initialize)
       meths.flat_map do |meth|
@@ -179,7 +179,7 @@ module TypeProfiler
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_accessor", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, sym, :accessor)
+        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :accessor)
       end
       ctn[Type.nil, ep, env]
     end
@@ -188,7 +188,7 @@ module TypeProfiler
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_reader", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, sym, :reader)
+        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :reader)
       end
       ctn[Type.nil, ep, env]
     end
@@ -197,7 +197,7 @@ module TypeProfiler
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_writer", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, sym, :writer)
+        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :writer)
       end
       ctn[Type.nil, ep, env]
     end
@@ -361,6 +361,62 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
+    def struct_initialize(recv, mid, aargs, ep, env, scratch, &ctn)
+      recv = Type::Instance.new(recv)
+      scratch.get_instance_variable(recv, :_members, ep, env) do |ty, nenv|
+        ty = scratch.globalize_type(ty, nenv, ep)
+        ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
+          ty ||= Type.nil
+          scratch.set_instance_variable(recv, sym.sym, ty, ep, env)
+        end
+      end
+      #scratch.set_instance_variable(recv, , ty, ep, env)
+      ctn[recv, ep, env]
+    end
+
+    def struct_i_new(recv, mid, aargs, ep, env, scratch, &ctn)
+      struct_klass = recv
+      while struct_klass.superclass != Type::Builtin[:struct]
+        struct_klass = struct_klass.superclass
+      end
+      if struct_klass.superclass != Type::Builtin[:struct]
+        ctn[Type.any, ep, env]
+        return
+      end
+      if struct_klass != recv
+        scratch.get_instance_variable(Type::Instance.new(struct_klass), :_members, ep, env) do |ty, nenv|
+          ty = scratch.globalize_type(ty, nenv, ep)
+          scratch.set_instance_variable(Type::Instance.new(recv), :_members, ty, ep, env)
+        end
+      end
+      meths = scratch.get_method(recv, false, :initialize)
+      meths.flat_map do |meth|
+        meth.do_send(recv, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
+          ctn[Type::Instance.new(recv), ep, env]
+        end
+      end
+    end
+
+    def struct_s_new(recv, mid, aargs, ep, env, scratch, &ctn)
+      # TODO: keyword_init
+
+      fields = aargs.lead_tys.map {|ty| get_sym("Struct.new", ty, ep, scratch) }.compact
+      struct_klass = scratch.new_struct(ep)
+
+      scratch.add_singleton_custom_method(struct_klass, :new, Builtin.method(:struct_i_new))
+      scratch.add_singleton_custom_method(struct_klass, :[], Builtin.method(:struct_i_new))
+      fields.each do |field|
+        scratch.add_attr_method(struct_klass, field, field, :accessor)
+      end
+      fields = fields.map {|field| Type::Symbol.new(field, Type::Instance.new(Type::Builtin[:sym])) }
+      base_ty = Type::Instance.new(Type::Builtin[:ary])
+      fields = Type::Array.new(Type::Array::Elements.new(fields), base_ty)
+      scratch.set_instance_variable(Type::Instance.new(struct_klass), :_members, fields, ep, env)
+      #add_singleton_custom_method(struct_klass, :members, Builtin.method(:...))
+
+      ctn[struct_klass, ep, env]
+    end
+
     def file_load(path, ep, env, scratch, &ctn)
       iseq = ISeq.compile(path)
       callee_ep, callee_env = TypeProfiler.starting_state(iseq)
@@ -464,6 +520,7 @@ module TypeProfiler
     Type::Builtin[:rational]  = scratch.get_constant(klass_obj, :Rational)
     Type::Builtin[:sym]       = scratch.get_constant(klass_obj, :Symbol)
     Type::Builtin[:str]       = scratch.get_constant(klass_obj, :String)
+    Type::Builtin[:struct]    = scratch.get_constant(klass_obj, :Struct)
     Type::Builtin[:ary]       = scratch.get_constant(klass_obj, :Array)
     Type::Builtin[:hash]      = scratch.get_constant(klass_obj, :Hash)
     Type::Builtin[:io]        = scratch.get_constant(klass_obj, :IO)
@@ -478,6 +535,7 @@ module TypeProfiler
     klass_vmcore = Type::Builtin[:vmcore]
     klass_ary    = Type::Builtin[:ary]
     klass_hash   = Type::Builtin[:hash]
+    klass_struct = Type::Builtin[:struct]
     klass_proc   = Type::Builtin[:proc]
     klass_module = Type::Builtin[:module]
 
@@ -485,7 +543,7 @@ module TypeProfiler
     scratch.add_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
     scratch.add_custom_method(klass_vmcore, :"core#hash_merge_kwd", Builtin.method(:vmcore_hash_merge_kwd))
     scratch.add_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
-    scratch.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_new))
+    scratch.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_s_new))
     scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
     scratch.add_singleton_custom_method(klass_obj, :"attr_reader", Builtin.method(:module_attr_reader))
     scratch.add_singleton_custom_method(klass_obj, :"attr_writer", Builtin.method(:module_attr_writer))
@@ -514,6 +572,9 @@ module TypeProfiler
 
     scratch.add_custom_method(klass_hash, :[], Builtin.method(:hash_aref))
     scratch.add_custom_method(klass_hash, :[]=, Builtin.method(:hash_aset))
+
+    scratch.add_custom_method(klass_struct, :initialize, Builtin.method(:struct_initialize))
+    scratch.add_singleton_custom_method(klass_struct, :new, Builtin.method(:struct_s_new))
 
     scratch.add_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
     scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))

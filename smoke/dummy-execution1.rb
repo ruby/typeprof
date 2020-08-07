@@ -9,5 +9,6 @@ end
 __END__
 # Classes
 class Object
-  def foo : (Integer) -> (Integer | any)
+  def foo : (Integer | any) -> (Integer | any)
+  def bar : () -> (Integer | any)
 end
