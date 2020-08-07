@@ -12,5 +12,5 @@ foo(false)
 __END__
 # Classes
 class Object
-  def foo : (FalseClass | TrueClass) -> (Integer | String)
+  def foo : (bool) -> (Integer | String)
 end

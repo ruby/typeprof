@@ -65,7 +65,7 @@ B.new.foo("str")
 __END__
 # Classes
 class Object
-  def foo : (FalseClass | TrueClass) -> (Integer | String)
+  def foo : (bool) -> (Integer | String)
   def identity : (:sym | Integer | String) -> (:sym | Integer | String)
   def fib : (Integer) -> Integer
 end

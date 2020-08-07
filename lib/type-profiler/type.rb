@@ -205,15 +205,18 @@ module TypeProfiler
         if types.size == 0
           "bot"
         else
-          optional = false
-          types = types.to_a.map do |ty|
-            if ty == Type::Instance.new(Type::Builtin[:nil])
-              optional = true
-              nil
-            else
-              ty.screen_name(scratch)
-            end
-          end.compact.sort
+          types = types.to_a
+          optional = !!types.delete(Type::Instance.new(Type::Builtin[:nil]))
+          bool = false
+          if types.include?(Type::Instance.new(Type::Builtin[:false])) &&
+             types.include?(Type::Instance.new(Type::Builtin[:true]))
+            types.delete(Type::Instance.new(Type::Builtin[:false]))
+            types.delete(Type::Instance.new(Type::Builtin[:true]))
+            bool = true
+          end
+          types = types.map {|ty| ty.screen_name(scratch) }
+          types << "bool" if bool
+          types = types.sort
           if optional
             if types.size == 1
               types.first + "?"
