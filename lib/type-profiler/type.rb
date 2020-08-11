@@ -1013,9 +1013,11 @@ module TypeProfiler
     def consistent_with_formal_arguments?(fargs, subst)
       aargs = @lead_tys.dup
 
+      # aargs: lead_tys, rest_ty
+      # fargs: lead_tys, opt_tys, rest_ty, post_tys
       if @rest_ty
-        lower_bound = fargs.lead_tys.size + fargs.post_tys.size - aargs.size
-        upper_bound = lower_bound + fargs.opt_tys.size
+        lower_bound = [0, fargs.lead_tys.size + fargs.post_tys.size - aargs.size].max
+        upper_bound = [0, lower_bound + fargs.opt_tys.size].max
         (lower_bound..upper_bound).each do |n|
           tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_ty, @blk_ty)
           if tmp_aargs.consistent_with_formal_arguments?(fargs, subst)
