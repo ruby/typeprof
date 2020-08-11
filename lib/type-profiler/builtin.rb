@@ -210,6 +210,8 @@ module TypeProfiler
     end
 
     def array_aref(recv, mid, aargs, ep, env, scratch, &ctn)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalArray)
+
       case aargs.lead_tys.size
       when 1
         idx = aargs.lead_tys.first
@@ -222,7 +224,7 @@ module TypeProfiler
             ctn[ret_ty, ep, env]
             return
           end
-          raise NotImplementedError if !idx.is_a?(Integer)
+          idx = nil if !idx.is_a?(Integer)
         else
           idx = nil
         end
@@ -239,6 +241,8 @@ module TypeProfiler
     end
 
     def array_aset(recv, mid, aargs, ep, env, scratch, &ctn)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalArray)
+
       raise NotImplementedError if aargs.lead_tys.size != 2
 
       idx = aargs.lead_tys.first
@@ -258,59 +262,9 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    #def array_ltlt(recv, mid, aargs, ep, env, scratch, &ctn)
-    #  raise NotImplementedError if aargs.lead_tys.size != 1
-
-    #  ty = aargs.lead_tys.first
-
-    #  env = scratch.update_container_elem_types(env, ep, recv.id) do |elems|
-    #    elems.append(ty)
-    #  end
-
-    #  ctn[recv, ep, env]
-    #end
-
-    def array_each(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 0
-      ty = scratch.get_array_elem_type(env, ep, recv.id)
-      naargs = ActualArguments.new([ty], nil, nil, Type.nil)
-      scratch.do_invoke_block(false, aargs.blk_ty, naargs, ep, env) do |_ret_ty, ep|
-        ctn[recv, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
-      end
-    end
-
-    def array_map(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 0
-      # TODO: get_array_elem_type does squash, but tuple part may be preserved
-      if recv.is_a?(Type::LocalArray)
-        ty = scratch.get_array_elem_type(env, ep, recv.id)
-      else
-        ty = Type.any
-      end
-      naargs = ActualArguments.new([ty], nil, nil, Type.nil)
-      scratch.do_invoke_block(false, aargs.blk_ty, naargs, ep, env) do |ret_ty, ep|
-        base_ty = Type::Instance.new(Type::Builtin[:ary])
-        ret_ty = Type::Array.new(Type::Array::Elements.new([], ret_ty), base_ty)
-        ctn[ret_ty, ep, scratch.return_envs[ep]] # XXX: refactor "scratch.return_envs"
-      end
-    end
-
-    def array_plus(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 1
-      ary = aargs.lead_tys.first
-      elems1 = scratch.get_array_elem_type(env, ep, recv.id)
-      if ary.is_a?(Type::LocalArray)
-        elems2 = scratch.get_array_elem_type(env, ep, ary.id)
-        elems = Type::Array::Elements.new([], elems1.union(elems2))
-        ty = Type::Array.new(elems, recv.base_type)
-        ctn[ty, ep, env]
-      else
-        # warn??
-        ctn[Type.any, ep, env]
-      end
-    end
-
     def array_pop(recv, mid, aargs, ep, env, scratch, &ctn)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalArray)
+
       if aargs.lead_tys.size != 0
         ctn[Type.any, ep, env]
         return
@@ -320,11 +274,9 @@ module TypeProfiler
       ctn[ty, ep, env]
     end
 
-    def array_include?(recv, mid, aargs, ep, env, scratch, &ctn)
-      ctn[Type.bool, ep, env]
-    end
-
     def hash_aref(recv, mid, aargs, ep, env, scratch, &ctn)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalHash)
+
       if aargs.lead_tys.size != 1
         ctn[Type.any, ep, env]
         return
@@ -343,6 +295,8 @@ module TypeProfiler
     end
 
     def hash_aset(recv, mid, aargs, ep, env, scratch, &ctn)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalHash)
+
       raise NotImplementedError if aargs.lead_tys.size != 2
 
       idx = aargs.lead_tys.first
@@ -563,12 +517,7 @@ module TypeProfiler
 
     scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
     scratch.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
-    #scratch.add_custom_method(klass_ary, :<<, Builtin.method(:array_ltlt))
-    #scratch.add_custom_method(klass_ary, :each, Builtin.method(:array_each))
-    #scratch.add_custom_method(klass_ary, :map, Builtin.method(:array_map))
-    #scratch.add_custom_method(klass_ary, :+, Builtin.method(:array_plus))
     scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
-    #scratch.add_custom_method(klass_ary, :include?, Builtin.method(:array_include?))
 
     scratch.add_custom_method(klass_hash, :[], Builtin.method(:hash_aref))
     scratch.add_custom_method(klass_hash, :[]=, Builtin.method(:hash_aset))
