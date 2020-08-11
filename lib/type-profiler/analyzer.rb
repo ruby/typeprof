@@ -763,7 +763,29 @@ module TypeProfiler
           lead_tys = [Type.any] * (fargs_format[:lead_num] || 0)
           opt_tys = fargs_format[:opt] ? [] : nil
           post_tys = [Type.any] * (fargs_format[:post_num] || 0)
-          fargs = FormalArguments.new(lead_tys, opt_tys, nil, post_tys, nil, nil, nil)
+          if fargs_format[:kwbits]
+            kw_tys = []
+            fargs_format[:keyword].each do |kw|
+              case
+              when kw.is_a?(Symbol) # required keyword
+                key = kw
+                req = true
+                ty = Type.any
+              when kw.size == 2 # optional keyword (default value is a literal)
+                key, ty = *kw
+                ty = Type.guess_literal_type(ty)
+                ty = ty.type if ty.is_a?(Type::Literal)
+              else # optional keyword
+                key, = kw
+                req = false
+                ty = Type.any
+              end
+              kw_tys << [req, key, ty]
+            end
+          else
+            kw_tys = nil
+          end
+          fargs = FormalArguments.new(lead_tys, opt_tys, nil, post_tys, kw_tys, nil, nil)
           add_callsite!(ep.ctx, fargs, nil, nil) do |_ret_ty, _ep, _env|
             # ignore
           end
