@@ -100,7 +100,7 @@ module TypeProfiler
           ctn[false_val, ep, env]
         end
       else
-        ctn[Type.bool. ep. env]
+        ctn[Type.bool, ep, env]
       end
     end
 
