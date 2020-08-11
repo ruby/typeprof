@@ -243,9 +243,11 @@ module TypeProfiler
 
       @pending_dummy_executions = {}
       @executed_iseqs = Utils::MutableSet.new
+
+      @loaded_features = {}
     end
 
-    attr_reader :return_envs
+    attr_reader :return_envs, :loaded_features
 
     def get_env(ep)
       @ep2env[ep]

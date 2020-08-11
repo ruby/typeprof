@@ -389,6 +389,11 @@ module TypeProfiler
         feature = feature.lit
 
         begin
+          if scratch.loaded_features[feature]
+            result = Type::Instance.new(Type::Builtin[:false])
+            return ctn[result, ep, env]
+          end
+          scratch.loaded_features[feature] = true
           if TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch, feature)
             result = Type::Instance.new(Type::Builtin[:true])
             return ctn[result, ep, env]
@@ -422,6 +427,12 @@ module TypeProfiler
       feature = aargs.lead_tys.first
       if feature.is_a?(Type::Literal)
         feature = feature.lit
+
+        if scratch.loaded_features[feature]
+          result = Type::Instance.new(Type::Builtin[:false])
+          return ctn[result, ep, env]
+        end
+        scratch.loaded_features[feature] = true
 
         path = File.join(File.dirname(ep.ctx.iseq.path), feature) + ".rb" # XXX
         return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
