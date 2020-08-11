@@ -275,14 +275,14 @@ module TypeProfiler
 
       def include_module(mod, visible)
         # XXX: need to check if mod is already included by the ancestors?
-        unless @modules[false].include?(mod)
+        unless @modules[false].include?([visible, mod])
           @modules[false] << [visible, mod]
         end
       end
 
       def extend_module(mod, visible)
         # XXX: need to check if mod is already included by the ancestors?
-        unless @modules[true].include?(mod)
+        unless @modules[true].include?([visible, mod])
           @modules[true] << [visible, mod]
         end
       end
