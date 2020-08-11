@@ -1021,7 +1021,11 @@ module TypeProfiler
               else # module
                 superclass = nil
               end
-              klass = new_class(cbase, id, [], superclass)
+              if cbase == Type.any
+                klass = Type.any
+              else
+                klass = new_class(cbase, id, [], superclass)
+              end
             end
           end
           singleton = false
