@@ -1164,7 +1164,9 @@ module TypeProfiler
           add_return_type!(tmp_ep.ctx, ty)
           return
         when :break
-          tmp_ep = ep.outer
+          tmp_ep = ep
+          tmp_ep = tmp_ep.outer while tmp_ep.ctx.iseq.type != :block
+          tmp_ep = tmp_ep.outer
           nenv = @return_envs[tmp_ep].push(ty)
           merge_env(tmp_ep.next, nenv)
           # TODO: jump to ensure?
