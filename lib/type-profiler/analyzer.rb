@@ -909,7 +909,8 @@ module TypeProfiler
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
         env = env.push(ty)
       when :putself
-        env = env.push(env.static_env.recv_ty)
+        env, ty = localize_type(env.static_env.recv_ty, env, ep)
+        env = env.push(ty)
       when :newarray, :newarraykwsplat
         len, = operands
         env, elems = env.pop(len)
