@@ -323,6 +323,7 @@ module TypeProfiler
     class Hash < Type
       def initialize(elems, base_type)
         @elems = elems
+        raise unless elems
         @base_type = base_type
       end
 
