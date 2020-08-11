@@ -801,14 +801,20 @@ module TypeProfiler
     def merge(other)
       raise if @lead_tys.size != other.lead_tys.size
       raise if @post_tys.size != other.post_tys.size
-      if @kw_tys
-        raise if @kw_tys.size != other.kw_tys.size
-        @kw_tys.zip(other.kw_tys) do
-          |(req1, k1, _), (req2, k2, _)|
-          raise if req1 != req2 || k1 != k2
+      if @kw_tys && other.kw_tys
+        kws1 = {}
+        @kw_tys.each {|req, kw, _| kws1[kw] = req }
+        kws2 = {}
+        other.kw_tys.each {|req, kw, _| kws2[kw] = req }
+        (kws1.keys & kws2.keys).each do |kw|
+          raise if !!kws1[kw] != !!kws2[kw]
         end
-      else
-        raise if other.kw_tys
+      elsif @kw_tys || other.kw_tys
+        puts
+        p self, other
+        (@kw_tys || other.kw_tys).each do |req,|
+          raise if req
+        end
       end
       lead_tys = @lead_tys.zip(other.lead_tys).map {|ty1, ty2| ty1.union(ty2) }
       if @opt_tys || other.opt_tys
@@ -828,7 +834,23 @@ module TypeProfiler
         end
       end
       post_tys = @post_tys.zip(other.post_tys).map {|ty1, ty2| ty1.union(ty2) }
-      kw_tys = @kw_tys.zip(other.kw_tys).map {|(req, k, ty1), (_, _, ty2)| [req, k, ty1.union(ty2)] } if @kw_tys
+      if @kw_tys && other.kw_tys
+        kws1 = {}
+        @kw_tys.each {|req, kw, ty| kws1[kw] = [req, ty] }
+        kws2 = {}
+        other.kw_tys.each {|req, kw, ty| kws2[kw] = [req, ty] }
+        kw_tys = (kws1.keys | kws2.keys).map do |kw|
+          req1, ty1 = kws1[kw]
+          _req2, ty2 = kws2[kw]
+          ty1 ||= Type.bot
+          ty2 ||= Type.bot
+          [!!req1, kw, ty1.union(ty2)]
+        end
+      elsif @kw_tys || other.kw_tys
+        kw_tys = @kw_tys || other.kw_tys
+      else
+        kw_tys = nil
+      end
       if @kw_rest_ty || other.kw_rest_ty
         if @kw_rest_ty && other.kw_rest_ty
           kw_rest_ty = @kw_rest_ty.union(other.kw_rest_ty)
