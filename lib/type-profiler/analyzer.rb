@@ -324,21 +324,29 @@ module TypeProfiler
       end
 
       including_mod = @class_defs[including_mod.idx]
-      included_mod = @class_defs[included_mod.idx]
-      if included_mod && included_mod.kind == :module
-        including_mod.include_module(included_mod, visible)
-      else
-        warn "including something that is not a module"
+      included_mod.each_child do |included_mod|
+        if included_mod.is_a?(Type::Class)
+          included_mod = @class_defs[included_mod.idx]
+          if included_mod && included_mod.kind == :module
+            including_mod.include_module(included_mod, visible)
+          else
+            warn "including something that is not a module"
+          end
+        end
       end
     end
 
     def extend_module(extending_mod, extended_mod, visible = true)
       extending_mod = @class_defs[extending_mod.idx]
-      extended_mod = @class_defs[extended_mod.idx]
-      if extended_mod && extended_mod.kind == :module
-        extending_mod.extend_module(extended_mod, visible)
-      else
-        warn "extending something that is not a module"
+      extended_mod.each_child do |extended_mod|
+        if extended_mod.is_a?(Type::Class)
+          extended_mod = @class_defs[extended_mod.idx]
+          if extended_mod && extended_mod.kind == :module
+            extending_mod.extend_module(extended_mod, visible)
+          else
+            warn "extending something that is not a module"
+          end
+        end
       end
     end
 
