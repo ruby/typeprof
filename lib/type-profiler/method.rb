@@ -177,7 +177,9 @@ module TypeProfiler
                   ret_ty = ret_ty.substitute(subst2, $TYPE_DEPTH_LIMIT)
                 end
               else
-                raise "???"
+                # raise "???"
+                # XXX: need warning
+                ret_ty = Type.any
               end
               ret_ty = ret_ty.remove_type_vars
               # XXX: check the return type from the block
