@@ -19,14 +19,10 @@ class B < Base
 end
 
 __END__
-# Revealed types
-#  t.rb:9 #=> A.class | B.class
-
 # Classes
 class SuperBase
   def self.foo : -> (A.class | B.class)
 end
-
 class Base < SuperBase
   def self.foo : -> (A.class | B.class)
 end

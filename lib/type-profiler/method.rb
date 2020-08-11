@@ -157,7 +157,7 @@ module TypeProfiler
               end
               nfarg = nfarg.remove_type_vars
               alloc_site2 = alloc_site.add_id(i)
-              ncaller_env, nfarg = scratch.localize_type(nfarg, ncaller_env, caller_ep)
+              dummy_env, nfarg = scratch.localize_type(nfarg, dummy_env, dummy_ep)
               nfarg
             end
             naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
