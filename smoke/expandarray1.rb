@@ -13,8 +13,8 @@ __END__
 # Errors
 smoke/expandarray1.rb:3: [error] undefined method: Object#unknown
 # Revealed types
-#  smoke/expandarray1.rb:11 #=> :a | any
+#  smoke/expandarray1.rb:11 #=> :a | untyped
 # Classes
 class Object
-  def foo : -> ([:a, [:b, :c]] | any)
+  def foo : -> ([:a, [:b, :c]] | untyped)
 end

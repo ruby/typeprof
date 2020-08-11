@@ -15,5 +15,5 @@ smoke/block7.rb:2: [warning] non-iseq-proc is passed as a block
 smoke/block7.rb:2: [warning] non-iseq-proc is passed as a block
 # Classes
 class Object
-  def foo : -> any
+  def foo : -> untyped
 end

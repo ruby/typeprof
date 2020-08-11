@@ -109,7 +109,7 @@ module TypeProfiler
       end
 
       def screen_name(scratch)
-        "any"
+        "untyped"
       end
 
       def get_method(mid, scratch)

@@ -5,5 +5,5 @@ Foo.new.a = 1
 __END__
 # Classes
 class (Struct) < Struct
-  attr_accessor a() : any
+  attr_accessor a() : untyped
 end
