@@ -214,6 +214,7 @@ module TypeProfiler
             types.delete(Type::Instance.new(Type::Builtin[:true]))
             bool = true
           end
+          types.delete(Type.any) if ENV["TP_SIMPLE_STUB"]
           types = types.map {|ty| ty.screen_name(scratch) }
           types << "bool" if bool
           types = types.sort
