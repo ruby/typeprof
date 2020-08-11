@@ -750,7 +750,7 @@ module TypeProfiler
           @pending_dummy_executions.delete(iseq)
         end while @executed_iseqs.include?(iseq)
 
-        puts "DEBUG: trigger dummy execution (#{ iseq.name }): rest #{ @pending_dummy_executions.size }" if ENV["TP_DEBUG"]
+        puts "DEBUG: trigger dummy execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_dummy_executions.size }" if ENV["TP_DEBUG"]
 
         break if !iseq
         case kind
