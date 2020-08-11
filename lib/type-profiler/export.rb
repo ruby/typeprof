@@ -166,7 +166,7 @@ module TypeProfiler
           puts "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
         end
         iseq_methods.each do |method_name, sigs|
-          sigs = sigs.sort.join("\n" + " " * (method_name.size + 3) + "| ")
+          sigs = sigs.sort.join("\n" + " " * (method_name.size + 7) + "| ")
           puts "  def #{ method_name } : #{ sigs }"
         end
         puts "end"
