@@ -36,6 +36,17 @@ module TypeProfiler
     attr_reader :iseq, :cref, :mid
   end
 
+  class TypedContext
+    include Utils::StructuralEquality
+
+    def initialize(caller_ep, mid)
+      @caller_ep = caller_ep
+      @mid = mid
+    end
+
+    attr_reader :caller_ep, :mid
+  end
+
   class ExecutionPoint
     include Utils::StructuralEquality
 
@@ -520,7 +531,7 @@ module TypeProfiler
     end
 
     def add_callsite!(callee_ctx, fargs, caller_ep, caller_env, &ctn)
-      @executed_iseqs << callee_ctx.iseq
+      @executed_iseqs << callee_ctx.iseq if callee_ctx.is_a?(Context)
 
       @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx][caller_ep] = ctn

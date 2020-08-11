@@ -141,11 +141,11 @@ module TypeProfiler
         end
         found = true
         if aargs.blk_ty.is_a?(Type::ISeqProc)
-          dummy_ctx = Context.new(nil, nil, mid) # TODO: Unable to distinguish between A#foo and B#foo
-          dummy_ep = ExecutionPoint.new(dummy_ctx, -1, nil)
+          dummy_ctx = TypedContext.new(caller_ep, mid)
+          dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
           dummy_env = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), [], [], Utils::HashWrapper.new({}))
           if fargs.blk_ty.is_a?(Type::TypedProc)
-            scratch.add_callsite!(dummy_ctx, nil, caller_ep, ncaller_env, &ctn) # TODO: this add_callsite! and add_return_type! affects return value of all calls with block
+            scratch.add_callsite!(dummy_ctx, nil, caller_ep, ncaller_env, &ctn)
             nfargs = fargs.blk_ty.fargs
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
             nfargs = nfargs.map.with_index do |nfarg, i|
