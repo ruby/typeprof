@@ -1634,7 +1634,9 @@ module TypeProfiler
             when Type::Hash
               kw_ty = ty
             when Type::Union
-              kw_ty = Type::Hash.new(ty.hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+              elems = ty.hash_elems
+              elems ||= Type::Hash::Elements.new({Type.any => Type.any})
+              kw_ty = Type::Hash.new(elems, Type::Instance.new(Type::Builtin[:hash]))
             else
               warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
               kw_ty = nil
@@ -1653,7 +1655,9 @@ module TypeProfiler
           aargs = aargs[0..-2]
           kw_ty = ty
         when Type::Union
-          kw_ty = Type::Hash.new(ty.hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+          elems = ty.hash_elems
+          elems ||= Type::Hash::Elements.new({Type.any => Type.any})
+          kw_ty = Type::Hash.new(elems, Type::Instance.new(Type::Builtin[:hash]))
         when Type::Any
           aargs = aargs[0..-2]
           kw_ty = ty
