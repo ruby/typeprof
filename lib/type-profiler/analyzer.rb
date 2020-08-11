@@ -1121,17 +1121,22 @@ module TypeProfiler
       when :invokesuper
         env, recv, _, aargs = setup_actual_arguments(operands, ep, env)
 
-        recv = env.static_env.recv_ty
+        env, recv = localize_type(env.static_env.recv_ty, env, ep)
         mid  = ep.ctx.mid
         singleton = !recv.is_a?(Type::Instance) # TODO: any?
         # XXX: need to support included module...
         meths = get_super_method(ep.ctx, singleton) # TODO: multiple return values
         if meths
           meths.each do |meth|
-            meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
-              nenv, ret_ty, = localize_type(ret_ty, env, ep)
-              nenv = nenv.push(ret_ty)
-              merge_env(ep.next, nenv)
+            # XXX: this decomposition is really needed??
+            # It calls `Object.new` with union receiver which causes an error, but
+            # it may be a fault of builtin Object.new implementation.
+            recv.each_child do |recv|
+              meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
+                nenv, ret_ty, = localize_type(ret_ty, env, ep)
+                nenv = nenv.push(ret_ty)
+                merge_env(ep.next, nenv)
+              end
             end
           end
           return
