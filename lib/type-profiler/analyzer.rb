@@ -547,7 +547,7 @@ module TypeProfiler
       ret_ty = @sig_ret[callee_ctx] ||= Type.bot
       unless ret_ty.eql?(Type.bot)
         @callsites[callee_ctx].each do |caller_ep, ctn|
-          ctn[ret_ty, caller_ep, @return_envs[caller_ep]] # TODO: use Union type
+          ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
         end
       end
     end
