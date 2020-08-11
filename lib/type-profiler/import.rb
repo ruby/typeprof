@@ -119,7 +119,7 @@ module TypeProfiler
       when :any
         Type.any
       when :self
-        Type::Self.new
+        Type::Var.new(:self)
       when :int
         Type::Instance.new(Type::Builtin[:int])
       when :str

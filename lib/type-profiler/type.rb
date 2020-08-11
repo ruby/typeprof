@@ -614,28 +614,6 @@ module TypeProfiler
       end
     end
 
-    class Self < Type
-      # only for TypedMethod signature
-      def initialize
-      end
-
-      def inspect
-        "Type::Self"
-      end
-
-      def screen_name(scratch)
-        "self"
-      end
-
-      def consistent?(other, subst)
-        raise "Self type should not be checked for consistent?"
-      end
-
-      def remove_type_vars
-        self
-      end
-    end
-
     class HashGenerator
       def initialize
         @map_tys = {}

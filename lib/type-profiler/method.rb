@@ -116,11 +116,8 @@ module TypeProfiler
         # XXX: need to interpret args more correctly
         #pp [mid, aargs, fargs]
         # XXX: support self type in fargs
-        subst = {}
+        subst = { Type::Var.new(:self) => recv }
         next unless aargs.consistent_with_formal_arguments?(fargs, subst)
-        # XXX: support self type in container type like Array[Self]
-        # XXX: support Union[Self, something]
-        ret_ty = recv if ret_ty.is_a?(Type::Self)
         if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
           tyvar_elem = Type::Var.new(:Elem)
           if subst[tyvar_elem]
@@ -152,7 +149,6 @@ module TypeProfiler
             nfargs = fargs.blk_ty.fargs
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
             nfargs = nfargs.map.with_index do |nfarg, i|
-              nfarg = nfarg.is_a?(Type::Self) ? recv : nfarg # XXX
               if recv.is_a?(Type::Array)
                 tyvar_elem = Type::Var.new(:Elem)
                 nfarg = nfarg.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), $TYPE_DEPTH_LIMIT)
