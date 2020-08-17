@@ -119,15 +119,16 @@ module TypeProfiler
         mid_ty = aargs.rest_ty
       end
       aargs = ActualArguments.new(aargs.lead_tys[1..-1], aargs.rest_ty, aargs.kw_ty, aargs.blk_ty)
+      found = false
       mid_ty.each_child do |mid|
         if mid.is_a?(Type::Symbol)
+          found = true
           mid = mid.sym
-          scratch.do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
-            nenv, ret_ty, = scratch.localize_type(ret_ty, env, ep)
-            nenv = nenv.push(ret_ty)
-            scratch.merge_env(ep.next, nenv)
-          end
+          scratch.do_send(recv, mid, aargs, ep, env, &ctn)
         end
+      end
+      unless found
+        ctn[Type.any, ep, env]
       end
     end
 
