@@ -395,7 +395,7 @@ module TypeProfiler
             return ctn[result, ep, env]
           end
           scratch.loaded_features[feature] = true
-          if TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch, feature)
+          if TypeProfiler::RubySignatureImporter.import_library(scratch, feature)
             result = Type::Instance.new(Type::Builtin[:true])
             return ctn[result, ep, env]
           end
@@ -478,7 +478,7 @@ module TypeProfiler
     Type::Builtin[:false] = klass_false
     Type::Builtin[:nil]   = klass_nil
 
-    TypeProfiler::RubySignatureImporter.import_ruby_signatures(scratch, "builtin")
+    RubySignatureImporter.import_builtin(scratch)
 
     Type::Builtin[:vmcore]    = scratch.new_class(klass_obj, :VMCore, [], klass_obj)
     Type::Builtin[:int]       = scratch.get_constant(klass_obj, :Integer)
