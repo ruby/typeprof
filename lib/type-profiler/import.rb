@@ -1,21 +1,46 @@
 require "rbs"
 
 module TypeProfiler
-  class RubySignatureReader
-    include RBS
+  class RBSReader
+    def initialize
+      @env, @builtin_env_dump = RBSReader.builtin_env
+    end
+
+    def self.builtin_env
+      return @builtin_env.dup, @builtin_env_dump if @builtin_env
+
+      loader = RBS::EnvironmentLoader.new
+      env = RBS::Environment.new
+      loader.load(env: env)
+      @builtin_env = env
+      @builtin_env_dump = RBS2JSON.new(env, 0).dump
+      return env.dup, @builtin_env_dump
+    end
 
     def load_builtin
-      loader = EnvironmentLoader.new
-      @env = Environment.from_loader(loader).resolve_type_names
-      [import_rbs_classes, import_rbs_constants]
+      @builtin_env_dump
     end
 
     def load_library(lib)
-      loader = EnvironmentLoader.new
+      loader = RBS::EnvironmentLoader.new
+      loader.no_builtin!
       loader.add(library: lib)
-      @env = Environment.from_loader(loader).resolve_type_names
-      dump = [import_rbs_classes, import_rbs_constants]
-      remove_builtin_definitions(dump, RubySignatureReader.builtin)
+      skip_declaration_count = @env.declarations.size
+      loader.load(env: @env)
+      RBS2JSON.new(@env, skip_declaration_count).dump
+    end
+  end
+
+  class RBS2JSON
+    def initialize(env, skip_declaration_count)
+      @all_env = env.resolve_type_names
+      skip_declarations = env.declarations.shift(skip_declaration_count)
+      @current_env = env.resolve_type_names
+      env.declarations.unshift(*skip_declarations)
+    end
+
+    def dump
+      [import_rbs_classes, import_rbs_constants]
     end
 
     # constant_name = [Symbol]
@@ -23,7 +48,7 @@ module TypeProfiler
     # { constant_name => type }
     def import_rbs_constants
       constants = {}
-      @env.constant_decls.each do |name, decl|
+      @current_env.constant_decls.each do |name, decl|
         #constants[name] = decl
         klass = name.namespace.path + [name.name]
         constants[klass] = convert_type(decl.decl.type)
@@ -44,13 +69,13 @@ module TypeProfiler
     def import_rbs_classes
       class2super = {}
       # XXX: @env.each_global {|a| p a }
-      @env.class_decls.each do |name, decl|
-        next if name.name == :Object && name.namespace == Namespace.root
+      @current_env.class_decls.each do |name, decl|
+        next if name.name == :Object && name.namespace == RBS::Namespace.root
         decl.decls.each do |decl|
           decl = decl.decl
-          if decl.is_a?(AST::Declarations::Class)
+          if decl.is_a?(RBS::AST::Declarations::Class)
             #next unless decl.super_class
-            class2super[name] ||= decl.super_class&.name || BuiltinNames::Object.name
+            class2super[name] ||= decl.super_class&.name || RBS::BuiltinNames::Object.name
           else
             class2super[name] ||= nil
           end
@@ -70,14 +95,14 @@ module TypeProfiler
           if !visited[name]
             visited[name] = true
             queue << [:new, name]
-            decl = @env.class_decls[name]
+            decl = @all_env.class_decls[name]
             decl.decls.each do |decl|
               decl = decl.decl
-              next if decl.is_a?(AST::Declarations::Module)
-              until BuiltinNames::Object.name == decl.name
+              next if decl.is_a?(RBS::AST::Declarations::Module)
+              until RBS::BuiltinNames::Object.name == decl.name
                 super_class = decl.super_class
                 break unless super_class
-                decls = @env.class_decls[super_class.name].decls
+                decls = @all_env.class_decls[super_class.name].decls
                 raise if decls.size >= 2 # no need to check
                 decl = decls.first.decl
                 queue << [:visit, decl.name]
@@ -101,14 +126,16 @@ module TypeProfiler
 
       result = {}
       classes.each do |type_name, klass, superclass|
+        next unless @current_env.class_decls[type_name]
+
         included_modules = []
         methods = {}
         type_params = nil
 
         if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass, :Kernel].include?(type_name.name) || true
-          @env.class_decls[type_name].decls.each do |decl|
+          @current_env.class_decls[type_name].decls.each do |decl|
             decl = decl.decl
-            raise NotImplementedError if decl.is_a?(AST::Declarations::Interface)
+            raise NotImplementedError if decl.is_a?(RBS::AST::Declarations::Interface)
             type_params2 = decl.type_params.params.map {|param| [param.name, param.variance] }
             if type_params
               raise if type_params != type_params2
@@ -118,7 +145,7 @@ module TypeProfiler
 
             decl.members.each do |member|
               case member
-              when AST::Members::MethodDefinition
+              when RBS::AST::Members::MethodDefinition
                 name = member.name
 
                 # ad-hoc filter
@@ -165,7 +192,7 @@ module TypeProfiler
 
                 method_types = member.types.map do |method_type|
                   case method_type
-                  when MethodType
+                  when RBS::MethodType
                     method_type
                   when :super
                     raise NotImplementedError
@@ -175,9 +202,9 @@ module TypeProfiler
                 method_def = translate_typed_method_def(method_types)
                 methods[[false, name]] = method_def if member.instance?
                 methods[[true, name]] = method_def if member.singleton?
-              when AST::Members::AttrReader, AST::Members::AttrAccessor, AST::Members::AttrWriter
+              when RBS::AST::Members::AttrReader, RBS::AST::Members::AttrAccessor, RBS::AST::Members::AttrWriter
                 raise NotImplementedError
-              when AST::Members::Alias
+              when RBS::AST::Members::Alias
                 if member.instance?
                   method_def = methods[[false, member.old_name]]
                   methods[[false, member.new_name]] = method_def if method_def
@@ -186,16 +213,16 @@ module TypeProfiler
                   method_def = methods[[true, member.old_name]]
                   methods[[true, member.new_name]] = method_def if method_def
                 end
-              when AST::Members::Include
+              when RBS::AST::Members::Include
                 name = member.name
                 mod = name.namespace.path + [name.name]
                 included_modules << mod
-              when AST::Members::InstanceVariable
+              when RBS::AST::Members::InstanceVariable
                 raise NotImplementedError
-              when AST::Members::ClassVariable
+              when RBS::AST::Members::ClassVariable
                 raise NotImplementedError
-              when AST::Members::Public, AST::Members::Private
-              when AST::Declarations::Constant
+              when RBS::AST::Members::Public, RBS::AST::Members::Private
+              when RBS::AST::Declarations::Constant
               else
                 p member
               end
@@ -321,7 +348,7 @@ module TypeProfiler
         end
       when RBS::Types::Literal
       when RBS::Types::Alias
-        ty = @env.alias_decls[ty.name].decl.type
+        ty = @all_env.alias_decls[ty.name].decl.type
         convert_type(ty)
       when RBS::Types::Union
         [:union, ty.types.map {|ty2| begin convert_type(ty2); rescue UnsupportedType; end }.compact]
@@ -376,12 +403,6 @@ module TypeProfiler
 
       dump
     end
-
-    def self.builtin
-      @builtin ||= RubySignatureReader.new.load_builtin
-    end
-
-    builtin
   end
 
   module RubySignatureImporter
@@ -399,12 +420,12 @@ module TypeProfiler
     CACHE = {}
 
     def import_builtin(scratch)
-      import_ruby_signature(scratch, RubySignatureReader.builtin)
+      import_ruby_signature(scratch, scratch.rbs_reader.load_builtin)
     end
 
     def import_library(scratch, feature)
-      CACHE[feature] ||= RubySignatureReader.new.load_library(feature)
-      import_ruby_signature(scratch, CACHE[feature])
+      # need cache?
+      import_ruby_signature(scratch, scratch.rbs_reader.load_library(feature))
     end
 
     def import_ruby_signature(scratch, dump)

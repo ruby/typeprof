@@ -245,9 +245,11 @@ module TypeProfiler
       @executed_iseqs = Utils::MutableSet.new
 
       @loaded_features = {}
+
+      @rbs_reader = RBSReader.new
     end
 
-    attr_reader :return_envs, :loaded_features
+    attr_reader :return_envs, :loaded_features, :rbs_reader
 
     def get_env(ep)
       @ep2env[ep]
