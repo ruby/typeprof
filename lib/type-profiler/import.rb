@@ -11,9 +11,9 @@ module TypeProfiler
 
       loader = RBS::EnvironmentLoader.new
       env = RBS::Environment.new
-      loader.load(env: env)
+      decls = loader.load(env: env)
       @builtin_env = env
-      @builtin_env_dump = RBS2JSON.new(env, 0).dump
+      @builtin_env_dump = RBS2JSON.new(env, decls).dump
       return env.dup, @builtin_env_dump
     end
 
@@ -25,18 +25,21 @@ module TypeProfiler
       loader = RBS::EnvironmentLoader.new
       loader.no_builtin!
       loader.add(library: lib)
-      skip_declaration_count = @env.declarations.size
-      loader.load(env: @env)
-      RBS2JSON.new(@env, skip_declaration_count).dump
+      new_decls = loader.load(env: @env)
+      RBS2JSON.new(@env, new_decls).dump
     end
   end
 
   class RBS2JSON
-    def initialize(env, skip_declaration_count)
+    def initialize(env, new_decls)
       @all_env = env.resolve_type_names
-      skip_declarations = env.declarations.shift(skip_declaration_count)
-      @current_env = env.resolve_type_names
-      env.declarations.unshift(*skip_declarations)
+
+      resolver = RBS::TypeNameResolver.from_env(env)
+      @current_env = RBS::Environment.new()
+
+      new_decls.each do |decl,|
+        @current_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
+      end
     end
 
     def dump
