@@ -143,100 +143,98 @@ module TypeProfiler
         methods = {}
         type_params = nil
 
-        if [:Object, :Array, :Numeric, :Integer, :Float, :Math, :Range, :TrueClass, :FalseClass, :Kernel].include?(type_name.name) || true
-          @current_env.class_decls[type_name].decls.each do |decl|
-            decl = decl.decl
-            raise NotImplementedError if decl.is_a?(RBS::AST::Declarations::Interface)
-            type_params2 = decl.type_params.params.map {|param| [param.name, param.variance] }
-            if type_params
-              raise if type_params != type_params2
-            else
-              type_params = type_params2
-            end
+        @current_env.class_decls[type_name].decls.each do |decl|
+          decl = decl.decl
+          raise NotImplementedError if decl.is_a?(RBS::AST::Declarations::Interface)
+          type_params2 = decl.type_params.params.map {|param| [param.name, param.variance] }
+          if type_params
+            raise if type_params != type_params2
+          else
+            type_params = type_params2
+          end
 
-            decl.members.each do |member|
-              case member
-              when RBS::AST::Members::MethodDefinition
-                name = member.name
+          decl.members.each do |member|
+            case member
+            when RBS::AST::Members::MethodDefinition
+              name = member.name
 
-                # ad-hoc filter
-                @array_special_tyvar_handling = false
-                if member.instance?
-                  case type_name.name
-                  when :Object
-                    next if name == :class
-                    next if name == :send
-                    next if name == :is_a?
-                    next if name == :respond_to?
-                  when :Array
-                    @array_special_tyvar_handling = true
-                    next if name == :[]
-                    next if name == :[]=
-                    next if name == :pop
-                  when :Enumerable
-                    @array_special_tyvar_handling = true
-                  when :Enumerator
-                    @array_special_tyvar_handling = true
-                  when :Hash
-                    @array_special_tyvar_handling = true
-                    next if name == :[]
-                    next if name == :[]=
-                    next if name == :to_proc
-                    #next unless [:empty?, :size].include?(name)
-                  when :Struct
-                    next if name == :initialize
-                  when :Module
-                    next if name == :include
-                    next if name == :module_function
-                  when :Proc
-                    next if name == :call || name == :[]
-                  when :Kernel
-                    next if name == :Array
-                  end
+              # ad-hoc filter
+              @array_special_tyvar_handling = false
+              if member.instance?
+                case type_name.name
+                when :Object
+                  next if name == :class
+                  next if name == :send
+                  next if name == :is_a?
+                  next if name == :respond_to?
+                when :Array
+                  @array_special_tyvar_handling = true
+                  next if name == :[]
+                  next if name == :[]=
+                  next if name == :pop
+                when :Enumerable
+                  @array_special_tyvar_handling = true
+                when :Enumerator
+                  @array_special_tyvar_handling = true
+                when :Hash
+                  @array_special_tyvar_handling = true
+                  next if name == :[]
+                  next if name == :[]=
+                  next if name == :to_proc
+                  #next unless [:empty?, :size].include?(name)
+                when :Struct
+                  next if name == :initialize
+                when :Module
+                  next if name == :include
+                  next if name == :module_function
+                when :Proc
+                  next if name == :call || name == :[]
+                when :Kernel
+                  next if name == :Array
                 end
-                if member.singleton?
-                  case type_name.name
-                  when :Array
-                    @array_special_tyvar_handling = true
-                  end
-                end
-
-                method_types = member.types.map do |method_type|
-                  case method_type
-                  when RBS::MethodType
-                    method_type
-                  when :super
-                    raise NotImplementedError
-                  end
-                end
-
-                method_def = translate_typed_method_def(method_types)
-                methods[[false, name]] = method_def if member.instance?
-                methods[[true, name]] = method_def if member.singleton?
-              when RBS::AST::Members::AttrReader, RBS::AST::Members::AttrAccessor, RBS::AST::Members::AttrWriter
-                raise NotImplementedError
-              when RBS::AST::Members::Alias
-                if member.instance?
-                  method_def = methods[[false, member.old_name]]
-                  methods[[false, member.new_name]] = method_def if method_def
-                end
-                if member.singleton?
-                  method_def = methods[[true, member.old_name]]
-                  methods[[true, member.new_name]] = method_def if method_def
-                end
-              when RBS::AST::Members::Include
-                name = member.name
-                mod = name.namespace.path + [name.name]
-                included_modules << mod
-              when RBS::AST::Members::InstanceVariable
-                raise NotImplementedError
-              when RBS::AST::Members::ClassVariable
-                raise NotImplementedError
-              when RBS::AST::Members::Public, RBS::AST::Members::Private
-              when RBS::AST::Declarations::Constant
-              else
-                p member
               end
+              if member.singleton?
+                case type_name.name
+                when :Array
+                  @array_special_tyvar_handling = true
+                end
+              end
+
+              method_types = member.types.map do |method_type|
+                case method_type
+                when RBS::MethodType
+                  method_type
+                when :super
+                  raise NotImplementedError
+                end
+              end
+
+              method_def = translate_typed_method_def(method_types)
+              methods[[false, name]] = method_def if member.instance?
+              methods[[true, name]] = method_def if member.singleton?
+            when RBS::AST::Members::AttrReader, RBS::AST::Members::AttrAccessor, RBS::AST::Members::AttrWriter
+              raise NotImplementedError
+            when RBS::AST::Members::Alias
+              if member.instance?
+                method_def = methods[[false, member.old_name]]
+                methods[[false, member.new_name]] = method_def if method_def
+              end
+              if member.singleton?
+                method_def = methods[[true, member.old_name]]
+                methods[[true, member.new_name]] = method_def if method_def
+              end
+            when RBS::AST::Members::Include
+              name = member.name
+              mod = name.namespace.path + [name.name]
+              included_modules << mod
+            when RBS::AST::Members::InstanceVariable
+              raise NotImplementedError
+            when RBS::AST::Members::ClassVariable
+              raise NotImplementedError
+            when RBS::AST::Members::Public, RBS::AST::Members::Private
+            when RBS::AST::Declarations::Constant
+            else
+              p member
             end
           end
         end
