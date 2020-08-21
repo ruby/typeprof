@@ -395,13 +395,20 @@ module TypeProfiler
             return ctn[result, ep, env]
           end
           scratch.loaded_features[feature] = true
+
+          # XXX: dynamic RBS load is really needed??  Another idea:
+          #
+          # * RBS should be loaded in advance of analysis
+          # * require "some_gem/foo" should be ignored
+          # * require "app/foo" should always load .rb file (in this case, app/foo.rb)
           if TypeProfiler::RubySignatureImporter.import_library(scratch, feature)
             result = Type::Instance.new(Type::Builtin[:true])
             return ctn[result, ep, env]
           end
+
           begin
             gem feature
-          rescue Gem::MissingSpecError
+          rescue Gem::MissingSpecError, Gem::LoadError
           end
           filetype, path = $LOAD_PATH.resolve_feature_path(feature)
           if filetype == :rb

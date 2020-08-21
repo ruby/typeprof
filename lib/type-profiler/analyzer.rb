@@ -241,7 +241,7 @@ module TypeProfiler
       @reveal_types = {}
       @backward_edges = {}
 
-      @pending_dummy_executions = {}
+      @pending_execution = {}
       @executed_iseqs = Utils::MutableSet.new
 
       @loaded_features = {}
@@ -321,6 +321,12 @@ module TypeProfiler
           end
           nil
         end
+      end
+
+      def check_typed_method(mid, singleton)
+        set = @methods[[singleton, mid]]
+        return false unless set
+        return set.any? {|mdef| mdef.is_a?(TypedMethodDef) }
       end
 
       def add_method(mid, singleton, mdef)
@@ -471,12 +477,16 @@ module TypeProfiler
     end
 
     def add_method(klass, mid, singleton, mdef)
-      if klass == Type.any
-        self # XXX warn
+      if klass.is_a?(Type::Class)
+        if @class_defs[klass.idx].check_typed_method(mid, singleton)
+          [:typed, mdef]
+        else
+          @class_defs[klass.idx].add_method(mid, singleton, mdef)
+        end
       else
-        @class_defs[klass.idx].add_method(mid, singleton, mdef)
+        # warn?
       end
-      mdef
+      [:dummy, mdef]
     end
 
     def add_attr_method(klass, mid, ivar, kind)
@@ -760,16 +770,16 @@ module TypeProfiler
         # show all method definitions as "untyped" arguments and return values
 
         begin
-          iseq, (kind, dummy_continuation) = @pending_dummy_executions.first
+          iseq, (kind, dummy_continuation) = @pending_execution.first
           break if !iseq
-          @pending_dummy_executions.delete(iseq)
+          @pending_execution.delete(iseq)
         end while @executed_iseqs.include?(iseq)
 
-        puts "DEBUG: trigger dummy execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_dummy_executions.size }" if ENV["TP_DEBUG"]
+        puts "DEBUG: trigger dummy execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if ENV["TP_DEBUG"]
 
         break if !iseq
         case kind
-        when :method
+        when :dummy_method#, :typed_method
           meth, ep, env = dummy_continuation
           merge_env(ep, env)
           add_iseq_method_call!(meth, ep.ctx)
@@ -855,21 +865,25 @@ module TypeProfiler
       end
     end
 
-    def pend_method_dummy_execution(iseq, meth, recv, mid, cref)
+    def pend_method_execution(iseq, (kind, meth), recv, mid, cref)
       ctx = Context.new(iseq, cref, mid)
       ep = ExecutionPoint.new(ctx, 0, nil)
       locals = [Type.any] * iseq.locals.size
       env = Env.new(StaticEnv.new(recv, Type.any, false), locals, [], Utils::HashWrapper.new({}))
 
-      @pending_dummy_executions[iseq] ||= [:method, [meth, ep, env]]
+      if kind == :dummy
+        @pending_execution[iseq] ||= [:dummy_method, [meth, ep, env]]
+      else
+        @pending_execution[iseq] ||= [:typed_method, [meth, ep, env]]
+      end
     end
 
     def pend_block_dummy_execution(iseq, nep, nenv)
-      @pending_dummy_executions[iseq] ||= [:block, {}]
-      if @pending_dummy_executions[iseq][1][nep]
-        @pending_dummy_executions[iseq][1][nep] = @pending_dummy_executions[iseq][1][nep].merge(nenv)
+      @pending_execution[iseq] ||= [:block, {}]
+      if @pending_execution[iseq][1][nep]
+        @pending_execution[iseq][1][nep] = @pending_execution[iseq][1][nep].merge(nenv)
       else
-        @pending_dummy_executions[iseq][1][nep] = nenv
+        @pending_execution[iseq][1][nep] = nenv
       end
     end
 
@@ -986,7 +1000,7 @@ module TypeProfiler
 
         recv = env.static_env.recv_ty
         recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
-        pend_method_dummy_execution(iseq, meth, recv, mid, ep.ctx.cref)
+        pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
 
       when :definesmethod
         mid, iseq = operands
@@ -995,7 +1009,7 @@ module TypeProfiler
         recv.each_child do |recv|
           if recv.is_a?(Type::Class)
             meth = add_singleton_iseq_method(recv, mid, iseq, cref)
-            pend_method_dummy_execution(iseq, meth, recv, mid, ep.ctx.cref)
+            pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
           else
             recv = Type.any
           end

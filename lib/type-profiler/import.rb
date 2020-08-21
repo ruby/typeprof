@@ -28,6 +28,15 @@ module TypeProfiler
       new_decls = loader.load(env: @env)
       RBS2JSON.new(@env, new_decls).dump
     end
+
+    def load_path(path)
+      $foo = true
+      loader = RBS::EnvironmentLoader.new
+      loader.no_builtin!
+      loader.add(path: path)
+      new_decls = loader.load(env: @env)
+      RBS2JSON.new(@env, new_decls).dump
+    end
   end
 
   class RBS2JSON
@@ -73,10 +82,9 @@ module TypeProfiler
       class2super = {}
       # XXX: @env.each_global {|a| p a }
       @current_env.class_decls.each do |name, decl|
-        next if name.name == :Object && name.namespace == RBS::Namespace.root
         decl.decls.each do |decl|
           decl = decl.decl
-          if decl.is_a?(RBS::AST::Declarations::Class)
+          if decl.is_a?(RBS::AST::Declarations::Class) && name != RBS::Factory.new.type_name("::Object")
             #next unless decl.super_class
             class2super[name] ||= decl.super_class&.name || RBS::BuiltinNames::Object.name
           else
@@ -429,6 +437,12 @@ module TypeProfiler
     def import_library(scratch, feature)
       # need cache?
       import_ruby_signature(scratch, scratch.rbs_reader.load_library(feature))
+    rescue RBS::EnvironmentLoader::UnknownLibraryNameError
+      false
+    end
+
+    def import_rbs_file(scratch, rbs_path)
+      import_ruby_signature(scratch, scratch.rbs_reader.load_path(Pathname(rbs_path)))
     end
 
     def import_ruby_signature(scratch, dump)

@@ -12,12 +12,14 @@ require_relative "type-profiler/builtin"
 $TYPE_DEPTH_LIMIT = 5
 
 module TypeProfiler
-  def self.type_profile(iseq)
+  def self.type_profile(iseq, rbs_path)
     # TODO: resolve file path
     scratch = Scratch.new
     setup_initial_global_env(scratch)
     main_ep, main_env = starting_state(iseq)
     scratch.merge_env(main_ep, main_env)
+
+    TypeProfiler::RubySignatureImporter.import_rbs_file(scratch, rbs_path) if rbs_path
 
     prologue_ctx = Context.new(nil, nil, nil)
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
