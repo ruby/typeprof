@@ -11,13 +11,6 @@ module TypeProfiler
     end
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      lead_num = @iseq.fargs_format[:lead_num] || 0
-      post_start = @iseq.fargs_format[:post_start]
-      rest_start = @iseq.fargs_format[:rest_start]
-      kw_start = @iseq.fargs_format[:kwbits]
-      kw_start -= @iseq.fargs_format[:keyword].size if kw_start
-      block_start = @iseq.fargs_format[:block_start]
-
       recv = scratch.globalize_type(recv, caller_env, caller_ep)
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
 
@@ -28,53 +21,69 @@ module TypeProfiler
           next
         end
 
-        ctx = Context.new(@iseq, @cref, mid) # XXX: to support opts, rest, etc
-        callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
+        callee_ep = do_send_core(fargs, start_pc, recv, mid, scratch)
 
-        locals = [Type.nil] * @iseq.locals.size
-        nenv = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), locals, [], Utils::HashWrapper.new({}))
-        alloc_site = AllocationSite.new(callee_ep)
-        idx = 0
-        fargs.lead_tys.each_with_index do |ty, i|
-          alloc_site2 = alloc_site.add_id(idx += 1)
-          # nenv is top-level, so it is okay to call Type#localize directly
-          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
-          nenv = nenv.local_update(i, ty)
-        end
-        if fargs.opt_tys
-          fargs.opt_tys.each_with_index do |ty, i|
-            alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
-            nenv = nenv.local_update(lead_num + i, ty)
-          end
-        end
-        if fargs.rest_ty
-          alloc_site2 = alloc_site.add_id(idx += 1)
-          ty = Type::Array.new(Type::Array::Elements.new([], fargs.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
-          nenv, rest_ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
-          nenv = nenv.local_update(rest_start, rest_ty)
-        end
-        if fargs.post_tys
-          fargs.post_tys.each_with_index do |ty, i|
-            alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
-            nenv = nenv.local_update(post_start + i, ty)
-          end
-        end
-        if fargs.kw_tys
-          fargs.kw_tys.each_with_index do |(_, _, ty), i|
-            alloc_site2 = alloc_site.add_id(idx += 1)
-            nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
-            nenv = nenv.local_update(kw_start + i, ty)
-          end
-        end
-        # kwrest
-        nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
-
-        scratch.merge_env(callee_ep, nenv)
         scratch.add_iseq_method_call!(self, callee_ep.ctx)
         scratch.add_callsite!(callee_ep.ctx, fargs, caller_ep, caller_env, &ctn)
       end
+    end
+
+    def do_send_core(fargs, start_pc, recv, mid, scratch)
+      lead_num = @iseq.fargs_format[:lead_num] || 0
+      post_start = @iseq.fargs_format[:post_start]
+      rest_start = @iseq.fargs_format[:rest_start]
+      kw_start = @iseq.fargs_format[:kwbits]
+      kw_start -= @iseq.fargs_format[:keyword].size if kw_start
+      block_start = @iseq.fargs_format[:block_start]
+
+      # XXX: need to check .rbs fargs and .rb fargs
+
+      ctx = Context.new(@iseq, @cref, mid) # XXX: to support opts, rest, etc
+      callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
+
+      locals = [Type.nil] * @iseq.locals.size
+      nenv = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), locals, [], Utils::HashWrapper.new({}))
+      alloc_site = AllocationSite.new(callee_ep)
+      idx = 0
+      fargs.lead_tys.each_with_index do |ty, i|
+        alloc_site2 = alloc_site.add_id(idx += 1)
+        # nenv is top-level, so it is okay to call Type#localize directly
+        nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+        nenv = nenv.local_update(i, ty)
+      end
+      if fargs.opt_tys
+        fargs.opt_tys.each_with_index do |ty, i|
+          alloc_site2 = alloc_site.add_id(idx += 1)
+          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+          nenv = nenv.local_update(lead_num + i, ty)
+        end
+      end
+      if fargs.rest_ty
+        alloc_site2 = alloc_site.add_id(idx += 1)
+        ty = Type::Array.new(Type::Array::Elements.new([], fargs.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
+        nenv, rest_ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+        nenv = nenv.local_update(rest_start, rest_ty)
+      end
+      if fargs.post_tys
+        fargs.post_tys.each_with_index do |ty, i|
+          alloc_site2 = alloc_site.add_id(idx += 1)
+          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+          nenv = nenv.local_update(post_start + i, ty)
+        end
+      end
+      if fargs.kw_tys
+        fargs.kw_tys.each_with_index do |(_, _, ty), i|
+          alloc_site2 = alloc_site.add_id(idx += 1)
+          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+          nenv = nenv.local_update(kw_start + i, ty)
+        end
+      end
+      # kwrest
+      nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
+
+      scratch.merge_env(callee_ep, nenv)
+
+      callee_ep
     end
   end
 
@@ -103,9 +112,12 @@ module TypeProfiler
   end
 
   class TypedMethodDef < MethodDef
-    def initialize(sigs) # sigs: Array<[FormalArguments, (return)Type]>
+    def initialize(sigs, rbs_source) # sigs: Array<[FormalArguments, (return)Type]>
       @sigs = sigs
+      @rbs_source = rbs_source
     end
+
+    attr_reader :rbs_source
 
     def do_send(recv_orig, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = scratch.globalize_type(recv_orig, caller_env, caller_ep)
@@ -203,6 +215,13 @@ module TypeProfiler
       unless found
         scratch.error(caller_ep, "failed to resolve overload: #{ recv.screen_name(scratch) }##{ mid }")
         ctn[Type.any, caller_ep, caller_env]
+      end
+    end
+
+    def do_match_iseq_mdef(iseq_mdef, recv, mid, env, ep, scratch)
+      recv = scratch.globalize_type(recv, env, ep)
+      @sigs.each do |fargs, _ret_ty|
+        iseq_mdef.do_send_core(fargs, 0, recv, mid, scratch)
       end
     end
   end

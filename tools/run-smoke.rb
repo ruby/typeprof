@@ -10,7 +10,7 @@ def puts(*s)
 end
 def run(f)
   $output = []
-  TypeProfiler.type_profile(TypeProfiler::ISeq.compile(f))
+  TypeProfiler.type_profile(TypeProfiler::ISeq.compile(f), nil)
   output = $output
   output
 ensure

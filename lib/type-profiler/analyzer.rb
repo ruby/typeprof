@@ -325,8 +325,10 @@ module TypeProfiler
 
       def check_typed_method(mid, singleton)
         set = @methods[[singleton, mid]]
-        return false unless set
-        return set.any? {|mdef| mdef.is_a?(TypedMethodDef) }
+        return nil unless set
+        set = set.select {|mdef| mdef.is_a?(TypedMethodDef) }
+        return nil if set.empty?
+        return set
       end
 
       def add_method(mid, singleton, mdef)
@@ -476,17 +478,13 @@ module TypeProfiler
       end
     end
 
+    def check_typed_method(klass, mid, singleton)
+      @class_defs[klass.idx].check_typed_method(mid, singleton)
+    end
+
     def add_method(klass, mid, singleton, mdef)
-      if klass.is_a?(Type::Class)
-        if @class_defs[klass.idx].check_typed_method(mid, singleton)
-          [:typed, mdef]
-        else
-          @class_defs[klass.idx].add_method(mid, singleton, mdef)
-        end
-      else
-        # warn?
-      end
-      [:dummy, mdef]
+      @class_defs[klass.idx].add_method(mid, singleton, mdef)
+      mdef
     end
 
     def add_attr_method(klass, mid, ivar, kind)
@@ -779,7 +777,7 @@ module TypeProfiler
 
         break if !iseq
         case kind
-        when :dummy_method#, :typed_method
+        when :method
           meth, ep, env = dummy_continuation
           merge_env(ep, env)
           add_iseq_method_call!(meth, ep.ctx)
@@ -865,17 +863,13 @@ module TypeProfiler
       end
     end
 
-    def pend_method_execution(iseq, (kind, meth), recv, mid, cref)
+    def pend_method_execution(iseq, meth, recv, mid, cref)
       ctx = Context.new(iseq, cref, mid)
       ep = ExecutionPoint.new(ctx, 0, nil)
       locals = [Type.any] * iseq.locals.size
       env = Env.new(StaticEnv.new(recv, Type.any, false), locals, [], Utils::HashWrapper.new({}))
 
-      if kind == :dummy
-        @pending_execution[iseq] ||= [:dummy_method, [meth, ep, env]]
-      else
-        @pending_execution[iseq] ||= [:typed_method, [meth, ep, env]]
-      end
+      @pending_execution[iseq] ||= [:method, [meth, ep, env]]
     end
 
     def pend_block_dummy_execution(iseq, nep, nenv)
@@ -988,19 +982,30 @@ module TypeProfiler
       when :definemethod
         mid, iseq = operands
         cref = ep.ctx.cref
-        #p [env.static_env.recv_ty, mid], cref
-        if ep.ctx.cref.singleton
-          meth = add_singleton_iseq_method(cref.klass, mid, iseq, cref)
-        else
-          meth = add_iseq_method(cref.klass, mid, iseq, cref)
-          if env.static_env.mod_func
-            add_singleton_iseq_method(cref.klass, mid, iseq, cref)
-          end
-        end
-
         recv = env.static_env.recv_ty
-        recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
-        pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
+        if cref.klass.is_a?(Type::Class)
+          typed_mdef = check_typed_method(cref.klass, mid, ep.ctx.cref.singleton)
+          if typed_mdef
+            mdef = ISeqMethodDef.new(iseq, cref)
+            typed_mdef.each do |typed_mdef|
+              typed_mdef.do_match_iseq_mdef(mdef, recv, mid, env, ep, self)
+            end
+          else
+            if ep.ctx.cref.singleton
+              meth = add_singleton_iseq_method(cref.klass, mid, iseq, cref)
+            else
+              meth = add_iseq_method(cref.klass, mid, iseq, cref)
+              if env.static_env.mod_func
+                add_singleton_iseq_method(cref.klass, mid, iseq, cref)
+              end
+            end
+
+            recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
+            pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
+          end
+        else
+          # XXX: what to do?
+        end
 
       when :definesmethod
         mid, iseq = operands
@@ -1011,7 +1016,7 @@ module TypeProfiler
             meth = add_singleton_iseq_method(recv, mid, iseq, cref)
             pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
           else
-            recv = Type.any
+            recv = Type.any # XXX: what to do?
           end
         end
       when :defineclass

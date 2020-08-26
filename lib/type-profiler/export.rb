@@ -92,6 +92,7 @@ module TypeProfiler
           mod_def.name if visible
         end
 
+        explicit_methods = {}
         iseq_methods = {}
         attr_methods = {}
         class_def.methods.each do |(singleton, mid), mdefs|
@@ -125,6 +126,11 @@ module TypeProfiler
               else
                 ty = class_def.ivars.write[[singleton, mdef.ivar]] || Type.any
                 attr_methods[method_name] = [mdef.kind, ty.screen_name(@scratch)]
+              end
+            when TypedMethodDef
+              if mdef.rbs_source
+                method_name, sigs = mdef.rbs_source
+                explicit_methods[method_name] = sigs
               end
             end
           end
@@ -164,6 +170,10 @@ module TypeProfiler
         end
         attr_methods.each do |(method_name, hidden), (kind, ty)|
           puts "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
+        end
+        explicit_methods.each do |method_name, sigs|
+          sigs = sigs.sort.join("\n" + "#" + " " * (method_name.size + 6) + "| ")
+          puts "# def #{ method_name } : #{ sigs }"
         end
         iseq_methods.each do |method_name, sigs|
           sigs = sigs.sort.join("\n" + " " * (method_name.size + 7) + "| ")

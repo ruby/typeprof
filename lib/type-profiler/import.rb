@@ -141,6 +141,7 @@ module TypeProfiler
 
         included_modules = []
         methods = {}
+        rbs_sources = {}
         type_params = nil
 
         @current_env.class_decls[type_name].decls.each do |decl|
@@ -210,8 +211,15 @@ module TypeProfiler
               end
 
               method_def = translate_typed_method_def(method_types)
-              methods[[false, name]] = method_def if member.instance?
-              methods[[true, name]] = method_def if member.singleton?
+              rbs_source = [(member.kind == :singleton ? "self." : "") + member.name.to_s, member.types.map {|type| type.location.source }]
+              if member.instance?
+                methods[[false, name]] = method_def
+                rbs_sources[[false, name]] = rbs_source
+              end
+              if member.singleton?
+                methods[[true, name]] = method_def
+                rbs_sources[[true, name]] = rbs_source
+              end
             when RBS::AST::Members::AttrReader, RBS::AST::Members::AttrAccessor, RBS::AST::Members::AttrWriter
               raise NotImplementedError
             when RBS::AST::Members::Alias
@@ -239,7 +247,7 @@ module TypeProfiler
           end
         end
 
-        result[klass] = [type_params, superclass, included_modules, methods]
+        result[klass] = [type_params, superclass, included_modules, methods, rbs_sources]
       end.compact
 
       result
@@ -375,43 +383,6 @@ module TypeProfiler
         raise NotImplementedError
       end
     end
-
-    def remove_builtin_definitions(dump, builtin)
-      builtin[0].each do |name, (_type_params, _super_class, included_modules, methods)|
-        _, _, new_included_modules, new_methods = dump[0][name]
-        if new_included_modules
-          new_included_modules -= included_modules
-          dump[0][name][1] = new_included_modules
-        end
-        if new_methods
-          methods.each do |method_name, method_defs|
-            new_method_defs = new_methods[method_name]
-            if new_method_defs
-              new_method_defs -= method_defs
-              if new_method_defs.empty?
-                new_methods.delete(method_name)
-              else
-                new_methods[method_name] = new_method_defs
-              end
-            end
-          end
-        end
-        if dump[0][name][1].empty? && new_methods.empty?
-          dump[0].delete(name)
-        end
-      end
-
-      builtin[1].each do |name, type|
-        new_type = dump[1][name]
-        if new_type
-          if type == new_type
-            dump[1].delete(name)
-          end
-        end
-      end
-
-      dump
-    end
   end
 
   module RubySignatureImporter
@@ -440,13 +411,13 @@ module TypeProfiler
     end
 
     def import_rbs_file(scratch, rbs_path)
-      import_ruby_signature(scratch, scratch.rbs_reader.load_path(Pathname(rbs_path)))
+      import_ruby_signature(scratch, scratch.rbs_reader.load_path(Pathname(rbs_path)), true)
     end
 
-    def import_ruby_signature(scratch, dump)
+    def import_ruby_signature(scratch, dump, explicit = false)
       rbs_classes, rbs_constants = dump
       classes = []
-      rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods)|
+      rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods, rbs_sources)|
         next if classpath == [:BasicObject]
         next if classpath == [:NilClass]
         if classpath != [:Object]
@@ -468,16 +439,18 @@ module TypeProfiler
         else
           klass = Type::Builtin[:obj]
         end
-        classes << [klass, included_modules, methods]
+        classes << [klass, included_modules, methods, rbs_sources]
       end
 
-      classes.each do |klass, included_modules, methods|
+      classes.each do |klass, included_modules, methods, rbs_sources|
         included_modules.each do |mod|
           mod = path_to_klass(scratch, mod)
           scratch.include_module(klass, mod, false)
         end
         methods.each do |(singleton, method_name), mdef|
-          mdef = translate_typed_method_def(scratch, method_name, mdef)
+          rbs_source = nil
+          rbs_source = rbs_sources[[singleton, method_name]] if explicit
+          mdef = translate_typed_method_def(scratch, method_name, mdef, rbs_source)
           scratch.add_method(klass, method_name, singleton, mdef)
         end
       end
@@ -491,7 +464,7 @@ module TypeProfiler
       true
     end
 
-    def translate_typed_method_def(scratch, method_name, mdef)
+    def translate_typed_method_def(scratch, method_name, mdef, rbs_source)
       sig_rets = mdef.map do |type_params, lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty|
         if blk
           blk = translate_typed_block(scratch, blk)
@@ -515,7 +488,7 @@ module TypeProfiler
         end
       end.compact
 
-      TypedMethodDef.new(sig_rets)
+      TypedMethodDef.new(sig_rets, rbs_source)
     end
 
     def translate_typed_block(scratch, blk)

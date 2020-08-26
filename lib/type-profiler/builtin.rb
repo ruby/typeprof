@@ -549,6 +549,6 @@ module TypeProfiler
     scratch.add_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
 
     fargs, ret_ty = FormalArguments.new([], [], nil, [], nil, nil, Type.any), Type.any
-    scratch.add_method(klass_obj, :initialize, false, TypedMethodDef.new([[fargs, ret_ty]]))
+    scratch.add_method(klass_obj, :initialize, false, TypedMethodDef.new([[fargs, ret_ty]], nil))
   end
 end
