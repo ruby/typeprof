@@ -1,7 +1,6 @@
 # Ruby Type Profiler
 
-WARNING: Use Ruby 2.7.1
-WARNING: This implementation is very preliminary.
+WARNING: Use Ruby 2.7.1 or master
 
 ## Setup
 
@@ -9,8 +8,6 @@ WARNING: This implementation is very preliminary.
 git clone https://github.com/mame/ruby-type-profiler.git
 git submodule init
 bundle install
-bundle exec rbs vendor --stdlib
-bundle exec tools/gen-rbs-json.rb
 ruby exe/type-profiler target.rb
 ```
 
@@ -22,8 +19,7 @@ def foo(x)
   if x > 10
     x.to_s
   else
-    x.boo()
-    x + 42
+    nil
   end
 end
 
@@ -31,22 +27,22 @@ foo(42)
 ```
 
 ```
-$ exe/type-profiler test.rb
-test.rb:6: [error] undefined method: Integer#boo
-test.rb:7: [error] failed to resolve overload: Integer#+
-Object#foo :: (Integer) -> String
+$ bundle exec ruby exe/type-profiler test.rb
+# Classes
+class Object
+  def foo : (Integer) -> String?
+end
 ```
 
-## TODO
+## Document
 
-There are many features that are not supported yet or incompletely:
+[English](doc/doc.md) / [日本語](doc/doc.ja.md)
 
-* Many builtin features: Now working to import the definitions from [ruby-signature](https://github.com/ruby/ruby-signature)
-* Module#include
-* Exceptions and some control structure (redo, retry, etc.)
-* Flow sensitivity
-* Meta-programming features (is_a?, send, etc.)
-* Requiring .rbs instead of .rb (for some methods of application)
-* Performance: type profiling may be very slow
-* Test, test, test
-* etc. etc.
+## Todo
+
+Contribution is welcome!
+
+* Reorganize the test suite (by using minitest framework or something)
+* Design and implement an reasonable CLI UI (nothing is configurable currently)
+* Release a gem
+* Continue to perform an experiment

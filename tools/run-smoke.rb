@@ -1,5 +1,8 @@
 require_relative "../lib/type-profiler"
 
+ENV["TP_SHOW_ERRORS"] = "1"
+ENV["TP_DETAILED_STUB"] = "1"
+
 alias original_puts puts
 def puts(*s)
   if $output

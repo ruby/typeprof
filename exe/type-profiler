@@ -3,11 +3,11 @@
 require_relative "../lib/type-profiler"
 
 rbs = nil
-if File.extname(ARGV[0]) == ".rbs"
-  rbs = ARGV.shift
-end
 
 if ARGV[0]
+  if File.extname(ARGV[0]) == ".rbs"
+    rbs = ARGV.shift
+  end
   iseq = TypeProfiler::ISeq.compile(ARGV[0])
 else
   iseq = TypeProfiler::ISeq.compile_str($<.read)
