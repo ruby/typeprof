@@ -450,3 +450,4 @@ Current candidates:
 * Stooby
 * Sherlock
 * Stanalyzer
+* SakeType

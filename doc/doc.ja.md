@@ -436,3 +436,4 @@ foo
 * Stooby
 * Sherlock
 * Stanalyzer
+* SakeType
