@@ -447,3 +447,6 @@ Current candidates:
 * Takana
 * Scone
 * RBSgen
+* Stooby
+* Sherlock
+* Stanalyzer

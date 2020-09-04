@@ -433,3 +433,6 @@ foo
 * Takana
 * Scone
 * RBSgen
+* Stooby
+* Sherlock
+* Stanalyzer
