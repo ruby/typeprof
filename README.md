@@ -7,6 +7,7 @@ WARNING: Use Ruby 2.7.1 or master
 ```
 git clone https://github.com/mame/ruby-type-profiler.git
 git submodule init
+git submodule update
 bundle install
 ruby exe/type-profiler target.rb
 ```
