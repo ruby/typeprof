@@ -1673,9 +1673,14 @@ module TypeProfiler
             when Type::Hash
               kw_ty = ty
             when Type::Union
-              elems = ty.hash_elems
-              elems ||= Type::Hash::Elements.new({Type.any => Type.any})
-              kw_ty = Type::Hash.new(elems, Type::Instance.new(Type::Builtin[:hash]))
+              hash_elems = nil
+              ty.elems.each do |(container_kind, base_type), elems|
+                if container_kind == Type::Hash
+                  hash_elems = hash_elems ? hash_elems.union(elems) : elems
+                end
+              end
+              hash_elems ||= Type::Hash::Elements.new({Type.any => Type.any})
+              kw_ty = Type::Hash.new(hash_elems, Type::Instance.new(Type::Builtin[:hash]))
             else
               warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
               kw_ty = nil
@@ -1694,9 +1699,14 @@ module TypeProfiler
           aargs = aargs[0..-2]
           kw_ty = ty
         when Type::Union
-          elems = ty.hash_elems
-          elems ||= Type::Hash::Elements.new({Type.any => Type.any})
-          kw_ty = Type::Hash.new(elems, Type::Instance.new(Type::Builtin[:hash]))
+          hash_elems = nil
+          ty.elems.each do |(container_kind, base_type), elems|
+            if container_kind == Type::Hash
+              hash_elems = hash_elems ? hash_elems.union(elems) : elems
+            end
+          end
+          hash_elems ||= Type::Hash::Elements.new({Type.any => Type.any})
+          kw_ty = Type::Hash.new(hash_elems, Type::Instance.new(Type::Builtin[:hash]))
         when Type::Any
           aargs = aargs[0..-2]
           kw_ty = ty
@@ -1781,8 +1791,16 @@ module TypeProfiler
             any_ty = nil
             case aarg_ty
             when Type::Union
-              ary_elems = aarg_ty.array_elems
-              aarg_ty = Type::Union.new(aarg_ty.types, nil, aarg_ty.hash_elems)
+              ary_elems = nil
+              other_elems = nil
+              aarg_ty.elems&.each do |(container_kind, base_type), elems|
+                if container_kind == Type::Array
+                  ary_elems = ary_elems ? ary_elems.union(elems) : elems
+                else
+                  other_elems = other_elems ? other_elems.union(elems) : elems
+                end
+              end
+              aarg_ty = Type::Union.new(aarg_ty.types, other_elems)
               any_ty = Type.any if aarg_ty.types.include?(Type.any)
             when Type::Array
               ary_elems = aarg_ty.elems

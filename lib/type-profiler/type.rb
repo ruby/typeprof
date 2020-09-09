@@ -51,25 +51,27 @@ module TypeProfiler
 
       if ty1.is_a?(Union) && ty2.is_a?(Union)
         ty = ty1.types.sum(ty2.types)
-        array_elems = union_elems(ty1.array_elems, ty2.array_elems)
-        hash_elems = union_elems(ty1.hash_elems, ty2.hash_elems)
-        Type::Union.new(ty, array_elems, hash_elems).normalize
+        all_elems = ty1.elems.dup || {}
+        ty2.elems&.each do |key, elems|
+          all_elems[key] = union_elems(all_elems[key], elems)
+        end
+        all_elems = nil if all_elems.empty?
+
+        Type::Union.new(ty, all_elems).normalize
       else
         ty1, ty2 = ty2, ty1 if ty2.is_a?(Union)
         if ty1.is_a?(Union)
-          Type::Union.new(ty1.types.add(ty2), ty1.array_elems, ty1.hash_elems).normalize
+          Type::Union.new(ty1.types.add(ty2), ty1.elems).normalize
         else
-          Type::Union.new(Utils::Set[ty1, ty2], nil, nil).normalize
+          Type::Union.new(Utils::Set[ty1, ty2], nil).normalize
         end
       end
     end
 
     private def container_to_union(ty)
       case ty
-      when Type::Array
-        Type::Union.new(Utils::Set[], ty.elems, nil)
-      when Type::Hash
-        Type::Union.new(Utils::Set[], nil, ty.elems)
+      when Type::Array, Type::Hash
+        Type::Union.new(Utils::Set[], { [ty.class, ty.base_type] => ty.elems })
       else
         ty
       end
@@ -128,19 +130,19 @@ module TypeProfiler
     end
 
     class Union < Type
-      def initialize(tys, ary_elems, hash_elems)
+      def initialize(tys, elems)
         raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
+
+        # invariant check
         local = nil
         tys.each do |ty|
           raise unless ty.is_a?(Type)
           local = true if ty.is_a?(LocalArray) || ty.is_a?(LocalHash)
-          #raise if ty.is_a?(Type::Array)
-          #raise if ty.is_a?(Type::Hash)
         end
-        raise if local && (ary_elems || hash_elems)
-        @array_elems = ary_elems # Type::Array::Elements
-        @hash_elems = hash_elems # Type::Array::Elements
+        raise if local && elems
+
+        @elems = elems
       end
 
       def limit_size(limit)
@@ -149,21 +151,22 @@ module TypeProfiler
         @types.each do |ty|
           tys = tys.add(ty.limit_size(limit - 1))
         end
-        array_elems = @array_elems&.limit_size(limit - 1)
-        hash_elems = @hash_elems&.limit_size(limit - 1)
-        Union.new(tys, array_elems, hash_elems)
+        elems = @elems&.to_h do |key, elems|
+          [key, elems.limit_size(limit - 1)]
+        end
+        Union.new(tys, elems)
       end
 
-      attr_reader :types, :array_elems, :hash_elems
+      attr_reader :types, :elems
 
       def normalize
-        if @types.size == 1 && !@array_elems && !@hash_elems
+        if @types.size == 1 && !@elems
           @types.each {|ty| return ty }
         elsif @types.size == 0
-          if @array_elems && !@hash_elems
-            Type::Array.new(@array_elems, Type::Instance.new(Type::Builtin[:ary]))
-          elsif !@array_elems && @hash_elems
-            Type::Hash.new(@hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+          if @elems && @elems.size == 1
+            (container_kind, base_type), elems = @elems.first
+            # container_kind = Type::Array or Type::Hash
+            container_kind.new(elems, base_type)
           else
             self
           end
@@ -174,33 +177,30 @@ module TypeProfiler
 
       def each_child(&blk) # local
         @types.each(&blk)
-        raise if @array_elems || @hash_elems
+        raise if @elems
       end
 
       def each_child_global(&blk)
         @types.each(&blk)
-        yield Type::Array.new(@array_elems, Type::Instance.new(Type::Builtin[:ary])) if @array_elems
-        yield Type::Hash.new(@hash_elems, Type::Instance.new(Type::Builtin[:hash])) if @hash_elems
+        @elems&.each do |(container_kind, base_type), elems|
+          yield container_kind.new(elems, base_type)
+        end
       end
 
       def inspect
         a = []
         a << "Type::Union{#{ @types.to_a.map {|ty| ty.inspect }.join(", ") }"
-        a << ", #{ Type::Array.new(@array_elems, Type.any).inspect }" if @array_elems
-        a << ", #{ Type::Hash.new(@hash_elems, Type.any).inspect }" if @hash_elems
+        @elems&.each do |(container_kind, base_type), elems|
+          a << ", #{ container_kind.new(elems, base_type).inspect }"
+        end
         a << "}"
         a.join
       end
 
       def screen_name(scratch)
         types = @types.to_a
-        if @array_elems
-          base_ty = Type::Instance.new(Type::Builtin[:ary])
-          types << Type::Array.new(@array_elems, base_ty)
-        end
-        if @hash_elems
-          base_ty = Type::Instance.new(Type::Builtin[:hash])
-          types << Type::Hash.new(@hash_elems, base_ty)
+        @elems&.each do |(container_kind, base_type), elems|
+          types << container_kind.new(elems, base_type)
         end
         if types.size == 0
           "bot"
@@ -228,27 +228,30 @@ module TypeProfiler
             types.join (" | ")
           end
         end
+      rescue SystemStackError
+        p self
+        raise
       end
 
       def globalize(env, visited, depth)
         return Type.any if depth <= 0
         tys = Utils::Set[]
-        raise if @array_elems
-        raise if @hash_elems
-        array_elems = @array_elems&.globalize(env, visited, depth - 1)
-        hash_elems = @hash_elems&.globalize(env, visited, depth - 1)
+        raise if @elems
+
+        elems = {}
         @types.each do |ty|
           ty = ty.globalize(env, visited, depth - 1)
           case ty
-          when Array
-            array_elems = union_elems(array_elems, ty.elems)
-          when Hash
-            hash_elems = union_elems(hash_elems, ty.elems)
+          when Type::Array, Type::Hash
+            key = [ty.class, ty.base_type]
+            elems[key] = union_elems(elems[key], ty.elems)
           else
             tys = tys.add(ty)
           end
         end
-        Type::Union.new(tys, array_elems, hash_elems).normalize
+        elems = nil if elems.empty?
+
+        Type::Union.new(tys, elems).normalize
       end
 
       def localize(env, alloc_site, depth)
@@ -258,19 +261,13 @@ module TypeProfiler
           env, ty2 = ty.localize(env, alloc_site2, depth - 1)
           ty2
         end
-        if @array_elems
-          base_ty = Type::Instance.new(Type::Builtin[:ary])
-          ary_ty = Type::Array.new(@array_elems, base_ty)
-          env, ary_ty = ary_ty.localize(env, alloc_site, depth - 1)
-          tys = tys.add(ary_ty)
+        @elems&.each do |(container_kind, base_type), elems|
+          ty = container_kind.new(elems, base_type)
+          alloc_site2 = alloc_site.add_id(container_kind.name.to_sym).add_id(base_type)
+          env, ty = ty.localize(env, alloc_site2, depth - 1)
+          tys = tys.add(ty)
         end
-        if @hash_elems
-          base_ty = Type::Instance.new(Type::Builtin[:hash])
-          hash_ty = Type::Hash.new(@hash_elems, base_ty)
-          env, hash_ty = hash_ty.localize(env, alloc_site, depth - 1)
-          tys = tys.add(hash_ty)
-        end
-        ty = Union.new(tys, nil, nil).normalize
+        ty = Union.new(tys, nil).normalize
         return env, ty
       end
 
@@ -317,9 +314,10 @@ module TypeProfiler
             tys = tys.add(ty)
           end
         end
-        array_elems = @array_elems&.substitute(subst, depth - 1)
-        hash_elems = @hash_elems&.substitute(subst, depth - 1)
-        ty = Union.new(tys, array_elems, hash_elems)
+        elems = @elems&.to_h do |(container_kind, base_type), elems|
+          [[container_kind, base_type], elems.substitute(subst, depth - 1)]
+        end
+        ty = Union.new(tys, elems)
         unions.each do |ty0|
           ty = ty.union(ty0)
         end
@@ -332,14 +330,14 @@ module TypeProfiler
     end
 
     def self.bot
-      @bot ||= Union.new(Utils::Set[], nil, nil)
+      @bot ||= Union.new(Utils::Set[], nil)
     end
 
     def self.bool
       @bool ||= Union.new(Utils::Set[
         Instance.new(Type::Builtin[:true]),
         Instance.new(Type::Builtin[:false])
-      ], nil, nil)
+      ], nil)
     end
 
     def self.nil
