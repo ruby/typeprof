@@ -160,7 +160,6 @@ module TypeProfiler
               name = member.name
 
               # ad-hoc filter
-              @array_special_tyvar_handling = false
               if member.instance?
                 case type_name.name
                 when :Object
@@ -169,16 +168,12 @@ module TypeProfiler
                   next if name == :is_a?
                   next if name == :respond_to?
                 when :Array
-                  @array_special_tyvar_handling = true
                   next if name == :[]
                   next if name == :[]=
                   next if name == :pop
                 when :Enumerable
-                  @array_special_tyvar_handling = true
                 when :Enumerator
-                  @array_special_tyvar_handling = true
                 when :Hash
-                  @array_special_tyvar_handling = true
                   next if name == :[]
                   next if name == :[]=
                   next if name == :to_proc
@@ -197,7 +192,6 @@ module TypeProfiler
               if member.singleton?
                 case type_name.name
                 when :Array
-                  @array_special_tyvar_handling = true
                 end
               end
 
@@ -339,11 +333,7 @@ module TypeProfiler
       when RBS::Types::Bases::Bottom
         [:union, []]
       when RBS::Types::Variable
-        if @array_special_tyvar_handling
-          [:var, ty.name]
-        else
-          [:any]
-        end
+        [:var, ty.name]
       when RBS::Types::Tuple
         tys = ty.types.map {|ty2| convert_type(ty2) }
         [:array, :Array, tys, [:union, []]]
