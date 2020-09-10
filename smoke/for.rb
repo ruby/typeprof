@@ -5,4 +5,5 @@ end
 __END__
 # Revealed types
 #  smoke/for.rb:2 #=> [Integer, Integer]?
+
 # Classes

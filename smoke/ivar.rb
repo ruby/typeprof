@@ -21,6 +21,7 @@ __END__
 class Object
   def log : (Integer | String) -> nil
 end
+
 class Foo
   @foo : Integer | String
   def foo= : (Integer | String) -> (Integer | String)

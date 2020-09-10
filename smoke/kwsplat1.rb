@@ -32,6 +32,7 @@ qux(**any)
 __END__
 # Errors
 smoke/kwsplat1.rb:30: [error] undefined method: Object#any
+
 # Classes
 class Object
   def foo : (k: Integer) -> nil

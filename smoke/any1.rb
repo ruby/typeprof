@@ -8,6 +8,7 @@ foo
 __END__
 # Errors
 smoke/any1.rb:2: [error] undefined method: Integer#undefined_method
+
 # Classes
 class Object
   def foo : -> untyped

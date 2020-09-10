@@ -25,11 +25,11 @@ module TypeProfiler
       ntrace
     end
 
-    def show_error(errors, backward_edge)
+    def show_error(errors, backward_edge, output)
       return if errors.empty?
       return unless ENV["TP_SHOW_ERRORS"]
 
-      puts "# Errors"
+      output.puts "# Errors"
       errors.each do |ep, msg|
         if ENV["TYPE_PROFILER_DETAIL"]
           backtrace = filter_backtrace(generate_analysis_trace(ep, {}, backward_edge))
@@ -39,33 +39,33 @@ module TypeProfiler
         loc, *backtrace = backtrace.map do |ep|
           ep.source_location
         end
-        puts "#{ loc }: #{ msg }"
+        output.puts "#{ loc }: #{ msg }"
         backtrace.each do |loc|
-          puts "        from #{ loc }"
+          output.puts "        from #{ loc }"
         end
       end
-      puts
+      output.puts
     end
 
-    def show_reveal_types(scratch, reveal_types)
+    def show_reveal_types(scratch, reveal_types, output)
       return if reveal_types.empty?
 
-      puts "# Revealed types"
+      output.puts "# Revealed types"
       reveal_types.each do |source_location, ty|
-        puts "#  #{ source_location } #=> #{ ty.screen_name(scratch) }"
+        output.puts "#  #{ source_location } #=> #{ ty.screen_name(scratch) }"
       end
-      puts
+      output.puts
     end
 
-    def show_gvars(scratch, gvar_write)
+    def show_gvars(scratch, gvar_write, output)
       # A signature for global variables is not supported in RBS
       return if gvar_write.empty?
 
-      puts "# Global variables"
+      output.puts "# Global variables"
       gvar_write.each do |gvar_name, ty|
-        puts "#  #{ gvar_name } : #{ ty.screen_name(scratch) }"
+        output.puts "#  #{ gvar_name } : #{ ty.screen_name(scratch) }"
       end
-      puts
+      output.puts
     end
   end
 
@@ -82,8 +82,8 @@ module TypeProfiler
       @yields = yields
     end
 
-    def show(stat_eps)
-      puts "# Classes" # and Modules
+    def show(stat_eps, output)
+      output.puts "# Classes" # and Modules
 
       stat_classes = {}
       stat_methods = {}
@@ -150,44 +150,43 @@ module TypeProfiler
 
         next if included_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
 
-        puts unless first
+        output.puts unless first
         first = false
 
-        name = class_def.name
         if class_def.superclass
           object = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj]
           superclass = object ? "" : " < #{ @class_defs[class_def.superclass].name }"
         end
 
-        puts "#{ class_def.kind } #{ class_def.name }#{ superclass }"
+        output.puts "#{ class_def.kind } #{ class_def.name }#{ superclass }"
         included_mods.sort.each do |ty|
-          puts "  include #{ ty }"
+          output.puts "  include #{ ty }"
         end
         ivars.each do |var, ty|
-          puts "  #{ var } : #{ ty }" unless var.start_with?("_")
+          output.puts "  #{ var } : #{ ty }" unless var.start_with?("_")
         end
         cvars.each do |var, ty|
-          puts "  #{ var } : #{ ty }"
+          output.puts "  #{ var } : #{ ty }"
         end
         attr_methods.each do |(method_name, hidden), (kind, ty)|
-          puts "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
+          output.puts "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
         end
         explicit_methods.each do |method_name, sigs|
           sigs = sigs.sort.join("\n" + "#" + " " * (method_name.size + 6) + "| ")
-          puts "# def #{ method_name } : #{ sigs }"
+          output.puts "# def #{ method_name } : #{ sigs }"
         end
         iseq_methods.each do |method_name, sigs|
           sigs = sigs.sort.join("\n" + " " * (method_name.size + 7) + "| ")
-          puts "  def #{ method_name } : #{ sigs }"
+          output.puts "  def #{ method_name } : #{ sigs }"
         end
-        puts "end"
+        output.puts "end"
       end
 
       if ENV["TP_STAT"]
-        puts "statistics:"
-        puts "  %d execution points" % stat_eps.size
-        puts "  %d classes" % stat_classes.size
-        puts "  %d methods (in total)" % stat_methods.size
+        output.puts "statistics:"
+        output.puts "  %d execution points" % stat_eps.size
+        output.puts "  %d classes" % stat_classes.size
+        output.puts "  %d methods (in total)" % stat_methods.size
       end
       if ENV["TP_COVERAGE"]
         coverage = {}

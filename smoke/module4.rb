@@ -23,6 +23,7 @@ __END__
 module M2
   def foo : -> :m2_foo
 end
+
 module M1
   def foo : -> :m1_foo
 end

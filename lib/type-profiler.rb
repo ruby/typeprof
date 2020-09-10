@@ -12,7 +12,7 @@ require_relative "type-profiler/builtin"
 $TYPE_DEPTH_LIMIT = 5
 
 module TypeProfiler
-  def self.type_profile(iseq, rbs_path)
+  def self.type_profile(iseq, rbs_path, output = $stdout)
     # TODO: resolve file path
     scratch = Scratch.new
     setup_initial_global_env(scratch)
@@ -25,7 +25,7 @@ module TypeProfiler
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
     prologue_env = Env.new(StaticEnv.new(:top, Type.nil, false), [], [], Utils::HashWrapper.new({}))
     scratch.add_callsite!(main_ep.ctx, nil, prologue_ep, prologue_env) {|ty, ep| }
-    scratch.type_profile
+    scratch.report(scratch.type_profile, output)
   end
 
   def self.starting_state(iseq)

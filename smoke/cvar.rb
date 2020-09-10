@@ -21,6 +21,7 @@ class Object
   def log1 : (Integer) -> nil
   def log2 : (Integer) -> nil
 end
+
 class A
   @@var : Integer
   def foo : -> nil

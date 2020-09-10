@@ -17,6 +17,7 @@ __END__
 class Object
   def log : (A) -> nil
 end
+
 class A
   @int : Integer
   @str : String

@@ -12,14 +12,14 @@ module TypeProfiler
       new(RubyVM::InstructionSequence.compile_file(file, **opt).to_a)
     end
 
-    def self.compile_str(str)
+    def self.compile_str(str, path = nil)
       opt = RubyVM::InstructionSequence.compile_option
       opt[:inline_const_cache] = false
       opt[:peephole_optimization] = false
       opt[:specialized_instruction] = false
       opt[:operands_unification] = false
       opt[:coverage_enabled] = false
-      new(RubyVM::InstructionSequence.compile(str, **opt).to_a)
+      new(RubyVM::InstructionSequence.compile(str, path, **opt).to_a)
     end
 
     FRESH_ID = [0]

@@ -21,6 +21,7 @@ class A
   def foo : (Integer | String) -> nil
   def bar : (Integer | String) -> nil
 end
+
 class B < A
   def bar : (Integer | String) -> nil
 end

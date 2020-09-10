@@ -28,9 +28,11 @@ __END__
 class Common
   def func : (:sym | String) { (Integer) -> (:sym2 | Integer) } -> (:sym2 | Integer)
 end
+
 class Foo
   def foo : -> (:sym2 | Integer)
 end
+
 class Bar
   def bar : -> (:sym2 | Integer)
 end

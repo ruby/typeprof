@@ -22,9 +22,11 @@ __END__
 module M1
   def foo : -> :m1
 end
+
 module M2
   def foo : -> :m2
 end
+
 class C
   include M1
   include M2

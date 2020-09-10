@@ -11,6 +11,7 @@ __END__
 class A
   @@var : :a
 end
+
 class B < A
   @@var : :b
 end

@@ -21,11 +21,13 @@ __END__
 # Errors
 smoke/constant2.rb:8: [error] the class "C" is String
 smoke/constant2.rb:15: [warning] already initialized constant Object::BAR
+
 # Classes
 class Object
   def foo : (Integer | untyped) -> nil
   def log : (String) -> nil
 end
+
 class C(dummy)
   def foo : -> nil
 end

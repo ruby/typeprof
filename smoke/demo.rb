@@ -69,10 +69,12 @@ class Object
   def identity : (:sym | Integer | String) -> (:sym | Integer | String)
   def fib : (Integer) -> Integer
 end
+
 class A
   def foo : (Integer | String) -> nil
   def bar : (Integer | String) -> nil
 end
+
 class B < A
   def bar : (Integer | String) -> nil
 end

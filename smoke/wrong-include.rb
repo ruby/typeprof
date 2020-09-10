@@ -19,6 +19,7 @@ __END__
 module Bar
   def bar : -> :bar
 end
+
 module Foo
   include Bar
   def foo : -> :foo

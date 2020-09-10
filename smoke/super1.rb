@@ -36,12 +36,15 @@ __END__
 class Object
   def log : (Baz) -> nil
 end
+
 class Foo
   def f : (C) -> X
 end
+
 class Bar < Foo
   def f : (B) -> Y
 end
+
 class Baz < Bar
   def f : (A) -> Z
 end

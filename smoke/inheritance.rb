@@ -28,6 +28,7 @@ class A
   def bar : (Integer | String) -> nil
   def self.test : (Integer | String) -> nil
 end
+
 class B < A
   def bar : ((Integer | String)?) -> nil
 end

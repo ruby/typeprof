@@ -23,6 +23,7 @@ class Object
   def foo : (Integer) -> Integer
   def bar : (String) -> String
 end
+
 class Test
   def baz : (Integer) -> Integer
   def qux : (String) -> String

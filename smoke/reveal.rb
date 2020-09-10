@@ -9,4 +9,5 @@ __END__
 #  smoke/reveal.rb:2 #=> String
 #  smoke/reveal.rb:3 #=> :sym
 #  smoke/reveal.rb:4 #=> [Integer, String, :sym]
+
 # Classes

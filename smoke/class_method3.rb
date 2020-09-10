@@ -21,6 +21,7 @@ __END__
 class ForWin
   def self.foo : -> nil
 end
+
 class ForLinux
   def self.foo : -> nil
 end

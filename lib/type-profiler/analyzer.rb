@@ -821,22 +821,22 @@ module TypeProfiler
         end
       end
 
-      report(stat_eps)
+      stat_eps
     end
 
-    def report(stat_eps)
-      Reporters.show_error(@errors, @backward_edges)
+    def report(stat_eps, output)
+      Reporters.show_error(@errors, @backward_edges, output)
 
-      Reporters.show_reveal_types(self, @reveal_types)
+      Reporters.show_reveal_types(self, @reveal_types, output)
 
-      Reporters.show_gvars(self, @gvar_table.write)
+      Reporters.show_gvars(self, @gvar_table.write, output)
 
       #RubySignatureExporter2.new(
       #  self, @include_relations, @ivar_table.write, @cvar_table.write, @class_defs
       #).show
 
       #return
-      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs, @sig_fargs, @sig_ret, @yields).show(stat_eps)
+      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs, @sig_fargs, @sig_ret, @yields).show(stat_eps, output)
     end
 
     def globalize_type(ty, env, ep)

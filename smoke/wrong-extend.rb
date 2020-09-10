@@ -19,6 +19,7 @@ __END__
 module Bar
   def bar : -> :bar
 end
+
 module Foo
   def foo : -> :foo
 end

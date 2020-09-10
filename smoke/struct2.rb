@@ -16,6 +16,7 @@ __END__
 class Object
   def gen_foobar : -> FooBar
 end
+
 class FooBar < Struct
   attr_accessor foo() : Integer | String
   attr_accessor bar() : :sym?

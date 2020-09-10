@@ -23,6 +23,7 @@ baz
 __END__
 # Errors
 smoke/backtrace.rb:2: [error] undefined method: Object#unknown_method
+
 # Classes
 class Object
   def foo : -> untyped

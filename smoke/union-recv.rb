@@ -23,6 +23,7 @@ __END__
 class SuperBase
   def self.foo : -> (A.class | B.class)
 end
+
 class Base < SuperBase
   def self.foo : -> (A.class | B.class)
 end
