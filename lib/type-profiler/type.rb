@@ -974,6 +974,9 @@ module TypeProfiler
       end
       if kw_rest_acceptable
         kw_rest_ty = @kw_ty
+        if kw_rest_ty == Type.any
+          kw_rest_ty = Type.gen_hash {|h| h[Type.any] = Type.any }
+        end
       end
       #if @kw_ty
       #  yield "passed a keyword to non-keyword method"
