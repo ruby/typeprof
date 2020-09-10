@@ -236,6 +236,7 @@ module TypeProfiler
               raise NotImplementedError
             when RBS::AST::Members::Public, RBS::AST::Members::Private
             when RBS::AST::Declarations::Constant
+            when RBS::AST::Declarations::Alias
             else
               p member
             end
