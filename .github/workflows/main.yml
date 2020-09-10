@@ -16,8 +16,10 @@ jobs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby-version }}
-    - name: Run the default task
+    - name: Set up RBS and bundle install
       run: |
         cd rbs && bundle install && bundle exec rake parser && cd ..
         bundle install
+    - name: Run the test
+      run: |
         bundle exec rake
