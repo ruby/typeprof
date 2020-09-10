@@ -20,6 +20,6 @@ jobs:
       run: |
         cd rbs && bundle install && bundle exec rake parser && cd ..
         bundle install
-    - name: Run the test
+    - name: Run the test suite
       run: |
         bundle exec rake
