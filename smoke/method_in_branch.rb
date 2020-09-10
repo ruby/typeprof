@@ -14,5 +14,9 @@ end
 bar
 
 __END__
-Object#bar :: () -> (String | Integer)
-Object#foo :: () -> NilClass
+# Classes
+class Object
+  def foo : -> nil
+  def bar : -> Integer
+          | -> String
+end
