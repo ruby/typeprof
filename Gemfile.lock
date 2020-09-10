@@ -21,6 +21,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
+    coverage-helpers (1.0.0)
     docile (1.3.2)
     power_assert (1.2.0)
     rake (13.0.1)
@@ -32,6 +33,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  coverage-helpers
   rake
   rbs!
   simplecov!
