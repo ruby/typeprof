@@ -1,6 +1,6 @@
 coverage.dump
 coverage.info
 coverage/
-stackprof.dump
+stackprof*.dump
 *.log
 .*.sw*
