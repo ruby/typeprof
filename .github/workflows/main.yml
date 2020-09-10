@@ -4,6 +4,9 @@ on: [push,pull_request]
 
 jobs:
   build:
+    strategy:
+      matrix:
+        ruby-version: [2.7.1, head]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -12,7 +15,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 2.7.1
+        ruby-version: ${{ matrix.ruby-version }}
     - name: Run the default task
       run: |
         cd rbs && bundle install && bundle exec rake parser && cd ..
