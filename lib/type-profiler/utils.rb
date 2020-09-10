@@ -42,18 +42,10 @@ module TypeProfiler
         new(tbl)
       end
 
-      TABLE = {}
-      def self.new(tbl)
-        TABLE[tbl] ||= super(tbl)
-      end
-
       def initialize(tbl)
         @tbl = tbl
         @tbl.freeze
-        @hash = tbl.hash
       end
-
-      attr_reader :hash
 
       def each(&blk)
         @tbl.each_key(&blk)

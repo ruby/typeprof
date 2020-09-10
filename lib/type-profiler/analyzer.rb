@@ -899,7 +899,6 @@ module TypeProfiler
     end
 
     def step(ep)
-      orig_ep = ep
       env = @ep2env[ep]
       raise "nil env" unless env
 
@@ -1475,12 +1474,11 @@ module TypeProfiler
         env = env.push(Type.optional(sym_ty))
       when :checkmatch
         flag, = operands
-        array = flag & 4 != 0
+        _array = flag & 4 != 0
         case flag & 3
         when 1
           raise NotImplementedError
         when 2 # VM_CHECKMATCH_TYPE_CASE
-          #raise NotImplementedError if array
           env, = env.pop(2)
           env = env.push(Type.bool)
         when 3 # VM_CHECKMATCH_TYPE_RESCUE
@@ -1870,7 +1868,6 @@ module TypeProfiler
     end
 
     def show_block_signature(blk_ctxs)
-      blk_tys = {}
       all_farg_tys = all_ret_tys = nil
       blk_ctxs.each do |blk_ctx, farg_tys|
         if all_farg_tys

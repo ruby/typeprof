@@ -282,8 +282,8 @@ module TypeProfiler
         sp -= 2
       when :send, :invokesuper
         opt, = operands
-        flags = opt[:flag]
-        mid = opt[:mid]
+        _flags = opt[:flag]
+        _mid = opt[:mid]
         kw_arg = opt[:kw_arg]
         argc = opt[:orig_argc]
         argc += 1 # receiver

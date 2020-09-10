@@ -6,6 +6,7 @@ module TypeProfiler
       @env, @builtin_env_dump = RBSReader.builtin_env
     end
 
+    @builtin_env = nil
     def self.builtin_env
       return @builtin_env.dup, @builtin_env_dump if @builtin_env
 
@@ -256,7 +257,6 @@ module TypeProfiler
         end
         type_params = type.type_params
 
-        singleton = false
         begin
           lead_tys = type.type.required_positionals.map do |type|
             convert_type(type.type)

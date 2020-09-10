@@ -268,7 +268,7 @@ module TypeProfiler
               following_tys.unshift(last_ty)
             end
             rest_ty = lead_tys.inject(last_ty) {|ty1, ty2| ty1.union(ty2) }
-            rest_ary_ty = Array.new(Elements.new([], Type.bot), base_ty)
+            rest_ary_ty = Array.new(Elements.new([], rest_ty), base_ty)
             return rest_ary_ty, following_tys
           end
         end
