@@ -15,5 +15,6 @@ jobs:
         ruby-version: 2.7.1
     - name: Run the default task
       run: |
+        cd rbs && bundle install && bundle exec rake parser && cd ..
         bundle install
         bundle exec rake
