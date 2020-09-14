@@ -23,7 +23,7 @@ module TypeProfiler
         File.write(File.join(testbed_dir, "Gemfile.lock"), File.read(File.join(testbed_dir, "../goodcheck-Gemfile.lock")))
         ENV["BUNDLE_GEMFILE"] = nil
         ENV.delete("RUBYOPT")
-        system("bundle", "install", chdir: testbed_dir) || raise("failed to bundle install in goodcheck")
+        system("bundle", "install", "--quiet", chdir: testbed_dir) || raise("failed to bundle install in goodcheck")
         ENV["BUNDLE_GEMFILE"] = File.join(testbed_dir, "Gemfile")
         Bundler.setup
 
