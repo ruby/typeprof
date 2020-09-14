@@ -1467,7 +1467,9 @@ module TypeProfiler
         env, (a, b) = env.pop(2)
         env = env.push(a).push(b)
       when :reverse
-        raise NotImplementedError, "reverse"
+        n, = operands
+        env, tys = env.pop(n)
+        tys.reverse_each {|ty| env = env.push(ty) }
       when :defined
         env, = env.pop(1)
         sym_ty = Type::Symbol.new(nil, Type::Instance.new(Type::Builtin[:sym]))

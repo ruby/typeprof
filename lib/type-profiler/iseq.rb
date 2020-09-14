@@ -336,7 +336,10 @@ module TypeProfiler
         return nil if sp <= 0
         sp += 2
       when :reverse
-        raise NotImplementedError, "reverse"
+        n, = operands
+        sp -= n
+        return nil if sp <= 0
+        sp += n
       when :defined
         sp -= 1
         return nil if sp <= 0
