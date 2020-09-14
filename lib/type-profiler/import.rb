@@ -231,9 +231,7 @@ module TypeProfiler
               mod = name.namespace.path + [name.name]
               included_modules << mod
             when RBS::AST::Members::InstanceVariable
-              raise NotImplementedError
             when RBS::AST::Members::ClassVariable
-              raise NotImplementedError
             when RBS::AST::Members::Public, RBS::AST::Members::Private
             when RBS::AST::Declarations::Constant
             when RBS::AST::Declarations::Alias
