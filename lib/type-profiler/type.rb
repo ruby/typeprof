@@ -869,6 +869,7 @@ module TypeProfiler
       @rest_ty = rest_ty
       @kw_ty = kw_ty
       @blk_ty = blk_ty
+      raise unless blk_ty
     end
 
     attr_reader :lead_tys, :rest_ty, :kw_ty, :blk_ty

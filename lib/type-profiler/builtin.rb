@@ -138,7 +138,7 @@ module TypeProfiler
         ctn[type.any, ep, env]
         return
       end
-      naargs = ActualArguments.new([recv], nil, nil, nil)
+      naargs = ActualArguments.new([recv], Type.nil, nil, Type.nil)
       given_block = env.static_env.blk_ty == recv
       scratch.do_invoke_block(given_block, aargs.blk_ty, naargs, ep, env, replace_recv_ty: recv) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]]
