@@ -20,9 +20,11 @@ module TypeProfiler
         path = File.join(__dir__, "../../testbed/goodcheck/exe/goodcheck")
         name = "testbed/goodcheck/exe/goodcheck"
 
-        system("bundle", "install", "--quiet", chdir: "testbed/goodcheck")
+        testbed_dir = File.join(__dir__, "../../testbed/goodcheck/")
+        File.write(File.join(testbed_dir, "Gemfile.lock"), File.read(File.join(testbed_dir, "../goodcheck-Gemfile.lock")))
+        system("bundle", "install", "--quiet", chdir: testbed_dir) || raise
         Bundler.reset!
-        ENV["BUNDLE_GEMFILE"] = File.join(__dir__, "../../testbed/goodcheck/Gemfile")
+        ENV["BUNDLE_GEMFILE"] = File.join(testbed_dir, "Gemfile")
         Bundler.setup
 
         actual = TestRun.run(name, File.read(path), show_errors: false, detailed_stub: false)
