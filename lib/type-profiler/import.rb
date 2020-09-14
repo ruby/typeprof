@@ -362,6 +362,8 @@ module TypeProfiler
         [:union, ty.types.map {|ty2| begin convert_type(ty2); rescue UnsupportedType; end }.compact]
       when RBS::Types::Optional
         [:optional, convert_type(ty.type)]
+      when RBS::Types::Record
+        [:any]
       when RBS::Types::Interface
         raise UnsupportedType if ty.to_s == "::_ToStr" # XXX
         raise UnsupportedType if ty.to_s == "::_ToInt" # XXX
