@@ -1674,7 +1674,7 @@ module TypeProfiler
               kw_ty = ty
             when Type::Union
               hash_elems = nil
-              ty.elems.each do |(container_kind, base_type), elems|
+              ty.elems&.each do |(container_kind, base_type), elems|
                 if container_kind == Type::Hash
                   hash_elems = hash_elems ? hash_elems.union(elems) : elems
                 end
