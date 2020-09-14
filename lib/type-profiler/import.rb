@@ -215,8 +215,8 @@ module TypeProfiler
                 methods[[true, name]] = method_def
                 rbs_sources[[true, name]] = rbs_source
               end
-            when RBS::AST::Members::AttrReader, RBS::AST::Members::AttrAccessor, RBS::AST::Members::AttrWriter
-              raise NotImplementedError
+            #when RBS::AST::Members::AttrReader, RBS::AST::Members::AttrAccessor, RBS::AST::Members::AttrWriter
+              #raise NotImplementedError
             when RBS::AST::Members::Alias
               if member.instance?
                 method_def = methods[[false, member.old_name]]
@@ -238,7 +238,8 @@ module TypeProfiler
             when RBS::AST::Declarations::Constant
             when RBS::AST::Declarations::Alias
             else
-              p member
+              warn "Importing #{ member.class.name } is not supported yet"
+              #p member
             end
           end
         end
