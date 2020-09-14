@@ -5,6 +5,7 @@ on: [push,pull_request]
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         ruby-version: [2.7.1, head]
     runs-on: ubuntu-latest
