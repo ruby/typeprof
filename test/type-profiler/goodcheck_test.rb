@@ -20,6 +20,7 @@ module TypeProfiler
         path = File.join(__dir__, "../../testbed/goodcheck/exe/goodcheck")
         name = "testbed/goodcheck/exe/goodcheck"
 
+        system("bundle", "install", "--quiet", chdir: "testbed/goodcheck")
         Bundler.reset!
         ENV["BUNDLE_GEMFILE"] = File.join(__dir__, "../../testbed/goodcheck/Gemfile")
         Bundler.setup
