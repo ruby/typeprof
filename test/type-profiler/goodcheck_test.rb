@@ -6,6 +6,7 @@ module TypeProfiler
     test "testbed/goodcheck" do
       begin
         load_path_back = $LOAD_PATH
+        env_bundle_gemfile_back = ENV["BUNDLE_GEMFILE"]
 
         # ignore attached rbs
         class << RBS::EnvironmentLoader
@@ -17,16 +18,15 @@ module TypeProfiler
           end
         end
 
-        path = File.join(__dir__, "../../testbed/goodcheck/exe/goodcheck")
-        name = "testbed/goodcheck/exe/goodcheck"
-
+        Bundler.reset!
         testbed_dir = File.join(__dir__, "../../testbed/goodcheck/")
         File.write(File.join(testbed_dir, "Gemfile.lock"), File.read(File.join(testbed_dir, "../goodcheck-Gemfile.lock")))
-        system("bundle", "install", "--gemfile=" + File.join(testbed_dir, "Gemfile")) || raise
-        Bundler.reset!
         ENV["BUNDLE_GEMFILE"] = File.join(testbed_dir, "Gemfile")
+        system("bundle", "install", "--quiet") || raise
         Bundler.setup
 
+        name = "testbed/goodcheck/exe/goodcheck"
+        path = File.join(testbed_dir, "exe/goodcheck")
         actual = TestRun.run(name, File.read(path), show_errors: false, detailed_stub: false)
 
 
@@ -67,6 +67,7 @@ module TypeProfiler
 
       ensure
         $LOAD_PATH.replace(load_path_back)
+        ENV["BUNDLE_GEMFILE"] = env_bundle_gemfile_back
       end
     end
   end
