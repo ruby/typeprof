@@ -1,9 +1,9 @@
 source "https://rubygems.org"
 
 gem "rbs", path: "rbs"
-gem "rake"
 
 group :development do
+  gem "rake"
   gem "stackprof"
   gem "test-unit"
   gem "simplecov", github: "simplecov-ruby/simplecov"
