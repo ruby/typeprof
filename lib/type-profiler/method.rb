@@ -98,15 +98,21 @@ module TypeProfiler
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       case @kind
       when :reader
-        raise if aargs.lead_tys.size != 0
-        scratch.get_instance_variable(recv, @ivar, caller_ep, caller_env) do |ty, nenv|
-          ctn[ty, caller_ep, nenv]
+        if aargs.lead_tys.size == 0
+          scratch.get_instance_variable(recv, @ivar, caller_ep, caller_env) do |ty, nenv|
+            ctn[ty, caller_ep, nenv]
+          end
+        else
+          ctn[Type.any, caller_ep, caller_env]
         end
       when :writer
-        raise if aargs.lead_tys.size != 1
-        ty = aargs.lead_tys[0]
-        scratch.set_instance_variable(recv, @ivar, ty, caller_ep, caller_env)
-        ctn[ty, caller_ep, caller_env]
+        if aargs.lead_tys.size == 1
+          ty = aargs.lead_tys[0]
+          scratch.set_instance_variable(recv, @ivar, ty, caller_ep, caller_env)
+          ctn[ty, caller_ep, caller_env]
+        else
+          ctn[Type.any, caller_ep, caller_env]
+        end
       end
     end
   end
