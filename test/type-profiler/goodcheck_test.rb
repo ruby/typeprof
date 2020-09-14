@@ -22,7 +22,7 @@ module TypeProfiler
 
         testbed_dir = File.join(__dir__, "../../testbed/goodcheck/")
         File.write(File.join(testbed_dir, "Gemfile.lock"), File.read(File.join(testbed_dir, "../goodcheck-Gemfile.lock")))
-        system("bundle", "install", "--quiet", chdir: testbed_dir) || raise
+        system("bundle", "install", "--gemfile=" + File.join(testbed_dir, "Gemfile")) || raise
         Bundler.reset!
         ENV["BUNDLE_GEMFILE"] = File.join(testbed_dir, "Gemfile")
         Bundler.setup
