@@ -21,17 +21,18 @@ module TypeProfiler
       end
     end
 
-    def self.run(name, code)
-      new(name, code).run
+    def self.run(name, code, **opt)
+      new(name, code).run(**opt)
     end
 
     def initialize(name, code)
       @name, @code = name, code
     end
 
-    def run
-      ENV["TP_SHOW_ERRORS"] = "1"
-      ENV["TP_DETAILED_STUB"] = "1"
+    def run(show_errors: true, detailed_stub: true, show_progress: false)
+      ENV["TP_SHOW_ERRORS"] = "1" if show_errors
+      ENV["TP_DETAILED_STUB"] = "1" if detailed_stub
+      ENV["TP_SHOW_PROGRESS"] = "1" if show_progress
       $output = []
       verbose_back, $VERBOSE = $VERBOSE, nil
 

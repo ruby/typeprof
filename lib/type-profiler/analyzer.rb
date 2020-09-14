@@ -754,7 +754,7 @@ module TypeProfiler
       while true
         until @worklist.empty?
           counter += 1
-          if counter % 1000 == 0
+          if counter % 1000 == 0 && ENV["TP_SHOW_PROGRESS"]
             puts "iter %d, remain: %d" % [counter, @worklist.size]
             #exit if counter == 20000
           end

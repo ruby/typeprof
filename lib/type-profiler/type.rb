@@ -541,6 +541,10 @@ module TypeProfiler
       end
 
       attr_reader :fargs, :ret_ty
+
+      def screen_name(scratch)
+        "TypedProc[...]" # TODO: use RBS syntax
+      end
     end
 
     class Symbol < Type
