@@ -21,12 +21,12 @@ module TypeProfiler
       end
     end
 
-    def self.run(name, code, **opt)
-      new(name, code).run(**opt)
+    def self.run(name, code, rbs_path: nil, **opt)
+      new(name, code, rbs_path).run(**opt)
     end
 
-    def initialize(name, code)
-      @name, @code = name, code
+    def initialize(name, code, rbs_path)
+      @name, @code, @rbs_path = name, code, rbs_path
     end
 
     def run(show_errors: true, detailed_stub: true, show_progress: false)
@@ -38,7 +38,7 @@ module TypeProfiler
 
       iseq = TypeProfiler::ISeq.compile_str(@code, @name)
       buffer = DummyStdout.new
-      TypeProfiler.type_profile(iseq, nil, buffer)
+      TypeProfiler.type_profile(iseq, @rbs_path, buffer)
 
       buffer.result
 

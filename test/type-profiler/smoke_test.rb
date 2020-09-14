@@ -4,10 +4,11 @@ require_relative "../../lib/type-profiler"
 module TypeProfiler
   class SmokeTest < Test::Unit::TestCase
     Dir.glob(File.join(__dir__, "../../smoke/*.rb")).sort.each do |path|
+      rbs = path + "s" if File.readable?(path + "s") # check if .rbs exists
       name = "smoke/" + File.basename(path) 
       code, expected = File.read(path).split("__END__\n")
       test name do
-        actual = TestRun.run(name, code)
+        actual = TestRun.run(name, code, rbs_path: rbs)
 
         if ENV["TP_UPDATE_SMOKE_RESULTS"] == "1" && expected != actual
           puts "Update \"#{ name }\" !"
