@@ -22,4 +22,4 @@ jobs:
         bundle install
     - name: Run the test suite
       run: |
-        bundle exec rake
+        bundle exec rake TESTOPT=-v
