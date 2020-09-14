@@ -172,23 +172,51 @@ module TypeProfiler
         end
 
         def [](idx)
-          if idx < @lead_tys.size
-            @lead_tys[idx]
-          elsif @rest_ty == Type.bot
-            Type.nil
+          if idx >= 0
+            if idx < @lead_tys.size
+              @lead_tys[idx]
+            elsif @rest_ty == Type.bot
+              Type.nil
+            else
+              @rest_ty
+            end
           else
-            @rest_ty
+            i = @lead_tys.size + idx
+            i = [i, 0].max
+            ty = @rest_ty
+            @lead_tys[i..].each do |ty2|
+              ty = ty.union(ty2)
+            end
+            ty
           end
         end
 
         def update(idx, ty)
           if idx
-            if idx < @lead_tys.size
-              lead_tys = Utils.array_update(@lead_tys, idx, ty)
-              Elements.new(lead_tys, @rest_ty)
+            if idx >= 0
+              if idx < @lead_tys.size
+                lead_tys = Utils.array_update(@lead_tys, idx, ty)
+                Elements.new(lead_tys, @rest_ty)
+              else
+                rest_ty = @rest_ty.union(ty)
+                Elements.new(@lead_tys, rest_ty)
+              end
             else
-              rest_ty = @rest_ty.union(ty)
-              Elements.new(@lead_tys, rest_ty)
+              i = @lead_tys.size + idx
+              if @rest_ty == Type.bot
+                if i >= 0
+                  lead_tys = Utils.array_update(@lead_tys, i, ty)
+                  Elements.new(lead_tys, Type.bot)
+                else
+                  # TODO: out of bound? should we emit an error?
+                  Elements.new(@lead_tys, Type.bot)
+                end
+              else
+                i = [i, 0].max
+                lead_tys = @lead_tys[0, i] + @lead_tys[i..].map {|ty2| ty2.union(ty) }
+                rest_ty = @rest_ty.union(ty)
+                Elements.new(@lead_tys, rest_ty)
+              end
             end
           else
             lead_tys = @lead_tys.map {|ty1| ty1.union(ty) }
