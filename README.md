@@ -4,17 +4,22 @@ WARNING: Use Ruby 2.7.1 or master
 
 ## Setup
 
-```
+```sh
 git clone https://github.com/mame/ruby-type-profiler.git
+cd ruby-type-profiler
 git submodule init
 git submodule update
+cd rbs && bundle install && bundle exec rake parser && cd ..
 bundle install
-ruby exe/type-profiler target.rb
+```
+
+```sh
+bundle exec ruby exe/type-profiler target.rb
 ```
 
 ## Demo
 
-```
+```rb
 # test.rb
 def foo(x)
   if x > 10
