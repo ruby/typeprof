@@ -7,9 +7,6 @@ WARNING: Use Ruby 2.7.1 or master
 ```sh
 git clone https://github.com/mame/ruby-type-profiler.git
 cd ruby-type-profiler
-git submodule init
-git submodule update
-cd rbs && bundle install && bundle exec rake parser && cd ..
 bundle install
 ```
 
