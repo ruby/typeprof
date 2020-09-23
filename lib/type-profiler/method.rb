@@ -85,6 +85,28 @@ module TypeProfiler
 
       callee_ep
     end
+
+    def do_check_send_core(fargs, recv, mid, ep, scratch)
+      lead_num = @iseq.fargs_format[:lead_num] || 0
+      post_num = @iseq.fargs_format[:post_num] || 0
+      rest_start = @iseq.fargs_format[:rest_start]
+      opt = @iseq.fargs_format[:opt] || [0]
+
+      # TODO: check keywords
+      if rest_start
+        # almost ok
+      else
+        if fargs.lead_tys.size + fargs.post_tys.size < lead_num + post_num
+          scratch.error(ep, "RBS says that the arity may be %d, but the method definition requires at least %d arguments" % [fargs.lead_tys.size + fargs.post_tys.size, lead_num + post_num])
+          return
+        end
+        if fargs.lead_tys.size + fargs.opt_tys.size + fargs.post_tys.size > lead_num + opt.size - 1 + post_num
+          scratch.error(ep, "RBS says that the arity may be %d, but the method definition requires at most %d arguments" % [fargs.lead_tys.size + fargs.opt_tys.size + fargs.post_tys.size, lead_num + opt.size - 1 + post_num])
+          return
+        end
+      end
+      do_send_core(fargs, 0, recv, mid, scratch)
+    end
   end
 
   class AttrMethodDef < MethodDef
@@ -227,7 +249,7 @@ module TypeProfiler
     def do_match_iseq_mdef(iseq_mdef, recv, mid, env, ep, scratch)
       recv = scratch.globalize_type(recv, env, ep)
       @sigs.each do |fargs, _ret_ty|
-        iseq_mdef.do_send_core(fargs, 0, recv, mid, scratch)
+        iseq_mdef.do_check_send_core(fargs, recv, mid, ep, scratch)
       end
     end
   end

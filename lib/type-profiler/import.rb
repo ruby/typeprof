@@ -31,7 +31,6 @@ module TypeProfiler
     end
 
     def load_path(path)
-      $foo = true
       loader = RBS::EnvironmentLoader.new
       loader.no_builtin!
       loader.add(path: path)
@@ -355,8 +354,8 @@ module TypeProfiler
         end
       when RBS::Types::Literal
       when RBS::Types::Alias
-        ty = @all_env.alias_decls[ty.name].decl.type
-        convert_type(ty)
+        alias_decl = @all_env.alias_decls[ty.name]
+        alias_decl ? convert_type(alias_decl.decl.type) : [:any]
       when RBS::Types::Union
         [:union, ty.types.map {|ty2| begin convert_type(ty2); rescue UnsupportedType; end }.compact]
       when RBS::Types::Optional
