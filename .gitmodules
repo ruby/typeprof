@@ -1,6 +1,3 @@
-[submodule "rbs"]
-	path = rbs
-	url = https://github.com/ruby/rbs.git
 [submodule "testbed/goodcheck"]
 	path = testbed/goodcheck
 	url = https://github.com/sider/goodcheck.git

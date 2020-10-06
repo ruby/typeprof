@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "rbs", path: "rbs"
+gem "rbs"
 
 group :development do
   gem "rake"
