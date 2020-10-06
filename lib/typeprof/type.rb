@@ -1,4 +1,4 @@
-module TypeProfiler
+module TypeProf
   class Type # or AbstractValue
     include Utils::StructuralEquality
 

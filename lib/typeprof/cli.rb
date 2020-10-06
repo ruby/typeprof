@@ -30,7 +30,7 @@ require "optparse"
 # typeprof -v app.rb
 # typeprof -v app.rb
 
-module TypeProfiler
+module TypeProf
   class CLI
     def initialize(argv)
       opt = OptionParser.new
@@ -82,7 +82,7 @@ module TypeProfiler
 
       raise OptionParser::InvalidOption.new("no input files") if @rb_files.empty?
 
-      TypeProfiler.const_set(:Config, self)
+      TypeProf.const_set(:Config, self)
 
     rescue OptionParser::InvalidOption
       puts $!

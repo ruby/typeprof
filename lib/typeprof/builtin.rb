@@ -1,4 +1,4 @@
-module TypeProfiler
+module TypeProf
   module Builtin
     module_function
 
@@ -401,7 +401,7 @@ module TypeProfiler
           # * RBS should be loaded in advance of analysis
           # * require "some_gem/foo" should be ignored
           # * require "app/foo" should always load .rb file (in this case, app/foo.rb)
-          if TypeProfiler::RubySignatureImporter.import_library(scratch, feature)
+          if RubySignatureImporter.import_library(scratch, feature)
             result = Type::Instance.new(Type::Builtin[:true])
             return ctn[result, ep, env]
           end

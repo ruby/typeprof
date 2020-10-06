@@ -5,7 +5,7 @@ end
 
 require "test-unit"
 
-module TypeProfiler
+module TypeProf
   class TestRun
     class DummyStdout
       def initialize

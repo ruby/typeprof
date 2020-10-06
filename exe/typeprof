@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
 
-require_relative "../lib/type-profiler"
+require_relative "../lib/typeprof"
 
 TypeProfiler::CLI.new(ARGV).run

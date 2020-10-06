@@ -1,6 +1,6 @@
 require "rbs"
 
-module TypeProfiler
+module TypeProf
   class RBSReader
     def initialize
       @env, @builtin_env_dump = RBSReader.builtin_env

@@ -1,4 +1,4 @@
-module TypeProfiler
+module TypeProf
   module Utils
     def self.array_update(ary, idx, elem)
       idx %= ary.size

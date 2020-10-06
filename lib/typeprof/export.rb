@@ -1,4 +1,4 @@
-module TypeProfiler
+module TypeProf
   module Reporters
     module_function
 

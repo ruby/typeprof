@@ -1,4 +1,4 @@
-module TypeProfiler
+module TypeProf
   class CRef
     include Utils::StructuralEquality
 
@@ -845,7 +845,7 @@ module TypeProfiler
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         env = @return_envs[tmp_ep]
       end
-      ty.globalize(env, {}, TypeProfiler::Config.options[:type_depth_limit])
+      ty.globalize(env, {}, Config.options[:type_depth_limit])
     end
 
     def localize_type(ty, env, ep, alloc_site = AllocationSite.new(ep))
@@ -853,13 +853,13 @@ module TypeProfiler
         tmp_ep = ep
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         target_env = @return_envs[tmp_ep]
-        target_env, ty = ty.localize(target_env, alloc_site, TypeProfiler::Config.options[:type_depth_limit])
+        target_env, ty = ty.localize(target_env, alloc_site, Config.options[:type_depth_limit])
         merge_return_env(tmp_ep) do |env|
           env ? env.merge(target_env) : target_env
         end
         return env, ty
       else
-        return ty.localize(env, alloc_site, TypeProfiler::Config.options[:type_depth_limit])
+        return ty.localize(env, alloc_site, Config.options[:type_depth_limit])
       end
     end
 

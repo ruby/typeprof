@@ -1,4 +1,4 @@
-module TypeProfiler
+module TypeProf
   class AllocationSite
     include Utils::StructuralEquality
 

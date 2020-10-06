@@ -1,7 +1,7 @@
 require_relative "test_helper"
-require_relative "../../lib/type-profiler"
+require_relative "../../lib/typeprof"
 
-module TypeProfiler
+module TypeProf
   class DiffLCSTest < Test::Unit::TestCase
     test "testbed/diff-lcs" do
       begin

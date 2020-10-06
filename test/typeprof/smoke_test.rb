@@ -1,7 +1,7 @@
 require_relative "test_helper"
-require_relative "../../lib/type-profiler"
+require_relative "../../lib/typeprof"
 
-module TypeProfiler
+module TypeProf
   class SmokeTest < Test::Unit::TestCase
     Dir.glob(File.join(__dir__, "../../smoke/*.rb")).sort.each do |path|
       rbs = path + "s" if File.readable?(path + "s") # check if .rbs exists

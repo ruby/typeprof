@@ -1,4 +1,4 @@
-module TypeProfiler
+module TypeProf
   class ISeq
     include Utils::StructuralEquality
 

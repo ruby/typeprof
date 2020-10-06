@@ -1,11 +1,11 @@
 Gem::Specification.new do |spec|
-  spec.name          = "ruby-type-profiler" # temporal
+  spec.name          = "typeprof" # temporal
   spec.version       = "0.1"
   spec.authors       = ["Yusuke Endoh"]
   spec.email         = ["mame@ruby-lang.org"]
 
-  spec.summary       = %q{Type Profiler is a type inference tool for Ruby code based on abstract interpretation}
-  spec.description   = %q{Type Profiler is a type inference tool for Ruby code based on abstract interpretation}
+  spec.summary       = %q{typeprof is a type inference tool for Ruby code based on abstract interpretation}
+  spec.description   = %q{typeprof is a type inference tool for Ruby code based on abstract interpretation}
   spec.homepage      = "https://github.com/mame/ruby-type-profiler"
   spec.license       = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.7")

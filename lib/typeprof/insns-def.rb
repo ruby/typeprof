@@ -1,4 +1,4 @@
-INSN_TABLE = {:nop=>[],
+TypeProf::INSN_TABLE = {:nop=>[],
  :getlocal=>["lindex_t", "rb_num_t"],
  :setlocal=>["lindex_t", "rb_num_t"],
  :getblockparam=>["lindex_t", "rb_num_t"],
