@@ -48,33 +48,33 @@ module TypeProfiler
       fargs.lead_tys.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(idx += 1)
         # nenv is top-level, so it is okay to call Type#localize directly
-        nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+        nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
         nenv = nenv.local_update(i, ty)
       end
       if fargs.opt_tys
         fargs.opt_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
-          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+          nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(lead_num + i, ty)
         end
       end
       if fargs.rest_ty
         alloc_site2 = alloc_site.add_id(idx += 1)
         ty = Type::Array.new(Type::Array::Elements.new([], fargs.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
-        nenv, rest_ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+        nenv, rest_ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
         nenv = nenv.local_update(rest_start, rest_ty)
       end
       if fargs.post_tys
         fargs.post_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
-          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+          nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(post_start + i, ty)
         end
       end
       if fargs.kw_tys
         fargs.kw_tys.each_with_index do |(_, _, ty), i|
           alloc_site2 = alloc_site.add_id(idx += 1)
-          nenv, ty = ty.localize(nenv, alloc_site2, $TYPE_DEPTH_LIMIT)
+          nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(kw_start + i, ty)
         end
       end
@@ -168,17 +168,16 @@ module TypeProfiler
               elems.update(nil, ty)
             end
           end
-          ret_ty = ret_ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), $TYPE_DEPTH_LIMIT)
+          subst.merge!({ tyvar_elem => recv.elems.squash })
         elsif recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
           # XXX: need to support destructive operation
           k_ty, v_ty = recv.elems.squash
           # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
-          ret_ty = ret_ty.substitute(subst.merge({ tyvar_k => k_ty, tyvar_v => v_ty }), $TYPE_DEPTH_LIMIT)
-        else
-          ret_ty = ret_ty.substitute(subst, $TYPE_DEPTH_LIMIT)
+          subst.merge!({ tyvar_k => k_ty, tyvar_v => v_ty })
         end
+        ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
         found = true
         if aargs.blk_ty.is_a?(Type::ISeqProc)
           dummy_ctx = TypedContext.new(caller_ep, mid)
@@ -191,9 +190,9 @@ module TypeProfiler
             nfargs = nfargs.map.with_index do |nfarg, i|
               if recv.is_a?(Type::Array)
                 tyvar_elem = Type::Var.new(:Elem)
-                nfarg = nfarg.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), $TYPE_DEPTH_LIMIT)
+                nfarg = nfarg.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), Config.options[:type_depth_limit])
               else
-                nfarg = nfarg.substitute(subst, $TYPE_DEPTH_LIMIT)
+                nfarg = nfarg.substitute(subst, Config.options[:type_depth_limit])
               end
               nfarg = nfarg.remove_type_vars
               alloc_site2 = alloc_site.add_id(i)
@@ -212,9 +211,9 @@ module TypeProfiler
                     end
                     scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                   end
-                  ret_ty = ret_ty.substitute(subst2, $TYPE_DEPTH_LIMIT)
+                  ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
                 else
-                  ret_ty = ret_ty.substitute(subst2, $TYPE_DEPTH_LIMIT)
+                  ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
                 end
               else
                 # raise "???"

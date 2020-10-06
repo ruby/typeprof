@@ -352,7 +352,6 @@ module TypeProfiler
           p ty.literal
           raise NotImplementedError
         end
-      when RBS::Types::Literal
       when RBS::Types::Alias
         alias_decl = @all_env.alias_decls[ty.name]
         alias_decl ? convert_type(alias_decl.decl.type) : [:any]
@@ -409,9 +408,9 @@ module TypeProfiler
       rbs_classes, rbs_constants = dump
       classes = []
       rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods, rbs_sources)|
-        next if classpath == [:BasicObject]
-        next if classpath == [:NilClass]
-        if classpath != [:Object]
+        if classpath == [:Object]
+          klass = Type::Builtin[:obj]
+        else
           name = classpath.last
           base_klass = path_to_klass(scratch, classpath[0..-2])
           superclass = path_to_klass(scratch, superclass) if superclass
@@ -427,8 +426,6 @@ module TypeProfiler
             when [:Hash]     then Type::Builtin[:hash] = klass
             end
           end
-        else
-          klass = Type::Builtin[:obj]
         end
         classes << [klass, included_modules, methods, rbs_sources]
       end

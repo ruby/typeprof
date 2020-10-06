@@ -23,5 +23,5 @@ __END__
 class Object
   def foo : ({:a=>:A, :b=>:B}) -> (:A | :B)
   def bar : ({:a=>:A, :b=>:B}) -> (:A | :B | :C)
-  def baz : ({:a=>:A, :b=>:B}) -> ([:A | :B | :C, :a?])
+  def baz : ({:a=>:A, :b=>:B}) -> ([:A | :B | :C, (:a | :b)?])
 end

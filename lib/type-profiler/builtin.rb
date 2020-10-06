@@ -374,7 +374,7 @@ module TypeProfiler
 
     def file_load(path, ep, env, scratch, &ctn)
       iseq = ISeq.compile(path)
-      callee_ep, callee_env = TypeProfiler.starting_state(iseq)
+      callee_ep, callee_env = CLI.starting_state(iseq)
       scratch.merge_env(callee_ep, callee_env)
 
       scratch.add_callsite!(callee_ep.ctx, nil, ep, env) do |_ret_ty, ep|
@@ -471,84 +471,84 @@ module TypeProfiler
       end
       ctn[all_ty, ep, env]
     end
-  end
 
-  def self.setup_initial_global_env(scratch)
-    klass_obj = scratch.new_class(nil, :Object, [], :__root__) # cbase, name, superclass
-    scratch.add_constant(klass_obj, "Object", klass_obj)
-    klass_true  = scratch.new_class(klass_obj, :TrueClass, [], klass_obj) # ???
-    klass_false = scratch.new_class(klass_obj, :FalseClass, [], klass_obj) # ???
-    klass_nil = scratch.new_class(klass_obj, :NilClass, [], klass_obj) # ???
+    def self.setup_initial_global_env(scratch)
+      klass_obj = scratch.new_class(nil, :Object, [], :__root__) # cbase, name, superclass
+      scratch.add_constant(klass_obj, "Object", klass_obj)
+      klass_true  = scratch.new_class(klass_obj, :TrueClass, [], klass_obj) # ???
+      klass_false = scratch.new_class(klass_obj, :FalseClass, [], klass_obj) # ???
+      klass_nil = scratch.new_class(klass_obj, :NilClass, [], klass_obj) # ???
 
-    Type::Builtin[:obj]   = klass_obj
-    Type::Builtin[:true]  = klass_true
-    Type::Builtin[:false] = klass_false
-    Type::Builtin[:nil]   = klass_nil
+      Type::Builtin[:obj]   = klass_obj
+      Type::Builtin[:true]  = klass_true
+      Type::Builtin[:false] = klass_false
+      Type::Builtin[:nil]   = klass_nil
 
-    RubySignatureImporter.import_builtin(scratch)
+      RubySignatureImporter.import_builtin(scratch)
 
-    Type::Builtin[:vmcore]    = scratch.new_class(klass_obj, :VMCore, [], klass_obj)
-    Type::Builtin[:int]       = scratch.get_constant(klass_obj, :Integer)
-    Type::Builtin[:float]     = scratch.get_constant(klass_obj, :Float)
-    Type::Builtin[:rational]  = scratch.get_constant(klass_obj, :Rational)
-    Type::Builtin[:sym]       = scratch.get_constant(klass_obj, :Symbol)
-    Type::Builtin[:str]       = scratch.get_constant(klass_obj, :String)
-    Type::Builtin[:struct]    = scratch.get_constant(klass_obj, :Struct)
-    Type::Builtin[:ary]       = scratch.get_constant(klass_obj, :Array)
-    Type::Builtin[:hash]      = scratch.get_constant(klass_obj, :Hash)
-    Type::Builtin[:io]        = scratch.get_constant(klass_obj, :IO)
-    Type::Builtin[:proc]      = scratch.get_constant(klass_obj, :Proc)
-    Type::Builtin[:range]     = scratch.get_constant(klass_obj, :Range)
-    Type::Builtin[:regexp]    = scratch.get_constant(klass_obj, :Regexp)
-    Type::Builtin[:matchdata] = scratch.get_constant(klass_obj, :MatchData)
-    Type::Builtin[:class]     = scratch.get_constant(klass_obj, :Class)
-    Type::Builtin[:module]    = scratch.get_constant(klass_obj, :Module)
-    Type::Builtin[:exc]       = scratch.get_constant(klass_obj, :Exception)
+      Type::Builtin[:vmcore]    = scratch.new_class(klass_obj, :VMCore, [], klass_obj)
+      Type::Builtin[:int]       = scratch.get_constant(klass_obj, :Integer)
+      Type::Builtin[:float]     = scratch.get_constant(klass_obj, :Float)
+      Type::Builtin[:rational]  = scratch.get_constant(klass_obj, :Rational)
+      Type::Builtin[:sym]       = scratch.get_constant(klass_obj, :Symbol)
+      Type::Builtin[:str]       = scratch.get_constant(klass_obj, :String)
+      Type::Builtin[:struct]    = scratch.get_constant(klass_obj, :Struct)
+      Type::Builtin[:ary]       = scratch.get_constant(klass_obj, :Array)
+      Type::Builtin[:hash]      = scratch.get_constant(klass_obj, :Hash)
+      Type::Builtin[:io]        = scratch.get_constant(klass_obj, :IO)
+      Type::Builtin[:proc]      = scratch.get_constant(klass_obj, :Proc)
+      Type::Builtin[:range]     = scratch.get_constant(klass_obj, :Range)
+      Type::Builtin[:regexp]    = scratch.get_constant(klass_obj, :Regexp)
+      Type::Builtin[:matchdata] = scratch.get_constant(klass_obj, :MatchData)
+      Type::Builtin[:class]     = scratch.get_constant(klass_obj, :Class)
+      Type::Builtin[:module]    = scratch.get_constant(klass_obj, :Module)
+      Type::Builtin[:exc]       = scratch.get_constant(klass_obj, :Exception)
 
-    klass_vmcore = Type::Builtin[:vmcore]
-    klass_ary    = Type::Builtin[:ary]
-    klass_hash   = Type::Builtin[:hash]
-    klass_struct = Type::Builtin[:struct]
-    klass_proc   = Type::Builtin[:proc]
-    klass_module = Type::Builtin[:module]
+      klass_vmcore = Type::Builtin[:vmcore]
+      klass_ary    = Type::Builtin[:ary]
+      klass_hash   = Type::Builtin[:hash]
+      klass_struct = Type::Builtin[:struct]
+      klass_proc   = Type::Builtin[:proc]
+      klass_module = Type::Builtin[:module]
 
-    scratch.add_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
-    scratch.add_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
-    scratch.add_custom_method(klass_vmcore, :"core#hash_merge_kwd", Builtin.method(:vmcore_hash_merge_kwd))
-    scratch.add_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
-    scratch.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_s_new))
-    scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
-    scratch.add_singleton_custom_method(klass_obj, :"attr_reader", Builtin.method(:module_attr_reader))
-    scratch.add_singleton_custom_method(klass_obj, :"attr_writer", Builtin.method(:module_attr_writer))
-    scratch.add_custom_method(klass_obj, :p, Builtin.method(:kernel_p))
-    scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
-    scratch.add_custom_method(klass_obj, :respond_to?, Builtin.method(:object_respond_to?))
-    scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
-    scratch.add_custom_method(klass_obj, :send, Builtin.method(:object_send))
-    scratch.add_custom_method(klass_obj, :instance_eval, Builtin.method(:object_instance_eval))
+      scratch.add_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
+      scratch.add_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
+      scratch.add_custom_method(klass_vmcore, :"core#hash_merge_kwd", Builtin.method(:vmcore_hash_merge_kwd))
+      scratch.add_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
+      scratch.add_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_s_new))
+      scratch.add_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
+      scratch.add_singleton_custom_method(klass_obj, :"attr_reader", Builtin.method(:module_attr_reader))
+      scratch.add_singleton_custom_method(klass_obj, :"attr_writer", Builtin.method(:module_attr_writer))
+      scratch.add_custom_method(klass_obj, :p, Builtin.method(:kernel_p))
+      scratch.add_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
+      scratch.add_custom_method(klass_obj, :respond_to?, Builtin.method(:object_respond_to?))
+      scratch.add_custom_method(klass_obj, :class, Builtin.method(:object_class))
+      scratch.add_custom_method(klass_obj, :send, Builtin.method(:object_send))
+      scratch.add_custom_method(klass_obj, :instance_eval, Builtin.method(:object_instance_eval))
 
-    scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
-    scratch.add_custom_method(klass_module, :extend, Builtin.method(:module_extend))
-    scratch.add_custom_method(klass_module, :module_function, Builtin.method(:module_module_function))
+      scratch.add_custom_method(klass_module, :include, Builtin.method(:module_include))
+      scratch.add_custom_method(klass_module, :extend, Builtin.method(:module_extend))
+      scratch.add_custom_method(klass_module, :module_function, Builtin.method(:module_module_function))
 
-    scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
-    scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
+      scratch.add_custom_method(klass_proc, :[], Builtin.method(:proc_call))
+      scratch.add_custom_method(klass_proc, :call, Builtin.method(:proc_call))
 
-    scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
-    scratch.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
-    scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
+      scratch.add_custom_method(klass_ary, :[], Builtin.method(:array_aref))
+      scratch.add_custom_method(klass_ary, :[]=, Builtin.method(:array_aset))
+      scratch.add_custom_method(klass_ary, :pop, Builtin.method(:array_pop))
 
-    scratch.add_custom_method(klass_hash, :[], Builtin.method(:hash_aref))
-    scratch.add_custom_method(klass_hash, :[]=, Builtin.method(:hash_aset))
+      scratch.add_custom_method(klass_hash, :[], Builtin.method(:hash_aref))
+      scratch.add_custom_method(klass_hash, :[]=, Builtin.method(:hash_aset))
 
-    scratch.add_custom_method(klass_struct, :initialize, Builtin.method(:struct_initialize))
-    scratch.add_singleton_custom_method(klass_struct, :new, Builtin.method(:struct_s_new))
+      scratch.add_custom_method(klass_struct, :initialize, Builtin.method(:struct_initialize))
+      scratch.add_singleton_custom_method(klass_struct, :new, Builtin.method(:struct_s_new))
 
-    scratch.add_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
-    scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
-    scratch.add_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
+      scratch.add_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
+      scratch.add_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
+      scratch.add_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
 
-    fargs, ret_ty = FormalArguments.new([], [], nil, [], nil, nil, Type.any), Type.any
-    scratch.add_method(klass_obj, :initialize, false, TypedMethodDef.new([[fargs, ret_ty]], nil))
+      fargs, ret_ty = FormalArguments.new([], [], nil, [], nil, nil, Type.any), Type.any
+      scratch.add_method(klass_obj, :initialize, false, TypedMethodDef.new([[fargs, ret_ty]], nil))
+    end
   end
 end

@@ -99,7 +99,7 @@ module TypeProfiler
     end
 
     def remove_type_vars
-      substitute(DummySubstitution, $TYPE_DEPTH_LIMIT)
+      substitute(DummySubstitution, Config.options[:type_depth_limit])
     end
 
     class Any < Type
@@ -214,7 +214,7 @@ module TypeProfiler
             types.delete(Type::Instance.new(Type::Builtin[:true]))
             bool = true
           end
-          types.delete(Type.any) unless ENV["TP_DETAILED_STUB"]
+          types.delete(Type.any) unless Config.options[:pedantic_output]
           types = types.map {|ty| ty.screen_name(scratch) }
           types << "bool" if bool
           types = types.sort
@@ -677,7 +677,7 @@ module TypeProfiler
       when ::Hash
         Type.gen_hash do |h|
           obj.each do |k, v|
-            k_ty = guess_literal_type(k).globalize(nil, {}, $TYPE_DEPTH_LIMIT)
+            k_ty = guess_literal_type(k).globalize(nil, {}, Config.options[:type_depth_limit])
             v_ty = guess_literal_type(v)
             h[k_ty] = v_ty
           end

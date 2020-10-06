@@ -19,6 +19,10 @@ module TypeProfiler
       def result
         @buffer.join
       end
+
+      def to_open(*)
+        self
+      end
     end
 
     def self.run(name, code, rbs_path: nil, **opt)
@@ -29,23 +33,23 @@ module TypeProfiler
       @name, @code, @rbs_path = name, code, rbs_path
     end
 
-    def run(show_errors: true, detailed_stub: true, show_progress: false)
-      ENV["TP_SHOW_ERRORS"] = "1" if show_errors
-      ENV["TP_DETAILED_STUB"] = "1" if detailed_stub
-      ENV["TP_SHOW_PROGRESS"] = "1" if show_progress
-      $output = []
+    def run(show_errors: true, pedantic_output: true, show_progress: false)
+      argv = [@name]
+      argv << @rbs_path if @rbs_path
+      argv << "-fshow-errors" if show_errors
+      argv << "-fpedantic-output" if pedantic_output
+      argv << "-q" unless show_progress
       verbose_back, $VERBOSE = $VERBOSE, nil
 
-      iseq = TypeProfiler::ISeq.compile_str(@code, @name)
-      buffer = DummyStdout.new
-      TypeProfiler.type_profile(iseq, @rbs_path, buffer)
+      cli = CLI.new(argv)
+      Config.output = buffer = DummyStdout.new
+      cli.run
 
       buffer.result
 
     ensure
       ENV.delete("TP_SHOW_ERRORS")
       ENV.delete("TP_DETAILED_STUB")
-      $output = nil
       $VERBOSE = verbose_back
     end
   end

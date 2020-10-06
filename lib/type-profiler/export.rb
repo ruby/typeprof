@@ -27,7 +27,7 @@ module TypeProfiler
 
     def show_error(errors, backward_edge, output)
       return if errors.empty?
-      return unless ENV["TP_SHOW_ERRORS"]
+      return unless Config.options[:show_errors]
 
       output.puts "# Errors"
       errors.each do |ep, msg|

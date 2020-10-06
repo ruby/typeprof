@@ -132,7 +132,7 @@ module TypeProfiler
         end
 
         def screen_name(scratch)
-          if ENV["TP_DUMP_RAW_ELEMENTS"] || @rest_ty == Type.bot
+          if Config.options[:show_container_raw_elements] || @rest_ty == Type.bot
             s = @lead_tys.map do |ty|
               ty.screen_name(scratch)
             end

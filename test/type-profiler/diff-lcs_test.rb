@@ -12,7 +12,7 @@ module TypeProfiler
         name = "testbed/diff-lcs-entrypoint.rb"
         path = File.join(__dir__, "../../testbed/diff-lcs-entrypoint.rb")
 
-        actual = TestRun.run(name, File.read(path), show_errors: false, detailed_stub: false)
+        actual = TestRun.run(name, File.read(path), show_errors: false, pedantic_output: false)
 
 
         # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)

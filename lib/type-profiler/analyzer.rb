@@ -670,18 +670,18 @@ module TypeProfiler
     end
 
     def error(ep, msg)
-      p [ep.source_location, "[error] " + msg] if ENV["TP_DEBUG"]
+      p [ep.source_location, "[error] " + msg] if Config.verbose >= 2
       @errors << [ep, "[error] " + msg]
     end
 
     def warn(ep, msg)
-      p [ep.source_location, "[warning] " + msg] if ENV["TP_DEBUG"]
+      p [ep.source_location, "[warning] " + msg] if Config.verbose >= 2
       @errors << [ep, "[warning] " + msg]
     end
 
     def reveal_type(ep, ty)
       key = ep.source_location
-      puts "reveal:#{ ep.source_location }:#{ ty.screen_name(self) }" if ENV["TP_DEBUG"]
+      puts "reveal:#{ ep.source_location }:#{ ty.screen_name(self) }" if Config.verbose >= 2
       if @reveal_types[key]
         @reveal_types[key] = @reveal_types[key].union(ty)
       else
@@ -754,7 +754,7 @@ module TypeProfiler
       while true
         until @worklist.empty?
           counter += 1
-          if counter % 1000 == 0 && ENV["TP_SHOW_PROGRESS"]
+          if counter % 1000 == 0 && Config.verbose >= 1
             puts "iter %d, remain: %d" % [counter, @worklist.size]
             #exit if counter == 20000
           end
@@ -773,7 +773,7 @@ module TypeProfiler
           @pending_execution.delete(iseq)
         end while @executed_iseqs.include?(iseq)
 
-        puts "DEBUG: trigger dummy execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if ENV["TP_DEBUG"]
+        puts "DEBUG: trigger dummy execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.verbose >= 2
 
         break if !iseq
         case kind
@@ -845,7 +845,7 @@ module TypeProfiler
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         env = @return_envs[tmp_ep]
       end
-      ty.globalize(env, {}, $TYPE_DEPTH_LIMIT)
+      ty.globalize(env, {}, TypeProfiler::Config.options[:type_depth_limit])
     end
 
     def localize_type(ty, env, ep, alloc_site = AllocationSite.new(ep))
@@ -853,13 +853,13 @@ module TypeProfiler
         tmp_ep = ep
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         target_env = @return_envs[tmp_ep]
-        target_env, ty = ty.localize(target_env, alloc_site, $TYPE_DEPTH_LIMIT)
+        target_env, ty = ty.localize(target_env, alloc_site, TypeProfiler::Config.options[:type_depth_limit])
         merge_return_env(tmp_ep) do |env|
           env ? env.merge(target_env) : target_env
         end
         return env, ty
       else
-        return ty.localize(env, alloc_site, $TYPE_DEPTH_LIMIT)
+        return ty.localize(env, alloc_site, TypeProfiler::Config.options[:type_depth_limit])
       end
     end
 
@@ -904,7 +904,8 @@ module TypeProfiler
 
       insn, operands = ep.ctx.iseq.insns[ep.pc]
 
-      if ENV["TP_DEBUG"]
+      if Config.verbose >= 2
+        # XXX: more dedicated output
         puts "DEBUG: stack=%p" % [env.stack]
         puts "DEBUG: %s (%s) PC=%d insn=%s sp=%d" % [ep.source_location, ep.ctx.iseq.name, ep.pc, insn, env.stack.size]
       end
