@@ -2,4 +2,4 @@
 
 require_relative "../lib/typeprof"
 
-TypeProfiler::CLI.new(ARGV).run
+TypeProf::CLI.new(ARGV).run
