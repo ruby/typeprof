@@ -1,3 +1,5 @@
+module TypeProf end
+
 require_relative "typeprof/insns-def"
 require_relative "typeprof/utils"
 require_relative "typeprof/type"

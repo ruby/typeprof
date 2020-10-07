@@ -9,12 +9,11 @@ git clone https://github.com/mame/ruby-type-profiler.git
 cd ruby-type-profiler
 git submodule init
 git submodule update
-cd rbs && bundle install && bundle exec rake parser && cd ..
 bundle install
 ```
 
 ```sh
-bundle exec ruby exe/type-profiler target.rb
+bundle exec ruby exe/typeprof target.rb
 ```
 
 ## Demo
