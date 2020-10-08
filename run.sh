@@ -1,3 +1,3 @@
 #!/bin/bash
 
-bundle exe ruby exe/type-profiler $@
+bundle exe ruby exe/typeprof $@

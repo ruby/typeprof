@@ -50,7 +50,7 @@ p foo(42)  #=> String
 The analysis results of TypeProf are as follows.
 
 ```
-$ ruby exe/type-profiler test.rb
+$ ruby exe/typeprof test.rb
 # Revealed types
 #  test.rb:2 #=> Integer
 #  test.rb:6 #=> String
@@ -84,7 +84,7 @@ p Foo.new.a #=> Integer | String
 ```
 
 ```
-$ ruby exe/type-profiler test.rb
+$ ruby exe/typeprof test.rb
 # Revealed types
 #  test.rb:11 #=> Integer | String
 
@@ -299,7 +299,7 @@ class Object
   def foo: (Integer) -> Integer | (String) -> String
 end
 ```
- 
+
 ```
 # test.rb
 def foo(n)
@@ -386,9 +386,9 @@ You can update the types; this allows the following code to initialize the array
 ```
 def foo
   a = []
-  
+
   100.times {|n| a << n.to_s}
-  
+
   a
 end
 

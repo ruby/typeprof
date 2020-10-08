@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = %q{TypeProf is a type analysis tool for Ruby code based on abstract interpretation}
   spec.description   = %q{TypeProf is a type analysis tool for Ruby code based on abstract interpretation}
-  spec.homepage      = "https://github.com/mame/ruby-type-profiler"
+  spec.homepage      = "https://github.com/ruby/typeprof"
   spec.license       = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.7")
 

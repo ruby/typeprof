@@ -31,7 +31,7 @@ module TypeProf
 
       output.puts "# Errors"
       errors.each do |ep, msg|
-        if ENV["TYPE_PROFILER_DETAIL"]
+        if ENV["TP_DETAIL"]
           backtrace = filter_backtrace(generate_analysis_trace(ep, {}, backward_edge))
         else
           backtrace = [ep]
