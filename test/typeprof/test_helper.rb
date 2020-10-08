@@ -1,6 +1,9 @@
-require "simplecov"
-SimpleCov.start do
-  add_filter "rbs"
+begin
+  require "simplecov"
+  SimpleCov.start do
+    add_filter "rbs"
+  end
+rescue LoadError
 end
 
 require "test-unit"
