@@ -1,6 +1,7 @@
 source "https://rubygems.org"
 
-gem "rbs"
+# Specify your gem's dependencies in typeprof.gemspec
+gemspec
 
 group :development do
   gem "rake"

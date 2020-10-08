@@ -13,6 +13,12 @@ GIT
       docile (~> 1.1)
       simplecov-html (~> 0.11)
 
+PATH
+  remote: .
+  specs:
+    typeprof (0.1.1)
+      rbs (>= 0.12.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -31,11 +37,11 @@ PLATFORMS
 DEPENDENCIES
   coverage-helpers
   rake
-  rbs
   simplecov!
   simplecov-html!
   stackprof
   test-unit
+  typeprof!
 
 BUNDLED WITH
    2.2.0.rc.1
