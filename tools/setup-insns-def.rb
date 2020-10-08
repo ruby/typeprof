@@ -26,5 +26,5 @@ File.read(ARGV[0]).scan(r) do
   end
   INSN_TABLE[name.to_sym] = operands
 end
-target = File.join(__dir__, "../lib/type-profiler/insns-def.rb")
+target = File.join(__dir__, "../lib/typeprof/insns-def.rb")
 File.write(target, "TypeProf::INSN_TABLE = " + INSN_TABLE.pretty_inspect)
