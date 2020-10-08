@@ -4,8 +4,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Yusuke Endoh"]
   spec.email         = ["mame@ruby-lang.org"]
 
-  spec.summary       = %q{typeprof is a type inference tool for Ruby code based on abstract interpretation}
-  spec.description   = %q{typeprof is a type inference tool for Ruby code based on abstract interpretation}
+  spec.summary       = %q{TypeProf is a type analysis tool for Ruby code based on abstract interpretation}
+  spec.description   = %q{TypeProf is a type analysis tool for Ruby code based on abstract interpretation}
   spec.homepage      = "https://github.com/mame/ruby-type-profiler"
   spec.license       = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.7")

@@ -1,35 +1,5 @@
 require "optparse"
 
-# # Run app.rb
-# typeprof app.rb
-
-# # Run app.rb with app.rbs
-# typeprof app.rb app.rbs
-# typeprof app.rbs app.rb
-
-# # Run app.rb and test.rb
-# typeprof app.rb test.rb
-
-# # Run app.rb and output app.rbs
-# typeprof -o app.rbs app.rb
-
-# # Run app.rb with configuration
-# typeprof app.rb -ftype-depth-limit=5
-
-# # Output in pedantic format: `A | untyped` instead of `A`
-# typeprof app.rb -fpedantic
-
-# # Output errors
-# typeprof app.rb -fshow-errors
-
-# # Hide the progress indicator
-# typeprof -q app.rb
-# typeprof --quiet app.rb
-
-# # Show a debug output
-# typeprof -v app.rb
-# typeprof -v app.rb
-
 module TypeProf
   class CLI
     def initialize(argv)

@@ -1,36 +1,38 @@
-# Type profiler
+# TypeProf: A type analysis tool for Ruby code based on abstract interpretation
 
-## Off-topic
+## How to use TypeProf
 
-The name "Type Profiler" may change.
-A list of proposed name candidates is attached at the end of this document.
-
-
-## How to use Type Profiler (tentative)
-
-* Analyze app.rb
+Analyze app.rb:
 
 ```
-$ ruby exe/type-profiler app.rb
+$ typeprof app.rb
 ```
 
-* Analyze app.rb with app.rbs that specifies some method types
+Analyze app.rb with sig/app.rbs that specifies some method types:
 
 ```
-$ ruby exe/type-profiler app.rbs app.rb
+$ typeprof sig/app.rbs app.rb
 ```
 
-There is no configuration for casual users yet.
-The following environment variables are available to configure the behavior of Type Profiler, mainly for debugging purpose.
+Here is a typical use case:
 
-* `TP_DETAILED_STUB=1`: When Type Profiler inferred a type `A | untyped`, it simply outputs `A` by default. But this option forces it to output `A | untyped`.
-* `TP_SHOW_ERRORS=1`: Prints out possible bugs found during execution (often a lot of false positives).
-* `TP_DEBUG=1`: Enable debug output.
+```
+$ typeprof sig/app.rbs app.rb -o sig/app.gen.rbs
+```
 
+Here is a list of currently avaiable options:
 
-## What is a Type Profiler?
+* `-o OUTFILE`: Write the analyze result to OUTFILE instead of standard output
+* `-q`: Hide the progress indicator
+* `-v`: Show the analysis log (Currently, the log is just for debugging and may become very huge)
+* `-fshow-errors`: Prints out possible bugs found during execution (often a lot of false positives).
+* `-fpedantic-output`: When TypeProf inferred a type `A | untyped`, it simply outputs `A` by default. But this option forces it to output `A | untyped`.
+* `-fshow-container-raw-elements`: (undocumented yet)
+* `-ftype-depth-limit=NUM`: (undocumented yet)
 
-Type Profiler is a Ruby interpreter that *abstractly* executes Ruby programs at the type level.
+## What is a TypeProf?
+
+TypeProf is a Ruby interpreter that *abstractly* executes Ruby programs at the type level.
 It executes a given program and observes what types are passed to and returned from methods and what types are assigned to instance variables.
 All values are, in principle, abstracted to the class to which the object belongs, not the object itself (detailed in the next section).
 
@@ -45,7 +47,7 @@ end
 p foo(42)  #=> String
 ```
 
-The analysis results of Type Profiler are as follows.
+The analysis results of TypeProf are as follows.
 
 ```
 $ ruby exe/type-profiler test.rb
@@ -62,10 +64,10 @@ end
 When the method call `foo(42)` is executed, the type (abstract value) "`Integer`" is passed instead of the `Integer` object 42.
 The method `foo` executes `n.to_s`.
 Then, the built-in method `Integer#to_s` is called and you get the type "`String`", which the method `foo` returns.
-Collecting observations of these execution results, Type Profiler outputs, "the method `foo` receives `Integer` and returns `String`" in the RBS format.
+Collecting observations of these execution results, TypeProf outputs, "the method `foo` receives `Integer` and returns `String`" in the RBS format.
 Also, the argument of `p` is output in the `Revealed types` section.
 
-Instance variables are stored in each object in Ruby, but are aggregated in class units in Type Profiler.
+Instance variables are stored in each object in Ruby, but are aggregated in class units in TypeProf.
 
 ```
 class Foo
@@ -96,10 +98,10 @@ end
 
 ## Abstract values
 
-As mentioned above, Type Profiler abstracts almost all Ruby values to the type level, with some exceptions like class objects.
-To avoid confusion with normal Ruby values, we use the word "abstract value" to refer the values that Type Profiler handles.
+As mentioned above, TypeProf abstracts almost all Ruby values to the type level, with some exceptions like class objects.
+To avoid confusion with normal Ruby values, we use the word "abstract value" to refer the values that TypeProf handles.
 
-Type Profiler handles the following abstract values.
+TypeProf handles the following abstract values.
 
 * Instance of a class
 * Class object
@@ -116,14 +118,14 @@ The integer literal `42` generates an instance of `Integer` and the string liter
 
 A class object is a value that represents the class itself.
 For example, the constants `Integer` and `String` has class objects.
-In Ruby semantics, a class object is an instance of the class `Class`, but it is not abstracted into `Class` in Type Profiler.
-This is because, if it is abstracted, Type Profiler cannot handle constant references and class methods correctly.
+In Ruby semantics, a class object is an instance of the class `Class`, but it is not abstracted into `Class` in TypeProf.
+This is because, if it is abstracted, TypeProf cannot handle constant references and class methods correctly.
 
 A symbol is an abstract value returned by Symbol literals like `:foo`.
 A symbol object is not abstracted to an instance of the class `Symbol` because its concrete vgalue is often required in many cases, such as keyword argumetns, JSON data keys, the argument of `Module#attr_reader`, etc.
 Note that some Symbol objects are handled as instances of the class `Symbol`, for example, the return value of `String#to_sym` and Symbol literals that contains interpolation like `:"foo_#{ x }"`.
 
-`untyped` is an abstract value generated when Type Profiler fails to trace values due to analysis limits or restrictions.
+`untyped` is an abstract value generated when TypeProf fails to trace values due to analysis limits or restrictions.
 Any operations and method calls on `untyped` are ignored, and the evaluation result is also `untyped`.
 
 A union of abstract values is a value that represents multiple possibilities.,
@@ -140,7 +142,7 @@ In the RBS result, they are represented by using anonymous proc type, whose type
 
 ## Execution
 
-Type Profiler is a kind of Ruby interpreter, but its execution order is quite different from Ruby semantics.
+TypeProf is a kind of Ruby interpreter, but its execution order is quite different from Ruby semantics.
 
 ### Branch
 
@@ -158,7 +160,7 @@ end
 p x #=> Integer | String
 ```
 
-Type Profiler first evaluates the conditional expression, then does both "then" and "else" clauses (we cannot tell which comes first), and after the branch, evaluates the method call to `p` with `Integer | String`.
+TypeProf first evaluates the conditional expression, then does both "then" and "else" clauses (we cannot tell which comes first), and after the branch, evaluates the method call to `p` with `Integer | String`.
 
 
 ### Restart
@@ -200,7 +202,7 @@ Therefore, the return value of the call to `Foo#get_x` will eventually be `Integ
 
 ### Method call
 
-Type Profiler does not keep track of the call stack.
+TypeProf does not keep track of the call stack.
 In other words, there is no concept of "caller" during the execution of the method.
 Instead, when a method returns, it returns the abstract value to all possible places that may invoke to the method.
 
@@ -217,18 +219,18 @@ p fib(10) #=> Integer
 ```
 
 In the above example, the method `fib` is called from three places (including recursive calls).
-When `return n` is executed, Type Profiler returns an `Integer` to all three places.
+When `return n` is executed, TypeProf returns an `Integer` to all three places.
 Note that, in Ruby, we cannot statically identify all places that may call to the method (because it depends upon the type of receiver).
-Therefore, if Type Profiler finds a new call to `fib` after `return n` is executed, the call also returns an `Integer` immediately.
+Therefore, if TypeProf finds a new call to `fib` after `return n` is executed, the call also returns an `Integer` immediately.
 If a method returns different abstract values, it can lead to retrospective execution.
 
 
 ### Stub execution
 
-Even after Type Profiler traced all programs as possible, there may be methods or blocks that aren't executed.
+Even after TypeProf traced all programs as possible, there may be methods or blocks that aren't executed.
 For example, a method is not executed if it is called from nowhere; this is typical for library method that has no test.
-(Basically, when you use Type Profiler, it is recommended to invoke all methods with supposed argument types.)
-Type Profiler forcibly calls these unreachable methods and blocks with `untyped` as argumetns.
+(Basically, when you use TypeProf, it is recommended to invoke all methods with supposed argument types.)
+TypeProf forcibly calls these unreachable methods and blocks with `untyped` as argumetns.
 
 ```
 def foo(n)
@@ -240,7 +242,7 @@ end
 ```
 
 In the above program, neither the method `foo` nor the method `bar` is called.
-Type Profiler stub-calls the `bar` with a `untyped` arugment, so you can get the information that an `Integer` is passed to a method `foo`.
+TypeProf stub-calls the `bar` with a `untyped` arugment, so you can get the information that an `Integer` is passed to a method `foo`.
 
 However, this feature may slow down the analysis and may also brings many wrong guesses, so we plan to allow a user to enable/disable this feature in the configuration.
 
@@ -251,7 +253,7 @@ Some Ruby language features cannot be handled because they abstract values.
 
 Basically, it ignores language features whose object identity is important, such as singleton methods for general objects.
 Note that class method definitions are handled correctly; class objects are not abstracted for the sake.
-Currently, Type Profiler only handles instance methods and class methods; it has no general concept of metaclasses (a class of a class).
+Currently, TypeProf only handles instance methods and class methods; it has no general concept of metaclasses (a class of a class).
 
 Meta programming is only partially supported.
 
@@ -265,14 +267,14 @@ Meta programming is only partially supported.
 
 ### Partial RBS specification
 
-Sometimes, Type Profiler fails to correctly infer the programer's intent due to theoretical or implementation limitations.
-In such cases, you can manually write a RBS description for some difficult methods to convey your intent to Type Profiler.
+Sometimes, TypeProf fails to correctly infer the programer's intent due to theoretical or implementation limitations.
+In such cases, you can manually write a RBS description for some difficult methods to convey your intent to TypeProf.
 
-For example, Type Profiler does not handle a overloaded method.
+For example, TypeProf does not handle a overloaded method.
 
 ```
 # Programmer Intent: (Integer) -> Integer | (String) -> String
-# Type Profiler    : (Integer | String) -> (Integer | String)
+# TypeProf         : (Integer | String) -> (Integer | String)
 def foo(n)
   if n.is_a?(Integer)
     42
@@ -316,7 +318,7 @@ RBS's "interface" type is not supported and is treated as `untyped`.
 
 ### Debug feature
 
-Unfortunately, understanding the behavior and analysis results of Type Profiler is sometimes difficult.
+Unfortunately, understanding the behavior and analysis results of TypeProf is sometimes difficult.
 
 Currently, you can observe the abstract value of the argument by calling `Kernel#p` in your code, as if you debug your program in Ruby.
 The only way to get a deeper understanding of the analysis is to watch the debug output with the environment variable `TP_DEBUG=1`.
@@ -325,9 +327,9 @@ We plan to provide some more useful way to make it easy to understand the analys
 
 ### Flow-sensitive analysis
 
-Type Profiler attempts to separate branches if the condition separates a union abstract value.
+TypeProf attempts to separate branches if the condition separates a union abstract value.
 For example, consider that a local variable `var` has an abstract value `Foo | Bar`, and that a branch condition is `var.is_a?(Foo)`.
-Type Profiler will execute the "then" clause with `var` as only a `Foo`, and does the "else" clause with `var` as only a `Bar`.
+TypeProf will execute the "then" clause with `var` as only a `Foo`, and does the "else" clause with `var` as only a `Bar`.
 
 Note that it can work well only if the receiver is a local variable defined in the current scope.
 If the condition is about an instance variable, say `@var.is_a?(Foo)`, or if the variable `var` is defined outside the block, the union is not separated.
@@ -378,7 +380,7 @@ foo("str")
 
 At present, only Array-like containers (Array and Enumerator) and Hash-like containers (Hash) are supported.
 
-Type Profiler keeps the object identity inside a method; the container instances are identified by the place where it is created.
+TypeProf keeps the object identity inside a method; the container instances are identified by the place where it is created.
 You can update the types; this allows the following code to initialize the array:
 
 ```
@@ -413,7 +415,7 @@ foo #=> [], not Array[String]
 
 When a container abstract value is read from an instance variable, an update operation against it will be respected to the instance variable.
 
-Currently, Type Profiler has some limitations about container instances (because of performance).
+Currently, TypeProf has some limitations about container instances (because of performance).
 
 * If you put a container type into a key of hash object, the key is replaced with `untyped`.
 * The maximam depth of nested arrays and hashs is limited to 5.
@@ -425,29 +427,3 @@ We plan to allow them to be configurable, and relax the depth limitation when RB
 
 * Proc
 * Struct
-
-
-### Name suggestions
-
-Current candidates:
-
-* typeprof (liked by matz)
-* Sugar / Syrup
-* Soramame / Sumiso / Sumeshi / Satumaimo / Sushi / Shoyu / Sayu / Sekihan
-* Rencon
-* Sora
-* Solarmame
-* Sorame
-* Snap Endoh
-* Snap pea / Soybean
-* Snappy
-* Snack
-* Soysource
-* Katana
-* Takana
-* Scone
-* RBSgen
-* Stooby
-* Sherlock
-* Stanalyzer
-* SakeType
