@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = "typeprof" # temporal
-  spec.version       = "0.1"
+  spec.version       = "0.1.0"
   spec.authors       = ["Yusuke Endoh"]
   spec.email         = ["mame@ruby-lang.org"]
 
