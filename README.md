@@ -30,6 +30,6 @@ class Object
 end
 ```
 
-## Document
+## Documentation
 
 [English](doc/doc.md) / [日本語](doc/doc.ja.md)
