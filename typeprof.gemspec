@@ -1,6 +1,6 @@
 Gem::Specification.new do |spec|
   spec.name          = "typeprof" # temporal
-  spec.version       = "0.1.0"
+  spec.version       = "0.1.1"
   spec.authors       = ["Yusuke Endoh"]
   spec.email         = ["mame@ruby-lang.org"]
 
@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = Gem::Requirement.new(">= 2.7")
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/mame/ruby-type-profiler"
+  spec.metadata["source_code_uri"] = "https://github.com/ruby/typeprof"
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
