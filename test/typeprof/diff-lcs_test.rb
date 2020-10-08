@@ -5,6 +5,8 @@ module TypeProf
   class DiffLCSTest < Test::Unit::TestCase
     test "testbed/diff-lcs" do
       begin
+        TestRun.setup_testbed_repository("diff-lcs", "https://github.com/mame/diff-lcs.git", "de838d2df80514adbf22c26daed728ddd06af60b")
+
         load_path_back = $LOAD_PATH
 
         $LOAD_PATH << File.join(__dir__, "../../testbed/diff-lcs/lib")

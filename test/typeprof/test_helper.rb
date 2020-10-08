@@ -55,5 +55,20 @@ module TypeProf
       ENV.delete("TP_DETAILED_STUB")
       $VERBOSE = verbose_back
     end
+
+    def self.setup_testbed_repository(dir, github_repo_url, revision)
+      dir = File.join(__dir__, "../../testbed/", dir)
+      unless File.directory?(dir)
+        Dir.mkdir(dir)
+        system("git", "init", chdir: dir, exception: true)
+        system("git", "remote", "add", "origin", github_repo_url, chdir: dir, exception: true)
+        system("git", "fetch", "origin", revision, chdir: dir, exception: true)
+      end
+      system("git", "reset", "--hard", revision, chdir: dir, exception: true)
+
+      true
+    rescue Errno::ENOENT
+      false
+    end
   end
 end

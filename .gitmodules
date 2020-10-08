@@ -1,6 +1,0 @@
-[submodule "testbed/goodcheck"]
-	path = testbed/goodcheck
-	url = https://github.com/sider/goodcheck.git
-[submodule "testbed/diff-lcs"]
-	path = testbed/diff-lcs
-	url = https://github.com/mame/diff-lcs.git

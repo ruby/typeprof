@@ -1,10 +1,13 @@
 require_relative "test_helper"
 require_relative "../../lib/typeprof"
+require "bundler"
 
 module TypeProf
   class GoodcheckTest < Test::Unit::TestCase
     test "testbed/goodcheck" do
       begin
+        TestRun.setup_testbed_repository("goodcheck", "https://github.com/sider/goodcheck.git", "b78f0f6f90887a97aa369e287fa109a63cee4a04")
+
         load_path_back = $LOAD_PATH
         env_bundle_gemfile_back = ENV["BUNDLE_GEMFILE"]
 
