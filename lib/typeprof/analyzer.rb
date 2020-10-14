@@ -605,7 +605,7 @@ module TypeProf
         ctn[@write[site], ep]
       end
 
-      def add_write!(site, ty, &ctn)
+      def add_write!(site, ty)
         @write[site] ||= Type.bot
         @write[site] = @write[site].union(ty)
         @read[site] ||= {}
@@ -637,11 +637,11 @@ module TypeProf
       end
     end
 
-    def add_ivar_write!(recv, var, ty, &ctn)
+    def add_ivar_write!(recv, var, ty)
       recv.each_child do |recv|
         class_def, singleton = get_ivar(recv)
         next unless class_def
-        class_def.ivars.add_write!([singleton, var], ty, &ctn)
+        class_def.ivars.add_write!([singleton, var], ty)
       end
     end
 
@@ -653,20 +653,39 @@ module TypeProf
       end
     end
 
-    def add_cvar_write!(klass, var, ty, &ctn)
+    def add_cvar_write!(klass, var, ty)
       klass.each_child do |klass|
         class_def = @class_defs[klass.idx]
         next unless class_def
-        class_def.cvars.add_write!(var, ty, &ctn)
+        class_def.cvars.add_write!(var, ty)
       end
     end
 
     def add_gvar_read!(var, ep, &ctn)
-      @gvar_table.add_read!(var, ep, &ctn)
+      @gvar_table.add_read!([var, true], ep) do |ty, ep2|
+        if ty == Type.bot
+          @gvar_table.add_read!([var, false], ep) do |ty, ep2|
+            ty = Type.nil if ty == Type.bot
+            ctn[ty, ep2]
+          end
+        else
+          ctn[ty, ep2]
+          @gvar_table.add_read!([var, false], ep) do |ty, ep2|
+            ctn[ty, ep2] unless ty == Type.bot
+          end
+        end
+      end
     end
 
-    def add_gvar_write!(var, ty, &ctn)
-      @gvar_table.add_write!(var, ty, &ctn)
+    def add_gvar_write!(var, ty, ep)
+      if ep
+        @gvar_table.add_read!([var, true], nil) do |ty1, _ep|
+          unless ty1.consistent?(ty, {})
+            warn(ep, "inconsistent assignment to RBS-declared global variable")
+          end
+        end
+      end
+      @gvar_table.add_write!([var, !ep], ty)
     end
 
     def error(ep, msg)
@@ -1300,7 +1319,7 @@ module TypeProf
         var, = operands
         env, (ty,) = env.pop(1)
         ty = globalize_type(ty, env, ep)
-        add_gvar_write!(var, ty)
+        add_gvar_write!(var, ty, ep)
 
       when :getglobal
         var, = operands
@@ -1311,7 +1330,6 @@ module TypeProf
           env = env.push(ty)
         else
           add_gvar_read!(var, ep) do |ty, ep|
-            ty = Type.nil if ty == Type.bot # HACK
             nenv, ty = localize_type(ty, env, ep)
             merge_env(ep.next, nenv.push(ty))
           end

@@ -52,7 +52,7 @@ module TypeProf
     end
 
     def dump
-      [import_rbs_classes, import_rbs_constants]
+      [import_rbs_classes, import_rbs_constants, import_rbs_globals]
     end
 
     # constant_name = [Symbol]
@@ -177,7 +177,6 @@ module TypeProf
                   next if name == :[]
                   next if name == :[]=
                   next if name == :to_proc
-                  #next unless [:empty?, :size].include?(name)
                 when :Struct
                   next if name == :initialize
                 when :Module
@@ -229,11 +228,10 @@ module TypeProf
               name = member.name
               mod = name.namespace.path + [name.name]
               included_modules << mod
-            when RBS::AST::Members::InstanceVariable
-            when RBS::AST::Members::ClassVariable
             when RBS::AST::Members::Public, RBS::AST::Members::Private
             when RBS::AST::Declarations::Constant
             when RBS::AST::Declarations::Alias
+            when RBS::AST::Declarations::Class, RBS::AST::Declarations::Module
             else
               warn "Importing #{ member.class.name } is not supported yet"
               #p member
@@ -245,6 +243,15 @@ module TypeProf
       end.compact
 
       result
+    end
+
+    def import_rbs_globals
+      gvars = {}
+      @current_env.global_decls.each do |name, decl|
+        decl = decl.decl
+        gvars[name] = convert_type(decl.type)
+      end
+      gvars
     end
 
     def translate_typed_method_def(rs_method_types)
@@ -405,7 +412,7 @@ module TypeProf
     end
 
     def import_ruby_signature(scratch, dump, explicit = false)
-      rbs_classes, rbs_constants = dump
+      rbs_classes, rbs_constants, rbs_globals = dump
       classes = []
       rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods, rbs_sources)|
         if classpath == [:Object]
@@ -447,6 +454,10 @@ module TypeProf
         base_klass = path_to_klass(scratch, classpath[0..-2])
         value = convert_type(scratch, value)
         scratch.add_constant(base_klass, classpath[-1], value)
+      end
+
+      rbs_globals.each do |name, value|
+        scratch.add_gvar_write!(name, convert_type(scratch, value), nil)
       end
 
       true

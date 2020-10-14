@@ -37,7 +37,7 @@ module TypeProf
           backtrace = [ep]
         end
         loc, *backtrace = backtrace.map do |ep|
-          ep.source_location
+          ep&.source_location
         end
         output.puts "#{ loc }: #{ msg }"
         backtrace.each do |loc|
@@ -62,8 +62,10 @@ module TypeProf
       return if gvar_write.empty?
 
       output.puts "# Global variables"
-      gvar_write.each do |gvar_name, ty|
-        output.puts "#  #{ gvar_name } : #{ ty.screen_name(scratch) }"
+      gvar_write.each do |(gvar_name, rbs_declared), ty|
+        next if ty == Type.bot
+        s = rbs_declared ? "#" : ""
+        output.puts s + "#{ gvar_name } : #{ ty.screen_name(scratch) }"
       end
       output.puts
     end
