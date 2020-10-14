@@ -98,6 +98,8 @@ module TypeProf
         explicit_methods = {}
         iseq_methods = {}
         attr_methods = {}
+        ivars = class_def.ivars.dump
+        cvars = class_def.cvars.dump
         class_def.methods.each do |(singleton, mid), mdefs|
           mdefs.each do |mdef|
             case mdef
@@ -127,7 +129,7 @@ module TypeProf
                   attr_methods[method_name][0] = :accessor
                 end
               else
-                ty = class_def.ivars.write[[singleton, mdef.ivar]] || Type.any
+                ty = ivars[[singleton, mdef.ivar]] || Type.any
                 attr_methods[method_name] = [mdef.kind, ty.screen_name(@scratch)]
               end
             when TypedMethodDef
@@ -139,14 +141,14 @@ module TypeProf
           end
         end
 
-        ivars = class_def.ivars.write.map do |(singleton, var), ty|
+        ivars = ivars.map do |(singleton, var), ty|
           next unless var.to_s.start_with?("@")
           var = "self.#{ var }" if singleton
           next if attr_methods[[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]
           [var, ty.screen_name(@scratch)]
         end.compact
 
-        cvars = class_def.cvars.write.map do |var, ty|
+        cvars = cvars.map do |var, ty|
           [var, ty.screen_name(@scratch)]
         end
 

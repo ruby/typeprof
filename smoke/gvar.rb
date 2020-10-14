@@ -5,7 +5,7 @@ log($foo)
 
 __END__
 # Global variables
-#  $foo : Integer | String
+$foo : Integer | String
 
 # Classes
 class Object

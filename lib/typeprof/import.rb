@@ -142,6 +142,7 @@ module TypeProf
         included_modules = []
         methods = {}
         ivars = {}
+        cvars = {}
         rbs_sources = {}
         type_params = nil
 
@@ -231,6 +232,8 @@ module TypeProf
               included_modules << mod
             when RBS::AST::Members::InstanceVariable
               ivars[member.name] = convert_type(member.type)
+            when RBS::AST::Members::ClassVariable
+              cvars[member.name] = convert_type(member.type)
             when RBS::AST::Members::Public, RBS::AST::Members::Private
             when RBS::AST::Declarations::Constant
             when RBS::AST::Declarations::Alias
@@ -242,7 +245,7 @@ module TypeProf
           end
         end
 
-        result[klass] = [type_params, superclass, included_modules, methods, ivars, rbs_sources]
+        result[klass] = [type_params, superclass, included_modules, methods, ivars, cvars, rbs_sources]
       end.compact
 
       result
@@ -417,7 +420,7 @@ module TypeProf
     def import_ruby_signature(scratch, dump, explicit = false)
       rbs_classes, rbs_constants, rbs_globals = dump
       classes = []
-      rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods, ivars, rbs_sources)|
+      rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods, ivars, cvars, rbs_sources)|
         if classpath == [:Object]
           klass = Type::Builtin[:obj]
         else
@@ -437,10 +440,10 @@ module TypeProf
             end
           end
         end
-        classes << [klass, included_modules, methods, ivars, rbs_sources]
+        classes << [klass, included_modules, methods, ivars, cvars, rbs_sources]
       end
 
-      classes.each do |klass, included_modules, methods, ivars, rbs_sources|
+      classes.each do |klass, included_modules, methods, ivars, cvars, rbs_sources|
         included_modules.each do |mod|
           mod = path_to_klass(scratch, mod)
           scratch.include_module(klass, mod, false)
@@ -454,6 +457,10 @@ module TypeProf
         ivars.each do |ivar_name, ty|
           ty = convert_type(scratch, ty)
           scratch.add_ivar_write!(Type::Instance.new(klass), ivar_name, ty)
+        end
+        cvars.each do |ivar_name, ty|
+          ty = convert_type(scratch, ty)
+          scratch.add_cvar_write!(klass, ivar_name, ty)
         end
       end
 

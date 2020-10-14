@@ -592,26 +592,32 @@ module TypeProf
     end
 
     class VarTable
+      Entry = Struct.new(:read_continuations, :type)
+
       def initialize
-        @read, @write = {}, {}
+        @tbl = {}
       end
 
-      attr_reader :write
-
       def add_read!(site, ep, &ctn)
-        @read[site] ||= {}
-        @read[site][ep] = ctn
-        @write[site] ||= Type.bot
-        ctn[@write[site], ep]
+        entry = @tbl[site] ||= Entry.new({}, Type.bot)
+        entry.read_continuations[ep] = ctn
+        ctn[entry.type, ep]
       end
 
       def add_write!(site, ty)
-        @write[site] ||= Type.bot
-        @write[site] = @write[site].union(ty)
-        @read[site] ||= {}
-        @read[site].each do |ep, ctn|
+        entry = @tbl[site] ||= Entry.new({}, Type.bot)
+        entry.type = entry.type.union(ty)
+        entry.read_continuations.each do |ep, ctn|
           ctn[ty, ep]
         end
+      end
+
+      def dump
+        tbl = {}
+        @tbl.each do |site, entry|
+          tbl[site] = entry.type
+        end
+        tbl
       end
     end
 
@@ -680,7 +686,7 @@ module TypeProf
     def add_gvar_write!(var, ty, ep)
       if ep
         @gvar_table.add_read!([var, true], nil) do |ty1, _ep|
-          unless ty1.consistent?(ty, {})
+          if ty1 != Type.bot && !ty1.consistent?(ty, {})
             warn(ep, "inconsistent assignment to RBS-declared global variable")
           end
         end
@@ -848,7 +854,7 @@ module TypeProf
 
       Reporters.show_reveal_types(self, @reveal_types, output)
 
-      Reporters.show_gvars(self, @gvar_table.write, output)
+      Reporters.show_gvars(self, @gvar_table.dump, output)
 
       #RubySignatureExporter2.new(
       #  self, @include_relations, @ivar_table.write, @cvar_table.write, @class_defs
