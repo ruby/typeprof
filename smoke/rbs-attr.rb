@@ -14,9 +14,13 @@ def write_test
 end
 
 __END__
+# Errors
+smoke/rbs-attr.rb:11: [error] failed to resolve overload: Foo#writer_example=
+smoke/rbs-attr.rb:13: [error] failed to resolve overload: Foo#accessor_example=
+
 # Classes
 class Object
   def read_test_1 : -> Integer
   def read_test_2 : -> Integer
-  def write_test : -> Integer
+  def write_test : -> String
 end
