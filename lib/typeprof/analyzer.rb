@@ -336,6 +336,11 @@ module TypeProf
         @methods[[singleton, mid]] << mdef
         # Need to restart...?
       end
+
+      def set_method(mid, singleton, mdef)
+        @methods[[singleton, mid]] = Utils::MutableSet.new
+        @methods[[singleton, mid]] << mdef
+      end
     end
 
     def include_module(including_mod, included_mod, visible = true)
@@ -374,7 +379,7 @@ module TypeProf
     end
 
     def new_class(cbase, name, type_params, superclass)
-      if cbase && cbase.idx != 0
+      if cbase && cbase.idx != 1
         show_name = "#{ @class_defs[cbase.idx].name }::#{ name }"
       else
         show_name = name.to_s
@@ -487,6 +492,11 @@ module TypeProf
       mdef
     end
 
+    def set_method(klass, mid, singleton, mdef)
+      @class_defs[klass.idx].set_method(mid, singleton, mdef)
+      mdef
+    end
+
     def add_attr_method(klass, mid, ivar, kind)
       if kind == :reader || kind == :accessor
         add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader))
@@ -512,12 +522,12 @@ module TypeProf
       add_method(recv_ty.klass, mid, true, TypedMethodDef.new([[fargs, ret_ty]]))
     end
 
-    def add_custom_method(klass, mid, impl)
-      add_method(klass, mid, false, CustomMethodDef.new(impl))
+    def set_custom_method(klass, mid, impl)
+      set_method(klass, mid, false, CustomMethodDef.new(impl))
     end
 
-    def add_singleton_custom_method(klass, mid, impl)
-      add_method(klass, mid, true, CustomMethodDef.new(impl))
+    def set_singleton_custom_method(klass, mid, impl)
+      set_method(klass, mid, true, CustomMethodDef.new(impl))
     end
 
     def alias_method(klass, singleton, new, old)

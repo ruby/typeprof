@@ -639,10 +639,9 @@ module TypeProf
       end
     end
 
-    def self.gen_hash
+    def self.gen_hash(base_ty = Type::Instance.new(Type::Builtin[:hash]))
       hg = HashGenerator.new
       yield hg
-      base_ty = Type::Instance.new(Type::Builtin[:hash])
       Type::Hash.new(Type::Hash::Elements.new(hg.map_tys), base_ty)
     end
 

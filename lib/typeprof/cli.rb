@@ -82,7 +82,7 @@ module TypeProf
       end
 
       @rbs_files.each do |path|
-        RubySignatureImporter.import_rbs_file(scratch, path)
+        Import.import_rbs_file(scratch, path)
       end
 
       result = scratch.type_profile

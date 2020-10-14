@@ -3,209 +3,125 @@ require "rbs"
 module TypeProf
   class RBSReader
     def initialize
-      @env, @builtin_env_dump = RBSReader.builtin_env
+      @env, @builtin_env_json = RBSReader.get_builtin_env
     end
 
-    @builtin_env = nil
-    def self.builtin_env
-      return @builtin_env.dup, @builtin_env_dump if @builtin_env
+    @builtin_env = @builtin_env_json = nil
+    def self.get_builtin_env
+      unless @builtin_env
+        @builtin_env = RBS::Environment.new
+        @builtin_env_json = load_rbs(@builtin_env, builtin: true)
+      end
 
-      loader = RBS::EnvironmentLoader.new
-      env = RBS::Environment.new
-      decls = loader.load(env: env)
-      @builtin_env = env
-      @builtin_env_dump = RBS2JSON.new(env, decls).dump
-      return env.dup, @builtin_env_dump
+      return @builtin_env.dup, @builtin_env_json
     end
 
     def load_builtin
-      @builtin_env_dump
+      @builtin_env_json
     end
 
     def load_library(lib)
-      loader = RBS::EnvironmentLoader.new
-      loader.no_builtin!
-      loader.add(library: lib)
-      new_decls = loader.load(env: @env)
-      RBS2JSON.new(@env, new_decls).dump
+      RBSReader.load_rbs(@env, library: lib)
     end
 
     def load_path(path)
+      RBSReader.load_rbs(@env, path: path)
+    end
+
+    def self.load_rbs(env, builtin: false, **opt)
       loader = RBS::EnvironmentLoader.new
-      loader.no_builtin!
-      loader.add(path: path)
-      new_decls = loader.load(env: @env)
-      RBS2JSON.new(@env, new_decls).dump
+      unless builtin
+        loader.no_builtin!
+        loader.add(**opt)
+      end
+      new_decls = loader.load(env: env)
+
+      all_env = env.resolve_type_names
+
+      resolver = RBS::TypeNameResolver.from_env(all_env)
+      cur_env = RBS::Environment.new
+      new_decls.each do |decl,|
+        cur_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
+      end
+
+      RBS2JSON.new(all_env, cur_env).dump_json
     end
   end
 
   class RBS2JSON
-    def initialize(env, new_decls)
-      @all_env = env.resolve_type_names
-
-      resolver = RBS::TypeNameResolver.from_env(env)
-      @current_env = RBS::Environment.new()
-
-      new_decls.each do |decl,|
-        @current_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
-      end
+    def initialize(all_env, cur_env)
+      @all_env, @cur_env = all_env, cur_env
     end
 
-    def dump
-      [import_rbs_classes, import_rbs_constants, import_rbs_globals]
+    def dump_json
+      {
+        classes: conv_classes,
+        constants: conv_constants,
+        globals: conv_globals,
+      }
     end
 
     # constant_name = [Symbol]
     #
     # { constant_name => type }
-    def import_rbs_constants
+    def conv_constants
       constants = {}
-      @current_env.constant_decls.each do |name, decl|
-        #constants[name] = decl
-        klass = name.namespace.path + [name.name]
-        constants[klass] = convert_type(decl.decl.type)
+      @cur_env.constant_decls.each do |name, decl|
+        klass = conv_type_name(name)
+        constants[klass] = conv_type(decl.decl.type)
       end
       constants
     end
 
-    # class_name = [Symbol]
-    # method_name = [singleton: true|false, Symbol}
-    # method_def = [...]
+    # gvar_name = Symbol (:$gvar)
     #
-    # { class_name =>
-    #   [ super_class: class_name,
-    #     included_modules: [class_name],
-    #     methods: { method_name => [method_def] },
-    #   ]
-    # }
-    def import_rbs_classes
-      class2super = {}
-      # XXX: @env.each_global {|a| p a }
-      @current_env.class_decls.each do |name, decl|
-        decl.decls.each do |decl|
-          decl = decl.decl
-          if decl.is_a?(RBS::AST::Declarations::Class) && name != RBS::Factory.new.type_name("::Object")
-            #next unless decl.super_class
-            class2super[name] ||= decl.super_class&.name || RBS::BuiltinNames::Object.name
-          else
-            class2super[name] ||= nil
-          end
-        end
+    # { gvar_name => type }
+    def conv_globals
+      gvars = {}
+      @cur_env.global_decls.each do |name, decl|
+        decl = decl.decl
+        gvars[name] = conv_type(decl.type)
       end
+      gvars
+    end
 
-      classes = []
+    def conv_classes
+      json = {}
 
-      # topological sort
-      queue = class2super.keys.map {|name| [:visit, name] }
-      visited = {}
-      until queue.empty?
-        #p queue.map {|ev, name| [ev, name.to_s] }
-        event, name = queue.pop
-        case event
-        when :visit
-          if !visited[name]
-            visited[name] = true
-            queue << [:new, name]
-            decl = @all_env.class_decls[name]
-            decl.decls.each do |decl|
-              decl = decl.decl
-              next if decl.is_a?(RBS::AST::Declarations::Module)
-              until RBS::BuiltinNames::Object.name == decl.name
-                super_class = decl.super_class
-                break unless super_class
-                decls = @all_env.class_decls[super_class.name].decls
-                raise if decls.size >= 2 # no need to check
-                decl = decls.first.decl
-                queue << [:visit, decl.name]
-              end
-            end
-            if !name.namespace.empty?
-              queue << [:visit, name.namespace.to_type_name]
-            end
-          end
-        when :new
-          super_class_name = class2super[name]
-          klass = name.namespace.path + [name.name]
-          if super_class_name
-            superclass = super_class_name.namespace.path + [super_class_name.name]
-          else
-            superclass = nil
-          end
-          classes << [name, klass, superclass]
-        end
-      end
+      each_class_decl do |name, decls|
+        super_class_name = get_super_class_name(name)
+        klass = conv_type_name(name)
+        superclass = super_class_name ? conv_type_name(super_class_name) : nil
 
-      result = {}
-      classes.each do |type_name, klass, superclass|
-        next unless @current_env.class_decls[type_name]
-
+        type_params = nil
         included_modules = []
         methods = {}
         ivars = {}
         cvars = {}
         rbs_sources = {}
-        type_params = nil
 
-        @current_env.class_decls[type_name].decls.each do |decl|
+        decls.each do |decl|
           decl = decl.decl
-          raise NotImplementedError if decl.is_a?(RBS::AST::Declarations::Interface)
+
+          raise NotImplementedError if decl.is_a?(RBS::AST::Declarations::Interface) # XXX
+
           type_params2 = decl.type_params.params.map {|param| [param.name, param.variance] }
-          if type_params
-            raise if type_params != type_params2
-          else
-            type_params = type_params2
-          end
+          raise "inconsistent type parameter declaration" if type_params && type_params != type_params2
+          type_params = type_params2
 
           decl.members.each do |member|
             case member
             when RBS::AST::Members::MethodDefinition
               name = member.name
 
-              # ad-hoc filter
-              if member.instance?
-                case type_name.name
-                when :Object
-                  next if name == :class
-                  next if name == :send
-                  next if name == :is_a?
-                  next if name == :respond_to?
-                when :Array
-                  next if name == :[]
-                  next if name == :[]=
-                  next if name == :pop
-                when :Enumerable
-                when :Enumerator
-                when :Hash
-                  next if name == :[]
-                  next if name == :[]=
-                  next if name == :to_proc
-                when :Struct
-                  next if name == :initialize
-                when :Module
-                  next if name == :include
-                  next if name == :module_function
-                when :Proc
-                  next if name == :call || name == :[]
-                when :Kernel
-                  next if name == :Array
-                end
-              end
-              if member.singleton?
-                case type_name.name
-                when :Array
-                end
-              end
-
               method_types = member.types.map do |method_type|
                 case method_type
-                when RBS::MethodType
-                  method_type
-                when :super
-                  raise NotImplementedError
+                when RBS::MethodType then method_type
+                when :super then raise NotImplementedError
                 end
               end
 
-              method_def = translate_typed_method_def(method_types)
+              method_def = conv_method_def(method_types)
               rbs_source = [(member.kind == :singleton ? "self." : "") + member.name.to_s, member.types.map {|type| type.location.source }]
               if member.instance?
                 methods[[false, name]] = method_def
@@ -215,8 +131,16 @@ module TypeProf
                 methods[[true, name]] = method_def
                 rbs_sources[[true, name]] = rbs_source
               end
-            #when RBS::AST::Members::AttrReader, RBS::AST::Members::AttrAccessor, RBS::AST::Members::AttrWriter
-              #raise NotImplementedError
+            when RBS::AST::Members::AttrReader
+              ty = conv_type(member.type)
+              methods[[false, member.name]] = attr_reader_def(ty)
+            when RBS::AST::Members::AttrWriter
+              ty = conv_type(member.type)
+              methods[[false, :"#{ member.name }="]] = attr_writer_def(ty)
+            when RBS::AST::Members::AttrAccessor
+              ty = conv_type(member.type)
+              methods[[false, member.name]] = attr_reader_def(ty)
+              methods[[false, :"#{ member.name }="]] = attr_writer_def(ty)
             when RBS::AST::Members::Alias
               if member.instance?
                 method_def = methods[[false, member.old_name]]
@@ -226,356 +150,428 @@ module TypeProf
                 method_def = methods[[true, member.old_name]]
                 methods[[true, member.new_name]] = method_def if method_def
               end
+
             when RBS::AST::Members::Include
               name = member.name
-              mod = name.namespace.path + [name.name]
+              mod = conv_type_name(name)
               included_modules << mod
+
             when RBS::AST::Members::InstanceVariable
-              ivars[member.name] = convert_type(member.type)
+              ivars[member.name] = conv_type(member.type)
             when RBS::AST::Members::ClassVariable
-              cvars[member.name] = convert_type(member.type)
-            when RBS::AST::Members::Public, RBS::AST::Members::Private
+              cvars[member.name] = conv_type(member.type)
+
+            when RBS::AST::Members::Public, RBS::AST::Members::Private # XXX
+
+            # The following declarations are ignoreable because they are handled in other level
             when RBS::AST::Declarations::Constant
-            when RBS::AST::Declarations::Alias
+            when RBS::AST::Declarations::Alias # type alias
             when RBS::AST::Declarations::Class, RBS::AST::Declarations::Module
-            when RBS::AST::Members::AttrReader
-              ty = convert_type(member.type)
-              methods[[false, member.name]] = [[[], [], [], nil, {}, {}, nil, nil, ty]]
-            when RBS::AST::Members::AttrWriter
-              ty = convert_type(member.type)
-              methods[[false, :"#{ member.name }="]] = [[[], [ty], [], nil, {}, {}, nil, nil, [:any]]]
-            when RBS::AST::Members::AttrAccessor
-              ty = convert_type(member.type)
-              methods[[false, member.name]] = [[[], [], [], nil, {}, {}, nil, nil, ty]]
-              methods[[false, :"#{ member.name }="]] = [[[], [ty], [], nil, {}, {}, nil, nil, [:any]]]
+
             else
               warn "Importing #{ member.class.name } is not supported yet"
-              #p member
             end
           end
         end
 
-        result[klass] = [type_params, superclass, included_modules, methods, ivars, cvars, rbs_sources]
-      end.compact
-
-      result
-    end
-
-    def import_rbs_globals
-      gvars = {}
-      @current_env.global_decls.each do |name, decl|
-        decl = decl.decl
-        gvars[name] = convert_type(decl.type)
+        json[klass] = {
+          type_params: type_params,
+          superclass: superclass,
+          members: {
+            included_modules: included_modules,
+            methods: methods,
+            ivars: ivars,
+            cvars: cvars,
+            rbs_sources: rbs_sources,
+          },
+        }
       end
-      gvars
+
+      json
     end
 
-    def translate_typed_method_def(rs_method_types)
-      rs_method_types.map do |type|
-        if type.block
-          blk = translate_typed_block(type.block)
-        else
-          blk = nil
+    def each_class_decl
+      classes = []
+
+      # topological sort
+      #   * superclasses and modules appear earlier than their subclasses (Object is earlier than String)
+      #   * namespace module appers earlier than its children (Process is earlier than Process::Status)
+      visited = {}
+      queue = @cur_env.class_decls.keys.map {|name| [:visit, name] }
+      until queue.empty?
+        event, name = queue.pop
+        case event
+        when :visit
+          if !visited[name]
+            visited[name] = true
+            queue << [:new, name]
+            @all_env.class_decls[name].decls.each do |decl|
+              decl = decl.decl
+              next if decl.is_a?(RBS::AST::Declarations::Module)
+              each_ancestor(decl) {|name| queue << [:visit, name] }
+            end
+            queue << [:visit, name.namespace.to_type_name] if !name.namespace.empty?
+          end
+        when :new
+          decls = @cur_env.class_decls[name]
+          yield name, decls.decls if decls
         end
+      end
+
+      classes
+    end
+
+    def each_ancestor(decl, &blk)
+      yield decl.name
+      super_class = decl.super_class || RBS::BuiltinNames::Object
+      return if decl.name == RBS::BuiltinNames::BasicObject.name
+      return if decl.name == super_class.name
+      @all_env.class_decls[super_class.name].decls.each do |decl|
+        each_ancestor(decl.decl, &blk)
+      end
+    end
+
+    def get_super_class_name(name)
+      return nil if name == RBS::BuiltinNames::BasicObject.name
+
+      @all_env.class_decls[name].decls.each do |decl|
+        decl = decl.decl
+        case decl
+        when RBS::AST::Declarations::Class
+          return decl.super_class.name if decl.super_class
+        when RBS::AST::Declarations::Module
+          return nil
+        else
+          raise "unknown declaration: %p" % decl.class
+        end
+      end
+
+      return RBS::BuiltinNames::Object.name
+    end
+
+    def conv_method_def(rbs_method_types)
+      rbs_method_types.map do |type|
+        blk = type.block ? conv_block(type.block) : nil
         type_params = type.type_params
 
-        begin
-          lead_tys = type.type.required_positionals.map do |type|
-            convert_type(type.type)
-          end
-          opt_tys = type.type.optional_positionals.map do |type|
-            convert_type(type.type)
-          end
-          rest_ty = type.type.rest_positionals
-          rest_ty = convert_type(rest_ty.type) if rest_ty
-          opt_kw_tys = type.type.optional_keywords.to_h do |key, type|
-            [key, convert_type(type.type)]
-          end
-          req_kw_tys = type.type.required_keywords.to_h do |key, type|
-            [key, convert_type(type.type)]
-          end
-          rest_kw_ty = type.type.rest_keywords
-          raise NotImplementedError if rest_kw_ty
+        lead_tys = type.type.required_positionals.map {|type| conv_type(type.type) }
+        opt_tys = type.type.optional_positionals.map {|type| conv_type(type.type) }
+        rest_ty = type.type.rest_positionals
+        rest_ty = conv_type(rest_ty.type) if rest_ty
+        opt_kw_tys = type.type.optional_keywords.to_h {|key, type| [key, conv_type(type.type)] }
+        req_kw_tys = type.type.required_keywords.to_h {|key, type| [key, conv_type(type.type)] }
+        rest_kw_ty = type.type.rest_keywords
+        raise NotImplementedError if rest_kw_ty # XXX
 
-          ret_ty = convert_type(type.type.return_type)
-          [type_params, lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty]
-        rescue UnsupportedType
-          nil
-        end
-      end.compact
+        ret_ty = conv_type(type.type.return_type)
+
+        {
+          type_params: type_params,
+          lead_tys: lead_tys,
+          opt_tys: opt_tys,
+          rest_ty: rest_ty,
+          req_kw_tys: req_kw_tys,
+          opt_kw_tys: opt_kw_tys,
+          rest_kw_ty: rest_kw_ty,
+          blk: blk,
+          ret_ty: ret_ty,
+        }
+      end
     end
 
-    def translate_typed_block(rs_block)
-      type = rs_block.type
+    def attr_reader_def(ty)
+      [{
+        type_params: [],
+        lead_tys: [],
+        opt_tys: [],
+        rest_ty: nil,
+        req_kw_tys: {},
+        opt_kw_tys: {},
+        rest_kw_ty: nil,
+        blk: nil,
+        ret_ty: ty,
+      }]
+    end
+
+    def attr_writer_def(ty)
+      [{
+        type_params: [],
+        lead_tys: [ty],
+        opt_tys: [],
+        rest_ty: nil,
+        req_kw_tys: {},
+        opt_kw_tys: {},
+        rest_kw_ty: nil,
+        blk: nil,
+        ret_ty: ty,
+      }]
+    end
+
+    def conv_block(rbs_block)
+      type = rbs_block.type
+
+      # XXX
+      raise NotImplementedError unless type.optional_positionals.empty?
       raise NotImplementedError unless type.optional_keywords.empty?
       raise NotImplementedError unless type.required_keywords.empty?
-      raise NotImplementedError unless type.optional_positionals.empty?
       raise NotImplementedError if type.rest_keywords
+
       lead_tys = type.required_positionals.map do |type|
-        convert_type(type.type)
+        conv_type(type.type)
       end
-      ret_ty = convert_type(type.return_type)
+
+      ret_ty = conv_type(type.return_type)
+
       [lead_tys, ret_ty]
     end
 
-    class UnsupportedType < StandardError
-    end
-
-    def convert_type(ty)
+    def conv_type(ty)
       case ty
       when RBS::Types::ClassSingleton
-        klass = ty.name.namespace.path + [ty.name.name]
-        [:class, klass]
+        [:class, conv_type_name(ty.name)]
       when RBS::Types::ClassInstance
-        klass = ty.name.namespace.path + [ty.name.name]
+        klass = conv_type_name(ty.name)
         case klass
         when [:Array]
           raise if ty.args.size != 1
-          [:array, :Array, [], convert_type(ty.args.first)]
+          [:array, [:Array], [], conv_type(ty.args.first)]
         when [:Hash]
           raise if ty.args.size != 2
           key, val = ty.args
-          [:hash, :Hash, [convert_type(key), convert_type(val)]]
+          [:hash, [:Hash], [conv_type(key), conv_type(val)]]
         when [:Enumerator]
           raise if ty.args.size != 2
-          [:array, :Enumerator, [], convert_type(ty.args.first)]
+          [:array, [:Enumerator], [], conv_type(ty.args.first)]
         else
           [:instance, klass]
         end
-      when RBS::Types::Bases::Bool
-        [:bool]
-      when RBS::Types::Bases::Any
-        [:any]
-      when RBS::Types::Bases::Void
-        [:any]
-      when RBS::Types::Bases::Self
-        [:self]
-      when RBS::Types::Bases::Nil
-        [:nil]
-      when RBS::Types::Bases::Bottom
-        [:union, []]
-      when RBS::Types::Variable
-        [:var, ty.name]
+      when RBS::Types::Bases::Bool   then [:bool]
+      when RBS::Types::Bases::Any    then [:any]
+      when RBS::Types::Bases::Void   then [:any]
+      when RBS::Types::Bases::Self   then [:self]
+      when RBS::Types::Bases::Nil    then [:nil]
+      when RBS::Types::Bases::Bottom then [:union, []]
+      when RBS::Types::Variable      then [:var, ty.name]
       when RBS::Types::Tuple
-        tys = ty.types.map {|ty2| convert_type(ty2) }
-        [:array, :Array, tys, [:union, []]]
+        tys = ty.types.map {|ty2| conv_type(ty2) }
+        [:array, [:Array], tys, [:union, []]]
       when RBS::Types::Literal
         case ty.literal
-        when Integer
-          [:int]
-        when String
-          [:str]
-        when true
-          [:true]
-        when false
-          [:false]
-        when Symbol
-          [:sym, ty.literal]
+        when Integer then [:int]
+        when String  then [:str]
+        when true    then [:true]
+        when false   then [:false]
+        when Symbol  then [:sym, ty.literal]
         else
           p ty.literal
           raise NotImplementedError
         end
       when RBS::Types::Alias
         alias_decl = @all_env.alias_decls[ty.name]
-        alias_decl ? convert_type(alias_decl.decl.type) : [:any]
+        alias_decl ? conv_type(alias_decl.decl.type) : [:any]
       when RBS::Types::Union
-        [:union, ty.types.map {|ty2| begin convert_type(ty2); rescue UnsupportedType; end }.compact]
+        [:union, ty.types.map {|ty2| conv_type(ty2) }.compact]
       when RBS::Types::Optional
-        [:optional, convert_type(ty.type)]
-      when RBS::Types::Record
-        [:any]
+        [:optional, conv_type(ty.type)]
       when RBS::Types::Interface
-        raise UnsupportedType if ty.to_s == "::_ToStr" # XXX
-        raise UnsupportedType if ty.to_s == "::_ToInt" # XXX
-        if ty.to_s == "::_ToAry[U]" # XXX
-          return [:array, :Array, [], [:var, :U]]
+        # XXX: Currently, only a few builtin interfaces are supported
+        case ty.to_s
+        when "::_ToStr" then [:str]
+        when "::_ToInt" then [:int]
+        when "::_ToAry[U]" then [:array, [:Array], [], [:var, :U]]
+        else
+          [:any]
         end
-        [:any]
+      when RBS::Types::Record then [:any] # XXX: not implemented yet
+      when RBS::Types::Proc   then [:any] # XXX: not implemented yet
       else
-        pp ty
-        raise NotImplementedError
+        warn "unknown RBS type: %p" % ty.class
+        [:any]
       end
+    end
+
+    def conv_type_name(name)
+      name.namespace.path + [name.name]
     end
   end
 
-  module RubySignatureImporter
-    module_function
+  class Import
+    def self.import_builtin(scratch)
+      Import.new(scratch, scratch.rbs_reader.load_builtin).import
+    end
 
-    def path_to_klass(scratch, path)
-      klass = Type::Builtin[:obj]
-      path.each do |name|
-        klass = scratch.get_constant(klass, name)
-        raise if klass == Type.any
+    def self.import_library(scratch, feature)
+      begin
+        json = scratch.rbs_reader.load_library(feature)
+      rescue RBS::EnvironmentLoader::UnknownLibraryNameError
+        return nil
       end
-      klass
-    end
-
-    CACHE = {}
-
-    def import_builtin(scratch)
-      import_ruby_signature(scratch, scratch.rbs_reader.load_builtin)
-    end
-
-    def import_library(scratch, feature)
       # need cache?
-      import_ruby_signature(scratch, scratch.rbs_reader.load_library(feature))
-    rescue RBS::EnvironmentLoader::UnknownLibraryNameError
-      false
+      Import.new(scratch, json).import
     end
 
-    def import_rbs_file(scratch, rbs_path)
-      import_ruby_signature(scratch, scratch.rbs_reader.load_path(Pathname(rbs_path)), true)
+    def self.import_rbs_file(scratch, rbs_path)
+      Import.new(scratch, scratch.rbs_reader.load_path(Pathname(rbs_path))).import(true)
     end
 
-    def import_ruby_signature(scratch, dump, explicit = false)
-      rbs_classes, rbs_constants, rbs_globals = dump
-      classes = []
-      rbs_classes.each do |classpath, (type_params, superclass, included_modules, methods, ivars, cvars, rbs_sources)|
-        if classpath == [:Object]
-          klass = Type::Builtin[:obj]
-        else
-          name = classpath.last
-          base_klass = path_to_klass(scratch, classpath[0..-2])
-          superclass = path_to_klass(scratch, superclass) if superclass
-          klass = scratch.get_constant(base_klass, name)
-          if klass.is_a?(Type::Any)
-            klass = scratch.new_class(base_klass, name, type_params, superclass)
-            case classpath
-            when [:NilClass] then Type::Builtin[:nil] = klass
-            when [:Integer]  then Type::Builtin[:int] = klass
-            when [:String]   then Type::Builtin[:str] = klass
-            when [:Symbol]   then Type::Builtin[:sym] = klass
-            when [:Array]    then Type::Builtin[:ary] = klass
-            when [:Hash]     then Type::Builtin[:hash] = klass
-            end
+    def initialize(scratch, json)
+      @scratch = scratch
+      @json = json
+    end
+
+    def import(explicit = false)
+      classes = @json[:classes].map do |classpath, cdef|
+        type_params = cdef[:type_params]
+        superclass  = cdef[:superclass]
+        members     = cdef[:members]
+
+        name = classpath.last
+        superclass = path_to_klass(superclass) if superclass
+        base_klass = path_to_klass(classpath[0..-2])
+
+        klass = @scratch.get_constant(base_klass, name)
+        if klass.is_a?(Type::Any)
+          klass = @scratch.new_class(base_klass, name, type_params, superclass)
+
+          # There builtin classes are needed to interpret RBS declarations
+          case classpath
+          when [:NilClass]   then Type::Builtin[:nil]   = klass
+          when [:TrueClass]  then Type::Builtin[:true]  = klass
+          when [:FalseClass] then Type::Builtin[:false] = klass
+          when [:Integer]    then Type::Builtin[:int]   = klass
+          when [:String]     then Type::Builtin[:str]   = klass
+          when [:Symbol]     then Type::Builtin[:sym]   = klass
+          when [:Array]      then Type::Builtin[:ary]   = klass
+          when [:Hash]       then Type::Builtin[:hash]  = klass
           end
         end
-        classes << [klass, included_modules, methods, ivars, cvars, rbs_sources]
+
+        [klass, members]
       end
 
-      classes.each do |klass, included_modules, methods, ivars, cvars, rbs_sources|
+      classes.each do |klass, members|
+        included_modules = members[:included_modules]
+        methods = members[:methods]
+        ivars = members[:ivars]
+        cvars = members[:cvars]
+        rbs_sources = members[:rbs_sources]
+
         included_modules.each do |mod|
-          mod = path_to_klass(scratch, mod)
-          scratch.include_module(klass, mod, false)
+          @scratch.include_module(klass, path_to_klass(mod), false)
         end
+
         methods.each do |(singleton, method_name), mdef|
-          rbs_source = nil
-          rbs_source = rbs_sources[[singleton, method_name]] if explicit
-          mdef = translate_typed_method_def(scratch, method_name, mdef, rbs_source)
-          scratch.add_method(klass, method_name, singleton, mdef)
+          rbs_source = explicit ? rbs_sources[[singleton, method_name]] : nil
+          mdef = conv_method_def(method_name, mdef, rbs_source)
+          @scratch.add_method(klass, method_name, singleton, mdef)
         end
+
         ivars.each do |ivar_name, ty|
-          ty = convert_type(scratch, ty)
-          scratch.add_ivar_write!(Type::Instance.new(klass), ivar_name, ty, nil)
+          ty = conv_type(ty)
+          @scratch.add_ivar_write!(Type::Instance.new(klass), ivar_name, ty, nil)
         end
+
         cvars.each do |ivar_name, ty|
-          ty = convert_type(scratch, ty)
-          scratch.add_cvar_write!(klass, ivar_name, ty, nil)
+          ty = conv_type(ty)
+          @scratch.add_cvar_write!(klass, ivar_name, ty, nil)
         end
       end
 
-      rbs_constants.each do |classpath, value|
-        base_klass = path_to_klass(scratch, classpath[0..-2])
-        value = convert_type(scratch, value)
-        scratch.add_constant(base_klass, classpath[-1], value)
+      @json[:constants].each do |classpath, value|
+        base_klass = path_to_klass(classpath[0..-2])
+        value = conv_type(value)
+        @scratch.add_constant(base_klass, classpath[-1], value)
       end
 
-      rbs_globals.each do |name, value|
-        scratch.add_gvar_write!(name, convert_type(scratch, value), nil)
+      @json[:globals].each do |name, value|
+        @scratch.add_gvar_write!(name, conv_type(value), nil)
       end
 
       true
     end
 
-    def translate_typed_method_def(scratch, method_name, mdef, rbs_source)
-      sig_rets = mdef.map do |type_params, lead_tys, opt_tys, rest_ty, req_kw_tys, opt_kw_tys, rest_kw_ty, blk, ret_ty|
-        if blk
-          blk = translate_typed_block(scratch, blk)
-        else
-          blk = Type::Instance.new(scratch.get_constant(Type::Builtin[:obj], :NilClass))
-        end
+    def conv_method_def(method_name, mdef, rbs_source)
+      sig_rets = mdef.map do |sig_ret|
+        #type_params = sig_ret[:type_params] # XXX
+        lead_tys = sig_ret[:lead_tys]
+        opt_tys = sig_ret[:opt_tys]
+        rest_ty = sig_ret[:rest_ty]
+        req_kw_tys = sig_ret[:req_kw_tys]
+        opt_kw_tys = sig_ret[:opt_kw_tys]
+        rest_kw_ty = sig_ret[:rest_kw_ty]
+        blk = sig_ret[:blk]
+        ret_ty = sig_ret[:ret_ty]
 
-        begin
-          lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
-          opt_tys = opt_tys.map {|ty| convert_type(scratch, ty) }
-          rest_ty = convert_type(scratch, rest_ty) if rest_ty
-          kw_tys = []
-          req_kw_tys.each {|key, ty| kw_tys << [true, key, convert_type(scratch, ty)] }
-          opt_kw_tys.each {|key, ty| kw_tys << [false, key, convert_type(scratch, ty)] }
-          kw_rest_ty = convert_type(scratch, rest_kw_ty) if rest_kw_ty
-          fargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk)
-          ret_ty = convert_type(scratch, ret_ty)
-          [fargs, ret_ty]
-        rescue UnsupportedType
-          nil
-        end
+        lead_tys = lead_tys.map {|ty| conv_type(ty) }
+        opt_tys = opt_tys.map {|ty| conv_type(ty) }
+        rest_ty = conv_type(rest_ty) if rest_ty
+        kw_tys = []
+        req_kw_tys.each {|key, ty| kw_tys << [true, key, conv_type(ty)] }
+        opt_kw_tys.each {|key, ty| kw_tys << [false, key, conv_type(ty)] }
+        kw_rest_ty = conv_type(rest_kw_ty) if rest_kw_ty
+        blk = blk ? conv_block(blk) : Type.nil
+        fargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk)
+
+        ret_ty = conv_type(ret_ty)
+
+        [fargs, ret_ty]
       end.compact
 
       TypedMethodDef.new(sig_rets, rbs_source)
     end
 
-    def translate_typed_block(scratch, blk)
+    def conv_block(blk)
       lead_tys, ret_ty = blk
-      lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
-      ret_ty = convert_type(scratch, ret_ty)
+      lead_tys = lead_tys.map {|ty| conv_type(ty) }
+      ret_ty = conv_type(ret_ty)
       Type::TypedProc.new(lead_tys, ret_ty, Type::Builtin[:proc])
     end
 
-    class UnsupportedType < StandardError
-    end
-
-    def convert_type(scratch, ty)
+    def conv_type(ty)
       case ty.first
-      when :class
-        path_to_klass(scratch, ty[1])
-      when :instance
-        begin
-          Type::Instance.new(path_to_klass(scratch, ty[1]))
-        rescue
-          raise UnsupportedType
-        end
-      when :bool
-        Type.bool
-      when :any
-        Type.any
-      when :self
-        Type::Var.new(:self)
-      when :int
-        Type::Instance.new(Type::Builtin[:int])
-      when :str
-        Type::Instance.new(Type::Builtin[:str])
-      when :sym
-        Type::Symbol.new(ty.last, Type::Instance.new(Type::Builtin[:sym]))
-      when :nil
-        Type.nil
-      when :true
-        Type::Instance.new(Type::Builtin[:true])
-      when :false
-        Type::Instance.new(Type::Builtin[:false])
+      when :class then path_to_klass(ty[1])
+      when :instance then Type::Instance.new(path_to_klass(ty[1]))
+      when :any then Type.any
+      when :nil then Type.nil
+      when :optional then Type.optional(conv_type(ty[1]))
+      when :bool then Type.bool
+      when :self then Type::Var.new(:self)
+      when :int then Type::Instance.new(Type::Builtin[:int])
+      when :str then Type::Instance.new(Type::Builtin[:str])
+      when :sym then Type::Symbol.new(ty.last, Type::Instance.new(Type::Builtin[:sym]))
+      when :true  then Type::Instance.new(Type::Builtin[:true])
+      when :false then Type::Instance.new(Type::Builtin[:false])
       when :array
-        _, klass, lead_tys, rest_ty = ty
-        lead_tys = lead_tys.map {|ty| convert_type(scratch, ty) }
-        rest_ty = convert_type(scratch, rest_ty)
-        base_type = Type::Instance.new(scratch.get_constant(Type::Builtin[:obj], klass))
+        _, path, lead_tys, rest_ty = ty
+        lead_tys = lead_tys.map {|ty| conv_type(ty) }
+        rest_ty = conv_type(rest_ty)
+        base_type = Type::Instance.new(path_to_klass(path))
         Type::Array.new(Type::Array::Elements.new(lead_tys, rest_ty), base_type)
       when :hash
-        _, _klass, (k, v) = ty
-        Type.gen_hash do |h|
-          k_ty = convert_type(scratch, k)
-          v_ty = convert_type(scratch, v)
+        _, path, (k, v) = ty
+        Type.gen_hash(Type::Instance.new(path_to_klass(path))) do |h|
+          k_ty = conv_type(k)
+          v_ty = conv_type(v)
           h[k_ty] = v_ty
         end
       when :union
-        tys = ty[1].reject {|ty2| ty2[1] == [:BigDecimal] } # XXX
-        Type::Union.new(Utils::Set[*tys.map {|ty2| convert_type(scratch, ty2) }], nil) #  Array support
-      when :optional
-        Type.optional(convert_type(scratch, ty[1]))
+        tys = ty[1]
+        Type::Union.new(Utils::Set[*tys.map {|ty2| conv_type(ty2) }], nil) # XXX: Array and Hash support
       when :var
-        Type::Var.new(ty[1]) # Currently, only for Array#* : (int | string) -> Array[Elem]
+        Type::Var.new(ty[1])
       else
         pp ty
         raise NotImplementedError
       end
+    end
+
+    def path_to_klass(path)
+      klass = Type::Builtin[:obj]
+      path.each do |name|
+        klass = @scratch.get_constant(klass, name)
+        raise if klass == Type.any
+      end
+      klass
     end
   end
 end

@@ -160,8 +160,8 @@ module TypeProf
         first = false
 
         if class_def.superclass
-          object = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj]
-          superclass = object ? "" : " < #{ @class_defs[class_def.superclass].name }"
+          omit = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
+          superclass = omit ? "" : " < #{ @class_defs[class_def.superclass].name }"
         end
 
         output.puts "#{ class_def.kind } #{ class_def.name }#{ superclass }"
