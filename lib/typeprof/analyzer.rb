@@ -985,6 +985,7 @@ module TypeProf
         recv = env.static_env.recv_ty
         if cref.klass.is_a?(Type::Class)
           typed_mdef = check_typed_method(cref.klass, mid, ep.ctx.cref.singleton)
+          recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
           if typed_mdef
             mdef = ISeqMethodDef.new(iseq, cref)
             typed_mdef.each do |typed_mdef|
@@ -1000,7 +1001,6 @@ module TypeProf
               end
             end
 
-            recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
             pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
           end
         else

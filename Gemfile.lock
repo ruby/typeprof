@@ -16,7 +16,7 @@ GIT
 PATH
   remote: .
   specs:
-    typeprof (0.1.2)
+    typeprof (0.1.4)
       rbs (>= 0.12.0)
 
 GEM

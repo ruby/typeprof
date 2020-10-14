@@ -12,7 +12,7 @@ end
 
 __END__
 # Errors
-smoke/manual-rbs2.rb:4: [error] undefined method: A::B.class#unknown
+smoke/manual-rbs2.rb:4: [error] undefined method: A::B#unknown
 
 # Classes
 class Object
