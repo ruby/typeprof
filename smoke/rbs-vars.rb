@@ -30,8 +30,8 @@ class Object
 end
 
 class Foo
-  @ivar : :ivar_example
-  @@cvar : :cvar_example
+# @ivar : :ivar_example
+# @@cvar : :cvar_example
   def const_test : -> :const_example
   def ivar_test : -> :ivar_example
   def cvar_test : -> :cvar_example

@@ -10,9 +10,8 @@ smoke/gvar2.rb:1: [warning] inconsistent assignment to RBS-declared global varia
 
 # Global variables
 #$foo : String
-$foo : Integer
 
 # Classes
 class Object
-  def log : -> (Integer | String)
+  def log : -> String
 end

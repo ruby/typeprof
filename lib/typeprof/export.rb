@@ -57,15 +57,15 @@ module TypeProf
       output.puts
     end
 
-    def show_gvars(scratch, gvar_write, output)
+    def show_gvars(scratch, gvars, output)
       # A signature for global variables is not supported in RBS
-      return if gvar_write.empty?
+      return if gvars.dump.empty?
 
       output.puts "# Global variables"
-      gvar_write.each do |(gvar_name, rbs_declared), ty|
-        next if ty == Type.bot
-        s = rbs_declared ? "#" : ""
-        output.puts s + "#{ gvar_name } : #{ ty.screen_name(scratch) }"
+      gvars.dump.each do |gvar_name, entry|
+        next if entry.type == Type.bot
+        s = entry.rbs_declared ? "#" : ""
+        output.puts s + "#{ gvar_name } : #{ entry.type.screen_name(scratch) }"
       end
       output.puts
     end
@@ -129,7 +129,8 @@ module TypeProf
                   attr_methods[method_name][0] = :accessor
                 end
               else
-                ty = ivars[[singleton, mdef.ivar]] || Type.any
+                entry = ivars[[singleton, mdef.ivar]]
+                ty = entry ? entry.type : Type.any
                 attr_methods[method_name] = [mdef.kind, ty.screen_name(@scratch)]
               end
             when TypedMethodDef
@@ -141,15 +142,16 @@ module TypeProf
           end
         end
 
-        ivars = ivars.map do |(singleton, var), ty|
+        ivars = ivars.map do |(singleton, var), entry|
+          ty = entry.type
           next unless var.to_s.start_with?("@")
           var = "self.#{ var }" if singleton
           next if attr_methods[[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]
-          [var, ty.screen_name(@scratch)]
+          [var, ty.screen_name(@scratch), entry.rbs_declared]
         end.compact
 
-        cvars = cvars.map do |var, ty|
-          [var, ty.screen_name(@scratch)]
+        cvars = cvars.map do |var, entry|
+          [var, entry.type.screen_name(@scratch), entry.rbs_declared]
         end
 
         next if included_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
@@ -166,11 +168,13 @@ module TypeProf
         included_mods.sort.each do |ty|
           output.puts "  include #{ ty }"
         end
-        ivars.each do |var, ty|
-          output.puts "  #{ var } : #{ ty }" unless var.start_with?("_")
+        ivars.each do |var, ty, rbs_declared|
+          s = rbs_declared ? "# " : "  "
+          output.puts s + "#{ var } : #{ ty }" unless var.start_with?("_")
         end
-        cvars.each do |var, ty|
-          output.puts "  #{ var } : #{ ty }"
+        cvars.each do |var, ty, rbs_declared|
+          s = rbs_declared ? "# " : "  "
+          output.puts s + "#{ var } : #{ ty }"
         end
         attr_methods.each do |(method_name, hidden), (kind, ty)|
           output.puts "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"

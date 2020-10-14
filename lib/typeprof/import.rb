@@ -238,6 +238,16 @@ module TypeProf
             when RBS::AST::Declarations::Constant
             when RBS::AST::Declarations::Alias
             when RBS::AST::Declarations::Class, RBS::AST::Declarations::Module
+            when RBS::AST::Members::AttrReader
+              ty = convert_type(member.type)
+              methods[[false, member.name]] = [[[], [], [], nil, {}, {}, nil, nil, ty]]
+            when RBS::AST::Members::AttrWriter
+              ty = convert_type(member.type)
+              methods[[false, :"#{ member.name }="]] = [[[], [ty], [], nil, {}, {}, nil, nil, [:any]]]
+            when RBS::AST::Members::AttrAccessor
+              ty = convert_type(member.type)
+              methods[[false, member.name]] = [[[], [], [], nil, {}, {}, nil, nil, ty]]
+              methods[[false, :"#{ member.name }="]] = [[[], [ty], [], nil, {}, {}, nil, nil, [:any]]]
             else
               warn "Importing #{ member.class.name } is not supported yet"
               #p member
@@ -456,11 +466,11 @@ module TypeProf
         end
         ivars.each do |ivar_name, ty|
           ty = convert_type(scratch, ty)
-          scratch.add_ivar_write!(Type::Instance.new(klass), ivar_name, ty)
+          scratch.add_ivar_write!(Type::Instance.new(klass), ivar_name, ty, nil)
         end
         cvars.each do |ivar_name, ty|
           ty = convert_type(scratch, ty)
-          scratch.add_cvar_write!(klass, ivar_name, ty)
+          scratch.add_cvar_write!(klass, ivar_name, ty, nil)
         end
       end
 

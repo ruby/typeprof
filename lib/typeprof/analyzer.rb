@@ -592,20 +592,28 @@ module TypeProf
     end
 
     class VarTable
-      Entry = Struct.new(:read_continuations, :type)
+      Entry = Struct.new(:rbs_declared, :read_continuations, :type)
 
       def initialize
         @tbl = {}
       end
 
       def add_read!(site, ep, &ctn)
-        entry = @tbl[site] ||= Entry.new({}, Type.bot)
+        entry = @tbl[site] ||= Entry.new(false, {}, Type.bot)
         entry.read_continuations[ep] = ctn
         ctn[entry.type, ep]
       end
 
-      def add_write!(site, ty)
-        entry = @tbl[site] ||= Entry.new({}, Type.bot)
+      def add_write!(site, ty, ep, scratch)
+        entry = @tbl[site] ||= Entry.new(!ep, {}, Type.bot)
+        if ep
+          if entry.rbs_declared
+            if !entry.type.consistent?(ty, {})
+              scratch.warn(ep, "inconsistent assignment to RBS-declared global variable")
+              return
+            end
+          end
+        end
         entry.type = entry.type.union(ty)
         entry.read_continuations.each do |ep, ctn|
           ctn[ty, ep]
@@ -613,11 +621,7 @@ module TypeProf
       end
 
       def dump
-        tbl = {}
-        @tbl.each do |site, entry|
-          tbl[site] = entry.type
-        end
-        tbl
+        @tbl
       end
     end
 
@@ -643,11 +647,11 @@ module TypeProf
       end
     end
 
-    def add_ivar_write!(recv, var, ty)
+    def add_ivar_write!(recv, var, ty, ep)
       recv.each_child do |recv|
         class_def, singleton = get_ivar(recv)
         next unless class_def
-        class_def.ivars.add_write!([singleton, var], ty)
+        class_def.ivars.add_write!([singleton, var], ty, ep, self)
       end
     end
 
@@ -659,39 +663,20 @@ module TypeProf
       end
     end
 
-    def add_cvar_write!(klass, var, ty)
+    def add_cvar_write!(klass, var, ty, ep)
       klass.each_child do |klass|
         class_def = @class_defs[klass.idx]
         next unless class_def
-        class_def.cvars.add_write!(var, ty)
+        class_def.cvars.add_write!(var, ty, ep, self)
       end
     end
 
     def add_gvar_read!(var, ep, &ctn)
-      @gvar_table.add_read!([var, true], ep) do |ty, ep2|
-        if ty == Type.bot
-          @gvar_table.add_read!([var, false], ep) do |ty, ep2|
-            ty = Type.nil if ty == Type.bot
-            ctn[ty, ep2]
-          end
-        else
-          ctn[ty, ep2]
-          @gvar_table.add_read!([var, false], ep) do |ty, ep2|
-            ctn[ty, ep2] unless ty == Type.bot
-          end
-        end
-      end
+      @gvar_table.add_read!(var, ep, &ctn)
     end
 
     def add_gvar_write!(var, ty, ep)
-      if ep
-        @gvar_table.add_read!([var, true], nil) do |ty1, _ep|
-          if ty1 != Type.bot && !ty1.consistent?(ty, {})
-            warn(ep, "inconsistent assignment to RBS-declared global variable")
-          end
-        end
-      end
-      @gvar_table.add_write!([var, !ep], ty)
+      @gvar_table.add_write!(var, ty, ep, self)
     end
 
     def error(ep, msg)
@@ -734,7 +719,7 @@ module TypeProf
           gid = @alloc_site_to_global_id[id]
           if gid
             ty = globalize_type(elems.to_local_type(id), env, ep)
-            add_ivar_write!(*gid, ty)
+            add_ivar_write!(*gid, ty, ep)
           end
           menv
         end
@@ -746,7 +731,7 @@ module TypeProf
         gid = @alloc_site_to_global_id[id]
         if gid
           ty = globalize_type(elems.to_local_type(id), env, ep)
-          add_ivar_write!(*gid, ty)
+          add_ivar_write!(*gid, ty, ep)
         end
         env
       end
@@ -854,7 +839,7 @@ module TypeProf
 
       Reporters.show_reveal_types(self, @reveal_types, output)
 
-      Reporters.show_gvars(self, @gvar_table.dump, output)
+      Reporters.show_gvars(self, @gvar_table, output)
 
       #RubySignatureExporter2.new(
       #  self, @include_relations, @ivar_table.write, @cvar_table.write, @class_defs
@@ -920,7 +905,7 @@ module TypeProf
 
     def set_instance_variable(recv, var, ty, ep, env)
       ty = globalize_type(ty, env, ep)
-      add_ivar_write!(recv, var, ty)
+      add_ivar_write!(recv, var, ty, ep)
     end
 
     def step(ep)
@@ -1309,7 +1294,7 @@ module TypeProf
         cbase = ep.ctx.cref.klass
         ty = globalize_type(ty, env, ep)
         # TODO: if superclass has the variable, it should be updated
-        add_cvar_write!(cbase, var, ty)
+        add_cvar_write!(cbase, var, ty, ep)
 
       when :getclassvariable
         var, = operands
