@@ -84,12 +84,20 @@ module TypeProf
       @yields = yields
     end
 
+    def check_dir_filter(path)
+      Config.dir_filter.reverse_each do |cond, dir|
+        return cond unless dir
+        return cond if path.start_with?(dir)
+      end
+    end
+
     def show(stat_eps, output)
       output.puts "# Classes" # and Modules
 
       stat_classes = {}
       stat_methods = {}
       first = true
+
       @class_defs.each_value do |class_def|
         included_mods = class_def.modules[false].filter_map do |visible, mod_def|
           mod_def.name if visible
@@ -109,6 +117,7 @@ module TypeProf
 
               ctxs.each do |ctx|
                 next if mid != ctx.mid
+                next if check_dir_filter(ctx.iseq.absolute_path) == :exclude
 
                 method_name = ctx.mid
                 method_name = "self.#{ method_name }" if singleton

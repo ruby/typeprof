@@ -1,7 +1,15 @@
 require "optparse"
+require "rbconfig"
 
 module TypeProf
   class CLI
+    DEFAULT_DIR_FILTER = [
+      [:include],
+      [:exclude, RbConfig::CONFIG["prefix"]],
+      [:exclude, Gem.dir],
+      [:exclude, Gem.user_dir],
+    ]
+
     def initialize(argv)
       opt = OptionParser.new
 
@@ -18,10 +26,25 @@ module TypeProf
         pedantic_output: false,
         show_errors: false,
       }
+      @dir_filter = nil
 
       opt.on("-o OUTFILE") {|v| @output = v }
-      opt.on("-q", "--quiet") {|v| @verbose = 0 }
-      opt.on("-v", "--verbose") {|v| @verbose = 2 }
+      opt.on("-q", "--quiet") { @verbose = 0 }
+      opt.on("-v", "--verbose") { @verbose = 2 }
+
+      opt.on("--include-dir DIR") do |dir|
+        # When `--include-dir` option is specified as the first directory option,
+        # typeprof will exclude any files by default unless a file path matches the explicit option
+        @dir_filter ||= [[:exclude]]
+        @dir_filter << [:include, File.expand_path(dir)]
+      end
+      opt.on("--exclude-dir DIR") do |dir|
+        # When `--exclude-dir` option is specified as the first directory option,
+        # typeprof will include any files by default, except Ruby's install directory and Gem directories
+        @dir_filter ||= DEFAULT_DIR_FILTER
+        @dir_filter << [:exclude, File.expand_path(dir)]
+      end
+
       opt.on("-f OPTION") do |v|
         key, args = v.split("=", 2)
         case key
@@ -40,6 +63,7 @@ module TypeProf
 
       opt.parse!(argv)
 
+      @dir_filter ||= DEFAULT_DIR_FILTER
       @rb_files = []
       @rbs_files = []
       argv.each do |path|
@@ -59,7 +83,7 @@ module TypeProf
       exit
     end
 
-    attr_reader :verbose, :options, :files
+    attr_reader :verbose, :options, :dir_filter
     attr_accessor :output
 
     def run

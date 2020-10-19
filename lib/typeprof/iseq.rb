@@ -125,7 +125,7 @@ module TypeProf
       "#{ @path }:#{ @linenos[pc] }"
     end
 
-    attr_reader :name, :path, :abolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns, :linenos
+    attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns, :linenos
     attr_reader :id
 
     def pretty_print(q)

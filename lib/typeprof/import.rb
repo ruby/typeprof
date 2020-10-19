@@ -569,7 +569,7 @@ module TypeProf
       klass = Type::Builtin[:obj]
       path.each do |name|
         klass = @scratch.get_constant(klass, name)
-        raise if klass == Type.any
+        raise path.inspect if klass == Type.any
       end
       klass
     end
