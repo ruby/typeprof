@@ -32,6 +32,7 @@ module TypeProf
       opt.on("-q", "--quiet") { @verbose = 0 }
       opt.on("-v", "--verbose") { @verbose = 2 }
       opt.on("-I DIR") {|v| $LOAD_PATH << v }
+      opt.on("-r FEATURE") {|v| $LOAD_PATH << v }
 
       opt.on("--include-dir DIR") do |dir|
         # When `--include-dir` option is specified as the first directory option,

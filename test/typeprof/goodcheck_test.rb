@@ -33,8 +33,7 @@ module TypeProf
         Bundler.setup
 
         name = "testbed/goodcheck/exe/goodcheck"
-        path = File.join(testbed_dir, "exe/goodcheck")
-        actual = TestRun.run(name, File.read(path), show_errors: false, pedantic_output: false)
+        actual = TestRun.run(name, show_errors: false, pedantic_output: false)
 
 
         # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)

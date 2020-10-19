@@ -28,12 +28,12 @@ module TypeProf
       end
     end
 
-    def self.run(name, code, rbs_path: nil, **opt)
-      new(name, code, rbs_path).run(**opt)
+    def self.run(name, rbs_path: nil, **opt)
+      new(name, rbs_path).run(**opt)
     end
 
-    def initialize(name, code, rbs_path)
-      @name, @code, @rbs_path = name, code, rbs_path
+    def initialize(name, rbs_path)
+      @name, @rbs_path = name, rbs_path
     end
 
     def run(show_errors: true, pedantic_output: true, show_progress: false)

@@ -372,7 +372,7 @@ module TypeProf
       ctn[struct_klass, ep, env]
     end
 
-    def file_load(path, ep, env, scratch, &ctn)
+    def self.file_load(path, ep, env, scratch, &ctn)
       iseq = ISeq.compile(path)
       callee_ep, callee_env = CLI.starting_state(iseq)
       scratch.merge_env(callee_ep, callee_env)
@@ -383,51 +383,60 @@ module TypeProf
       end
     end
 
+    def self.file_require(feature, scratch)
+      return :done, :false if scratch.loaded_features[feature]
+      scratch.loaded_features[feature] = true
+
+      # XXX: dynamic RBS load is really needed??  Another idea:
+      #
+      # * RBS should be loaded in advance of analysis
+      # * require "some_gem/foo" should be ignored
+      # * require "app/foo" should always load .rb file (in this case, app/foo.rb)
+      return :done, :true if Import.import_library(scratch, feature)
+
+      # Try to analyze the source code of the gem
+      begin
+        gem feature
+      rescue Gem::MissingSpecError, Gem::LoadError
+      end
+
+      begin
+        filetype, path = $LOAD_PATH.resolve_feature_path(feature)
+        if filetype == :rb
+          return :do, path if File.readable?(path)
+
+          return :error, "failed to load: #{ path }"
+        else
+          return :error, "cannot load a .so file: #{ path }"
+        end
+      rescue LoadError
+        return :error, "failed to require: #{ feature }"
+      end
+    end
+
     def kernel_require(recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       feature = aargs.lead_tys.first
       if feature.is_a?(Type::Literal)
         feature = feature.lit
 
-        begin
-          if scratch.loaded_features[feature]
-            result = Type::Instance.new(Type::Builtin[:false])
-            return ctn[result, ep, env]
-          end
-          scratch.loaded_features[feature] = true
-
-          # XXX: dynamic RBS load is really needed??  Another idea:
-          #
-          # * RBS should be loaded in advance of analysis
-          # * require "some_gem/foo" should be ignored
-          # * require "app/foo" should always load .rb file (in this case, app/foo.rb)
-          if Import.import_library(scratch, feature)
-            result = Type::Instance.new(Type::Builtin[:true])
-            return ctn[result, ep, env]
-          end
-
-          begin
-            gem feature
-          rescue Gem::MissingSpecError, Gem::LoadError
-          end
-          filetype, path = $LOAD_PATH.resolve_feature_path(feature)
-          if filetype == :rb
-            # TODO: if there is RBS file for the library, do not read the source code
-            return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
-
-            scratch.warn(ep, "failed to load: #{ path }")
-          else
-            scratch.warn(ep, "cannot load a .so file: #{ path }")
-          end
-        rescue LoadError
-          scratch.warn(ep, "failed to require: #{ feature }")
+        action, arg = Builtin.file_require(feature, scratch)
+        case action
+        when :do
+          Builtin.file_load(arg, ep, env, scratch, &ctn)
+        when :done
+          result = Type::Instance.new(Type::Builtin[arg])
+          ctn[result, ep, env]
+        when :error
+          scratch.warn(ep, arg)
+          result = Type::Instance.new(Type.bool)
+          ctn[result, ep, env]
         end
       else
         scratch.warn(ep, "require target cannot be identified statically")
+        result = Type::Instance.new(Type.bool)
+        ctn[result, ep, env]
       end
-
-      result = Type::Instance.new(Type::Builtin[:true])
-      ctn[result, ep, env]
     end
 
     def kernel_require_relative(recv, mid, aargs, ep, env, scratch, &ctn)
@@ -443,7 +452,7 @@ module TypeProf
         scratch.loaded_features[feature] = true
 
         path = File.join(File.dirname(ep.ctx.iseq.path), feature) + ".rb" # XXX
-        return file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
+        return Builtin.file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
 
         scratch.warn(ep, "failed to load: #{ path }")
       else

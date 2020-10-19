@@ -167,6 +167,7 @@ module TypeProf
             when RBS::AST::Declarations::Constant
             when RBS::AST::Declarations::Alias # type alias
             when RBS::AST::Declarations::Class, RBS::AST::Declarations::Module
+            when RBS::AST::Declarations::Interface
 
             else
               warn "Importing #{ member.class.name } is not supported yet"
@@ -384,6 +385,7 @@ module TypeProf
         else
           [:any]
         end
+      when RBS::Types::Bases::Instance then [:any] # XXX: not implemented yet
       when RBS::Types::Record then [:any] # XXX: not implemented yet
       when RBS::Types::Proc   then [:any] # XXX: not implemented yet
       else

@@ -8,7 +8,7 @@ module TypeProf
       name = "smoke/" + File.basename(path) 
       code, expected = File.read(path).split("__END__\n")
       test name do
-        actual = TestRun.run(name, code, rbs_path: rbs)
+        actual = TestRun.run(name, rbs_path: rbs)
 
         if ENV["TP_UPDATE_SMOKE_RESULTS"] == "1" && expected != actual
           puts "Update \"#{ name }\" !"

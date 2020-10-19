@@ -4,10 +4,9 @@ require_relative "../../lib/typeprof"
 module TypeProf
   class AOBenchTest < Test::Unit::TestCase
     test "testbed/ao.rb" do
-      path = File.join(__dir__, "../../testbed/ao.rb")
       name = "testbed/ao.rb"
 
-      actual = TestRun.run(name, File.read(path))
+      actual = TestRun.run(name)
 
       expected = <<-END
 # Classes
