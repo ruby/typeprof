@@ -16,8 +16,8 @@ GIT
 PATH
   remote: .
   specs:
-    typeprof (0.1.4)
-      rbs (>= 0.12.0)
+    typeprof (0.2.0)
+      rbs (>= 0.14.0)
 
 GEM
   remote: https://rubygems.org/

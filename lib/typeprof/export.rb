@@ -97,6 +97,11 @@ module TypeProf
           mod_def.name
         end
 
+        extended_mods = class_def.modules[true].filter_map do |mod_def, absolute_paths|
+          next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+          mod_def.name
+        end
+
         explicit_methods = {}
         iseq_methods = {}
         attr_methods = {}
@@ -161,7 +166,7 @@ module TypeProf
         end
 
         if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
-          next if included_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
+          next if included_mods.empty? && extended_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
         end
 
         output.puts unless first
@@ -175,6 +180,9 @@ module TypeProf
         output.puts "#{ class_def.kind } #{ class_def.name }#{ superclass }"
         included_mods.sort.each do |ty|
           output.puts "  include #{ ty }"
+        end
+        extended_mods.sort.each do |ty|
+          output.puts "  extend #{ ty }"
         end
         ivars.each do |var, ty, rbs_declared|
           s = rbs_declared ? "# " : "  "

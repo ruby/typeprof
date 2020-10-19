@@ -95,6 +95,7 @@ module TypeProf
 
         type_params = nil
         included_modules = []
+        extended_modules = []
         methods = {}
         ivars = {}
         cvars = {}
@@ -160,6 +161,15 @@ module TypeProf
                 # including an interface is not supported yet
               end
 
+            when RBS::AST::Members::Extend
+              name = member.name
+              if name.kind == :class
+                mod = conv_type_name(name)
+                extended_modules << mod
+              else
+                # extending a module with an interface is not supported yet
+              end
+
             when RBS::AST::Members::InstanceVariable
               ivars[member.name] = conv_type(member.type)
             when RBS::AST::Members::ClassVariable
@@ -184,6 +194,7 @@ module TypeProf
           superclass: superclass,
           members: {
             included_modules: included_modules,
+            extended_modules: extended_modules,
             methods: methods,
             ivars: ivars,
             cvars: cvars,
@@ -459,6 +470,7 @@ module TypeProf
 
       classes.each do |klass, members|
         included_modules = members[:included_modules]
+        extended_modules = members[:extended_modules]
         methods = members[:methods]
         ivars = members[:ivars]
         cvars = members[:cvars]
@@ -466,6 +478,10 @@ module TypeProf
 
         included_modules.each do |mod|
           @scratch.include_module(klass, path_to_klass(mod), nil)
+        end
+
+        extended_modules.each do |mod|
+          @scratch.extend_module(klass, path_to_klass(mod), nil)
         end
 
         methods.each do |(singleton, method_name), mdef|
