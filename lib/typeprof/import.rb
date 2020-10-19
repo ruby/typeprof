@@ -311,7 +311,6 @@ module TypeProf
       type = rbs_block.type
 
       # XXX
-      raise NotImplementedError unless type.optional_positionals.empty?
       raise NotImplementedError unless type.optional_keywords.empty?
       raise NotImplementedError unless type.required_keywords.empty?
       raise NotImplementedError if type.rest_keywords
@@ -319,10 +318,13 @@ module TypeProf
       lead_tys = type.required_positionals.map do |type|
         conv_type(type.type)
       end
+      opt_tys = type.optional_positionals.map do |type|
+        conv_type(type.type)
+      end
 
       ret_ty = conv_type(type.return_type)
 
-      [lead_tys, ret_ty]
+      [lead_tys, opt_tys, ret_ty]
     end
 
     def conv_type(ty)
@@ -521,10 +523,12 @@ module TypeProf
     end
 
     def conv_block(blk)
-      lead_tys, ret_ty = blk
+      lead_tys, opt_tys, ret_ty = blk
       lead_tys = lead_tys.map {|ty| conv_type(ty) }
+      opt_tys = opt_tys.map {|ty| conv_type(ty) }
+      fargs = FormalArguments.new(lead_tys, opt_tys, nil, nil, nil, nil, nil)
       ret_ty = conv_type(ret_ty)
-      Type::TypedProc.new(lead_tys, ret_ty, Type::Builtin[:proc])
+      Type::TypedProc.new(fargs, ret_ty, Type::Builtin[:proc])
     end
 
     def conv_type(ty)

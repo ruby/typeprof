@@ -1794,6 +1794,7 @@ module TypeProf
         blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
         arg_blk = aargs.blk_ty
         aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
+        # XXX: aargs.opt_tys and aargs.kw_ty
         argc = blk_iseq.fargs_format[:lead_num] || 0
         # actual argc == 1, not array, formal argc == 1: yield 42         => do |x|   : x=42
         # actual argc == 1,     array, formal argc == 1: yield [42,43,44] => do |x|   : x=[42,43,44]

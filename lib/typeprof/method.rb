@@ -187,46 +187,48 @@ module TypeProf
             scratch.add_callsite!(dummy_ctx, nil, caller_ep, ncaller_env, &ctn)
             nfargs = fargs.blk_ty.fargs
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
-            nfargs = nfargs.map.with_index do |nfarg, i|
+            nlead_tys = (nfargs.lead_tys + nfargs.opt_tys).map.with_index do |ty, i|
               if recv.is_a?(Type::Array)
                 tyvar_elem = Type::Var.new(:Elem)
-                nfarg = nfarg.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), Config.options[:type_depth_limit])
+                ty = ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), Config.options[:type_depth_limit])
               else
-                nfarg = nfarg.substitute(subst, Config.options[:type_depth_limit])
+                ty = ty.substitute(subst, Config.options[:type_depth_limit])
               end
-              nfarg = nfarg.remove_type_vars
+              ty = ty.remove_type_vars
               alloc_site2 = alloc_site.add_id(i)
-              dummy_env, nfarg = scratch.localize_type(nfarg, dummy_env, dummy_ep, alloc_site2)
-              nfarg
+              dummy_env, ty = scratch.localize_type(ty, dummy_env, dummy_ep, alloc_site2)
+              ty
             end
-            naargs = ActualArguments.new(nfargs, nil, nil, Type.nil) # XXX: support block to block?
-            scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
-              subst2 = {}
-              if blk_ret_ty.consistent?(fargs.blk_ty.ret_ty, subst2)
-                if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
-                  tyvar_elem = Type::Var.new(:Elem)
-                  if subst2[tyvar_elem]
-                    ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
-                      elems.update(nil, subst2[tyvar_elem])
+            0.upto(nfargs.opt_tys.size) do |n|
+              naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, nil, Type.nil) # XXX: support block to block?
+              scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
+                subst2 = {}
+                if blk_ret_ty.consistent?(fargs.blk_ty.ret_ty, subst2)
+                  if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+                    tyvar_elem = Type::Var.new(:Elem)
+                    if subst2[tyvar_elem]
+                      ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
+                        elems.update(nil, subst2[tyvar_elem])
+                      end
+                      scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                     end
-                    scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
+                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
+                  else
+                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
                   end
-                  ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
                 else
-                  ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
+                  # raise "???"
+                  # XXX: need warning
+                  ret_ty = Type.any
                 end
-              else
-                # raise "???"
-                # XXX: need warning
-                ret_ty = Type.any
+                ret_ty = ret_ty.remove_type_vars
+                # XXX: check the return type from the block
+                # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
+                scratch.add_return_type!(dummy_ctx, ret_ty)
               end
-              ret_ty = ret_ty.remove_type_vars
-              # XXX: check the return type from the block
-              # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
-              scratch.add_return_type!(dummy_ctx, ret_ty)
+              # scratch.add_return_type!(dummy_ctx, ret_ty) ?
+              # This makes `def foo; 1.times { return "str" }; end` return Integer|String
             end
-            # scratch.add_return_type!(dummy_ctx, ret_ty) ?
-            # This makes `def foo; 1.times { return "str" }; end` return Integer|String
           else
             # XXX: a block is passed to a method that does not accept block.
             # Should we call the passed block with any arguments?
