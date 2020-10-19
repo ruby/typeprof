@@ -775,13 +775,15 @@ module TypeProf
         until @worklist.empty?
           counter += 1
           if counter % 1000 == 0 && Config.verbose >= 1
-            puts "iter %d, remain: %d" % [counter, @worklist.size]
+            print "\rprofiling...(%d steps)\e[K" % counter
+            $stdout.flush
             #exit if counter == 20000
           end
           @ep = @worklist.deletemin
           stat_eps << @ep
           step(@ep) # TODO: deletemin
         end
+        print "\r\e[K" if Config.verbose >= 1
 
         # XXX: it would be good to provide no-dummy-execution mode.
         # It should work as a bit smarter "rbs prototype rb";
