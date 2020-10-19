@@ -31,7 +31,8 @@ module TypeProf
 
       opt.on("-o OUTFILE") {|v| @output = v }
       opt.on("-q", "--quiet") { @verbose = 0 }
-      opt.on("-v", "--verbose") { @verbose = 2 }
+      opt.on("-v", "--verbose") { @options[:show_errors] = true }
+      opt.on("-d", "--debug") { @verbose = 2 }
       opt.on("-I DIR") {|v| $LOAD_PATH << v }
       opt.on("-r FEATURE") {|v| @rbs_features_to_load << v }
 
