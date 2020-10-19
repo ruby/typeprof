@@ -180,7 +180,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_accessor", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :accessor)
+        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :accessor)
       end
       ctn[Type.nil, ep, env]
     end
@@ -189,7 +189,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_reader", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :reader)
+        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :reader)
       end
       ctn[Type.nil, ep, env]
     end
@@ -198,7 +198,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_writer", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :writer)
+        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :writer)
       end
       ctn[Type.nil, ep, env]
     end
@@ -361,7 +361,7 @@ module TypeProf
       scratch.set_singleton_custom_method(struct_klass, :new, Builtin.method(:struct_i_new))
       scratch.set_singleton_custom_method(struct_klass, :[], Builtin.method(:struct_i_new))
       fields.each do |field|
-        scratch.add_attr_method(struct_klass, field, field, :accessor)
+        scratch.add_attr_method(struct_klass, ep.ctx.iseq.absolute_path, field, field, :accessor)
       end
       fields = fields.map {|field| Type::Symbol.new(field, Type::Instance.new(Type::Builtin[:sym])) }
       base_ty = Type::Instance.new(Type::Builtin[:ary])

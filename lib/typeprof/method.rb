@@ -110,12 +110,13 @@ module TypeProf
   end
 
   class AttrMethodDef < MethodDef
-    def initialize(ivar, kind)
+    def initialize(ivar, kind, absolute_path)
       @ivar = ivar
       @kind = kind # :reader | :writer
+      @absolute_path = absolute_path
     end
 
-    attr_reader :ivar, :kind
+    attr_reader :ivar, :kind, :absolute_path
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       case @kind

@@ -129,6 +129,7 @@ module TypeProf
                 iseq_methods[method_name] << @scratch.show_signature(fargs, @yields[ctx], ret_tys)
               end
             when AttrMethodDef
+              next if check_dir_filter(mdef.absolute_path) == :exclude
               mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
               method_name = mid
               method_name = "self.#{ mid }" if singleton

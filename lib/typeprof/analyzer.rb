@@ -497,12 +497,12 @@ module TypeProf
       mdef
     end
 
-    def add_attr_method(klass, mid, ivar, kind)
+    def add_attr_method(klass, absolute_path, mid, ivar, kind)
       if kind == :reader || kind == :accessor
-        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader))
+        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader, absolute_path))
       end
       if kind == :writer || kind == :accessor
-        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer))
+        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer, absolute_path))
       end
     end
 
