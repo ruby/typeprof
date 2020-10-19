@@ -160,7 +160,9 @@ module TypeProf
           [var, entry.type.screen_name(@scratch), entry.rbs_declared]
         end
 
-        next if included_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
+        if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
+          next if included_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
+        end
 
         output.puts unless first
         first = false

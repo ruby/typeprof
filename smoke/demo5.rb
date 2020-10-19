@@ -11,3 +11,6 @@ __END__
 class A
   def self.foo : (Integer | Integer.class) -> String
 end
+
+class B < A
+end

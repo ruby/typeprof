@@ -272,7 +272,7 @@ module TypeProf
     attr_reader :class_defs
 
     class ClassDef # or ModuleDef
-      def initialize(kind, name, superclass)
+      def initialize(kind, name, superclass, absolute_path)
         @kind = kind
         @superclass = superclass
         @modules = { true => {}, false => {} }
@@ -281,9 +281,10 @@ module TypeProf
         @methods = {}
         @ivars = VarTable.new
         @cvars = VarTable.new
+        @absolute_path = absolute_path
       end
 
-      attr_reader :kind, :modules, :methods, :superclass, :ivars, :cvars
+      attr_reader :kind, :modules, :methods, :superclass, :ivars, :cvars, :absolute_path
       attr_accessor :name, :klass_obj
 
       def include_module(mod, absolute_path)
@@ -375,7 +376,7 @@ module TypeProf
       end
     end
 
-    def new_class(cbase, name, type_params, superclass)
+    def new_class(cbase, name, type_params, superclass, absolute_path)
       if cbase && cbase.idx != 1
         show_name = "#{ @class_defs[cbase.idx].name }::#{ name }"
       else
@@ -388,7 +389,7 @@ module TypeProf
         else
           superclass_idx = superclass.idx
         end
-        @class_defs[idx] = ClassDef.new(:class, show_name, superclass_idx)
+        @class_defs[idx] = ClassDef.new(:class, show_name, superclass_idx, absolute_path)
         klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
@@ -396,7 +397,7 @@ module TypeProf
         return klass
       else
         # module
-        @class_defs[idx] = ClassDef.new(:module, show_name, nil)
+        @class_defs[idx] = ClassDef.new(:module, show_name, nil, absolute_path)
         mod = Type::Class.new(:module, idx, type_params, nil, show_name)
         @class_defs[idx].klass_obj = mod
         add_constant(cbase, name, mod)
@@ -409,7 +410,7 @@ module TypeProf
 
       idx = @class_defs.size
       superclass = Type::Builtin[:struct]
-      @class_defs[idx] = ClassDef.new(:class, "(Struct)", superclass.idx)
+      @class_defs[idx] = ClassDef.new(:class, "(Struct)", superclass.idx, ep.ctx.iseq.absolute_path)
       klass = Type::Class.new(:class, idx, [], superclass, "(Struct)")
       @class_defs[idx].klass_obj = klass
 
@@ -1079,7 +1080,7 @@ module TypeProf
               if cbase == Type.any
                 klass = Type.any
               else
-                klass = new_class(cbase, id, [], superclass)
+                klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
               end
             end
           end

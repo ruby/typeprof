@@ -30,6 +30,9 @@ Foo::Bar.new.get4 # Integer
 
 __END__
 # Classes
+class Foo
+end
+
 class Foo::Bar
   def get1 : -> String
   def get2 : -> Integer

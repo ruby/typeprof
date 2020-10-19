@@ -27,3 +27,6 @@ end
 module M1
   def foo : -> :m1_foo
 end
+
+class C
+end

@@ -7,3 +7,6 @@ __END__
 class (Struct) < Struct
   attr_accessor a() : untyped
 end
+
+class Foo < (Struct)
+end

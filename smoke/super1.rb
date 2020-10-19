@@ -37,6 +37,24 @@ class Object
   def log : (Baz) -> nil
 end
 
+class A
+end
+
+class B
+end
+
+class C
+end
+
+class X
+end
+
+class Y
+end
+
+class Z
+end
+
 class Foo
   def f : (C) -> X
 end

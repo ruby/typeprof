@@ -433,7 +433,7 @@ module TypeProf
 
         klass = @scratch.get_constant(base_klass, name)
         if klass.is_a?(Type::Any)
-          klass = @scratch.new_class(base_klass, name, type_params, superclass)
+          klass = @scratch.new_class(base_klass, name, type_params, superclass, nil)
 
           # There builtin classes are needed to interpret RBS declarations
           case classpath
