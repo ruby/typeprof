@@ -769,21 +769,26 @@ module TypeProf
     end
 
     def type_profile
-      counter = 0
+      time = Time.now
+      step_counter = 0
       stat_eps = Utils::MutableSet.new
       while true
         until @worklist.empty?
-          counter += 1
-          if counter % 1000 == 0 && Config.verbose >= 1
-            print "\rprofiling...(%d steps)\e[K" % counter
-            $stdout.flush
-            #exit if counter == 20000
-          end
           @ep = @worklist.deletemin
+
+          step_counter += 1
+          if Config.verbose >= 1
+            time2 = Time.now
+            if time2 - time >= 1
+              time = time2
+              $stderr << "\rType Profiling... (%d steps @ %s)\e[K" % [step_counter, @ep.source_location]
+              $stderr.flush
+            end
+          end
+
           stat_eps << @ep
-          step(@ep) # TODO: deletemin
+          step(@ep)
         end
-        print "\r\e[K" if Config.verbose >= 1
 
         # XXX: it would be good to provide no-dummy-execution mode.
         # It should work as a bit smarter "rbs prototype rb";
@@ -842,6 +847,7 @@ module TypeProf
           end
         end
       end
+      $stderr.print "\r\e[K" if Config.verbose >= 1
 
       stat_eps
     end
