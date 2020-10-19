@@ -533,8 +533,6 @@ module TypeProf
 
     class TypedProc < Type
       def initialize(fargs, ret_ty, type)
-        # XXX: need to receive blk_ty?
-        # XXX: may refactor "arguments = arg_tys * blk_ty" out
         @fargs = fargs
         @ret_ty = ret_ty
         @type = type

@@ -38,7 +38,7 @@ module TypeProf
 
       # XXX: need to check .rbs fargs and .rb fargs
 
-      ctx = Context.new(@iseq, @cref, mid) # XXX: to support opts, rest, etc
+      ctx = Context.new(@iseq, @cref, mid)
       callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
 
       locals = [Type.nil] * @iseq.locals.size
@@ -154,7 +154,6 @@ module TypeProf
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
       @sigs.each do |fargs, ret_ty|
         ncaller_env = caller_env
-        # XXX: need to interpret args more correctly
         #pp [mid, aargs, fargs]
         # XXX: support self type in fargs
         subst = { Type::Var.new(:self) => recv }
@@ -262,7 +261,6 @@ module TypeProf
     end
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      # XXX: ctn?
       scratch.merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env } # for Kernel#lambda
       @impl[recv, mid, aargs, caller_ep, caller_env, scratch, &ctn]
     end

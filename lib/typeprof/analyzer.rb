@@ -1781,7 +1781,7 @@ module TypeProf
           meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
         end
       else
-        if recv != Type.any # XXX: should be configurable
+        if recv != Type.any
           error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
         end
         ctn[Type.any, ep, env]
@@ -1851,7 +1851,7 @@ module TypeProf
         locals = [Type.nil] * blk_iseq.locals.size
         locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
         env_blk = blk_env.static_env.blk_ty
-        nfargs = FormalArguments.new(aargs_, [], nil, [], nil, nil, env_blk) # XXX: aargs_ -> fargs
+        nfargs = FormalArguments.new(aargs_, [], nil, [], nil, nil, env_blk)
         nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil)
         nep = ExecutionPoint.new(nctx, 0, blk_ep)
         nenv = Env.new(blk_env.static_env, locals, [], nil)
