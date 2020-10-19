@@ -64,7 +64,7 @@ module TypeProf
         system("git", "remote", "add", "origin", github_repo_url, chdir: dir, exception: true)
         system("git", "fetch", "origin", revision, chdir: dir, exception: true)
       end
-      system("git", "reset", "--hard", revision, chdir: dir, exception: true)
+      system("git", "reset", "--quiet", "--hard", revision, chdir: dir, exception: true)
 
       true
     rescue Errno::ENOENT
