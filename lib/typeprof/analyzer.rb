@@ -602,20 +602,21 @@ module TypeProf
     end
 
     class VarTable
-      Entry = Struct.new(:rbs_declared, :read_continuations, :type)
+      Entry = Struct.new(:rbs_declared, :read_continuations, :type, :absolute_paths)
 
       def initialize
         @tbl = {}
       end
 
       def add_read!(site, ep, &ctn)
-        entry = @tbl[site] ||= Entry.new(false, {}, Type.bot)
+        entry = @tbl[site] ||= Entry.new(false, {}, Type.bot, Utils::MutableSet.new)
         entry.read_continuations[ep] = ctn
+        entry.absolute_paths << ep.ctx.iseq.absolute_path
         ctn[entry.type, ep]
       end
 
       def add_write!(site, ty, ep, scratch)
-        entry = @tbl[site] ||= Entry.new(!ep, {}, Type.bot)
+        entry = @tbl[site] ||= Entry.new(!ep, {}, Type.bot, Utils::MutableSet.new)
         if ep
           if entry.rbs_declared
             if !entry.type.consistent?(ty, {})
@@ -623,6 +624,7 @@ module TypeProf
               return
             end
           end
+          entry.absolute_paths << ep.ctx.iseq.absolute_path
         end
         entry.type = entry.type.union(ty)
         entry.read_continuations.each do |ep, ctn|

@@ -153,6 +153,7 @@ module TypeProf
         end
 
         ivars = ivars.map do |(singleton, var), entry|
+          next if entry.absolute_paths.any? {|path| check_dir_filter(path) == :exclude }
           ty = entry.type
           next unless var.to_s.start_with?("@")
           var = "self.#{ var }" if singleton
@@ -161,6 +162,7 @@ module TypeProf
         end.compact
 
         cvars = cvars.map do |var, entry|
+          next if entry.absolute_paths.any? {|path| check_dir_filter(path) == :exclude }
           [var, entry.type.screen_name(@scratch), entry.rbs_declared]
         end
 
