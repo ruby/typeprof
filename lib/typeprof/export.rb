@@ -84,13 +84,6 @@ module TypeProf
       @yields = yields
     end
 
-    def check_dir_filter(path)
-      Config.dir_filter.reverse_each do |cond, dir|
-        return cond unless dir
-        return cond if path.start_with?(dir)
-      end
-    end
-
     def show(stat_eps, output)
       output.puts "# Classes" # and Modules
 
@@ -99,8 +92,9 @@ module TypeProf
       first = true
 
       @class_defs.each_value do |class_def|
-        included_mods = class_def.modules[false].filter_map do |visible, mod_def|
-          mod_def.name if visible
+        included_mods = class_def.modules[false].filter_map do |mod_def, absolute_paths|
+          next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+          mod_def.name
         end
 
         explicit_methods = {}
@@ -117,7 +111,7 @@ module TypeProf
 
               ctxs.each do |ctx|
                 next if mid != ctx.mid
-                next if check_dir_filter(ctx.iseq.absolute_path) == :exclude
+                next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
 
                 method_name = ctx.mid
                 method_name = "self.#{ method_name }" if singleton
@@ -129,7 +123,7 @@ module TypeProf
                 iseq_methods[method_name] << @scratch.show_signature(fargs, @yields[ctx], ret_tys)
               end
             when AttrMethodDef
-              next if check_dir_filter(mdef.absolute_path) == :exclude
+              next if Config.check_dir_filter(mdef.absolute_path) == :exclude
               mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
               method_name = mid
               method_name = "self.#{ mid }" if singleton
@@ -153,7 +147,7 @@ module TypeProf
         end
 
         ivars = ivars.map do |(singleton, var), entry|
-          next if entry.absolute_paths.any? {|path| check_dir_filter(path) == :exclude }
+          next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
           ty = entry.type
           next unless var.to_s.start_with?("@")
           var = "self.#{ var }" if singleton
@@ -162,7 +156,7 @@ module TypeProf
         end.compact
 
         cvars = cvars.map do |var, entry|
-          next if entry.absolute_paths.any? {|path| check_dir_filter(path) == :exclude }
+          next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
           [var, entry.type.screen_name(@scratch), entry.rbs_declared]
         end
 

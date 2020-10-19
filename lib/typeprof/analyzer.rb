@@ -235,8 +235,6 @@ module TypeProf
       @block_to_ctx = {}
       @gvar_table = VarTable.new
 
-      @include_relations = {}
-
       @errors = []
       @reveal_types = {}
       @backward_edges = {}
@@ -277,7 +275,7 @@ module TypeProf
       def initialize(kind, name, superclass)
         @kind = kind
         @superclass = superclass
-        @modules = { true => [], false => [] }
+        @modules = { true => {}, false => {} }
         @name = name
         @consts = {}
         @methods = {}
@@ -288,18 +286,22 @@ module TypeProf
       attr_reader :kind, :modules, :methods, :superclass, :ivars, :cvars
       attr_accessor :name, :klass_obj
 
-      def include_module(mod, visible)
+      def include_module(mod, absolute_path)
         # XXX: need to check if mod is already included by the ancestors?
-        unless @modules[false].include?([visible, mod])
-          @modules[false] << [visible, mod]
+        absolute_paths = @modules[false][mod]
+        unless absolute_paths
+          @modules[false][mod] = absolute_paths = Utils::MutableSet.new
         end
+        absolute_paths << absolute_path
       end
 
-      def extend_module(mod, visible)
+      def extend_module(mod, absolute_path)
         # XXX: need to check if mod is already included by the ancestors?
-        unless @modules[true].include?([visible, mod])
-          @modules[true] << [visible, mod]
+        absolute_paths = @modules[true][mod]
+        unless absolute_paths
+          @modules[true][mod] = absolute_paths = Utils::MutableSet.new
         end
+        absolute_paths << absolute_path
       end
 
       def get_constant(name)
@@ -315,7 +317,7 @@ module TypeProf
 
       def get_method(mid, singleton)
         @methods[[singleton, mid]] || begin
-          @modules[singleton].reverse_each do |_visible, mod|
+          @modules[singleton].each_key do |mod|
             meth = mod.get_method(mid, false)
             return meth if meth
           end
@@ -343,20 +345,15 @@ module TypeProf
       end
     end
 
-    def include_module(including_mod, included_mod, visible = true)
+    def include_module(including_mod, included_mod, absolute_path)
       return if included_mod == Type.any
-
-      if visible
-        @include_relations[including_mod] ||= Utils::MutableSet.new
-        @include_relations[including_mod] << included_mod
-      end
 
       including_mod = @class_defs[including_mod.idx]
       included_mod.each_child do |included_mod|
         if included_mod.is_a?(Type::Class)
           included_mod = @class_defs[included_mod.idx]
           if included_mod && included_mod.kind == :module
-            including_mod.include_module(included_mod, visible)
+            including_mod.include_module(included_mod, absolute_path)
           else
             warn "including something that is not a module"
           end
@@ -364,13 +361,13 @@ module TypeProf
       end
     end
 
-    def extend_module(extending_mod, extended_mod, visible = true)
+    def extend_module(extending_mod, extended_mod, absolute_path)
       extending_mod = @class_defs[extending_mod.idx]
       extended_mod.each_child do |extended_mod|
         if extended_mod.is_a?(Type::Class)
           extended_mod = @class_defs[extended_mod.idx]
           if extended_mod && extended_mod.kind == :module
-            extending_mod.extend_module(extended_mod, visible)
+            extending_mod.extend_module(extended_mod, absolute_path)
           else
             warn "extending something that is not a module"
           end

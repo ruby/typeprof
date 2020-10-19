@@ -147,7 +147,7 @@ module TypeProf
 
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
       arg = aargs.lead_tys[0]
-      scratch.include_module(recv, arg)
+      scratch.include_module(recv, arg, ep.ctx.iseq.absolute_path)
       ctn[recv, ep, env]
     end
 
@@ -155,7 +155,7 @@ module TypeProf
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
-          scratch.extend_module(recv, arg)
+          scratch.extend_module(recv, arg, ep.ctx.iseq.absolute_path)
         end
       end
       ctn[recv, ep, env]

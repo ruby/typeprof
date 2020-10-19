@@ -459,7 +459,7 @@ module TypeProf
         rbs_sources = members[:rbs_sources]
 
         included_modules.each do |mod|
-          @scratch.include_module(klass, path_to_klass(mod), false)
+          @scratch.include_module(klass, path_to_klass(mod), nil)
         end
 
         methods.each do |(singleton, method_name), mdef|

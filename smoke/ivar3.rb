@@ -11,7 +11,6 @@ smoke/ivar3.rb:3: [warning] inconsistent assignment to RBS-declared global varia
 
 # Classes
 class Foo
-# @foo : Integer
   @bar : String
   def initialize : -> String
 end

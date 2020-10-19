@@ -86,6 +86,13 @@ module TypeProf
     attr_reader :verbose, :options, :dir_filter
     attr_accessor :output
 
+    def check_dir_filter(path)
+      @dir_filter.reverse_each do |cond, dir|
+        return cond unless dir
+        return cond if path.start_with?(dir)
+      end
+    end
+
     def run
       scratch = Scratch.new
       Builtin.setup_initial_global_env(scratch)
