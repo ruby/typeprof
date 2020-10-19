@@ -27,12 +27,13 @@ module TypeProf
         show_errors: false,
       }
       @dir_filter = nil
+      @rbs_features_to_load = []
 
       opt.on("-o OUTFILE") {|v| @output = v }
       opt.on("-q", "--quiet") { @verbose = 0 }
       opt.on("-v", "--verbose") { @verbose = 2 }
       opt.on("-I DIR") {|v| $LOAD_PATH << v }
-      opt.on("-r FEATURE") {|v| $LOAD_PATH << v }
+      opt.on("-r FEATURE") {|v| @rbs_features_to_load << v }
 
       opt.on("--include-dir DIR") do |dir|
         # When `--include-dir` option is specified as the first directory option,
@@ -98,6 +99,10 @@ module TypeProf
     def run
       scratch = Scratch.new
       Builtin.setup_initial_global_env(scratch)
+
+      @rbs_features_to_load.each do |feature|
+        Import.import_library(scratch, feature)
+      end
 
       prologue_ctx = Context.new(nil, nil, nil)
       prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)

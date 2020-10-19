@@ -25,6 +25,8 @@ $ typeprof sig/app.rbs app.rb -o sig/app.gen.rbs
 * `-o OUTFILE`: 標準出力ではなく、指定ファイル名に出力する
 * `-q`: 解析の進捗を表示しない
 * `-v`: 解析の詳細ログを表示する（現状ではデバッグ用出力に近い）
+* `-I DIR`: `require`のファイル探索ディレクトリを追加する
+* `-r GEMNAME`: `GEMNAME`に対応するRBSをロードする
 * `--exclude-dir DIR`: `DIR`以下のファイルの解析結果を出力から省略する。後に指定されているほうが優先される（`--include-dir foo --exclude-dir foo/bar`の場合う、foo/bar/baz.rbの結果は出力されず、foo/baz.rbの結果は出力される）。
 * `--include-dir DIR`: `DIR`以下のファイルの解析結果を出力に含める。後に指定されているほうが優先される（`--exclude-dir foo --include-dir foo/bar`の場合、
 foo/bar/baz.rbの結果は出力されるが、foo/baz.rbの結果は出力されない）。

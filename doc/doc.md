@@ -25,6 +25,8 @@ Here is a list of currently avaiable options:
 * `-o OUTFILE`: Write the analyze result to OUTFILE instead of standard output
 * `-q`: Hide the progress indicator
 * `-v`: Show the analysis log (Currently, the log is just for debugging and may become very huge)
+* `-I DIR`: Add `DIR` to the file search path of `require`
+* `-r GEMNAME`: Load the RBS files of `GEMNAME`
 * `--exclude-dir DIR`: Omit the result of files that are placed under the directory `DIR`.  If there are some directory specifications, the latter one is stronger.  (Assuming that `--include-dir foo --exclude-dir foo/bar` is specified, the analysis result of foo/bar/baz.rb is omitted, but foo/baz.rb is shown.)
 * `--include-dir DIR`: Show the result of files that are placed under the directory `DIR`.  If there are some directory specifications, the latter one is stronger.  (Assuming that `--exclude-dir foo --include-dir foo/bar` is specified, the analysis result of foo/bar/baz.rb is shown, but foo/baz.rb is omitted.)
 * `-fshow-errors`: Prints out possible bugs found during execution (often a lot of false positives).

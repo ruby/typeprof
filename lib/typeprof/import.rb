@@ -153,8 +153,12 @@ module TypeProf
 
             when RBS::AST::Members::Include
               name = member.name
-              mod = conv_type_name(name)
-              included_modules << mod
+              if name.kind == :class
+                mod = conv_type_name(name)
+                included_modules << mod
+              else
+                # including an interface is not supported yet
+              end
 
             when RBS::AST::Members::InstanceVariable
               ivars[member.name] = conv_type(member.type)
