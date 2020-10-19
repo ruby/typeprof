@@ -1,11 +1,17 @@
 Gem::Specification.new do |spec|
   spec.name          = "typeprof" # temporal
-  spec.version       = "0.1.4"
+  spec.version       = "0.2.0"
   spec.authors       = ["Yusuke Endoh"]
   spec.email         = ["mame@ruby-lang.org"]
 
   spec.summary       = %q{TypeProf is a type analysis tool for Ruby code based on abstract interpretation}
-  spec.description   = %q{TypeProf is a type analysis tool for Ruby code based on abstract interpretation}
+  spec.description   = <<~EOD
+    TypeProf performs a type analysis of non-annotated Ruby code.
+
+    It abstractly executes input Ruby code in a level of types instead of values, gathers what types are passed to and returned by methods, and prints the analysis result in RBS format, a standard type description format for Ruby 3.0.
+
+    This tool is planned to be bundled with Ruby 3.0.
+  EOD
   spec.homepage      = "https://github.com/ruby/typeprof"
   spec.license       = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.7")
@@ -22,5 +28,5 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_runtime_dependency "rbs", ">= 0.12.0"
+  spec.add_runtime_dependency "rbs", ">= 0.14.0"
 end
