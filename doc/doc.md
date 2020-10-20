@@ -235,7 +235,7 @@ If a method returns different abstract values, it can lead to retrospective exec
 Even after TypeProf traced all programs as possible, there may be methods or blocks that aren't executed.
 For example, a method is not executed if it is called from nowhere; this is typical for library method that has no test.
 (Basically, when you use TypeProf, it is recommended to invoke all methods with supposed argument types.)
-TypeProf forcibly calls these unreachable methods and blocks with `untyped` as argumetns.
+TypeProf forcibly calls these unreachable methods and blocks with `untyped` as arguments.
 
 ```
 def foo(n)
