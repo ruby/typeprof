@@ -89,7 +89,7 @@ module TypeProf
       json = {}
 
       each_class_decl do |name, decls|
-        super_class_name = get_super_class_name(name)
+        super_class_name = get_super_class_name(name, decls)
         klass = conv_type_name(name)
         superclass = super_class_name ? conv_type_name(super_class_name) : nil
 
@@ -103,8 +103,6 @@ module TypeProf
 
         decls.each do |decl|
           decl = decl.decl
-
-          raise NotImplementedError if decl.is_a?(RBS::AST::Declarations::Interface) # XXX
 
           type_params2 = decl.type_params.params.map {|param| [param.name, param.variance] }
           raise "inconsistent type parameter declaration" if type_params && type_params != type_params2
@@ -207,8 +205,6 @@ module TypeProf
     end
 
     def each_class_decl
-      classes = []
-
       # topological sort
       #   * superclasses and modules appear earlier than their subclasses (Object is earlier than String)
       #   * namespace module appers earlier than its children (Process is earlier than Process::Status)
@@ -234,7 +230,9 @@ module TypeProf
         end
       end
 
-      classes
+      @cur_env.interface_decls.each do |name, decl|
+        yield name, [decl]
+      end
     end
 
     def each_ancestor(decl, &blk)
@@ -247,15 +245,15 @@ module TypeProf
       end
     end
 
-    def get_super_class_name(name)
+    def get_super_class_name(name, decls)
       return nil if name == RBS::BuiltinNames::BasicObject.name
 
-      @all_env.class_decls[name].decls.each do |decl|
+      decls.each do |decl|
         decl = decl.decl
         case decl
         when RBS::AST::Declarations::Class
           return decl.super_class.name if decl.super_class
-        when RBS::AST::Declarations::Module
+        when RBS::AST::Declarations::Module, RBS::AST::Declarations::Interface
           return nil
         else
           raise "unknown declaration: %p" % decl.class
@@ -398,7 +396,7 @@ module TypeProf
         when "::_ToInt" then [:int]
         when "::_ToAry[U]" then [:array, [:Array], [], [:var, :U]]
         else
-          [:any]
+          [:instance, conv_type_name(ty.name)]
         end
       when RBS::Types::Bases::Instance then [:any] # XXX: not implemented yet
       when RBS::Types::Record then [:any] # XXX: not implemented yet
