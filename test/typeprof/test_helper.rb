@@ -36,11 +36,12 @@ module TypeProf
       @name, @rbs_path = name, rbs_path
     end
 
-    def run(show_errors: true, pedantic_output: true, show_progress: false)
+    def run(show_errors: true, pedantic_output: true, show_progress: false, stackprof: nil)
       argv = [@name]
       argv << @rbs_path if @rbs_path
       argv << "-fshow-errors" if show_errors
       argv << "-fpedantic-output" if pedantic_output
+      argv << "-fstackprof=#{ stackprof }" if stackprof
       argv << "-q" unless show_progress
       verbose_back, $VERBOSE = $VERBOSE, nil
 

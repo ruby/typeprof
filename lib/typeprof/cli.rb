@@ -25,6 +25,7 @@ module TypeProf
         type_depth_limit: 5,
         pedantic_output: false,
         show_errors: false,
+        stackprof: nil,
       }
       @dir_filter = nil
       @rbs_features_to_load = []
@@ -60,6 +61,8 @@ module TypeProf
           @options[:show_errors] = true
         when "show-container-raw-elements"
           @options[:show_container_raw_elements] = true
+        when "stackprof"
+          @options[:stackprof] = args ? args.to_sym : :cpu
         else
           raise OptionParser::InvalidOption.new("unknown option: #{ key }")
         end
@@ -98,6 +101,12 @@ module TypeProf
     end
 
     def run
+      if @options[:stackprof]
+        require "stackprof"
+        out = "typeprof-stackprof-#{ @options[:stackprof] }.dump"
+        StackProf.start(mode: @options[:stackprof], out: out, raw: true)
+      end
+
       scratch = Scratch.new
       Builtin.setup_initial_global_env(scratch)
 
@@ -132,6 +141,12 @@ module TypeProf
         end
       else
         scratch.report(result, $stdout)
+      end
+
+    ensure
+      if @options[:stackprof] && defined?(StackProf)
+        StackProf.stop
+        StackProf.results
       end
     end
 
