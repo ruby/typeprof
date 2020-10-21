@@ -869,6 +869,7 @@ module TypeProf
       @lead_tys = lead_tys
       @rest_ty = rest_ty
       @kw_ty = kw_ty
+      raise if kw_ty && !kw_ty.is_a?(Type::Hash)
       @blk_ty = blk_ty
       raise unless blk_ty
     end

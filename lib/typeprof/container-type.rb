@@ -22,7 +22,8 @@ module TypeProf
 
   class Type # or AbstractValue
     # This is a type for global interface, e.g., TypedISeq.
-    # Do not insert Array type to local environment, stack, etc.
+    # Do not directly insert Container types to local environment, stack, etc.
+
     class Array < Type
       def initialize(elems, base_type)
         raise unless elems.is_a?(Array::Elements)
@@ -45,13 +46,6 @@ module TypeProf
           str = @base_type.screen_name(scratch) + str[1..]
         end
         str
-      end
-
-      def globalize(env, visited, depth)
-        return Type.any if depth <= 0
-        elems = @elems.globalize(env, visited, depth - 1)
-        base_ty = @base_type.globalize(env, visited, depth - 1)
-        Array.new(elems, base_ty)
       end
 
       def localize(env, alloc_site, depth)
@@ -366,6 +360,7 @@ module TypeProf
       end
 
       def globalize(env, visited, depth)
+        #raise # Need to refactor ActualArguments first
         return Type.any if depth <= 0
         elems = @elems.globalize(env, visited, depth - 1)
         base_ty = @base_type.globalize(env, visited, depth - 1)

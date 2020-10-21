@@ -316,14 +316,12 @@ module TypeProf
 
     def struct_initialize(recv, mid, aargs, ep, env, scratch, &ctn)
       recv = Type::Instance.new(recv)
-      scratch.get_instance_variable(recv, :_members, ep, env) do |ty, nenv|
-        ty = scratch.globalize_type(ty, nenv, ep)
-        ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
+      scratch.add_ivar_read!(recv, :_members, ep) do |member_ary_ty, ep|
+        member_ary_ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
           ty ||= Type.nil
           scratch.set_instance_variable(recv, sym.sym, ty, ep, env)
         end
       end
-      #scratch.set_instance_variable(recv, , ty, ep, env)
       ctn[recv, ep, env]
     end
 
@@ -337,9 +335,8 @@ module TypeProf
         return
       end
       if struct_klass != recv
-        scratch.get_instance_variable(Type::Instance.new(struct_klass), :_members, ep, env) do |ty, nenv|
-          ty = scratch.globalize_type(ty, nenv, ep)
-          scratch.set_instance_variable(Type::Instance.new(recv), :_members, ty, ep, env)
+        scratch.add_ivar_read!(Type::Instance.new(struct_klass), :_members, ep) do |ty, ep|
+          scratch.add_ivar_write!(Type::Instance.new(recv), :_members, ty, ep)
         end
       end
       meths = scratch.get_method(recv, false, :initialize)
@@ -364,7 +361,7 @@ module TypeProf
       fields = fields.map {|field| Type::Symbol.new(field, Type::Instance.new(Type::Builtin[:sym])) }
       base_ty = Type::Instance.new(Type::Builtin[:ary])
       fields = Type::Array.new(Type::Array::Elements.new(fields), base_ty)
-      scratch.set_instance_variable(Type::Instance.new(struct_klass), :_members, fields, ep, env)
+      scratch.add_ivar_write!(Type::Instance.new(struct_klass), :_members, fields, ep)
       #set_singleton_custom_method(struct_klass, :members, Builtin.method(:...))
 
       ctn[struct_klass, ep, env]
