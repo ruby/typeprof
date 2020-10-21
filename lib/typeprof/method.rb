@@ -200,7 +200,7 @@ module TypeProf
               ty
             end
             0.upto(nfargs.opt_tys.size) do |n|
-              naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, nil, Type.nil) # XXX: support block to block?
+              naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, {}, Type.nil) # XXX: support block to block?
               scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
                 subst2 = {}
                 if blk_ret_ty.consistent?(fargs.blk_ty.ret_ty, subst2)

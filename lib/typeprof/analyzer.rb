@@ -1172,7 +1172,7 @@ module TypeProf
         else # Proc
           blk_nil = Type.nil
           #
-          aargs = ActualArguments.new(aargs, nil, nil, blk_nil)
+          aargs = ActualArguments.new(aargs, nil, {}, blk_nil)
           do_invoke_block(true, env.static_env.blk_ty, aargs, ep, env) do |ret_ty, ep, env|
             nenv, ret_ty, = localize_type(ret_ty, env, ep)
             nenv = nenv.push(ret_ty)
@@ -1699,33 +1699,38 @@ module TypeProf
             _, (ty,) = ty.elems.take_last(1)
             case ty
             when Type::Hash
-              kw_ty = ty
+              kw_tys = ty.elems.to_keywords
             when Type::Union
               hash_elems = nil
               ty.elems&.each do |(container_kind, base_type), elems|
                 if container_kind == Type::Hash
+                  elems.to_keywords
                   hash_elems = hash_elems ? hash_elems.union(elems) : elems
                 end
               end
-              hash_elems ||= Type::Hash::Elements.new({Type.any => Type.any})
-              kw_ty = Type::Hash.new(hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+              if hash_elems
+                kw_tys = hash_elems.to_keywords
+              else
+                kw_tys = { nil => Type.any }
+              end
             else
               warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
-              kw_ty = nil
+              kw_tys = { nil => Type.any }
             end
           else
             raise NotImplementedError
           end
-          # XXX: should we remove kw_ty from rest_ty?
+        else
+          kw_tys = {}
         end
-        aargs = ActualArguments.new(aargs, rest_ty, kw_ty, blk_ty)
+        aargs = ActualArguments.new(aargs, rest_ty, kw_tys, blk_ty)
       elsif flag_args_kw_splat
         last = aargs.last
         ty = globalize_type(last, env, ep)
         case ty
         when Type::Hash
           aargs = aargs[0..-2]
-          kw_ty = ty
+          kw_tys = ty.elems.to_keywords
         when Type::Union
           hash_elems = nil
           ty.elems.each do |(container_kind, base_type), elems|
@@ -1733,31 +1738,30 @@ module TypeProf
               hash_elems = hash_elems ? hash_elems.union(elems) : elems
             end
           end
-          hash_elems ||= Type::Hash::Elements.new({Type.any => Type.any})
-          kw_ty = Type::Hash.new(hash_elems, Type::Instance.new(Type::Builtin[:hash]))
+          if hash_elems
+            kw_tys = hash_elems.to_keywords
+          else
+            kw_tys = { nil => Type.any }
+          end
         when Type::Any
           aargs = aargs[0..-2]
-          kw_ty = ty
+          kw_tys = { nil => Type.any }
         else
           warn(ep, "non hash is passed to **kwarg?")
-          kw_ty = nil
+          kw_tys = { nil => Type.any }
         end
-        aargs = ActualArguments.new(aargs, nil, kw_ty, blk_ty)
+        aargs = ActualArguments.new(aargs, nil, kw_tys, blk_ty)
       elsif flag_args_kwarg
         kw_vals = aargs.pop(kw_arg.size)
 
-        kw_ty = Type.gen_hash do |h|
-          kw_arg.zip(kw_vals) do |key, v_ty|
-            k_ty = Type::Symbol.new(key, Type::Instance.new(Type::Builtin[:sym]))
-            h[k_ty] = v_ty
-          end
+        kw_tys = {}
+        kw_arg.zip(kw_vals) do |key, v_ty|
+          kw_tys[key] = v_ty
         end
 
-        # kw_ty is Type::Hash, but we don't have to localize it, maybe?
-
-        aargs = ActualArguments.new(aargs, nil, kw_ty, blk_ty)
+        aargs = ActualArguments.new(aargs, nil, kw_tys, blk_ty)
       else
-        aargs = ActualArguments.new(aargs, nil, nil, blk_ty)
+        aargs = ActualArguments.new(aargs, nil, {}, blk_ty)
       end
 
       if blk_iseq
@@ -1800,7 +1804,7 @@ module TypeProf
         blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
         arg_blk = aargs.blk_ty
         aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
-        # XXX: aargs.opt_tys and aargs.kw_ty
+        # XXX: aargs.opt_tys and aargs.kw_tys
         argc = blk_iseq.fargs_format[:lead_num] || 0
         # actual argc == 1, not array, formal argc == 1: yield 42         => do |x|   : x=42
         # actual argc == 1,     array, formal argc == 1: yield [42,43,44] => do |x|   : x=[42,43,44]

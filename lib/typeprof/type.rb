@@ -865,16 +865,16 @@ module TypeProf
 
   # Arguments from caller side
   class ActualArguments
-    def initialize(lead_tys, rest_ty, kw_ty, blk_ty)
+    def initialize(lead_tys, rest_ty, kw_tys, blk_ty)
       @lead_tys = lead_tys
       @rest_ty = rest_ty
-      @kw_ty = kw_ty
-      raise if kw_ty && !kw_ty.is_a?(Type::Hash)
+      @kw_tys = kw_tys # kw_tys should be {:key1 => Type.bool, :key2 => Type.bool, ...} or {nil => Type.bool}
+      raise if !kw_tys.is_a?(::Hash)
       @blk_ty = blk_ty
       raise unless blk_ty
     end
 
-    attr_reader :lead_tys, :rest_ty, :kw_ty, :blk_ty
+    attr_reader :lead_tys, :rest_ty, :kw_tys, :blk_ty
 
     def merge(aargs)
       len = [@lead_tys.size, aargs.lead_tys.size].min
@@ -887,16 +887,25 @@ module TypeProf
         rest_ty = rest_ty.union(ty)
       end
       rest_ty = nil if rest_ty == Type.bot
-      #kw_ty = @kw_ty.union(aargs.kw_ty) # TODO
+      kw_tys = @kw_tys.dup
+      aargs.kw_tys.each do |sym, ty|
+        if kw_tys[sym]
+          kw_tys[sym] = kw_tys[sym].union(ty)
+        else
+          kw_tys[sym] = ty
+        end
+      end
       blk_ty = @blk_ty.union(aargs.blk_ty)
-      ActualArguments.new(lead_tys, rest_ty, kw_ty, blk_ty)
+      ActualArguments.new(lead_tys, rest_ty, kw_tys, blk_ty)
     end
 
     def globalize(caller_env, visited, depth)
       lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited, depth) }
       rest_ty = @rest_ty.globalize(caller_env, visited, depth) if @rest_ty
-      kw_ty = @kw_ty.globalize(caller_env, visited, depth) if @kw_ty
-      ActualArguments.new(lead_tys, rest_ty, kw_ty, @blk_ty)
+      kw_tys = @kw_tys.to_h do |key, ty|
+        [key, ty.globalize(caller_env, visited, depth)]
+      end
+      ActualArguments.new(lead_tys, rest_ty, kw_tys, @blk_ty)
     end
 
     def limit_size(limit)
@@ -943,6 +952,7 @@ module TypeProf
         lower_bound = upper_bound = 0
       end
 
+      a_kw_tys = @kw_tys.dup
       if keyword
         kw_tys = []
         keyword.each do |kw|
@@ -960,12 +970,10 @@ module TypeProf
             req = false
           end
 
-          sym = Type::Symbol.new(key, Type::Instance.new(Type::Builtin[:sym]))
-          ty = Type.bot
-          if @kw_ty.is_a?(Type::Hash)
-            # XXX: consider Union
-            ty = @kw_ty.elems[sym]
-            # XXX: remove the key
+          if a_kw_tys.key?(key)
+            ty = a_kw_tys.delete(key)
+          else
+            ty = a_kw_tys[nil] || Type.bot
           end
           if ty == Type.bot
             yield "no argument for required keywords"
@@ -976,12 +984,18 @@ module TypeProf
         end
       end
       if kw_rest_acceptable
-        kw_rest_ty = @kw_ty
-        if kw_rest_ty == Type.any
-          kw_rest_ty = Type.gen_hash {|h| h[Type.any] = Type.any }
+        if a_kw_tys.key?(nil)
+          kw_rest_ty = Type.gen_hash {|h| h[Type.any] = a_kw_tys[nil] }
+        else
+          kw_rest_ty = Type.gen_hash do |h|
+            a_kw_tys.each do |key, ty|
+              sym = Type::Symbol.new(key, Type::Instance.new(Type::Builtin[:sym]))
+              h[sym] = ty
+            end
+          end
         end
       end
-      #if @kw_ty
+      #if @kw_tys
       #  yield "passed a keyword to non-keyword method"
       #end
 
@@ -1024,7 +1038,7 @@ module TypeProf
         lower_bound = [0, fargs.lead_tys.size + fargs.post_tys.size - aargs.size].max
         upper_bound = [0, lower_bound + fargs.opt_tys.size].max
         (lower_bound..upper_bound).each do |n|
-          tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_ty, @blk_ty)
+          tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_tys, @blk_ty)
           if tmp_aargs.consistent_with_formal_arguments?(fargs, subst)
             return true
           end
@@ -1079,8 +1093,12 @@ module TypeProf
       if @rest_ty
         aargs << ("*" + @rest_ty.screen_name(scratch))
       end
-      if @kw_ty
-        aargs << ("**" + @kw_ty.screen_name(scratch)) # TODO: Hash notation -> keyword notation
+      if @kw_tys.key?(nil)
+        aargs << "(unknown key): #{ @kw_tys[nil].screen_name(scratch) }"
+      else
+        @kw_tys.sort.each do |key, ty|
+          aargs << "#{ key }: #{ ty.screen_name(scratch) }"
+        end
       end
       s = "(#{ aargs.join(", ") })"
       s << " { #{ scratch.proc_screen_name(@blk_ty) } }" if @blk_ty != Type.nil

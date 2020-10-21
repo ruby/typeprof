@@ -58,10 +58,10 @@ module TypeProf
             @skips_fail_examples : bool
             attr_reader patterns : Array[(Goodcheck::Pattern::Literal | Goodcheck::Pattern::Regexp | Goodcheck::Pattern::Token)?]
             attr_reader globs : Array[Goodcheck::Glob?]
-            attr_reader passes : Array[Array[untyped]]
-            attr_reader fails : Array[Array[untyped]]
+            attr_reader passes : Array[[]]
+            attr_reader fails : Array[[]]
             attr_reader negated : bool
-            def initialize : (patterns: Array[(Goodcheck::Pattern::Literal | Goodcheck::Pattern::Regexp | Goodcheck::Pattern::Token)?], globs: Array[Goodcheck::Glob?], passes: Array[Array[untyped]], fails: Array[Array[untyped]], negated: bool) -> false
+            def initialize : (patterns: Array[(Goodcheck::Pattern::Literal | Goodcheck::Pattern::Regexp | Goodcheck::Pattern::Token)?], globs: Array[Goodcheck::Glob?], passes: Array[[]], fails: Array[[]], negated: bool) -> false
             def by_pattern! : -> Goodcheck::Trigger
             def by_pattern? : -> bool
             def skips_fail_examples! : (?bool) -> Goodcheck::Trigger

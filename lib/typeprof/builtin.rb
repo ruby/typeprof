@@ -118,7 +118,7 @@ module TypeProf
       else
         mid_ty = aargs.rest_ty
       end
-      aargs = ActualArguments.new(aargs.lead_tys[1..-1], aargs.rest_ty, aargs.kw_ty, aargs.blk_ty)
+      aargs = ActualArguments.new(aargs.lead_tys[1..-1], aargs.rest_ty, aargs.kw_tys, aargs.blk_ty)
       found = false
       mid_ty.each_child do |mid|
         if mid.is_a?(Type::Symbol)
@@ -138,7 +138,7 @@ module TypeProf
         ctn[type.any, ep, env]
         return
       end
-      naargs = ActualArguments.new([recv], Type.nil, nil, Type.nil)
+      naargs = ActualArguments.new([recv], Type.nil, {}, Type.nil)
       given_block = env.static_env.blk_ty == recv
       scratch.do_invoke_block(given_block, aargs.blk_ty, naargs, ep, env, replace_recv_ty: recv) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]]

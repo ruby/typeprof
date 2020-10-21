@@ -359,14 +359,6 @@ module TypeProf
         @elems.screen_name(scratch)
       end
 
-      def globalize(env, visited, depth)
-        #raise # Need to refactor ActualArguments first
-        return Type.any if depth <= 0
-        elems = @elems.globalize(env, visited, depth - 1)
-        base_ty = @base_type.globalize(env, visited, depth - 1)
-        Hash.new(elems, base_ty)
-      end
-
       def localize(env, alloc_site, depth)
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:hash)
@@ -573,6 +565,22 @@ module TypeProf
           end
 
           Elements.new(map_tys)
+        end
+
+        def to_keywords
+          kw_tys = {}
+          @map_tys.each do |key_ty, val_ty|
+            if key_ty.is_a?(Type::Symbol)
+              kw_tys[key_ty.sym] = val_ty
+            else
+              all_val_ty = Type.bot
+              @map_tys.each do |_key_ty, val_ty|
+                all_val_ty = all_val_ty.union(val_ty)
+              end
+              return { nil => all_val_ty }
+            end
+          end
+          kw_tys
         end
       end
     end
