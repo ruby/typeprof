@@ -7,3 +7,4 @@ testbed/diff-lcs
 pkg/
 *.log
 .*.sw*
+*.dump
