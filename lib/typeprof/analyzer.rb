@@ -128,7 +128,13 @@ module TypeProf
           other.type_params.internal_hash.each do |id, elems|
             elems2 = type_params[id]
             if elems2
-              type_params[id] = elems.union(elems2) if elems != elems2
+              if elems != elems2
+                if elems.is_a?(Array) # should be refactored as Cell::Elements
+                  type_params[id] = elems.zip(elems2).map {|elem1, elem2| elem1.union(elem2) }
+                else
+                  type_params[id] = elems.union(elems2)
+                end
+              end
             else
               type_params[id] = elems
             end
@@ -174,6 +180,13 @@ module TypeProf
 
     def local_update(idx, ty)
       Env.new(@static_env, Utils.array_update(@locals, idx, ty), @stack, @type_params)
+    end
+
+    def deploy_cell_type(alloc_site, elems, base_ty)
+      local_ty = Type::LocalCell.new(alloc_site, base_ty)
+      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
+      nenv = Env.new(@static_env, @locals, @stack, type_params)
+      return nenv, local_ty
     end
 
     def deploy_array_type(alloc_site, elems, base_ty)

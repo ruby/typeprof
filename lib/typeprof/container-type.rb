@@ -21,16 +21,120 @@ module TypeProf
   end
 
   class Type # or AbstractValue
-    # This is a type for global interface, e.g., TypedISeq.
-    # Do not directly insert Container types to local environment, stack, etc.
+    # Cell, Array, and Hash are types for global interface, e.g., TypedISeq.
+    # Do not push such types to local environment, stack, etc.
 
+    # The most basic container type for default type parameter class
+    class Cell < Type
+      def initialize(elems, base_type)
+        @elems = elems # Array[Symbol]
+        raise unless base_type
+        @base_type = base_type
+      end
+
+      attr_reader :elems, :base_type
+
+      def inspect
+        "Type::Cell[#{ @elems.inspect }, base_type: #{ @base_type.inspect }]"
+      end
+
+      def screen_name(scratch)
+        "#{ @base_type.screen_name(scratch) }[#{ @elems.map {|elem| elem.screen_name(scratch) }.join(", ") }]"
+      end
+
+      def localize(env, alloc_site, depth)
+        return env, Type.any if depth <= 0
+        alloc_site = alloc_site.add_id(:cell)
+        elems = @elems.map.with_index do |elem, idx|
+          env, elem = elem.localize(env, alloc_site.add_id(idx), depth - 1)
+          elem
+        end
+        env.deploy_cell_type(alloc_site, elems, @base_type)
+      end
+
+      def limit_size(limit)
+        return Type.any if limit <= 0
+        Cell.new(@elems.map {|elem| elem.limit_size(limit - 1) }, @base_type)
+      end
+
+      def get_method(mid, scratch)
+        raise
+      end
+
+      def consistent?(other, subst)
+        case other
+        when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
+        when Type::Union
+          other.types.each do |ty2|
+            return true if consistent?(ty2, subst)
+          end
+          return false
+        when Type::Cell
+          @elems.size == other.elems.size &&
+            @base_type.consistent?(other.base_type, subst) &&
+            @elems.zip(other.elems).all? {|elem1, elem2| elem1..consistent?(elem2, subst) }
+        else
+          self == other
+        end
+      end
+
+      def substitute(subst, depth)
+        return Type.any if depth <= 0
+        elems = @elems.map {|elem| elem.substitute(subst, depth - 1) }
+        Cell.new(elems, @base_type)
+      end
+    end
+
+    class LocalCell < Type
+      def initialize(id, base_type)
+        @id = id
+        raise unless base_type
+        @base_type = base_type
+      end
+
+      attr_reader :id, :base_type
+
+      def inspect
+        "Type::LocalCell[#{ @id }, base_type: #{ @base_type.inspect }]"
+      end
+
+      def screen_name(scratch)
+        #raise "LocalArray must not be included in signature"
+        "LocalCell!"
+      end
+
+      def globalize(env, visited, depth)
+        if visited[self] || depth <= 0
+          Type.any
+        else
+          visited[self] = true
+          elems = env.get_container_elem_types(@id)
+          if elems
+            elems = elems.map {|elem| elem.globalize(env, visited, depth - 1) }
+          else
+            elems = [] # XXX
+          end
+          Cell.new(elems, @base_type)
+        end
+      end
+
+      def get_method(mid, scratch)
+        @base_type.get_method(mid, scratch)
+      end
+
+      def consistent?(other, subst)
+        raise "must not be used"
+      end
+    end
+
+    # Do not insert Array type to local environment, stack, etc.
     class Array < Type
       def initialize(elems, base_type)
         raise unless elems.is_a?(Array::Elements)
         @elems = elems # Array::Elements
         raise unless base_type
         @base_type = base_type
-        # XXX: need infinite recursion
       end
 
       attr_reader :elems, :base_type
@@ -72,6 +176,7 @@ module TypeProf
           other.types.each do |ty2|
             return true if consistent?(ty2, subst)
           end
+          return false
         when Type::Array
           @base_type.consistent?(other.base_type, subst) && @elems.consistent?(other.elems, subst)
         else
@@ -383,6 +488,7 @@ module TypeProf
           other.types.each do |ty2|
             return true if consistent?(ty2, subst)
           end
+          return false
         when Type::Hash
           @base_type.consistent?(other.base_type, subst) && @elems.consistent?(other.elems, subst)
         else

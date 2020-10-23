@@ -158,7 +158,27 @@ module TypeProf
         # XXX: support self type in fargs
         subst = { Type::Var.new(:self) => recv }
         next unless aargs.consistent_with_formal_arguments?(fargs, subst)
-        if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+        case
+        when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
+          tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
+          tyvars.each_with_index do |tyvar, idx|
+            ty = subst[tyvar]
+            if ty
+              alloc_site = AllocationSite.new(caller_ep).add_id(self).add_id(idx)
+              ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
+              ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
+                Utils.array_update(elems, idx, elems[idx].union(ty))
+              end
+            end
+          end
+          tyvars.zip(recv.elems) do |tyvar, elem|
+            if subst[tyvar]
+              subst[tyvar] = subst[tyvar].union(elem)
+            else
+              subst[tyvar] = elem
+            end
+          end
+        when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
           tyvar_elem = Type::Var.new(:Elem)
           if subst[tyvar_elem]
             ty = subst[tyvar_elem]
@@ -169,7 +189,7 @@ module TypeProf
             end
           end
           subst.merge!({ tyvar_elem => recv.elems.squash })
-        elsif recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
+        when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
           # XXX: need to support destructive operation
