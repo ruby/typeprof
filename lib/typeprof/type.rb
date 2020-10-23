@@ -3,7 +3,7 @@ module TypeProf
     include Utils::StructuralEquality
 
     def initialize
-      raise "cannot instanciate abstract type"
+      raise "cannot instantiate abstract type"
     end
 
     Builtin = {}
