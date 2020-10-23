@@ -17,7 +17,7 @@ PATH
   remote: .
   specs:
     typeprof (0.2.0)
-      rbs (>= 0.14.0)
+      rbs (>= 0.13.1)
 
 GEM
   remote: https://rubygems.org/
@@ -27,7 +27,7 @@ GEM
     power_assert (1.2.0)
     rake (13.0.1)
     rbs (0.14.0)
-    stackprof (0.2.15)
+    stackprof (0.2.16)
     test-unit (3.3.6)
       power_assert
 
