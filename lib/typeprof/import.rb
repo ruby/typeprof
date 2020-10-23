@@ -428,7 +428,8 @@ module TypeProf
     end
 
     def self.import_rbs_file(scratch, rbs_path)
-      Import.new(scratch, scratch.rbs_reader.load_path(Pathname(rbs_path))).import(true)
+      rbs_path = Pathname(rbs_path) unless rbs_path.is_a?(Pathname)
+      Import.new(scratch, scratch.rbs_reader.load_path(rbs_path)).import(true)
     end
 
     def initialize(scratch, json)

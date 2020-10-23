@@ -45,9 +45,9 @@ module TypeProf
       argv << "-q" unless show_progress
       verbose_back, $VERBOSE = $VERBOSE, nil
 
-      cli = CLI.new(argv)
-      Config.output = buffer = DummyStdout.new
-      cli.run
+      config = CLI.parse(argv)
+      config.output = buffer = DummyStdout.new
+      TypeProf.analyze(config)
 
       buffer.result
 

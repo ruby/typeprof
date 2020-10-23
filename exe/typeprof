@@ -2,4 +2,5 @@
 
 require_relative "../lib/typeprof"
 
-TypeProf::CLI.new(ARGV).run
+config = TypeProf::CLI.parse(ARGV)
+TypeProf.analyze(config)
