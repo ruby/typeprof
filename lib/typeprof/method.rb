@@ -164,7 +164,6 @@ module TypeProf
           tyvars.each_with_index do |tyvar, idx|
             ty = subst[tyvar]
             if ty
-              alloc_site = AllocationSite.new(caller_ep).add_id(self).add_id(idx)
               ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
               ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
                 Utils.array_update(elems, idx, elems[idx].union(ty))
@@ -182,7 +181,6 @@ module TypeProf
           tyvar_elem = Type::Var.new(:Elem)
           if subst[tyvar_elem]
             ty = subst[tyvar_elem]
-            alloc_site = AllocationSite.new(caller_ep).add_id(self)
             ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
             ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
               elems.update(nil, ty)
