@@ -29,10 +29,12 @@ module TypeProf
       }
       @dir_filter = nil
       @rbs_features_to_load = []
+      @version = false
 
       opt.on("-o OUTFILE") {|v| @output = v }
       opt.on("-q", "--quiet") { @verbose = 0 }
       opt.on("-v", "--verbose") { @options[:show_errors] = true }
+      opt.on("--version") { @version = true }
       opt.on("-d", "--debug") { @verbose = 2 }
       opt.on("-I DIR") {|v| $LOAD_PATH << v }
       opt.on("-r FEATURE") {|v| @rbs_features_to_load << v }
@@ -81,7 +83,11 @@ module TypeProf
         end
       end
 
-      raise OptionParser::InvalidOption.new("no input files") if @rb_files.empty?
+      puts "typeprof #{ VERSION }" if @version
+      if @rb_files.empty?
+        exit if @version
+        raise OptionParser::InvalidOption.new("no input files")
+      end
 
       TypeProf.const_set(:Config, self)
 
