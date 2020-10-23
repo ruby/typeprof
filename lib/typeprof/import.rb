@@ -363,7 +363,7 @@ module TypeProf
         end
       when RBS::Types::Bases::Bool   then [:bool]
       when RBS::Types::Bases::Any    then [:any]
-      when RBS::Types::Bases::Void   then [:any]
+      when RBS::Types::Bases::Void   then [:void]
       when RBS::Types::Bases::Self   then [:self]
       when RBS::Types::Bases::Nil    then [:nil]
       when RBS::Types::Bases::Bottom then [:union, []]
@@ -556,6 +556,7 @@ module TypeProf
       when :class then path_to_klass(ty[1])
       when :instance then Type::Instance.new(path_to_klass(ty[1]))
       when :any then Type.any
+      when :void then Type::Void.new
       when :nil then Type.nil
       when :optional then Type.optional(conv_type(ty[1]))
       when :bool then Type.bool

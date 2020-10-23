@@ -1798,7 +1798,11 @@ module TypeProf
           meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
         end
       else
-        if recv != Type.any
+        case recv
+        when Type::Void
+          error(ep, "void's method is called: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
+        when Type::Any
+        else
           error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
         end
         ctn[Type.any, ep, env]

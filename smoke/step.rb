@@ -12,6 +12,6 @@ __END__
 # Classes
 class Object
   def log1 : (Integer | Numeric) -> nil
-  def log2 : (untyped) -> nil
+  def log2 : (void) -> nil
   def log3 : (Enumerator[Integer | Numeric]) -> nil
 end

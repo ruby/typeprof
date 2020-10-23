@@ -483,8 +483,8 @@ module TypeProf
     def self.setup_initial_global_env(scratch)
       klass_basic_obj = scratch.new_class(nil, :BasicObject, [], :__root__, nil) # cbase, name, superclass
       klass_obj = scratch.new_class(nil, :Object, [], klass_basic_obj, nil)
-      scratch.add_constant(klass_obj, "Object", klass_obj)
-      scratch.add_constant(klass_obj, "BasicObject", klass_basic_obj)
+      scratch.add_constant(klass_obj, :Object, klass_obj)
+      scratch.add_constant(klass_obj, :BasicObject, klass_basic_obj)
 
       Type::Builtin[:basic_obj] = klass_basic_obj
       Type::Builtin[:obj]   = klass_obj
@@ -551,9 +551,6 @@ module TypeProf
       scratch.set_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
       scratch.set_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
       scratch.set_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
-
-      fargs, ret_ty = FormalArguments.new([], [], nil, [], nil, nil, Type.any), Type.any
-      scratch.add_method(klass_obj, :initialize, false, TypedMethodDef.new([[fargs, ret_ty]], nil))
     end
   end
 end

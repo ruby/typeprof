@@ -129,6 +129,17 @@ module TypeProf
       end
     end
 
+    class Void < Any
+      def inspect
+        "Type::Void"
+      end
+
+      def screen_name(scratch)
+        "void"
+      end
+    end
+
+
     class Union < Type
       def initialize(tys, elems)
         raise unless tys.is_a?(Utils::Set)
