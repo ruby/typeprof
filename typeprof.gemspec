@@ -1,6 +1,8 @@
+require_relative 'lib/typeprof/version'
+
 Gem::Specification.new do |spec|
   spec.name          = "typeprof" # temporal
-  spec.version       = "0.2.0"
+  spec.version       = TypeProf::VERSION
   spec.authors       = ["Yusuke Endoh"]
   spec.email         = ["mame@ruby-lang.org"]
 
