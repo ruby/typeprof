@@ -272,7 +272,7 @@ module TypeProf
       env2 = @ep2env[ep]
       if env2
         nenv = env2.merge(env)
-        if !nenv.eql?(env2) && !@worklist.member?(ep)
+        if nenv != env2 && !@worklist.member?(ep)
           @worklist.insert(ep.key, ep)
         end
         @ep2env[ep] = nenv
@@ -576,7 +576,7 @@ module TypeProf
         @sig_fargs[callee_ctx] = fargs
       end
       ret_ty = @sig_ret[callee_ctx] ||= Type.bot
-      unless ret_ty.eql?(Type.bot)
+      if ret_ty != Type.bot
         @callsites[callee_ctx].each do |caller_ep, ctn|
           ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
         end
@@ -1084,7 +1084,7 @@ module TypeProf
                 elsif superclass == Type.any
                   warn(ep, "superclass is any; Object is used instead")
                   superclass = Type::Builtin[:obj]
-                elsif superclass.eql?(Type.nil)
+                elsif superclass == Type.nil
                   superclass = Type::Builtin[:obj]
                 elsif superclass.is_a?(Type::Instance)
                   warn(ep, "superclass is an instance; Object is used instead")
@@ -1177,9 +1177,9 @@ module TypeProf
         env, aargs = env.pop(orig_argc)
         blk = env.static_env.blk_ty
         case
-        when blk.eql?(Type.nil)
+        when blk == Type.nil
           env = env.push(Type.any)
-        when blk.eql?(Type.any)
+        when blk == Type.any
           #warn(ep, "block is any")
           env = env.push(Type.any)
         else # Proc
@@ -1295,7 +1295,7 @@ module TypeProf
 
         # TODO: it works for only simple cases: `x = nil; x || 1`
         # It would be good to merge "dup; branchif" to make it context-sensitive-like
-        falsy = ty.eql?(Type.nil)
+        falsy = ty == Type.nil
 
         merge_env(ep_then, env)
         merge_env(ep_else, env) unless branchtype == :if && falsy
@@ -1441,11 +1441,11 @@ module TypeProf
       when :getconstant
         name, = operands
         env, (cbase, _allow_nil,) = env.pop(2)
-        if cbase.eql?(Type.nil)
+        if cbase == Type.nil
           ty = search_constant(ep.ctx.cref, name)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
-        elsif cbase.eql?(Type.any)
+        elsif cbase == Type.any
           env = env.push(Type.any) # XXX: warning needed?
         else
           ty = get_constant(cbase, name)
