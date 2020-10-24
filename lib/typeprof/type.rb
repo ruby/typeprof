@@ -821,8 +821,6 @@ module TypeProf
           raise if !!kws1[kw] != !!kws2[kw]
         end
       elsif @kw_tys || other.kw_tys
-        puts
-        p self, other
         (@kw_tys || other.kw_tys).each do |req,|
           raise if req
         end

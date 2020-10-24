@@ -25,7 +25,7 @@ module TypeProf
         show_errors: false,
         stackprof: nil,
       }.merge(opt[:options])
-      super **opt
+      super(**opt)
     end
 
     def check_dir_filter(path)

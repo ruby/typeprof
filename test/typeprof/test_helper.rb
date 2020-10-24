@@ -7,27 +7,10 @@ rescue LoadError
 end
 
 require "test-unit"
+require "stringio"
 
 module TypeProf
   class TestRun
-    class DummyStdout
-      def initialize
-        @buffer = []
-      end
-
-      def puts(s = nil)
-        @buffer << (s ? s + "\n" : "\n")
-      end
-
-      def result
-        @buffer.join
-      end
-
-      def to_open(*)
-        self
-      end
-    end
-
     def self.run(name, rbs_path: nil, **opt)
       new(name, rbs_path).run(**opt)
     end
@@ -36,20 +19,18 @@ module TypeProf
       @name, @rbs_path = name, rbs_path
     end
 
-    def run(show_errors: true, pedantic_output: true, show_progress: false, stackprof: nil)
-      argv = [@name]
-      argv << @rbs_path if @rbs_path
-      argv << "-fshow-errors" if show_errors
-      argv << "-fpedantic-output" if pedantic_output
-      argv << "-fstackprof=#{ stackprof }" if stackprof
-      argv << "-q" unless show_progress
+    def run(**options)
       verbose_back, $VERBOSE = $VERBOSE, nil
 
-      config = CLI.parse(argv)
-      config.output = buffer = DummyStdout.new
+      rb_files = [@name]
+      rbs_files = [@rbs_path].compact
+      output = StringIO.new("")
+      options[:pedantic_output] = true unless options.key?(:pedantic_output)
+      options[:show_errors] = true unless options.key?(:show_errors)
+      config = TypeProf::ConfigData.new(rb_files: rb_files, rbs_files: rbs_files, output: output, options: options, verbose: 0)
       TypeProf.analyze(config)
 
-      buffer.result
+      output.string
 
     ensure
       ENV.delete("TP_SHOW_ERRORS")

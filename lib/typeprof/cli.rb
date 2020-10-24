@@ -78,7 +78,7 @@ module TypeProf
         raise OptionParser::InvalidOption.new("no input files")
       end
 
-      config = ConfigData.new(
+      ConfigData.new(
         rb_files: rb_files,
         rbs_files: rbs_files,
         output: output,
