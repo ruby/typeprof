@@ -69,7 +69,7 @@ module TypeProf
 
     Config.rb_files.each do |file|
       if file.respond_to?(:read)
-        iseq = ISeq.compile_str(file.read)
+        iseq = ISeq.compile_str(file.read, file.to_s)
       else
         iseq = ISeq.compile(file)
       end
