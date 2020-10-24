@@ -952,6 +952,8 @@ module TypeProf
       end
 
       case insn
+      when :_method_body
+        # XXX: reconstruct and record the method signature
       when :putspecialobject
         kind, = operands
         ty = case kind

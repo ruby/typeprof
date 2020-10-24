@@ -32,6 +32,14 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
+      if @fargs_format[:opt]
+        body_start = @fargs_format[:opt].last
+        i = insns.index(body_start) + 1
+      else
+        i = 0
+      end
+      insns[i, 0] = [[:_method_body]]
+
       @insns = []
       @linenos = []
 
@@ -79,7 +87,7 @@ module TypeProf
           nil
         when Array
           insn, *operands = e
-          operands = INSN_TABLE[insn].zip(operands).map do |type, operand|
+          operands = (INSN_TABLE[insn] || []).zip(operands).map do |type, operand|
             case type
             when "ISEQ"
               operand && ISeq.new(operand)
