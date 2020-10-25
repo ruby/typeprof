@@ -984,7 +984,7 @@ module TypeProf
           else
             ty = a_kw_tys[nil] || Type.bot
           end
-          if ty == Type.bot
+          if ty == Type.bot && req
             yield "no argument for required keywords"
             return
           end

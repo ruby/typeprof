@@ -32,13 +32,21 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
-      if @fargs_format[:opt]
-        body_start = @fargs_format[:opt].last
-        i = insns.index(body_start) + 1
-      else
-        i = 0
+      if @type == :method
+        if @fargs_format[:opt]
+          label = @fargs_format[:opt].last
+          i = insns.index(label) + 1
+        else
+          i = insns.find_index {|insn| insn.is_a?(Array) }
+        end
+        # skip keyword initialization
+        while insns[i][0] == :checkkeyword
+          raise if insns[i + 1][0] != :branchif
+          label = insns[i + 1][1]
+          i = insns.index(label) + 1
+        end
+        insns[i, 0] = [[:_method_body]]
       end
-      insns[i, 0] = [[:_method_body]]
 
       @insns = []
       @linenos = []

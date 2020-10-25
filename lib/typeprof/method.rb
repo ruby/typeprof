@@ -34,6 +34,7 @@ module TypeProf
       rest_start = @iseq.fargs_format[:rest_start]
       kw_start = @iseq.fargs_format[:kwbits]
       kw_start -= @iseq.fargs_format[:keyword].size if kw_start
+      kw_rest = @iseq.fargs_format[:kwrest]
       block_start = @iseq.fargs_format[:block_start]
 
       # XXX: need to check .rbs fargs and .rb fargs
@@ -72,13 +73,18 @@ module TypeProf
         end
       end
       if fargs.kw_tys
-        fargs.kw_tys.each_with_index do |(_, _, ty), i|
-          alloc_site2 = alloc_site.add_id(idx += 1)
+        fargs.kw_tys.each_with_index do |(_, key, ty), i|
+          alloc_site2 = alloc_site.add_id(key)
           nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(kw_start + i, ty)
         end
       end
-      # kwrest
+      if fargs.kw_rest_ty
+        ty = fargs.kw_rest_ty
+        alloc_site2 = alloc_site.add_id(:**)
+        nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+        nenv = nenv.local_update(kw_rest, ty)
+      end
       nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
 
       scratch.merge_env(callee_ep, nenv)

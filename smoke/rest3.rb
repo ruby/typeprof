@@ -32,5 +32,5 @@ class Object
   def baz : (String, *String) -> nil
   def qux : (Integer, *String) -> nil
   def corge : (*Integer | String, Integer | String) -> nil
-  def grault : (String, ?String, *String, String) -> nil
+  def grault : (String, ?Integer | String, *String, String) -> nil
 end
