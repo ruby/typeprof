@@ -24,7 +24,7 @@ module TypeProf
         callee_ep = do_send_core(fargs, start_pc, recv, mid, scratch)
 
         scratch.add_iseq_method_call!(self, callee_ep.ctx)
-        scratch.add_callsite!(callee_ep.ctx, fargs, caller_ep, caller_env, &ctn)
+        scratch.add_callsite!(callee_ep.ctx, caller_ep, caller_env, &ctn)
       end
     end
 
@@ -208,7 +208,7 @@ module TypeProf
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
           dummy_env = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), [], [], Utils::HashWrapper.new({}))
           if fargs.blk_ty.is_a?(Type::TypedProc)
-            scratch.add_callsite!(dummy_ctx, nil, caller_ep, ncaller_env, &ctn)
+            scratch.add_callsite!(dummy_ctx, caller_ep, ncaller_env, &ctn)
             nfargs = fargs.blk_ty.fargs
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
             nlead_tys = (nfargs.lead_tys + nfargs.opt_tys).map.with_index do |ty, i|

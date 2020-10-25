@@ -75,7 +75,7 @@ module TypeProf
       end
       ep, env = TypeProf.starting_state(iseq)
       scratch.merge_env(ep, env)
-      scratch.add_callsite!(ep.ctx, nil, prologue_ep, prologue_env) {|ty, ep| }
+      scratch.add_callsite!(ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
     end
 
     Config.rbs_files.each do |path|
