@@ -379,7 +379,7 @@ module TypeProf
       callee_ep, callee_env = TypeProf.starting_state(iseq)
       scratch.merge_env(callee_ep, callee_env)
 
-      scratch.add_callsite!(callee_ep.ctx, nil, ep, env) do |_ret_ty, ep|
+      scratch.add_callsite!(callee_ep.ctx, ep, env) do |_ret_ty, ep|
         ret_ty = Type::Instance.new(Type::Builtin[:true])
         ctn[ret_ty, ep, env]
       end

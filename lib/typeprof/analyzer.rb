@@ -563,14 +563,12 @@ module TypeProf
       @iseq_method_to_ctxs[iseq_mdef] << ctx
     end
 
-    def add_callsite!(callee_ctx, fargs, caller_ep, caller_env, &ctn)
+    def add_callsite!(callee_ctx, caller_ep, caller_env, &ctn)
       @executed_iseqs << callee_ctx.iseq if callee_ctx.is_a?(Context)
 
       @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx][caller_ep] = ctn
       merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
-
-      add_signature!(callee_ctx, fargs) # XXX: should be removed
 
       ret_ty = @sig_ret[callee_ctx] ||= Type.bot
       if ret_ty != Type.bot
@@ -826,37 +824,6 @@ module TypeProf
           meth, ep, env = dummy_continuation
           merge_env(ep, env)
           add_iseq_method_call!(meth, ep.ctx)
-
-          fargs_format = iseq.fargs_format
-          lead_tys = [Type.any] * (fargs_format[:lead_num] || 0)
-          opt_tys = fargs_format[:opt] ? [] : nil
-          post_tys = [Type.any] * (fargs_format[:post_num] || 0)
-          if fargs_format[:kwbits]
-            kw_tys = []
-            fargs_format[:keyword].each do |kw|
-              case
-              when kw.is_a?(Symbol) # required keyword
-                key = kw
-                req = true
-                ty = Type.any
-              when kw.size == 2 # optional keyword (default value is a literal)
-                key, ty = *kw
-                ty = Type.guess_literal_type(ty)
-                ty = ty.type if ty.is_a?(Type::Literal)
-              else # optional keyword
-                key, = kw
-                req = false
-                ty = Type.any
-              end
-              kw_tys << [req, key, ty]
-            end
-          else
-            kw_tys = nil
-          end
-          fargs = FormalArguments.new(lead_tys, opt_tys, nil, post_tys, kw_tys, nil, nil)
-          add_callsite!(ep.ctx, fargs, nil, nil) do |_ret_ty, _ep, _env|
-            # ignore
-          end
 
         when :block
           epenvs = dummy_continuation
@@ -1185,7 +1152,7 @@ module TypeProf
         locals = [Type.nil] * iseq.locals.size
         nenv = Env.new(StaticEnv.new(recv, blk, false), locals, [], Utils::HashWrapper.new({}))
         merge_env(nep, nenv)
-        add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
+        add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
@@ -1340,7 +1307,7 @@ module TypeProf
         raise if iseq.locals != []
         nenv = Env.new(env.static_env, [], [], nil)
         merge_env(nep, nenv)
-        add_callsite!(nep.ctx, nil, ep, env) do |ret_ty, ep, env|
+        add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)
           nenv = nenv.push(ret_ty)
           merge_env(ep.next, nenv)
@@ -1686,7 +1653,7 @@ module TypeProf
           locals = [Type.nil] * iseq.locals.size
           nenv = Env.new(env.static_env, locals, [], Utils::HashWrapper.new({}))
           merge_env(nep, nenv)
-          add_callsite!(nep.ctx, nil, cont_ep, cont_env) do |ret_ty, ep, env|
+          add_callsite!(nep.ctx, cont_ep, cont_env) do |ret_ty, ep, env|
             nenv, ret_ty = localize_type(ret_ty, env, ep)
             nenv = nenv.push(ret_ty)
             merge_env(ep.jump(cont), nenv)
@@ -1961,7 +1928,8 @@ module TypeProf
 
         add_yield!(ep.ctx, globalize_type(aargs, env, ep), nep.ctx) if given_block
         add_block_to_ctx!(blk, nep.ctx)
-        add_callsite!(nep.ctx, nfargs, ep, env, &ctn)
+        add_callsite!(nep.ctx, ep, env, &ctn)
+        add_signature!(nep.ctx, nfargs)
       end
     end
 
