@@ -880,7 +880,24 @@ module TypeProf
       ctx = Context.new(iseq, cref, mid)
       ep = ExecutionPoint.new(ctx, 0, nil)
       locals = [Type.any] * iseq.locals.size
-      # XXX: respect default values of optional and keyword arguments
+
+      keyword = iseq.fargs_format[:keyword]
+      if keyword
+        kw_start = iseq.fargs_format[:kwbits]
+        kw_start -= iseq.fargs_format[:keyword].size if kw_start
+        keyword.each_with_index do |kw, i|
+          case
+          when kw.is_a?(Symbol) # required keyword
+          when kw.size == 2 # optional keyword (default value is a literal)
+            key, default_ty = *kw
+            default_ty = Type.guess_literal_type(default_ty)
+            default_ty = default_ty.type if default_ty.is_a?(Type::Literal)
+            locals[kw_start + i] = default_ty.union(Type.any)
+          else # optional keyword (default value is an expression)
+          end
+        end
+      end
+
       env = Env.new(StaticEnv.new(recv, Type.any, false), locals, [], Utils::HashWrapper.new({}))
 
       @pending_execution[iseq] ||= [:method, [meth, ep, env]]
