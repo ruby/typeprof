@@ -29,7 +29,7 @@ module TypeProf
             attr_reader element : (Array[T] | T)?
             def self.valid_action? : (String) -> bool
             def initialize : (String, Integer, (Array[T] | T)?) -> nil
-            def inspect : -> String
+            def inspect : (*untyped) -> String
             def to_a : -> ([String, Integer, (Array[T] | T)?])
             def self.from_a : ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]]) -> (Diff::LCS::Change | Diff::LCS::ContextChange)
             def == : (untyped) -> bool

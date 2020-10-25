@@ -21,5 +21,5 @@ __END__
 # Classes
 class Object
   def foo : (:a | Integer | String, *Integer | String, :z | Integer | String) -> (Array[Integer | String])
-  def bar : (String, ?String, *String, String) -> Array[String]
+  def bar : (String, ?Integer | String, *String, String) -> Array[String]
 end

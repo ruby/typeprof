@@ -570,16 +570,21 @@ module TypeProf
       @callsites[callee_ctx][caller_ep] = ctn
       merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
 
-      if @sig_fargs[callee_ctx]
-        @sig_fargs[callee_ctx] = @sig_fargs[callee_ctx].merge(fargs)
-      else
-        @sig_fargs[callee_ctx] = fargs
-      end
+      add_signature!(callee_ctx, fargs) # XXX: should be removed
+
       ret_ty = @sig_ret[callee_ctx] ||= Type.bot
       if ret_ty != Type.bot
         @callsites[callee_ctx].each do |caller_ep, ctn|
           ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
         end
+      end
+    end
+
+    def add_signature!(callee_ctx, fargs)
+      if @sig_fargs[callee_ctx]
+        @sig_fargs[callee_ctx] = @sig_fargs[callee_ctx].merge(fargs)
+      else
+        @sig_fargs[callee_ctx] = fargs
       end
     end
 
@@ -908,6 +913,7 @@ module TypeProf
       ctx = Context.new(iseq, cref, mid)
       ep = ExecutionPoint.new(ctx, 0, nil)
       locals = [Type.any] * iseq.locals.size
+      # XXX: respect default values of optional and keyword arguments
       env = Env.new(StaticEnv.new(recv, Type.any, false), locals, [], Utils::HashWrapper.new({}))
 
       @pending_execution[iseq] ||= [:method, [meth, ep, env]]
@@ -954,6 +960,59 @@ module TypeProf
       case insn
       when :_method_body
         # XXX: reconstruct and record the method signature
+        iseq = ep.ctx.iseq
+        lead_num = iseq.fargs_format[:lead_num] || 0
+        opt = iseq.fargs_format[:opt] || [0]
+        rest_start = iseq.fargs_format[:rest_start]
+        post_start = iseq.fargs_format[:post_start]
+        post_num = iseq.fargs_format[:post_num] || 0
+        kw_start = iseq.fargs_format[:kwbits]
+        keyword = iseq.fargs_format[:keyword]
+        kw_start -= keyword.size if kw_start
+        kw_rest = iseq.fargs_format[:kwrest]
+        block_start = iseq.fargs_format[:block_start]
+
+        lead_tys = env.locals[0, lead_num].map {|ty| globalize_type(ty, env, ep) }
+        opt_tys = opt.size > 1 ? env.locals[lead_num, opt.size - 1].map {|ty| globalize_type(ty, env, ep) } : nil
+        if rest_start # XXX:squash
+          ty = globalize_type(env.locals[lead_num + opt.size - 1], env, ep)
+          rest_ty = Type.bot
+          ty.each_child_global do |ty|
+            if ty.is_a?(Type::Array)
+              rest_ty = rest_ty.union(ty.elems.squash)
+            else
+              # XXX: to_ary?
+              rest_ty = rest_ty.union(ty)
+            end
+          end
+        end
+        post_tys = (post_start ? env.locals[post_start, post_num] : []).map {|ty| globalize_type(ty, env, ep) }
+        if keyword
+          kw_tys = []
+          keyword.each_with_index do |kw, i|
+            case
+            when kw.is_a?(Symbol) # required keyword
+              key = kw
+              req = true
+            when kw.size == 2 # optional keyword (default value is a literal)
+              key, default_ty = *kw
+              default_ty = Type.guess_literal_type(default_ty)
+              default_ty = default_ty.type if default_ty.is_a?(Type::Literal)
+              req = false
+            else # optional keyword (default value is an expression)
+              key, = kw
+              req = false
+            end
+            ty = env.locals[kw_start + i]
+            ty = ty.union(default_ty) if default_ty
+            ty = globalize_type(ty, env, ep)
+            kw_tys << [req, key, ty]
+          end
+        end
+        kw_rest_ty = globalize_type(env.locals[kw_rest], env, ep) if kw_rest
+        blk_ty = block_start ? globalize_type(env.locals[block_start], env, ep) : Type.nil
+        fargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
+        add_signature!(ep.ctx, fargs)
       when :putspecialobject
         kind, = operands
         ty = case kind

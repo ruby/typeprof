@@ -11,5 +11,5 @@ foo("A", "B", "C", "D", "E", "Z")
 __END__
 # Classes
 class Object
-  def foo : (String, ?String, ?String, *String, String) -> ([String, Integer | String, Integer | String, Array[String], String])
+  def foo : (String, ?Integer | String, ?Integer | String, *String, String) -> ([String, Integer | String, Integer | String, Array[String], String])
 end

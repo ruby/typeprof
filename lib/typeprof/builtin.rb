@@ -248,7 +248,10 @@ module TypeProf
     def array_aset(recv, mid, aargs, ep, env, scratch, &ctn)
       return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalArray)
 
-      raise NotImplementedError if aargs.lead_tys.size != 2
+      if aargs.lead_tys.size != 2
+        #raise NotImplementedError # XXX
+        ctn[Type.any, ep, env]
+      end
 
       idx = aargs.lead_tys.first
       if idx.is_a?(Type::Literal)
