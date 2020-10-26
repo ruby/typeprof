@@ -45,7 +45,7 @@ module TypeProf
             attr_reader trigger : untyped
             attr_reader buffer : Goodcheck::Buffer
             def initialize : (rule: untyped, trigger: untyped, buffer: Goodcheck::Buffer) -> Goodcheck::Buffer
-            def scan : { (Goodcheck::Issue) -> Array[Goodcheck::Issue]? } -> Array[Goodcheck::Issue]?
+            def scan : { (Goodcheck::Issue) -> Array[Goodcheck::Issue]? } -> ((Array[Goodcheck::Issue] | Enumerator[untyped])?)
             def scan_simple : (Regexp) { (Goodcheck::Issue) -> Array[Goodcheck::Issue]? } -> Array[Goodcheck::Issue]?
             def scan_var : (untyped) -> nil
           end
