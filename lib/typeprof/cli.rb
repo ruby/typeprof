@@ -19,6 +19,7 @@ module TypeProf
       dir_filter = nil
       gem_rbs_features = []
       version = false
+      max_sec = max_iter = nil
 
       opt.on("-o OUTFILE") {|v| output = v }
       opt.on("-q", "--quiet") { verbose = 0 }
@@ -27,6 +28,8 @@ module TypeProf
       opt.on("-d", "--debug") { verbose = 2 }
       opt.on("-I DIR") {|v| $LOAD_PATH << v }
       opt.on("-r FEATURE") {|v| gem_rbs_features << v }
+      opt.on("--max-second SECOND") {|v| max_sec = v }
+      opt.on("--max-iteration TIMES") {|v| max_iter = v }
 
       opt.on("--include-dir DIR") do |dir|
         # When `--include-dir` option is specified as the first directory option,
@@ -85,6 +88,8 @@ module TypeProf
         gem_rbs_features: gem_rbs_features,
         verbose: verbose,
         dir_filter: dir_filter,
+        max_sec: max_sec,
+        max_iter: max_iter,
         options: options,
       )
 

@@ -25,6 +25,13 @@ module TypeProf
       ntrace
     end
 
+    def show_message(terminated, output)
+      if terminated
+        output.puts "# CAUTION: Type profiling was terminated because of the limitation"
+        output.puts
+      end
+    end
+
     def show_error(errors, backward_edge, output)
       return if errors.empty?
       return unless Config.options[:show_errors]
@@ -87,8 +94,6 @@ module TypeProf
     def show(stat_eps, output)
       output.puts "# Classes" # and Modules
 
-      stat_classes = {}
-      stat_methods = {}
       first = true
 
       @class_defs.each_value do |class_def|
@@ -207,10 +212,9 @@ module TypeProf
       end
 
       if ENV["TP_STAT"]
-        output.puts "statistics:"
-        output.puts "  %d execution points" % stat_eps.size
-        output.puts "  %d classes" % stat_classes.size
-        output.puts "  %d methods (in total)" % stat_methods.size
+        output.puts ""
+        output.puts "# TypeProf statistics:"
+        output.puts "#   %d execution points" % stat_eps.size
       end
       if ENV["TP_COVERAGE"]
         coverage = {}
@@ -220,7 +224,7 @@ module TypeProf
           (coverage[path] ||= [])[lineno] ||= 0
           (coverage[path] ||= [])[lineno] += 1
         end
-        File.binwrite("coverage.dump", Marshal.dump(coverage))
+        File.binwrite("typeprof-analysis-coverage.dump", Marshal.dump(coverage))
       end
     end
   end

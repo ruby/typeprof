@@ -8,6 +8,8 @@ module TypeProf
     :gem_rbs_features,
     :verbose,
     :dir_filter,
+    :max_iter,
+    :max_sec,
     :options,
     keyword_init: true
   )

@@ -258,6 +258,8 @@ module TypeProf
       @loaded_features = {}
 
       @rbs_reader = RBSReader.new
+
+      @terminated = false
     end
 
     attr_reader :return_envs, :loaded_features, :rbs_reader
@@ -786,25 +788,33 @@ module TypeProf
 
     def type_profile
       time = Time.now
-      step_counter = 0
+      iter_counter = 0
       stat_eps = Utils::MutableSet.new
+
       while true
         until @worklist.empty?
-          @ep = @worklist.deletemin
+          ep = @worklist.deletemin
 
-          step_counter += 1
+          iter_counter += 1
           if Config.verbose >= 1
             time2 = Time.now
             if time2 - time >= 1
               time = time2
-              $stderr << "\rType Profiling... (%d steps @ %s)\e[K" % [step_counter, @ep.source_location]
+              $stderr << "\rType Profiling... (%d steps @ %s)\e[K" % [iter_counter, ep.source_location]
               $stderr.flush
             end
           end
 
-          stat_eps << @ep
-          step(@ep)
+          if (Config.max_sec && Time.now - time >= Config.max_sec) || (Config.max_iter && Config.max_iter <= iter_counter)
+            @terminated = true
+            break
+          end
+
+          stat_eps << ep
+          step(ep)
         end
+
+        break if @terminated
 
         # XXX: it would be good to provide no-dummy-execution mode.
         # It should work as a bit smarter "rbs prototype rb";
@@ -838,6 +848,8 @@ module TypeProf
     end
 
     def report(stat_eps, output)
+      Reporters.show_message(@terminated, output)
+
       Reporters.show_error(@errors, @backward_edges, output)
 
       Reporters.show_reveal_types(self, @reveal_types, output)
