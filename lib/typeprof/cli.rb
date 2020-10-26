@@ -28,8 +28,8 @@ module TypeProf
       opt.on("-d", "--debug") { verbose = 2 }
       opt.on("-I DIR") {|v| $LOAD_PATH << v }
       opt.on("-r FEATURE") {|v| gem_rbs_features << v }
-      opt.on("--max-second SECOND") {|v| max_sec = v }
-      opt.on("--max-iteration TIMES") {|v| max_iter = v }
+      opt.on("--max-second SECOND", Float) {|v| max_sec = v }
+      opt.on("--max-iteration TIMES", Integer) {|v| max_iter = v }
 
       opt.on("--include-dir DIR") do |dir|
         # When `--include-dir` option is specified as the first directory option,

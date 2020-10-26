@@ -787,7 +787,7 @@ module TypeProf
     end
 
     def type_profile
-      time = Time.now
+      start_time = tick = Time.now
       iter_counter = 0
       stat_eps = Utils::MutableSet.new
 
@@ -797,15 +797,15 @@ module TypeProf
 
           iter_counter += 1
           if Config.verbose >= 1
-            time2 = Time.now
-            if time2 - time >= 1
-              time = time2
+            tick2 = Time.now
+            if tick2 - tick >= 1
+              tick = tick2
               $stderr << "\rType Profiling... (%d steps @ %s)\e[K" % [iter_counter, ep.source_location]
               $stderr.flush
             end
           end
 
-          if (Config.max_sec && Time.now - time >= Config.max_sec) || (Config.max_iter && Config.max_iter <= iter_counter)
+          if (Config.max_sec && Time.now - start_time >= Config.max_sec) || (Config.max_iter && Config.max_iter <= iter_counter)
             @terminated = true
             break
           end

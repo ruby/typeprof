@@ -27,7 +27,7 @@ module TypeProf
 
     def show_message(terminated, output)
       if terminated
-        output.puts "# CAUTION: Type profiling was terminated because of the limitation"
+        output.puts "# CAUTION: Type profiling was terminated prematurely because of the limitation"
         output.puts
       end
     end
