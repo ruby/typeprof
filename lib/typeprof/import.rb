@@ -266,6 +266,7 @@ module TypeProf
     def conv_method_def(rbs_method_types)
       rbs_method_types.map do |type|
         blk = type.block ? conv_block(type.block) : nil
+        blk_required = type.block && type.block.required
         type_params = type.type_params
 
         lead_tys = type.type.required_positionals.map {|type| conv_type(type.type) }
@@ -329,6 +330,8 @@ module TypeProf
       raise NotImplementedError unless type.required_keywords.empty?
       raise NotImplementedError if type.rest_keywords
 
+      req = rbs_block.required
+
       lead_tys = type.required_positionals.map do |type|
         conv_type(type.type)
       end
@@ -338,7 +341,7 @@ module TypeProf
 
       ret_ty = conv_type(type.return_type)
 
-      [lead_tys, opt_tys, ret_ty]
+      [req, lead_tys, opt_tys, ret_ty]
     end
 
     def conv_type(ty)
@@ -514,7 +517,7 @@ module TypeProf
     end
 
     def conv_method_def(method_name, mdef, rbs_source)
-      sig_rets = mdef.map do |sig_ret|
+      sig_rets = mdef.flat_map do |sig_ret|
         #type_params = sig_ret[:type_params] # XXX
         lead_tys = sig_ret[:lead_tys]
         opt_tys = sig_ret[:opt_tys]
@@ -523,6 +526,7 @@ module TypeProf
         opt_kw_tys = sig_ret[:opt_kw_tys]
         rest_kw_ty = sig_ret[:rest_kw_ty]
         blk = sig_ret[:blk]
+        blk_required = sig_ret[:blk_required]
         ret_ty = sig_ret[:ret_ty]
 
         lead_tys = lead_tys.map {|ty| conv_type(ty) }
@@ -532,24 +536,29 @@ module TypeProf
         req_kw_tys.each {|key, ty| kw_tys << [true, key, conv_type(ty)] }
         opt_kw_tys.each {|key, ty| kw_tys << [false, key, conv_type(ty)] }
         kw_rest_ty = conv_type(rest_kw_ty) if rest_kw_ty
-        blk = blk ? conv_block(blk) : Type.nil
-        fargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk)
+
+        blks = conv_block(blk)
 
         ret_ty = conv_type(ret_ty)
 
-        [fargs, ret_ty]
-      end.compact
+        blks.map do |blk|
+          [FormalArguments.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk), ret_ty]
+        end
+      end
 
       TypedMethodDef.new(sig_rets, rbs_source)
     end
 
     def conv_block(blk)
-      lead_tys, opt_tys, ret_ty = blk
+      return [Type.nil] unless blk
+      req, lead_tys, opt_tys, ret_ty = blk
       lead_tys = lead_tys.map {|ty| conv_type(ty) }
       opt_tys = opt_tys.map {|ty| conv_type(ty) }
       fargs = FormalArguments.new(lead_tys, opt_tys, nil, nil, nil, nil, nil)
       ret_ty = conv_type(ret_ty)
-      Type::TypedProc.new(fargs, ret_ty, Type::Builtin[:proc])
+      ret = [Type::TypedProc.new(fargs, ret_ty, Type::Builtin[:proc])]
+      ret << Type.nil unless req
+      ret
     end
 
     def conv_type(ty)
