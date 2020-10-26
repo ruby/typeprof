@@ -889,7 +889,7 @@ module TypeProf
           case
           when kw.is_a?(Symbol) # required keyword
           when kw.size == 2 # optional keyword (default value is a literal)
-            key, default_ty = *kw
+            _key, default_ty = *kw
             default_ty = Type.guess_literal_type(default_ty)
             default_ty = default_ty.type if default_ty.is_a?(Type::Literal)
             locals[kw_start + i] = default_ty.union(Type.any)

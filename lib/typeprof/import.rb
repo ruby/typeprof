@@ -266,7 +266,6 @@ module TypeProf
     def conv_method_def(rbs_method_types)
       rbs_method_types.map do |type|
         blk = type.block ? conv_block(type.block) : nil
-        blk_required = type.block && type.block.required
         type_params = type.type_params
 
         lead_tys = type.type.required_positionals.map {|type| conv_type(type.type) }
@@ -526,7 +525,6 @@ module TypeProf
         opt_kw_tys = sig_ret[:opt_kw_tys]
         rest_kw_ty = sig_ret[:rest_kw_ty]
         blk = sig_ret[:blk]
-        blk_required = sig_ret[:blk_required]
         ret_ty = sig_ret[:ret_ty]
 
         lead_tys = lead_tys.map {|ty| conv_type(ty) }
