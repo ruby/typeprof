@@ -401,7 +401,8 @@ module TypeProf
           [:instance, conv_type_name(ty.name)]
         end
       when RBS::Types::Bases::Instance then [:any] # XXX: not implemented yet
-      when RBS::Types::Record then [:any] # XXX: not implemented yet
+      when RBS::Types::Record
+        [:hash_record, [:Hash], ty.fields.map {|key, ty| [key, conv_type(ty)] }]
       when RBS::Types::Proc   then [:any] # XXX: not implemented yet
       else
         warn "unknown RBS type: %p" % ty.class
@@ -586,6 +587,15 @@ module TypeProf
           k_ty = conv_type(k)
           v_ty = conv_type(v)
           h[k_ty] = v_ty
+        end
+      when :hash_record
+        _, path, key_tys = ty
+        Type.gen_hash(Type::Instance.new(path_to_klass(path))) do |h|
+          key_tys.each do |key, ty|
+            k_ty = Type::Symbol.new(key, Type::Instance.new(Type::Builtin[:sym]))
+            v_ty = conv_type(ty)
+            h[k_ty] = v_ty
+          end
         end
       when :union
         tys = ty[1]
