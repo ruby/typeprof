@@ -148,7 +148,7 @@ module TypeProf
         # invariant check
         local = nil
         tys.each do |ty|
-          raise unless ty.is_a?(Type)
+          raise ty.inspect unless ty.is_a?(Type)
           local = true if ty.is_a?(LocalArray) || ty.is_a?(LocalHash)
         end
         raise if local && elems
@@ -226,7 +226,9 @@ module TypeProf
             bool = true
           end
           types.delete(Type.any) unless Config.options[:pedantic_output]
+          iseq_proc_tys, types = types.partition {|ty| ty.is_a?(ISeqProc) }
           types = types.map {|ty| ty.screen_name(scratch) }
+          types << scratch.show_block_signature(iseq_proc_tys) unless iseq_proc_tys.empty?
           types << "bool" if bool
           types = types.sort
           if optional
@@ -530,7 +532,7 @@ module TypeProf
       end
 
       def screen_name(scratch)
-        "Proc[#{ scratch.proc_screen_name(self) }]" # TODO: use RBS syntax
+        scratch.proc_screen_name(self)
       end
 
       def get_method(mid, scratch)
@@ -805,7 +807,24 @@ module TypeProf
       if @kw_rest_ty
         fargs << ("**" + @kw_rest_ty.screen_name(scratch))
       end
-      # intentionally skip blk_ty
+      fargs = fargs.empty? ? "" : "(#{ fargs.join(", ") })"
+
+      optional = false
+      blks = []
+      @blk_ty.each_child_global do |ty|
+        if ty.is_a?(Type::ISeqProc)
+          blks << ty
+        else
+          # XXX: how should we handle types other than Type.nil
+          optional = true
+        end
+      end
+      if blks != []
+        fargs << " " if fargs != ""
+        fargs << "?" if optional
+        fargs << "{ #{ scratch.show_block_signature(blks).sub(/\A\^/, "") } }"
+      end
+
       fargs
     end
 
@@ -884,29 +903,6 @@ module TypeProf
     end
 
     attr_reader :lead_tys, :rest_ty, :kw_tys, :blk_ty
-
-    def merge(aargs)
-      len = [@lead_tys.size, aargs.lead_tys.size].min
-      lead_tys = @lead_tys[0, len].zip(aargs.lead_tys[0, len]).map do |ty1, ty2|
-        ty1.union(ty2)
-      end
-      rest_ty = @rest_ty || Type.bot
-      rest_ty = rest_ty.union(aargs.rest_ty) if aargs.rest_ty
-      (@lead_tys[len..] + aargs.lead_tys[len..]).each do |ty|
-        rest_ty = rest_ty.union(ty)
-      end
-      rest_ty = nil if rest_ty == Type.bot
-      kw_tys = @kw_tys.dup
-      aargs.kw_tys.each do |sym, ty|
-        if kw_tys[sym]
-          kw_tys[sym] = kw_tys[sym].union(ty)
-        else
-          kw_tys[sym] = ty
-        end
-      end
-      blk_ty = @blk_ty.union(aargs.blk_ty)
-      ActualArguments.new(lead_tys, rest_ty, kw_tys, blk_ty)
-    end
 
     def globalize(caller_env, visited, depth)
       lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited, depth) }
@@ -1095,23 +1091,6 @@ module TypeProf
         raise "unknown typo of formal block signature"
       end
       true
-    end
-
-    def screen_name(scratch)
-      aargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
-      if @rest_ty
-        aargs << ("*" + @rest_ty.screen_name(scratch))
-      end
-      if @kw_tys.key?(nil)
-        aargs << "(unknown key): #{ @kw_tys[nil].screen_name(scratch) }"
-      else
-        @kw_tys.sort.each do |key, ty|
-          aargs << "#{ key }: #{ ty.screen_name(scratch) }"
-        end
-      end
-      s = "(#{ aargs.join(", ") })"
-      s << " { #{ scratch.proc_screen_name(@blk_ty) } }" if @blk_ty != Type.nil
-      s
     end
   end
 end

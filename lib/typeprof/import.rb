@@ -403,7 +403,8 @@ module TypeProf
       when RBS::Types::Bases::Instance then [:any] # XXX: not implemented yet
       when RBS::Types::Record
         [:hash_record, [:Hash], ty.fields.map {|key, ty| [key, conv_type(ty)] }]
-      when RBS::Types::Proc   then [:any] # XXX: not implemented yet
+      when RBS::Types::Proc
+        [:any] # XXX: not implemented yet
       else
         warn "unknown RBS type: %p" % ty.class
         [:any]

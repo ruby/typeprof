@@ -81,14 +81,13 @@ module TypeProf
   class RubySignatureExporter
     def initialize(
       scratch,
-      class_defs, iseq_method_to_ctxs, sig_fargs, sig_ret, yields
+      class_defs, iseq_method_to_ctxs, sig_fargs, sig_ret
     )
       @scratch = scratch
       @class_defs = class_defs
       @iseq_method_to_ctxs = iseq_method_to_ctxs
       @sig_fargs = sig_fargs
       @sig_ret = sig_ret
-      @yields = yields
     end
 
     def show(stat_eps, output)
@@ -127,10 +126,10 @@ module TypeProf
                 method_name = "self.#{ method_name }" if singleton
 
                 fargs = @sig_fargs[ctx]
-                ret_tys = @sig_ret[ctx]
+                ret_ty = @sig_ret[ctx] || Type.bot
 
                 iseq_methods[method_name] ||= []
-                iseq_methods[method_name] << @scratch.show_signature(fargs, @yields[ctx], ret_tys)
+                iseq_methods[method_name] << @scratch.show_method_signature(fargs, ret_ty)
               end
             when AttrMethodDef
               next if Config.check_dir_filter(mdef.absolute_path) == :exclude

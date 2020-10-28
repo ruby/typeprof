@@ -19,6 +19,6 @@ __END__
 # Classes
 class Object
   def bar : ([Integer]) -> nil
-  def test_yield : { () -> nil } -> nil
+  def test_yield : { -> nil } -> nil
   def foo : -> [Integer]
 end

@@ -37,7 +37,7 @@ f9(k: :kk)
 def f10(&blk)
   blk.call(1)
 end
-f10 {}
+f10 {|n| }
 
 __END__
 # Classes

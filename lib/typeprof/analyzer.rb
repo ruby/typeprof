@@ -244,7 +244,7 @@ module TypeProf
 
       @alloc_site_to_global_id = {}
 
-      @callsites, @return_envs, @sig_fargs, @sig_ret, @yields = {}, {}, {}, {}, {}
+      @callsites, @return_envs, @sig_fargs, @sig_ret = {}, {}, {}, {}
       @block_to_ctx = {}
       @gvar_table = VarTable.new
 
@@ -602,16 +602,6 @@ module TypeProf
       end
     end
 
-    def add_yield!(caller_ctx, aargs, blk_ctx)
-      aargs_acc, = @yields[caller_ctx]
-      if aargs_acc
-        @yields[caller_ctx][0] = aargs_acc.merge(aargs)
-      else
-        @yields[caller_ctx] = [aargs, Utils::MutableSet.new]
-      end
-      @yields[caller_ctx][1] << blk_ctx
-    end
-
     def add_block_to_ctx!(blk, ctx)
       @block_to_ctx[blk] ||= Utils::MutableSet.new
       @block_to_ctx[blk] << ctx
@@ -836,9 +826,10 @@ module TypeProf
           add_iseq_method_call!(meth, ep.ctx)
 
         when :block
-          epenvs = dummy_continuation
+          blk, epenvs = dummy_continuation
           epenvs.each do |ep, env|
             merge_env(ep, env)
+            add_block_to_ctx!(blk, ep.ctx)
           end
         end
       end
@@ -861,7 +852,7 @@ module TypeProf
       #).show
 
       #return
-      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs, @sig_fargs, @sig_ret, @yields).show(stat_eps, output)
+      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs, @sig_fargs, @sig_ret).show(stat_eps, output)
     end
 
     def globalize_type(ty, env, ep)
@@ -915,12 +906,12 @@ module TypeProf
       @pending_execution[iseq] ||= [:method, [meth, ep, env]]
     end
 
-    def pend_block_dummy_execution(iseq, nep, nenv)
-      @pending_execution[iseq] ||= [:block, {}]
-      if @pending_execution[iseq][1][nep]
-        @pending_execution[iseq][1][nep] = @pending_execution[iseq][1][nep].merge(nenv)
+    def pend_block_dummy_execution(blk, iseq, nep, nenv)
+      @pending_execution[iseq] ||= [:block, [blk, {}]]
+      if @pending_execution[iseq][1][1][nep]
+        @pending_execution[iseq][1][1][nep] = @pending_execution[iseq][1][1][nep].merge(nenv)
       else
-        @pending_execution[iseq][1][nep] = nenv
+        @pending_execution[iseq][1][1][nep] = nenv
       end
     end
 
@@ -954,7 +945,7 @@ module TypeProf
       end
 
       case insn
-      when :_method_body
+      when :_iseq_body_start
         # XXX: reconstruct and record the method signature
         iseq = ep.ctx.iseq
         lead_num = iseq.fargs_format[:lead_num] || 0
@@ -1006,7 +997,13 @@ module TypeProf
           end
         end
         kw_rest_ty = globalize_type(env.locals[kw_rest], env, ep) if kw_rest
-        blk_ty = block_start ? globalize_type(env.locals[block_start], env, ep) : Type.nil
+        if block_start
+          blk_ty = globalize_type(env.locals[block_start], env, ep)
+        elsif iseq.type == :method
+          blk_ty = env.static_env.blk_ty
+        else
+          blk_ty = Type.nil
+        end
         fargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
         add_signature!(ep.ctx, fargs)
       when :putspecialobject
@@ -1841,7 +1838,7 @@ module TypeProf
         nlocals = [Type.any] * blk_iseq.locals.size
         nsenv = StaticEnv.new(env.static_env.recv_ty, Type.any, env.static_env.mod_func)
         nenv = Env.new(nsenv, nlocals, [], nil)
-        pend_block_dummy_execution(blk_iseq, nep, nenv)
+        pend_block_dummy_execution(blk_ty, blk_iseq, nep, nenv)
         merge_return_env(ep) {|tenv| tenv ? tenv.merge(env) : env }
       end
 
@@ -1955,64 +1952,45 @@ module TypeProf
         # So, a context can have two blocks.
         # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
 
-        add_yield!(ep.ctx, globalize_type(aargs, env, ep), nep.ctx) if given_block
         add_block_to_ctx!(blk, nep.ctx)
         add_callsite!(nep.ctx, ep, env, &ctn)
-        add_signature!(nep.ctx, nfargs)
       end
     end
 
     def proc_screen_name(blk)
-      blk_ctxs = []
-      blk.each_child_global do |blk|
-        if @block_to_ctx[blk]
-          @block_to_ctx[blk].each do |ctx|
-            blk_ctxs << [ctx, @sig_fargs[ctx]]
+      show_block_signature([blk])
+    end
+
+    def show_block_signature(blks)
+      farg_tys, ret_ty = nil, Type.bot
+
+      blks.each do |blk|
+        blk.each_child_global do |blk|
+          @block_to_ctx[blk].each do |blk_ctx|
+            if farg_tys
+              farg_tys = farg_tys.merge(@sig_fargs[blk_ctx])
+            else
+              farg_tys = @sig_fargs[blk_ctx]
+            end
+
+            ret_ty = ret_ty.union(@sig_ret[blk_ctx]) if @sig_ret[blk_ctx]
           end
-        else
-          # uncalled proc? dummy execution doesn't work?
-          #p blk
         end
       end
-      show_block_signature(blk_ctxs)
+
+      farg_tys = farg_tys.screen_name(self)#, block: true)
+      ret_ty = ret_ty.screen_name(self)
+      ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
+
+      farg_tys = farg_tys + " " if farg_tys != ""
+      "^#{ farg_tys }-> #{ ret_ty }"
     end
 
-    def show_block_signature(blk_ctxs)
-      all_farg_tys = all_ret_tys = nil
-      blk_ctxs.each do |blk_ctx, farg_tys|
-        if all_farg_tys
-          all_farg_tys = all_farg_tys.merge(farg_tys)
-        else
-          all_farg_tys = farg_tys
-        end
-
-        if all_ret_tys
-          all_ret_tys = all_ret_tys.union(@sig_ret[blk_ctx])
-        else
-          all_ret_tys = @sig_ret[blk_ctx]
-        end
-      end
-      return "" if !all_farg_tys
-      # XXX: should support @yields[blk_ctx] (block's block)
-      show_signature(all_farg_tys, nil, all_ret_tys)
-    end
-
-    def show_signature(farg_tys, yield_data, ret_ty)
+    def show_method_signature(farg_tys, ret_ty)
       farg_tys = farg_tys.screen_name(self)
       ret_ty = ret_ty.screen_name(self)
-      s = farg_tys.empty? ? "" : "(#{ farg_tys.join(", ") }) "
-      if yield_data
-        aargs, blk_ctxs = yield_data
-        all_blk_ret_ty = Type.bot
-        blk_ctxs.each do |blk_ctx|
-          all_blk_ret_ty = all_blk_ret_ty.union(@sig_ret[blk_ctx])
-        end
-        all_blk_ret_ty = all_blk_ret_ty.screen_name(self)
-        all_blk_ret_ty = all_blk_ret_ty.include?("|") ? "(#{ all_blk_ret_ty })" : all_blk_ret_ty
-        s << "{ #{ aargs.screen_name(self) } -> #{ all_blk_ret_ty } } " if aargs
-      end
-      s << "-> "
-      s << (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty)
+      ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
+      "#{ (farg_tys.empty? ? "" : "#{ farg_tys } ") }-> #{ ret_ty }"
     end
   end
 end

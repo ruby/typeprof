@@ -32,7 +32,8 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
-      if @type == :method
+      case @type
+      when :method, :block
         if @fargs_format[:opt]
           label = @fargs_format[:opt].last
           i = insns.index(label) + 1
@@ -45,7 +46,7 @@ module TypeProf
           label = insns[i + 1][1]
           i = insns.index(label) + 1
         end
-        insns[i, 0] = [[:_method_body]]
+        insns[i, 0] = [[:_iseq_body_start]]
       end
 
       @insns = []

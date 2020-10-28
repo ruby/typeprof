@@ -13,6 +13,6 @@ bar(&blk)
 __END__
 # Classes
 class Object
-  def foo : { (String) -> (:sym | String) } -> (:sym | String)
-  def bar : { (:sym) -> (:sym | String) } -> (:sym | String)
+  def foo : { (:sym | String) -> (:sym | String) } -> (:sym | String)
+  def bar : { (:sym | String) -> (:sym | String) } -> (:sym | String)
 end

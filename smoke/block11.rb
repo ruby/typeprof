@@ -34,6 +34,6 @@ class Object
   def log1 : (Integer?) -> nil
   def log2 : (Integer?) -> nil
   def foo : -> Integer?
-  def test_yield : { () -> nil } -> nil
+  def test_yield : { -> nil } -> nil
   def bar : -> Integer?
 end
