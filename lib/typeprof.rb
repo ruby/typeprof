@@ -5,6 +5,7 @@ end
 
 module TypeProf end
 
+require_relative "typeprof/version"
 require_relative "typeprof/config"
 require_relative "typeprof/insns-def"
 require_relative "typeprof/utils"
