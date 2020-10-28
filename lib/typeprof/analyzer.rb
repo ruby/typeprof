@@ -1865,94 +1865,102 @@ module TypeProf
 
     def do_invoke_block(given_block, blk, aargs, ep, env, replace_recv_ty: nil, &ctn)
       blk.each_child do |blk|
-        unless blk.is_a?(Type::ISeqProc)
+        case blk
+        when Type::TypedProc
+          subst = { Type::Var.new(:self) => env.static_env.recv_ty } # XXX: support other type variables
+          unless aargs.consistent_with_formal_arguments?(blk.fargs, subst)
+            warn(ep, "The arguments is not compatibile to RBS block")
+            next
+          end
+          ctn[blk.ret_ty, ep, env]
+        when Type::ISeqProc
+          blk_iseq = blk.iseq
+          blk_ep = blk.ep
+          blk_env = @return_envs[blk_ep]
+          blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
+          arg_blk = aargs.blk_ty
+          aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
+          # XXX: aargs.opt_tys and aargs.kw_tys
+          argc = blk_iseq.fargs_format[:lead_num] || 0
+          # actual argc == 1, not array, formal argc == 1: yield 42         => do |x|   : x=42
+          # actual argc == 1,     array, formal argc == 1: yield [42,43,44] => do |x|   : x=[42,43,44]
+          # actual argc >= 2,            formal argc == 1: yield 42,43,44   => do |x|   : x=42
+          # actual argc == 1, not array, formal argc >= 2: yield 42         => do |x,y| : x,y=42,nil
+          # actual argc == 1,     array, formal argc >= 2: yield [42,43,44] => do |x,y| : x,y=42,43
+          # actual argc >= 2,            formal argc >= 2: yield 42,43,44   => do |x,y| : x,y=42,43
+          if aargs_.size >= 2 || argc == 0
+            aargs_.pop while argc < aargs_.size
+            aargs_ << Type.nil while argc > aargs_.size
+          else
+            aarg_ty, = aargs_
+            if argc == 1
+              aargs_ = [aarg_ty || Type.nil]
+            else # actual argc == 1 && formal argc >= 2
+              ary_elems = nil
+              any_ty = nil
+              case aarg_ty
+              when Type::Union
+                ary_elems = nil
+                other_elems = nil
+                aarg_ty.elems&.each do |(container_kind, base_type), elems|
+                  if container_kind == Type::Array
+                    ary_elems = ary_elems ? ary_elems.union(elems) : elems
+                  else
+                    other_elems = other_elems ? other_elems.union(elems) : elems
+                  end
+                end
+                aarg_ty = Type::Union.new(aarg_ty.types, other_elems)
+                any_ty = Type.any if aarg_ty.types.include?(Type.any)
+              when Type::Array
+                ary_elems = aarg_ty.elems
+                aarg_ty = nil
+              when Type::Any
+                any_ty = Type.any
+              end
+              aargs_ = [Type.bot] * argc
+              aargs_[0] = aargs_[0].union(aarg_ty) if aarg_ty
+              argc.times do |i|
+                ty = aargs_[i]
+                ty = ty.union(ary_elems[i]) if ary_elems
+                ty = ty.union(Type.any) if any_ty
+                ty = ty.union(Type.nil) if i >= 1 && aarg_ty
+                aargs_[i] = ty
+              end
+            end
+          end
+          locals = [Type.nil] * blk_iseq.locals.size
+          locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
+          nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil)
+          nep = ExecutionPoint.new(nctx, 0, blk_ep)
+          nenv = Env.new(blk_env.static_env, locals, [], nil)
+          alloc_site = AllocationSite.new(nep)
+          aargs_.each_with_index do |ty, i|
+            alloc_site2 = alloc_site.add_id(i)
+            nenv, ty = localize_type(ty, nenv, nep, alloc_site2) # Use Scratch#localize_type?
+            nenv = nenv.local_update(i, ty)
+          end
+
+          merge_env(nep, nenv)
+
+          # caution: given_block flag is not complete
+          #
+          # def foo
+          #   bar do |&blk|
+          #     yield
+          #     blk.call
+          #   end
+          # end
+          #
+          # yield and blk.call call different blocks.
+          # So, a context can have two blocks.
+          # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
+
+          add_block_to_ctx!(blk, nep.ctx)
+          add_callsite!(nep.ctx, ep, env, &ctn)
+        else
           warn(ep, "non-iseq-proc is passed as a block")
           next
         end
-        blk_iseq = blk.iseq
-        blk_ep = blk.ep
-        blk_env = @return_envs[blk_ep]
-        blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
-        arg_blk = aargs.blk_ty
-        aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
-        # XXX: aargs.opt_tys and aargs.kw_tys
-        argc = blk_iseq.fargs_format[:lead_num] || 0
-        # actual argc == 1, not array, formal argc == 1: yield 42         => do |x|   : x=42
-        # actual argc == 1,     array, formal argc == 1: yield [42,43,44] => do |x|   : x=[42,43,44]
-        # actual argc >= 2,            formal argc == 1: yield 42,43,44   => do |x|   : x=42
-        # actual argc == 1, not array, formal argc >= 2: yield 42         => do |x,y| : x,y=42,nil
-        # actual argc == 1,     array, formal argc >= 2: yield [42,43,44] => do |x,y| : x,y=42,43
-        # actual argc >= 2,            formal argc >= 2: yield 42,43,44   => do |x,y| : x,y=42,43
-        if aargs_.size >= 2 || argc == 0
-          aargs_.pop while argc < aargs_.size
-          aargs_ << Type.nil while argc > aargs_.size
-        else
-          aarg_ty, = aargs_
-          if argc == 1
-            aargs_ = [aarg_ty || Type.nil]
-          else # actual argc == 1 && formal argc >= 2
-            ary_elems = nil
-            any_ty = nil
-            case aarg_ty
-            when Type::Union
-              ary_elems = nil
-              other_elems = nil
-              aarg_ty.elems&.each do |(container_kind, base_type), elems|
-                if container_kind == Type::Array
-                  ary_elems = ary_elems ? ary_elems.union(elems) : elems
-                else
-                  other_elems = other_elems ? other_elems.union(elems) : elems
-                end
-              end
-              aarg_ty = Type::Union.new(aarg_ty.types, other_elems)
-              any_ty = Type.any if aarg_ty.types.include?(Type.any)
-            when Type::Array
-              ary_elems = aarg_ty.elems
-              aarg_ty = nil
-            when Type::Any
-              any_ty = Type.any
-            end
-            aargs_ = [Type.bot] * argc
-            aargs_[0] = aargs_[0].union(aarg_ty) if aarg_ty
-            argc.times do |i|
-              ty = aargs_[i]
-              ty = ty.union(ary_elems[i]) if ary_elems
-              ty = ty.union(Type.any) if any_ty
-              ty = ty.union(Type.nil) if i >= 1 && aarg_ty
-              aargs_[i] = ty
-            end
-          end
-        end
-        locals = [Type.nil] * blk_iseq.locals.size
-        locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
-        env_blk = blk_env.static_env.blk_ty
-        nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil)
-        nep = ExecutionPoint.new(nctx, 0, blk_ep)
-        nenv = Env.new(blk_env.static_env, locals, [], nil)
-        alloc_site = AllocationSite.new(nep)
-        aargs_.each_with_index do |ty, i|
-          alloc_site2 = alloc_site.add_id(i)
-          nenv, ty = localize_type(ty, nenv, nep, alloc_site2) # Use Scratch#localize_type?
-          nenv = nenv.local_update(i, ty)
-        end
-
-        merge_env(nep, nenv)
-
-        # caution: given_block flag is not complete
-        #
-        # def foo
-        #   bar do |&blk|
-        #     yield
-        #     blk.call
-        #   end
-        # end
-        #
-        # yield and blk.call call different blocks.
-        # So, a context can have two blocks.
-        # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
-
-        add_block_to_ctx!(blk, nep.ctx)
-        add_callsite!(nep.ctx, ep, env, &ctn)
       end
     end
 

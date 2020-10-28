@@ -264,33 +264,36 @@ module TypeProf
     end
 
     def conv_method_def(rbs_method_types)
-      rbs_method_types.map do |type|
-        blk = type.block ? conv_block(type.block) : nil
-        type_params = type.type_params
-
-        lead_tys = type.type.required_positionals.map {|type| conv_type(type.type) }
-        opt_tys = type.type.optional_positionals.map {|type| conv_type(type.type) }
-        rest_ty = type.type.rest_positionals
-        rest_ty = conv_type(rest_ty.type) if rest_ty
-        opt_kw_tys = type.type.optional_keywords.to_h {|key, type| [key, conv_type(type.type)] }
-        req_kw_tys = type.type.required_keywords.to_h {|key, type| [key, conv_type(type.type)] }
-        rest_kw_ty = type.type.rest_keywords
-        raise NotImplementedError if rest_kw_ty # XXX
-
-        ret_ty = conv_type(type.type.return_type)
-
-        {
-          type_params: type_params,
-          lead_tys: lead_tys,
-          opt_tys: opt_tys,
-          rest_ty: rest_ty,
-          req_kw_tys: req_kw_tys,
-          opt_kw_tys: opt_kw_tys,
-          rest_kw_ty: rest_kw_ty,
-          blk: blk,
-          ret_ty: ret_ty,
-        }
+      rbs_method_types.map do |method_type|
+        conv_func(method_type.type_params, method_type.type, method_type.block)
       end
+    end
+
+    def conv_func(type_params, func, block)
+      blk = block ? conv_block(block) : nil
+
+      lead_tys = func.required_positionals.map {|type| conv_type(type.type) }
+      opt_tys = func.optional_positionals.map {|type| conv_type(type.type) }
+      rest_ty = func.rest_positionals
+      rest_ty = conv_type(rest_ty.type) if rest_ty
+      opt_kw_tys = func.optional_keywords.to_h {|key, type| [key, conv_type(type.type)] }
+      req_kw_tys = func.required_keywords.to_h {|key, type| [key, conv_type(type.type)] }
+      rest_kw_ty = func.rest_keywords
+      raise NotImplementedError if rest_kw_ty # XXX
+
+      ret_ty = conv_type(func.return_type)
+
+      {
+        type_params: type_params,
+        lead_tys: lead_tys,
+        opt_tys: opt_tys,
+        rest_ty: rest_ty,
+        req_kw_tys: req_kw_tys,
+        opt_kw_tys: opt_kw_tys,
+        rest_kw_ty: rest_kw_ty,
+        blk: blk,
+        ret_ty: ret_ty,
+      }
     end
 
     def attr_reader_def(ty)
@@ -404,7 +407,7 @@ module TypeProf
       when RBS::Types::Record
         [:hash_record, [:Hash], ty.fields.map {|key, ty| [key, conv_type(ty)] }]
       when RBS::Types::Proc
-        [:any] # XXX: not implemented yet
+        [:proc, conv_func(nil, ty.type, nil)]
       else
         warn "unknown RBS type: %p" % ty.class
         [:any]
@@ -465,6 +468,7 @@ module TypeProf
           when [:Symbol]     then Type::Builtin[:sym]   = klass
           when [:Array]      then Type::Builtin[:ary]   = klass
           when [:Hash]       then Type::Builtin[:hash]  = klass
+          when [:Proc]       then Type::Builtin[:proc]  = klass
           end
         end
 
@@ -519,34 +523,38 @@ module TypeProf
 
     def conv_method_def(method_name, mdef, rbs_source)
       sig_rets = mdef.flat_map do |sig_ret|
-        #type_params = sig_ret[:type_params] # XXX
-        lead_tys = sig_ret[:lead_tys]
-        opt_tys = sig_ret[:opt_tys]
-        rest_ty = sig_ret[:rest_ty]
-        req_kw_tys = sig_ret[:req_kw_tys]
-        opt_kw_tys = sig_ret[:opt_kw_tys]
-        rest_kw_ty = sig_ret[:rest_kw_ty]
-        blk = sig_ret[:blk]
-        ret_ty = sig_ret[:ret_ty]
-
-        lead_tys = lead_tys.map {|ty| conv_type(ty) }
-        opt_tys = opt_tys.map {|ty| conv_type(ty) }
-        rest_ty = conv_type(rest_ty) if rest_ty
-        kw_tys = []
-        req_kw_tys.each {|key, ty| kw_tys << [true, key, conv_type(ty)] }
-        opt_kw_tys.each {|key, ty| kw_tys << [false, key, conv_type(ty)] }
-        kw_rest_ty = conv_type(rest_kw_ty) if rest_kw_ty
-
-        blks = conv_block(blk)
-
-        ret_ty = conv_type(ret_ty)
-
-        blks.map do |blk|
-          [FormalArguments.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk), ret_ty]
-        end
+        conv_func(sig_ret)
       end
 
       TypedMethodDef.new(sig_rets, rbs_source)
+    end
+
+    def conv_func(sig_ret)
+      #type_params = sig_ret[:type_params] # XXX
+      lead_tys = sig_ret[:lead_tys]
+      opt_tys = sig_ret[:opt_tys]
+      rest_ty = sig_ret[:rest_ty]
+      req_kw_tys = sig_ret[:req_kw_tys]
+      opt_kw_tys = sig_ret[:opt_kw_tys]
+      rest_kw_ty = sig_ret[:rest_kw_ty]
+      blk = sig_ret[:blk]
+      ret_ty = sig_ret[:ret_ty]
+
+      lead_tys = lead_tys.map {|ty| conv_type(ty) }
+      opt_tys = opt_tys.map {|ty| conv_type(ty) }
+      rest_ty = conv_type(rest_ty) if rest_ty
+      kw_tys = []
+      req_kw_tys.each {|key, ty| kw_tys << [true, key, conv_type(ty)] }
+      opt_kw_tys.each {|key, ty| kw_tys << [false, key, conv_type(ty)] }
+      kw_rest_ty = conv_type(rest_kw_ty) if rest_kw_ty
+
+      blks = conv_block(blk)
+
+      ret_ty = conv_type(ret_ty)
+
+      blks.map do |blk|
+        [FormalArguments.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk), ret_ty]
+      end
     end
 
     def conv_block(blk)
@@ -603,6 +611,9 @@ module TypeProf
         Type::Union.new(Utils::Set[*tys.map {|ty2| conv_type(ty2) }], nil) # XXX: Array and Hash support
       when :var
         Type::Var.new(ty[1])
+      when :proc
+        fargs, ret_ty = conv_func(ty[1]).first # Currently, RBS Proc does not accept a block, so the size should be always one
+        Type::TypedProc.new(fargs, ret_ty, Type::Instance.new(Type::Builtin[:proc]))
       else
         pp ty
         raise NotImplementedError

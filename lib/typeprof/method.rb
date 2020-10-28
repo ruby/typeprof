@@ -203,7 +203,8 @@ module TypeProf
         end
         ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
         found = true
-        if aargs.blk_ty.is_a?(Type::ISeqProc)
+        case aargs.blk_ty
+        when Type::ISeqProc
           dummy_ctx = TypedContext.new(caller_ep, mid)
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
           dummy_env = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), [], [], Utils::HashWrapper.new({}))
@@ -259,6 +260,8 @@ module TypeProf
             ret_ty = ret_ty.remove_type_vars
             ctn[ret_ty, caller_ep, ncaller_env]
           end
+        when Type::TypedProc
+          raise NotImplementedError
         else
           ret_ty = ret_ty.remove_type_vars
           ctn[ret_ty, caller_ep, ncaller_env]

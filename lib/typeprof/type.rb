@@ -531,6 +531,23 @@ module TypeProf
         "#<ISeqProc>"
       end
 
+      def consistent?(other, subst)
+        case other
+        when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
+        when Type::Union
+          other.types.each do |ty2|
+            return true if consistent?(ty2, subst)
+          end
+        when Type::ISeqProc
+          raise "assert false"
+        when Type::TypedProc
+          true # XXX: handle type vars in TypedProc!
+        else
+          self == other
+        end
+      end
+
       def screen_name(scratch)
         scratch.proc_screen_name(self)
       end
@@ -553,8 +570,36 @@ module TypeProf
 
       attr_reader :fargs, :ret_ty
 
+      def consistent?(other, subst)
+        case other
+        when Type::Any then true
+        when Type::Var then other.add_subst!(self, subst)
+        when Type::Union
+          other.types.each do |ty2|
+            return true if consistent?(ty2, subst)
+          end
+        when Type::ISeqProc
+          raise "assert false"
+        when Type::TypedProc
+          self == other # XXX: handle type vars in TypedProc!
+        else
+          self == other
+        end
+      end
+
       def screen_name(scratch)
         "TypedProc[...]" # TODO: use RBS syntax
+      end
+
+      def get_method(mid, scratch)
+        @type.get_method(mid, scratch)
+      end
+
+      def substitute(subst, depth)
+        fargs = @fargs.substitute(subst, depth)
+        ret_ty = @ret_ty.substitute(subst, depth)
+        type = @type.substitute(subst, depth)
+        TypedProc.new(fargs, ret_ty, type)
       end
     end
 
@@ -785,6 +830,17 @@ module TypeProf
       end
       # intentionally skip blk_ty
       true
+    end
+
+    def substitute(subst, depth)
+      lead_tys = @lead_tys.map {|ty| ty.substitute(subst, depth - 1) }
+      opt_tys = @opt_tys.map {|ty| ty.substitute(subst, depth - 1) }
+      rest_ty = @rest_ty&.substitute(subst, depth - 1)
+      post_tys = @post_tys.map {|ty| ty.substitute(subst, depth - 1) }
+      kw_tys = @kw_tys.map {|req, key, ty| [req, key, ty.substitute(subst, depth - 1)] }
+      kw_rest_ty = @kw_rest_ty&.substitute(subst, depth - 1)
+      blk_ty = @blk_ty.substitute(subst, depth - 1)
+      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
     end
 
     def screen_name(scratch)
@@ -1044,7 +1100,7 @@ module TypeProf
         upper_bound = [0, lower_bound + fargs.opt_tys.size].max
         (lower_bound..upper_bound).each do |n|
           tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_tys, @blk_ty)
-          if tmp_aargs.consistent_with_formal_arguments?(fargs, subst)
+          if tmp_aargs.consistent_with_formal_arguments?(fargs, subst) # XXX: wrong subst handling in the loop!
             return true
           end
         end
