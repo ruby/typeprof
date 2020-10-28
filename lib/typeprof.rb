@@ -1,3 +1,8 @@
+if defined?(RubyVM::InstructionSequence)
+  puts "Currently, TypeProf can work on a Ruby implementation that supports RubyVM::InstructionSequence, such as CRuby."
+  exit 1
+end
+
 module TypeProf end
 
 require_relative "typeprof/config"
