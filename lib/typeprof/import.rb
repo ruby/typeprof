@@ -511,7 +511,7 @@ module TypeProf
       @json[:constants].each do |classpath, value|
         base_klass = path_to_klass(classpath[0..-2])
         value = conv_type(value)
-        @scratch.add_constant(base_klass, classpath[-1], value, false)
+        @scratch.add_constant(base_klass, classpath[-1], value, nil)
       end
 
       @json[:globals].each do |name, value|

@@ -486,8 +486,8 @@ module TypeProf
     def self.setup_initial_global_env(scratch)
       klass_basic_obj = scratch.new_class(nil, :BasicObject, [], :__root__, nil) # cbase, name, superclass
       klass_obj = scratch.new_class(nil, :Object, [], klass_basic_obj, nil)
-      scratch.add_constant(klass_obj, :Object, klass_obj, false)
-      scratch.add_constant(klass_obj, :BasicObject, klass_basic_obj, false)
+      scratch.add_constant(klass_obj, :Object, klass_obj, nil)
+      scratch.add_constant(klass_obj, :BasicObject, klass_basic_obj, nil)
 
       Type::Builtin[:basic_obj] = klass_basic_obj
       Type::Builtin[:obj]   = klass_obj

@@ -37,37 +37,37 @@ module TypeProf
 
         # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)
 
-        assert(actual =~ /^class Goodcheck::Analyzer\n(?:(?:  .*?\n)*)^end\n/)
-        assert_equal(<<~END, $&)
-          class Goodcheck::Analyzer
-            attr_reader rule : untyped
-            attr_reader trigger : untyped
-            attr_reader buffer : Goodcheck::Buffer
-            def initialize : (rule: untyped, trigger: untyped, buffer: Goodcheck::Buffer) -> Goodcheck::Buffer
-            def scan : ?{ (Goodcheck::Issue) -> Array[Goodcheck::Issue]? } -> ((Array[Goodcheck::Issue] | Enumerator[untyped])?)
-            def scan_simple : (Regexp) ?{ (Goodcheck::Issue) -> Array[Goodcheck::Issue]? } -> Array[Goodcheck::Issue]?
-            def scan_var : (untyped) -> nil
-          end
+        assert(actual =~ /^module Goodcheck\n.*(^  class Analyzer\n(?:(?:    .*?\n|\n)*)^  end\n).*^end\n/m)
+        assert_equal(<<-END, $1)
+  class Analyzer
+    attr_reader rule : untyped
+    attr_reader trigger : untyped
+    attr_reader buffer : Buffer
+    def initialize : (rule: untyped, trigger: untyped, buffer: Buffer) -> Buffer
+    def scan : ?{ (Issue) -> Array[Issue]? } -> ((Array[Issue] | Enumerator[untyped])?)
+    def scan_simple : (Regexp) ?{ (Issue) -> Array[Issue]? } -> Array[Issue]?
+    def scan_var : (untyped) -> nil
+  end
         END
 
-        assert(actual =~ /^class Goodcheck::Trigger\n(?:(?:  .*?\n)*)^end\n/)
-        assert_equal(<<~END, $&)
-          class Goodcheck::Trigger
-            @by_pattern : bool
-            @skips_fail_examples : bool
-            attr_reader patterns : Array[(Goodcheck::Pattern::Literal | Goodcheck::Pattern::Regexp | Goodcheck::Pattern::Token)?]
-            attr_reader globs : Array[Goodcheck::Glob?]
-            attr_reader passes : Array[[]]
-            attr_reader fails : Array[[]]
-            attr_reader negated : bool
-            def initialize : (patterns: Array[(Goodcheck::Pattern::Literal | Goodcheck::Pattern::Regexp | Goodcheck::Pattern::Token)?], globs: Array[Goodcheck::Glob?], passes: Array[[]], fails: Array[[]], negated: bool) -> false
-            def by_pattern! : -> Goodcheck::Trigger
-            def by_pattern? : -> bool
-            def skips_fail_examples! : (?bool) -> Goodcheck::Trigger
-            def skips_fail_examples? : -> bool
-            def negated? : -> bool
-            def fires_for? : (path: untyped) -> bool
-          end
+        assert(actual =~ /^module Goodcheck\n.*(^  class Trigger\n(?:(?:    .*?\n|\n)*)^  end\n).*^end\n/m)
+        assert_equal(<<-END, $1)
+  class Trigger
+    @by_pattern : bool
+    @skips_fail_examples : bool
+    attr_reader patterns : Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?]
+    attr_reader globs : Array[Glob?]
+    attr_reader passes : Array[[]]
+    attr_reader fails : Array[[]]
+    attr_reader negated : bool
+    def initialize : (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[[]], fails: Array[[]], negated: bool) -> false
+    def by_pattern! : -> Trigger
+    def by_pattern? : -> bool
+    def skips_fail_examples! : (?bool) -> Trigger
+    def skips_fail_examples? : -> bool
+    def negated? : -> bool
+    def fires_for? : (path: untyped) -> bool
+  end
         END
 
       ensure

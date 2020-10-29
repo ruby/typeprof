@@ -14,6 +14,10 @@ __END__
 smoke/multiple-superclass.rb:9: [warning] superclass is not a class; Object is used instead
 
 # Classes
+class Object
+  Base : A.class | B.class
+end
+
 class A
 end
 

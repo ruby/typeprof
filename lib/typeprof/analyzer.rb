@@ -298,6 +298,7 @@ module TypeProf
         @ivars = VarTable.new
         @cvars = VarTable.new
         @absolute_path = absolute_path
+        @namespace = nil
       end
 
       attr_reader :kind, :superclass, :modules, :consts, :methods, :ivars, :cvars, :absolute_path
@@ -326,11 +327,11 @@ module TypeProf
         ty || Type.any # XXX: warn?
       end
 
-      def add_constant(name, ty, user_defined)
+      def add_constant(name, ty, absolute_path)
         if @consts[name]
           # XXX: warn!
         end
-        @consts[name] = [ty, user_defined]
+        @consts[name] = [ty, absolute_path]
       end
 
       def get_method(mid, singleton)
@@ -410,14 +411,14 @@ module TypeProf
         klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
-        add_constant(cbase, name, klass, false)
+        add_constant(cbase, name, klass, absolute_path)
         return klass
       else
         # module
         @class_defs[idx] = ClassDef.new(:module, show_name, nil, absolute_path)
         mod = Type::Class.new(:module, idx, type_params, nil, show_name)
         @class_defs[idx].klass_obj = mod
-        add_constant(cbase, name, mod, false)
+        add_constant(cbase, name, mod, absolute_path)
         return mod
       end
     end
@@ -436,11 +437,25 @@ module TypeProf
       klass
     end
 
+    attr_accessor :namespace
+
     def get_class_name(klass)
       if klass == Type.any
         "???"
       else
-        @class_defs[klass.idx].name
+        path = @class_defs[klass.idx].name
+        if @namespace
+          i = 0
+          i += 1 while @namespace[i] && @namespace[i] == path[i]
+          if path[i]
+            path[i..].join("::")
+          else
+            path.last.to_s
+          end
+        else
+          #"::" + path.join("::")
+          path.join("::")
+        end
       end
     end
 
@@ -1520,7 +1535,7 @@ module TypeProf
             @class_defs[ty.idx].name = cbase_path(cbase) + [name]
           end
         end
-        add_constant(cbase, name, globalize_type(ty, env, ep), true)
+        add_constant(cbase, name, globalize_type(ty, env, ep), ep.ctx.iseq.absolute_path)
 
       when :getspecial
         key, type = operands

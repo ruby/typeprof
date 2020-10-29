@@ -90,141 +90,144 @@ module TypeProf
       @sig_ret = sig_ret
     end
 
-    def show(stat_eps, output)
-      output.puts "# Classes" # and Modules
+    def conv_class(namespace, class_def, inner_classes)
+      @scratch.namespace = namespace
 
-      first = true
+      if class_def.superclass
+        omit = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
+        superclass = omit ? nil : @scratch.get_class_name(@class_defs[class_def.superclass].klass_obj)
+      end
 
-      @class_defs.each_value do |class_def|
-        included_mods = class_def.modules[false].filter_map do |mod_def, absolute_paths|
-          next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
-          mod_def.name.join("::")
-        end
+      @scratch.namespace = class_def.name
 
-        extended_mods = class_def.modules[true].filter_map do |mod_def, absolute_paths|
-          next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
-          mod_def.name.join("::")
-        end
+      consts = {}
+      class_def.consts.each do |name, (ty, absolute_path)|
+        next if ty.is_a?(Type::Class)
+        next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
+        consts[name] = ty.screen_name(@scratch)
+      end
 
-        consts = {}
-        explicit_methods = {}
-        iseq_methods = {}
-        attr_methods = {}
-        ivars = class_def.ivars.dump
-        cvars = class_def.cvars.dump
+      included_mods = class_def.modules[false].filter_map do |mod_def, absolute_paths|
+        next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+        Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
+      end
 
-        class_def.consts.each do |name, (ty, user_defined)|
-          next if ty.is_a?(Type::Class) || !user_defined
-          consts[name] = ty.screen_name(@scratch)
-        end
+      extended_mods = class_def.modules[true].filter_map do |mod_def, absolute_paths|
+        next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+        Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
+      end
 
-        class_def.methods.each do |(singleton, mid), mdefs|
-          mdefs.each do |mdef|
-            case mdef
-            when ISeqMethodDef
-              ctxs = @iseq_method_to_ctxs[mdef]
-              next unless ctxs
+      explicit_methods = {}
+      iseq_methods = {}
+      attr_methods = {}
+      ivars = class_def.ivars.dump
+      cvars = class_def.cvars.dump
 
-              ctxs.each do |ctx|
-                next if mid != ctx.mid
-                next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
+      class_def.methods.each do |(singleton, mid), mdefs|
+        mdefs.each do |mdef|
+          case mdef
+          when ISeqMethodDef
+            ctxs = @iseq_method_to_ctxs[mdef]
+            next unless ctxs
 
-                method_name = ctx.mid
-                method_name = "self.#{ method_name }" if singleton
+            ctxs.each do |ctx|
+              next if mid != ctx.mid
+              next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
 
-                fargs = @sig_fargs[ctx]
-                ret_ty = @sig_ret[ctx] || Type.bot
+              method_name = ctx.mid
+              method_name = "self.#{ method_name }" if singleton
 
-                iseq_methods[method_name] ||= []
-                iseq_methods[method_name] << @scratch.show_method_signature(fargs, ret_ty)
+              fargs = @sig_fargs[ctx]
+              ret_ty = @sig_ret[ctx] || Type.bot
+
+              iseq_methods[method_name] ||= []
+              iseq_methods[method_name] << @scratch.show_method_signature(fargs, ret_ty)
+            end
+          when AttrMethodDef
+            next if Config.check_dir_filter(mdef.absolute_path) == :exclude
+            mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
+            method_name = mid
+            method_name = "self.#{ mid }" if singleton
+            method_name = [method_name, :"@#{ mid }" != mdef.ivar]
+            if attr_methods[method_name]
+              if attr_methods[method_name][0] != mdef.kind
+                attr_methods[method_name][0] = :accessor
               end
-            when AttrMethodDef
-              next if Config.check_dir_filter(mdef.absolute_path) == :exclude
-              mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
-              method_name = mid
-              method_name = "self.#{ mid }" if singleton
-              method_name = [method_name, :"@#{ mid }" != mdef.ivar]
-              if attr_methods[method_name]
-                if attr_methods[method_name][0] != mdef.kind
-                  attr_methods[method_name][0] = :accessor
-                end
-              else
-                entry = ivars[[singleton, mdef.ivar]]
-                ty = entry ? entry.type : Type.any
-                attr_methods[method_name] = [mdef.kind, ty.screen_name(@scratch)]
-              end
-            when TypedMethodDef
-              if mdef.rbs_source
-                method_name, sigs = mdef.rbs_source
-                explicit_methods[method_name] = sigs
-              end
+            else
+              entry = ivars[[singleton, mdef.ivar]]
+              ty = entry ? entry.type : Type.any
+              attr_methods[method_name] = [mdef.kind, ty.screen_name(@scratch)]
+            end
+          when TypedMethodDef
+            if mdef.rbs_source
+              method_name, sigs = mdef.rbs_source
+              explicit_methods[method_name] = sigs
             end
           end
         end
-
-        ivars = ivars.map do |(singleton, var), entry|
-          next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
-          ty = entry.type
-          next unless var.to_s.start_with?("@")
-          var = "self.#{ var }" if singleton
-          next if attr_methods[[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]
-          [var, ty.screen_name(@scratch), entry.rbs_declared]
-        end.compact
-
-        cvars = cvars.map do |var, entry|
-          next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
-          [var, entry.type.screen_name(@scratch), entry.rbs_declared]
-        end
-
-        if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
-          next if included_mods.empty? && extended_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty?
-        end
-
-        output.puts unless first
-        first = false
-
-        if class_def.superclass
-          omit = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
-          superclass = omit ? "" : " < #{ @class_defs[class_def.superclass].name.join("::") }"
-        end
-
-        output.puts "#{ class_def.kind } #{ class_def.name.join("::") }#{ superclass }"
-        consts.each do |name, ty|
-          output.puts "  #{ name } : #{ ty }"
-        end
-        included_mods.sort.each do |ty|
-          output.puts "  include #{ ty }"
-        end
-        extended_mods.sort.each do |ty|
-          output.puts "  extend #{ ty }"
-        end
-        ivars.each do |var, ty, rbs_declared|
-          s = rbs_declared ? "# " : "  "
-          output.puts s + "#{ var } : #{ ty }" unless var.start_with?("_")
-        end
-        cvars.each do |var, ty, rbs_declared|
-          s = rbs_declared ? "# " : "  "
-          output.puts s + "#{ var } : #{ ty }"
-        end
-        attr_methods.each do |(method_name, hidden), (kind, ty)|
-          output.puts "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
-        end
-        explicit_methods.each do |method_name, sigs|
-          sigs = sigs.sort.join("\n" + "#" + " " * (method_name.size + 6) + "| ")
-          output.puts "# def #{ method_name } : #{ sigs }"
-        end
-        iseq_methods.each do |method_name, sigs|
-          sigs = sigs.sort.join("\n" + " " * (method_name.size + 7) + "| ")
-          output.puts "  def #{ method_name } : #{ sigs }"
-        end
-        output.puts "end"
       end
+
+      ivars = ivars.map do |(singleton, var), entry|
+        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        ty = entry.type
+        next unless var.to_s.start_with?("@")
+        var = "self.#{ var }" if singleton
+        next if attr_methods[[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]
+        [var, ty.screen_name(@scratch), entry.rbs_declared]
+      end.compact
+
+      cvars = cvars.map do |var, entry|
+        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        [var, entry.type.screen_name(@scratch), entry.rbs_declared]
+      end
+
+      if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
+        return nil if consts.empty? && included_mods.empty? && extended_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty? && inner_classes.empty?
+      end
+
+      @scratch.namespace = nil
+
+      ClassData.new(
+        kind: class_def.kind,
+        name: class_def.name,
+        superclass: superclass,
+        consts: consts,
+        included_mods: included_mods,
+        extended_mods: extended_mods,
+        ivars: ivars,
+        cvars: cvars,
+        attr_methods: attr_methods,
+        explicit_methods: explicit_methods,
+        iseq_methods: iseq_methods,
+        inner_classes: inner_classes,
+      )
+    end
+
+    ClassData = Struct.new(:kind, :name, :superclass, :consts, :included_mods, :extended_mods, :ivars, :cvars, :attr_methods, :explicit_methods, :iseq_methods, :inner_classes, keyword_init: true)
+
+    def show(stat_eps, output)
+      # make the class hierarchy
+      root = {}
+      @class_defs.each_value do |class_def|
+        h = root
+        class_def.name.each do |name|
+          h = h[name] ||= {}
+        end
+        h[:class_def] = class_def
+      end
+
+      hierarchy = build_class_hierarchy([], root)
+
+      output.puts "# Classes" # and Modules
+
+      show_class_hierarchy(0, hierarchy, output, true)
 
       if ENV["TP_STAT"]
         output.puts ""
         output.puts "# TypeProf statistics:"
         output.puts "#   %d execution points" % stat_eps.size
       end
+
       if ENV["TP_COVERAGE"]
         coverage = {}
         stat_eps.each do |ep|
@@ -235,6 +238,76 @@ module TypeProf
         end
         File.binwrite("typeprof-analysis-coverage.dump", Marshal.dump(coverage))
       end
+    end
+
+    def build_class_hierarchy(namespace, hierarchy)
+      hierarchy.map do |name, h|
+        class_def = h.delete(:class_def)
+        class_data = conv_class(namespace, class_def, build_class_hierarchy(namespace + [name], h))
+        class_data
+      end.compact
+    end
+
+    def show_class_hierarchy(depth, hierarchy, output, first)
+      hierarchy.each do |class_data|
+        output.puts unless first
+        first = false
+
+        show_class_data(depth, class_data, output)
+      end
+    end
+
+    def show_const(namespace, path)
+      return path.last.to_s if namespace == path
+      i = 0
+      i += 1 while namespace[i] && namespace[i] == path[i]
+      path[i..].join("::")
+    end
+
+    def show_class_data(depth, class_data, output)
+      indent = "  " * depth
+      name = class_data.name.last
+      superclass = " < " + class_data.superclass if class_data.superclass
+      output.puts indent + "#{ class_data.kind } #{ name }#{ superclass }"
+      first = true
+      class_data.consts.each do |name, ty|
+        output.puts indent + "  #{ name } : #{ ty }"
+        first = false
+      end
+      class_data.included_mods.sort.each do |mod|
+        output.puts indent + "  include #{ mod }"
+        first = false
+      end
+      class_data.extended_mods.sort.each do |mod|
+        output.puts indent + "  extend #{ mod }"
+        first = false
+      end
+      class_data.ivars.each do |var, ty, rbs_declared|
+        s = rbs_declared ? "# " : "  "
+        output.puts indent + s + "#{ var } : #{ ty }" unless var.start_with?("_")
+        first = false
+      end
+      class_data.cvars.each do |var, ty, rbs_declared|
+        s = rbs_declared ? "# " : "  "
+        output.puts indent + s + "#{ var } : #{ ty }"
+        first = false
+      end
+      class_data.attr_methods.each do |(method_name, hidden), (kind, ty)|
+        output.puts indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
+        first = false
+      end
+      class_data.explicit_methods.each do |method_name, sigs|
+        sigs = sigs.sort.join("\n" + indent + "#" + " " * (method_name.size + 6) + "| ")
+        output.puts indent + "# def #{ method_name } : #{ sigs }"
+        first = false
+      end
+      class_data.iseq_methods.each do |method_name, sigs|
+        sigs = sigs.sort.join("\n" + indent + " " * (method_name.size + 7) + "| ")
+        output.puts indent + "  def #{ method_name } : #{ sigs }"
+        first = false
+      end
+      show_class_hierarchy(depth + 1, class_data.inner_classes, output, first)
+      output.puts indent + "end"
     end
   end
 end

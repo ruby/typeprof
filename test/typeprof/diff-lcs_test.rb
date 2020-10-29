@@ -17,49 +17,50 @@ module TypeProf
 
         # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)
 
-        assert(actual =~ /^module Diff::LCS\n(?:(?:  .*?\n)*)^end\n/)
-        assert_include($&, "def self.diff : (Array[T] | Diff::LCS, Array[T], ?nil) ?{ -> nil } -> (Array[(Array[Diff::LCS::Change?] | Diff::LCS::Change | Diff::LCS::ContextChange)?])")
+        assert(actual =~ /^module Diff\n  module LCS\n(?:(?:    .*?\n|\n)*)^  end\n^end\n/)
+        assert_include($&, "def self.diff : (Array[T] | LCS, Array[T], ?nil) ?{ -> nil } -> (Array[(Array[Change?] | Change | ContextChange)?])")
+                           #def self.diff : (Array[T] | Diff::LCS, Array[T], ?nil) ?{ -> nil } -> (Array[(Array[Diff::LCS::Change?] | Diff::LCS::Change | Diff::LCS::ContextChange)?])")
 
-        assert(actual =~ /^class Diff::LCS::Change\n(?:(?:  .*?\n)*)^end\n/)
-        assert_equal(<<~END, $&)
-          class Diff::LCS::Change
-            IntClass : untyped
-            VALID_ACTIONS : [String, String, String, String, String, String]
-            include Comparable
-            attr_reader action : String
-            attr_reader position : Integer
-            attr_reader element : (Array[T] | T)?
-            def self.valid_action? : (String) -> bool
-            def initialize : (String, Integer, (Array[T] | T)?) -> nil
-            def inspect : (*untyped) -> String
-            def to_a : -> ([String, Integer, (Array[T] | T)?])
-            def self.from_a : ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]]) -> (Diff::LCS::Change | Diff::LCS::ContextChange)
-            def == : (untyped) -> bool
-            def <=> : (untyped) -> Integer?
-            def adding? : -> bool
-            def deleting? : -> bool
-            def unchanged? : -> bool
-            def changed? : -> bool
-            def finished_a? : -> bool
-            def finished_b? : -> bool
-          end
+        assert(actual =~ /^    class Change\n(?:(?:      .*?\n|\n)*)^    end\n/)
+        assert_equal(<<-END, $&)
+    class Change
+      IntClass : untyped
+      VALID_ACTIONS : [String, String, String, String, String, String]
+      include Comparable
+      attr_reader action : String
+      attr_reader position : Integer
+      attr_reader element : (Array[T] | T)?
+      def self.valid_action? : (String) -> bool
+      def initialize : (String, Integer, (Array[T] | T)?) -> nil
+      def inspect : (*untyped) -> String
+      def to_a : -> ([String, Integer, (Array[T] | T)?])
+      def self.from_a : ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]]) -> (Change | ContextChange)
+      def == : (untyped) -> bool
+      def <=> : (untyped) -> Integer?
+      def adding? : -> bool
+      def deleting? : -> bool
+      def unchanged? : -> bool
+      def changed? : -> bool
+      def finished_a? : -> bool
+      def finished_b? : -> bool
+    end
         END
 
-        assert(actual =~ /^class Diff::LCS::ContextChange.*\n(?:(?:  .*?\n)*)^end\n/)
-        assert_equal(<<~END, $&)
-          class Diff::LCS::ContextChange < Diff::LCS::Change
-            @action : String
-            attr_reader old_position : Integer
-            attr_reader new_position : Integer
-            attr_reader old_element : (Array[T] | T)?
-            attr_reader new_element : (Array[T] | T)?
-            def initialize : (String, Integer, (Array[T] | T)?, Integer, (Array[T] | T)?) -> nil
-            def to_a : -> ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]])
-            def self.from_a : ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]]) -> (Diff::LCS::Change | Diff::LCS::ContextChange)
-            def self.simplify : (Diff::LCS::ContextChange) -> (Diff::LCS::Change | Diff::LCS::ContextChange)
-            def == : (untyped) -> bool
-            def <=> : (untyped) -> Integer?
-          end
+        assert(actual =~ /^    class ContextChange.*\n(?:(?:      .*?\n|\n)*)^    end\n/)
+        assert_equal(<<-END, $&)
+    class ContextChange < Change
+      @action : String
+      attr_reader old_position : Integer
+      attr_reader new_position : Integer
+      attr_reader old_element : (Array[T] | T)?
+      attr_reader new_element : (Array[T] | T)?
+      def initialize : (String, Integer, (Array[T] | T)?, Integer, (Array[T] | T)?) -> nil
+      def to_a : -> ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]])
+      def self.from_a : ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]]) -> (Change | ContextChange)
+      def self.simplify : (ContextChange) -> (Change | ContextChange)
+      def == : (untyped) -> bool
+      def <=> : (untyped) -> Integer?
+    end
         END
 
       ensure
