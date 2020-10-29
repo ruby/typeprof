@@ -14,21 +14,21 @@ module TypeProf
       recv = scratch.globalize_type(recv, caller_env, caller_ep)
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
 
-      aargs.each_formal_arguments(@iseq.fargs_format) do |fargs, start_pc|
+      aargs.each_formal_arguments(@iseq.fargs_format) do |fargs, start_pcs|
         if fargs.is_a?(String)
           scratch.error(caller_ep, fargs)
           ctn[Type.any, caller_ep, caller_env]
           next
         end
 
-        callee_ep = do_send_core(fargs, start_pc, recv, mid, scratch)
+        callee_ctx = do_send_core(fargs, start_pcs, recv, mid, scratch)
 
-        scratch.add_iseq_method_call!(self, callee_ep.ctx)
-        scratch.add_callsite!(callee_ep.ctx, caller_ep, caller_env, &ctn)
+        scratch.add_iseq_method_call!(self, callee_ctx)
+        scratch.add_callsite!(callee_ctx, caller_ep, caller_env, &ctn)
       end
     end
 
-    def do_send_core(fargs, start_pc, recv, mid, scratch)
+    def do_send_core(fargs, start_pcs, recv, mid, scratch)
       lead_num = @iseq.fargs_format[:lead_num] || 0
       post_start = @iseq.fargs_format[:post_start]
       rest_start = @iseq.fargs_format[:rest_start]
@@ -40,7 +40,7 @@ module TypeProf
       # XXX: need to check .rbs fargs and .rb fargs
 
       ctx = Context.new(@iseq, @cref, mid)
-      callee_ep = ExecutionPoint.new(ctx, start_pc, nil)
+      callee_ep = ExecutionPoint.new(ctx, 0, nil)
 
       locals = [Type.nil] * @iseq.locals.size
       nenv = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), locals, [], Utils::HashWrapper.new({}))
@@ -87,9 +87,11 @@ module TypeProf
       end
       nenv = nenv.local_update(block_start, fargs.blk_ty) if block_start
 
-      scratch.merge_env(callee_ep, nenv)
+      start_pcs.each do |start_pc|
+        scratch.merge_env(ExecutionPoint.new(ctx, start_pc, nil), nenv)
+      end
 
-      callee_ep
+      ctx
     end
 
     def do_check_send_core(fargs, recv, mid, ep, scratch)
@@ -111,7 +113,7 @@ module TypeProf
           return
         end
       end
-      do_send_core(fargs, 0, recv, mid, scratch)
+      do_send_core(fargs, [0], recv, mid, scratch)
     end
   end
 

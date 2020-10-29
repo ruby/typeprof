@@ -1066,13 +1066,13 @@ module TypeProf
         lead_tys << rest_elem until lead_tys.size == lead_num
         post_tys = aargs.pop(post_num)
         post_tys.unshift(rest_elem) until post_tys.size == post_num
-        start_pc = 0
+        start_pcs = [0]
         if opt
           tmp_opt = opt[1..]
           opt_tys = []
           until aargs.empty? || tmp_opt.empty?
             opt_tys << aargs.shift
-            start_pc = tmp_opt.shift
+            start_pcs << tmp_opt.shift
           end
         end
         if rest_acceptable
@@ -1086,7 +1086,7 @@ module TypeProf
           yield "wrong number of arguments (given #{ @lead_tys.size }, expected #{ lead_num + post_num })"
           return
         end
-        yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, @blk_ty), start_pc
+        yield FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, @blk_ty), start_pcs
       end
     end
 
