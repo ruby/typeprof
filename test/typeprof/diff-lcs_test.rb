@@ -23,6 +23,8 @@ module TypeProf
         assert(actual =~ /^class Diff::LCS::Change\n(?:(?:  .*?\n)*)^end\n/)
         assert_equal(<<~END, $&)
           class Diff::LCS::Change
+            IntClass : untyped
+            VALID_ACTIONS : [String, String, String, String, String, String]
             include Comparable
             attr_reader action : String
             attr_reader position : Integer

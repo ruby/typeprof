@@ -24,6 +24,8 @@ smoke/constant2.rb:15: [warning] already initialized constant Object::BAR
 
 # Classes
 class Object
+  C : String
+  BAR : String
   def foo : (Integer | untyped) -> nil
   def log : (String) -> nil
 end

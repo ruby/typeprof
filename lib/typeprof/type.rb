@@ -412,7 +412,7 @@ module TypeProf
       end
 
       def screen_name(scratch)
-        "#{ scratch.get_class_name(self) }.class"
+        "#{ scratch.get_class_name(self).join("::") }.class"
       end
 
       def get_method(mid, scratch)
@@ -470,7 +470,7 @@ module TypeProf
         when Type::Builtin[:true] then "true"
         when Type::Builtin[:false] then "false"
         else
-          scratch.get_class_name(@klass)
+          scratch.get_class_name(@klass).join("::")
         end
       end
 

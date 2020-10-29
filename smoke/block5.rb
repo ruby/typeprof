@@ -14,5 +14,6 @@ end
 __END__
 # Classes
 class Object
+  F : ^(Integer) -> String
   def foo : { (:sym) { (Integer) -> String } -> String } -> String
 end

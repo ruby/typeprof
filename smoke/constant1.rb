@@ -31,6 +31,7 @@ Foo::Bar.new.get4 # Integer
 __END__
 # Classes
 class Foo
+  CONST : String
 end
 
 class Foo::Bar

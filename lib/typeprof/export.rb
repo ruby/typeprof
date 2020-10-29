@@ -98,19 +98,26 @@ module TypeProf
       @class_defs.each_value do |class_def|
         included_mods = class_def.modules[false].filter_map do |mod_def, absolute_paths|
           next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
-          mod_def.name
+          mod_def.name.join("::")
         end
 
         extended_mods = class_def.modules[true].filter_map do |mod_def, absolute_paths|
           next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
-          mod_def.name
+          mod_def.name.join("::")
         end
 
+        consts = {}
         explicit_methods = {}
         iseq_methods = {}
         attr_methods = {}
         ivars = class_def.ivars.dump
         cvars = class_def.cvars.dump
+
+        class_def.consts.each do |name, (ty, user_defined)|
+          next if ty.is_a?(Type::Class) || !user_defined
+          consts[name] = ty.screen_name(@scratch)
+        end
+
         class_def.methods.each do |(singleton, mid), mdefs|
           mdefs.each do |mdef|
             case mdef
@@ -178,10 +185,13 @@ module TypeProf
 
         if class_def.superclass
           omit = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
-          superclass = omit ? "" : " < #{ @class_defs[class_def.superclass].name }"
+          superclass = omit ? "" : " < #{ @class_defs[class_def.superclass].name.join("::") }"
         end
 
-        output.puts "#{ class_def.kind } #{ class_def.name }#{ superclass }"
+        output.puts "#{ class_def.kind } #{ class_def.name.join("::") }#{ superclass }"
+        consts.each do |name, ty|
+          output.puts "  #{ name } : #{ ty }"
+        end
         included_mods.sort.each do |ty|
           output.puts "  include #{ ty }"
         end

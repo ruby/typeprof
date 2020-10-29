@@ -11,6 +11,10 @@ module TypeProf
       expected = <<-END
 # Classes
 class Object
+  IMAGE_WIDTH : Integer
+  IMAGE_HEIGHT : Integer
+  NSUBSAMPLES : Integer
+  NAO_SAMPLES : Integer
   def clamp : (Float) -> Integer
   def otherBasis : (Vec) -> [Vec, Vec, Vec]
   def top : -> Integer

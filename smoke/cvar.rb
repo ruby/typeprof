@@ -23,6 +23,7 @@ class Object
 end
 
 class A
+  FOO : Integer
   @@var : Integer
   def foo : -> nil
 end

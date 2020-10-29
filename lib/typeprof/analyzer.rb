@@ -288,6 +288,7 @@ module TypeProf
 
     class ClassDef # or ModuleDef
       def initialize(kind, name, superclass, absolute_path)
+        raise unless name.is_a?(Array)
         @kind = kind
         @superclass = superclass
         @modules = { true => {}, false => {} }
@@ -299,7 +300,7 @@ module TypeProf
         @absolute_path = absolute_path
       end
 
-      attr_reader :kind, :modules, :methods, :superclass, :ivars, :cvars, :absolute_path
+      attr_reader :kind, :superclass, :modules, :consts, :methods, :ivars, :cvars, :absolute_path
       attr_accessor :name, :klass_obj
 
       def include_module(mod, absolute_path)
@@ -321,14 +322,15 @@ module TypeProf
       end
 
       def get_constant(name)
-        @consts[name] || Type.any # XXX: warn?
+        ty, = @consts[name]
+        ty || Type.any # XXX: warn?
       end
 
-      def add_constant(name, ty)
+      def add_constant(name, ty, user_defined)
         if @consts[name]
           # XXX: warn!
         end
-        @consts[name] = ty
+        @consts[name] = [ty, user_defined]
       end
 
       def get_method(mid, singleton)
@@ -391,12 +393,12 @@ module TypeProf
       end
     end
 
+    def cbase_path(cbase)
+      cbase && cbase.idx != 1 ? @class_defs[cbase.idx].name : []
+    end
+
     def new_class(cbase, name, type_params, superclass, absolute_path)
-      if cbase && cbase.idx != 1
-        show_name = "#{ @class_defs[cbase.idx].name }::#{ name }"
-      else
-        show_name = name.to_s
-      end
+      show_name = cbase_path(cbase) + [name]
       idx = @class_defs.size
       if superclass
         if superclass == :__root__
@@ -408,14 +410,14 @@ module TypeProf
         klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
-        add_constant(cbase, name, klass)
+        add_constant(cbase, name, klass, false)
         return klass
       else
         # module
         @class_defs[idx] = ClassDef.new(:module, show_name, nil, absolute_path)
         mod = Type::Class.new(:module, idx, type_params, nil, show_name)
         @class_defs[idx].klass_obj = mod
-        add_constant(cbase, name, mod)
+        add_constant(cbase, name, mod, false)
         return mod
       end
     end
@@ -425,8 +427,8 @@ module TypeProf
 
       idx = @class_defs.size
       superclass = Type::Builtin[:struct]
-      @class_defs[idx] = ClassDef.new(:class, "(Struct)", superclass.idx, ep.ctx.iseq.absolute_path)
-      klass = Type::Class.new(:class, idx, [], superclass, "(Struct)")
+      @class_defs[idx] = ClassDef.new(:class, ["(Anonymous Struct)"], superclass.idx, ep.ctx.iseq.absolute_path)
+      klass = Type::Class.new(:class, idx, [], superclass, "(Anonymous Struct)")
       @class_defs[idx].klass_obj = klass
 
       @struct_defs[ep] = klass
@@ -488,11 +490,11 @@ module TypeProf
       Type.any
     end
 
-    def add_constant(klass, name, value)
+    def add_constant(klass, name, value, user_defined)
       if klass == Type.any
         self
       else
-        @class_defs[klass.idx].add_constant(name, value)
+        @class_defs[klass.idx].add_constant(name, value, user_defined)
       end
     end
 
@@ -1515,10 +1517,10 @@ module TypeProf
         end
         ty.each_child do |ty|
           if ty.is_a?(Type::Class) && ty.superclass == Type::Builtin[:struct]
-            @class_defs[ty.idx].name = name.to_s
+            @class_defs[ty.idx].name = cbase_path(cbase) + [name]
           end
         end
-        add_constant(cbase, name, globalize_type(ty, env, ep))
+        add_constant(cbase, name, globalize_type(ty, env, ep), true)
 
       when :getspecial
         key, type = operands
