@@ -1211,7 +1211,7 @@ module TypeProf
         end
         return
       when :send
-        env, recvs, mid, aargs = setup_actual_arguments(operands, ep, env)
+        env, recvs, mid, aargs = setup_actual_arguments(:method, operands, ep, env)
         recvs = Type.any if recvs == Type.bot
         recvs.each_child do |recv|
           do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
@@ -1223,7 +1223,7 @@ module TypeProf
         return
       when :send_branch
         getlocal_operands, send_operands, branch_operands = operands
-        env, recvs, mid, aargs = setup_actual_arguments(send_operands, ep, env)
+        env, recvs, mid, aargs = setup_actual_arguments(:method, send_operands, ep, env)
         recvs = Type.any if recvs == Type.bot
         recvs.each_child do |recv|
           do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
@@ -1250,11 +1250,7 @@ module TypeProf
         end
         return
       when :invokeblock
-        # XXX: need block parameter, unknown block, etc.  Use setup_actual_arguments
-        opt, = operands
-        _flags = opt[:flag]
-        orig_argc = opt[:orig_argc]
-        env, aargs = env.pop(orig_argc)
+        env, recvs, mid, aargs = setup_actual_arguments(:block, operands, ep, env)
         blk = env.static_env.blk_ty
         case
         when blk == Type.nil
@@ -1263,9 +1259,6 @@ module TypeProf
           #warn(ep, "block is any")
           env = env.push(Type.any)
         else # Proc
-          blk_nil = Type.nil
-          #
-          aargs = ActualArguments.new(aargs, nil, {}, blk_nil)
           do_invoke_block(blk, aargs, ep, env) do |ret_ty, ep, env|
             nenv, ret_ty, = localize_type(ret_ty, env, ep)
             nenv = nenv.push(ret_ty)
@@ -1274,7 +1267,7 @@ module TypeProf
           return
         end
       when :invokesuper
-        env, recv, _, aargs = setup_actual_arguments(operands, ep, env)
+        env, recv, _, aargs = setup_actual_arguments(:method, operands, ep, env)
 
         env, recv = localize_type(env.static_env.recv_ty, env, ep)
         mid  = ep.ctx.mid
@@ -1737,13 +1730,13 @@ module TypeProf
       merge_env(ep.next, env)
     end
 
-    private def setup_actual_arguments(operands, ep, env)
+    private def setup_actual_arguments(kind, operands, ep, env)
       opt, blk_iseq = operands
       flags = opt[:flag]
       mid = opt[:mid]
       kw_arg = opt[:kw_arg]
       argc = opt[:orig_argc]
-      argc += 1 # receiver
+      argc += 1 if kind == :method # for the receiver
       argc += kw_arg.size if kw_arg
 
       flag_args_splat    = flags[ 0] != 0
@@ -1758,17 +1751,18 @@ module TypeProf
       _flag_super        = flags[ 9] != 0
       _flag_zsuper       = flags[10] != 0
 
+      argc += 1 if flag_args_blockarg
+
+      env, aargs = env.pop(argc)
+
+      recv = aargs.shift if kind == :method
+
       if flag_args_blockarg
-        env, (recv, *aargs, blk_ty) = env.pop(argc + 1)
-        raise "both block arg and actual block given" if blk_iseq
+        blk_ty = aargs.pop
+      elsif blk_iseq
+        blk_ty = Type::ISeqProc.new(blk_iseq, ep, Type::Instance.new(Type::Builtin[:proc]))
       else
-        env, (recv, *aargs) = env.pop(argc)
-        if blk_iseq
-          # check
-          blk_ty = Type::ISeqProc.new(blk_iseq, ep, Type::Instance.new(Type::Builtin[:proc]))
-        else
-          blk_ty = Type.nil
-        end
+        blk_ty = Type.nil
       end
 
       blk_ty.each_child do |blk_ty|
