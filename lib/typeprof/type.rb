@@ -226,9 +226,9 @@ module TypeProf
             bool = true
           end
           types.delete(Type.any) unless Config.options[:pedantic_output]
-          iseq_proc_tys, types = types.partition {|ty| ty.is_a?(ISeqProc) }
+          proc_tys, types = types.partition {|ty| ty.is_a?(Proc) }
           types = types.map {|ty| ty.screen_name(scratch) }
-          types << scratch.show_proc_signature(iseq_proc_tys) unless iseq_proc_tys.empty?
+          types << scratch.show_proc_signature(proc_tys) unless proc_tys.empty?
           types << "bool" if bool
           types = types.sort
           if optional
@@ -518,18 +518,12 @@ module TypeProf
       end
     end
 
-    class ISeqProc < Type
-      def initialize(iseq, ep, type)
-        @iseq = iseq
-        @ep = ep
-        @type = type
+    class Proc < Type
+      def initialize(block_body, type)
+        @block_body, @type = block_body, type
       end
 
-      attr_reader :iseq, :ep, :type
-
-      def inspect
-        "#<ISeqProc>"
-      end
+      attr_reader :block_body, :type
 
       def consistent?(other, subst)
         case other
@@ -539,56 +533,11 @@ module TypeProf
           other.types.each do |ty2|
             return true if consistent?(ty2, subst)
           end
-        when Type::ISeqProc
-          raise "assert false"
-        when Type::TypedProc
-          true # XXX: handle type vars in TypedProc!
+        when Type::Proc
+          @block_body.consistent?(other.block_body)
         else
           self == other
         end
-      end
-
-      def screen_name(scratch)
-        scratch.proc_screen_name(self)
-      end
-
-      def get_method(mid, scratch)
-        @type.get_method(mid, scratch)
-      end
-
-      def substitute(_subst, _depth)
-        self # XXX
-      end
-    end
-
-    class TypedProc < Type
-      def initialize(msig, ret_ty, type)
-        @msig = msig
-        @ret_ty = ret_ty
-        @type = type
-      end
-
-      attr_reader :msig, :ret_ty
-
-      def consistent?(other, subst)
-        case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          other.types.each do |ty2|
-            return true if consistent?(ty2, subst)
-          end
-        when Type::ISeqProc
-          raise "assert false"
-        when Type::TypedProc
-          self == other # XXX: handle type vars in TypedProc!
-        else
-          self == other
-        end
-      end
-
-      def screen_name(scratch)
-        "TypedProc[...]" # TODO: use RBS syntax
       end
 
       def get_method(mid, scratch)
@@ -596,10 +545,11 @@ module TypeProf
       end
 
       def substitute(subst, depth)
-        msig = @msig.substitute(subst, depth)
-        ret_ty = @ret_ty.substitute(subst, depth)
-        type = @type.substitute(subst, depth)
-        TypedProc.new(msig, ret_ty, type)
+        Proc.new(@block_body.substitute(subst, depth), @type)
+      end
+
+      def screen_name(scratch)
+        scratch.show_proc_signature([self])
       end
     end
 
@@ -822,7 +772,7 @@ module TypeProf
       optional = false
       blks = []
       @blk_ty.each_child_global do |ty|
-        if ty.is_a?(Type::ISeqProc)
+        if ty.is_a?(Type::Proc)
           blks << ty
         else
           # XXX: how should we handle types other than Type.nil
@@ -1187,13 +1137,13 @@ module TypeProf
       # XXX: msig.keyword_tys
 
       case msig.blk_ty
-      when Type::TypedProc
+      when Type::Proc
         return false if @blk_ty == Type.nil
       when Type.nil
         return false if @blk_ty != Type.nil
       when Type::Any
       else
-        raise "unknown typo of formal block signature"
+        raise "unknown type of formal block signature"
       end
       true
     end

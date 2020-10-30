@@ -205,14 +205,14 @@ module TypeProf
         end
         ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
         found = true
-        case aargs.blk_ty
-        when Type::ISeqProc
+        if aargs.blk_ty.is_a?(Type::Proc)
+          raise NotImplementedError unless aargs.blk_ty.block_body.is_a?(ISeqBlock) # XXX
           dummy_ctx = TypedContext.new(caller_ep, mid)
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
           dummy_env = Env.new(StaticEnv.new(recv, msig.blk_ty, false), [], [], Utils::HashWrapper.new({}))
-          if msig.blk_ty.is_a?(Type::TypedProc)
+          if msig.blk_ty.is_a?(Type::Proc)
             scratch.add_callsite!(dummy_ctx, caller_ep, ncaller_env, &ctn)
-            nfargs = msig.blk_ty.msig
+            nfargs = msig.blk_ty.block_body.msig
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
             nlead_tys = (nfargs.lead_tys + nfargs.opt_tys).map.with_index do |ty, i|
               if recv.is_a?(Type::Array)
@@ -230,7 +230,7 @@ module TypeProf
               naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, {}, Type.nil) # XXX: support block to block?
               scratch.do_invoke_block(aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
                 subst2 = {}
-                if blk_ret_ty.consistent?(msig.blk_ty.ret_ty, subst2)
+                if blk_ret_ty.consistent?(msig.blk_ty.block_body.ret_ty, subst2)
                   if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
                     tyvar_elem = Type::Var.new(:Elem)
                     if subst2[tyvar_elem]
@@ -250,7 +250,7 @@ module TypeProf
                 end
                 ret_ty = ret_ty.remove_type_vars
                 # XXX: check the return type from the block
-                # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
+                # sig.blk_ty.block_body.ret_ty.eql?(_ret_ty) ???
                 scratch.add_return_value!(dummy_ctx, ret_ty)
               end
               # scratch.add_return_value!(dummy_ctx, ret_ty) ?
@@ -262,8 +262,6 @@ module TypeProf
             ret_ty = ret_ty.remove_type_vars
             ctn[ret_ty, caller_ep, ncaller_env]
           end
-        when Type::TypedProc
-          raise NotImplementedError
         else
           ret_ty = ret_ty.remove_type_vars
           ctn[ret_ty, caller_ep, ncaller_env]

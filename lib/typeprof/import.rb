@@ -564,7 +564,7 @@ module TypeProf
       opt_tys = opt_tys.map {|ty| conv_type(ty) }
       msig = MethodSignature.new(lead_tys, opt_tys, nil, nil, nil, nil, nil)
       ret_ty = conv_type(ret_ty)
-      ret = [Type::TypedProc.new(msig, ret_ty, Type::Builtin[:proc])]
+      ret = [Type::Proc.new(TypedBlock.new(msig, ret_ty), Type::Builtin[:proc])]
       ret << Type.nil unless req
       ret
     end
@@ -613,7 +613,7 @@ module TypeProf
         Type::Var.new(ty[1])
       when :proc
         msig, ret_ty = conv_func(ty[1]).first # Currently, RBS Proc does not accept a block, so the size should be always one
-        Type::TypedProc.new(msig, ret_ty, Type::Instance.new(Type::Builtin[:proc]))
+        Type::Proc.new(TypedBlock.new(msig, ret_ty), Type::Instance.new(Type::Builtin[:proc]))
       else
         pp ty
         raise NotImplementedError

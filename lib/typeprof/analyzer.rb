@@ -614,16 +614,17 @@ module TypeProf
       end
     end
 
-    def add_block_to_ctx!(blk, ctx)
-      @block_to_ctx[blk] ||= Utils::MutableSet.new
-      @block_to_ctx[blk] << ctx
+    def add_block_to_ctx!(block_body, ctx)
+      raise if !block_body.is_a?(Block)
+      @block_to_ctx[block_body] ||= Utils::MutableSet.new
+      @block_to_ctx[block_body] << ctx
     end
 
-    def add_block_signature!(blk, bsig)
-      if @block_signatures[blk]
-        @block_signatures[blk] = @block_signatures[blk].merge(bsig)
+    def add_block_signature!(block_body, bsig)
+      if @block_signatures[block_body]
+        @block_signatures[block_body] = @block_signatures[block_body].merge(bsig)
       else
-        @block_signatures[blk] = bsig
+        @block_signatures[block_body] = bsig
       end
     end
 
@@ -849,7 +850,7 @@ module TypeProf
           blk, epenvs = dummy_continuation
           epenvs.each do |ep, env|
             merge_env(ep, env)
-            add_block_to_ctx!(blk, ep.ctx)
+            add_block_to_ctx!(blk.block_body, ep.ctx)
           end
         end
       end
@@ -1749,7 +1750,7 @@ module TypeProf
       if flag_args_blockarg
         blk_ty = aargs.pop
       elsif blk_iseq
-        blk_ty = Type::ISeqProc.new(blk_iseq, ep, Type::Instance.new(Type::Builtin[:proc]))
+        blk_ty = Type::Proc.new(ISeqBlock.new(blk_iseq, ep), Type::Instance.new(Type::Builtin[:proc]))
       else
         blk_ty = Type.nil
       end
@@ -1758,7 +1759,7 @@ module TypeProf
         case blk_ty
         when Type.nil
         when Type.any
-        when Type::ISeqProc
+        when Type::Proc
         else
           error(ep, "wrong argument type #{ blk_ty.screen_name(self) } (expected Proc)")
           blk_ty = Type.any
@@ -1874,91 +1875,11 @@ module TypeProf
 
     def do_invoke_block(blk, aargs, ep, env, replace_recv_ty: nil, &ctn)
       blk.each_child do |blk|
-        case blk
-        when Type::TypedProc
-          subst = { Type::Var.new(:self) => env.static_env.recv_ty } # XXX: support other type variables
-          unless aargs.consistent_with_method_signature?(blk.msig, subst)
-            warn(ep, "The arguments is not compatibile to RBS block")
-            next
-          end
-          ctn[blk.ret_ty, ep, env]
-        when Type::ISeqProc
-          blk_iseq = blk.iseq
-          blk_ep = blk.ep
-          blk_env = @return_envs[blk_ep]
-          blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
-          arg_blk = aargs.blk_ty
-
-          add_block_signature!(blk, globalize_type(aargs, env, ep).to_block_signature)
-
-          aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
-          # XXX: aargs.opt_tys and aargs.kw_tys
-          argc = blk_iseq.fargs_format[:lead_num] || 0
-          # actual argc == 1, not array, formal argc == 1: yield 42         => do |x|   : x=42
-          # actual argc == 1,     array, formal argc == 1: yield [42,43,44] => do |x|   : x=[42,43,44]
-          # actual argc >= 2,            formal argc == 1: yield 42,43,44   => do |x|   : x=42
-          # actual argc == 1, not array, formal argc >= 2: yield 42         => do |x,y| : x,y=42,nil
-          # actual argc == 1,     array, formal argc >= 2: yield [42,43,44] => do |x,y| : x,y=42,43
-          # actual argc >= 2,            formal argc >= 2: yield 42,43,44   => do |x,y| : x,y=42,43
-          if aargs_.size >= 2 || argc == 0
-            aargs_.pop while argc < aargs_.size
-            aargs_ << Type.nil while argc > aargs_.size
-          else
-            aarg_ty, = aargs_
-            if argc == 1
-              aargs_ = [aarg_ty || Type.nil]
-            else # actual argc == 1 && formal argc >= 2
-              ary_elems = nil
-              any_ty = nil
-              case aarg_ty
-              when Type::Union
-                ary_elems = nil
-                other_elems = nil
-                aarg_ty.elems&.each do |(container_kind, base_type), elems|
-                  if container_kind == Type::Array
-                    ary_elems = ary_elems ? ary_elems.union(elems) : elems
-                  else
-                    other_elems = other_elems ? other_elems.union(elems) : elems
-                  end
-                end
-                aarg_ty = Type::Union.new(aarg_ty.types, other_elems)
-                any_ty = Type.any if aarg_ty.types.include?(Type.any)
-              when Type::Array
-                ary_elems = aarg_ty.elems
-                aarg_ty = nil
-              when Type::Any
-                any_ty = Type.any
-              end
-              aargs_ = [Type.bot] * argc
-              aargs_[0] = aargs_[0].union(aarg_ty) if aarg_ty
-              argc.times do |i|
-                ty = aargs_[i]
-                ty = ty.union(ary_elems[i]) if ary_elems
-                ty = ty.union(Type.any) if any_ty
-                ty = ty.union(Type.nil) if i >= 1 && aarg_ty
-                aargs_[i] = ty
-              end
-            end
-          end
-          locals = [Type.nil] * blk_iseq.locals.size
-          locals[blk_iseq.fargs_format[:block_start]] = arg_blk if blk_iseq.fargs_format[:block_start]
-          nctx = Context.new(blk_iseq, blk_ep.ctx.cref, nil)
-          nep = ExecutionPoint.new(nctx, 0, blk_ep)
-          nenv = Env.new(blk_env.static_env, locals, [], nil)
-          alloc_site = AllocationSite.new(nep)
-          aargs_.each_with_index do |ty, i|
-            alloc_site2 = alloc_site.add_id(i)
-            nenv, ty = localize_type(ty, nenv, nep, alloc_site2) # Use Scratch#localize_type?
-            nenv = nenv.local_update(i, ty)
-          end
-
-          merge_env(nep, nenv)
-
-          add_block_to_ctx!(blk, nep.ctx)
-          add_callsite!(nep.ctx, ep, env, &ctn)
+        if blk.is_a?(Type::Proc)
+          blk.block_body.do_call(aargs, ep, env, self, replace_recv_ty: replace_recv_ty, &ctn)
         else
-          warn(ep, "non-iseq-proc is passed as a block")
-          next
+          warn(ep, "non-proc is passed as a block")
+          ctn[Type.any, ep, env]
         end
       end
     end
@@ -1969,7 +1890,7 @@ module TypeProf
 
       blks.each do |blk|
         blk.each_child_global do |blk|
-          bsig0 = @block_signatures[blk]
+          bsig0 = @block_signatures[blk.block_body]
           if bsig0
             if bsig
               bsig = bsig.merge(bsig0)
@@ -1978,7 +1899,7 @@ module TypeProf
             end
           end
 
-          @block_to_ctx[blk].each do |blk_ctx|
+          @block_to_ctx[blk.block_body].each do |blk_ctx|
             ret_ty = ret_ty.union(@return_values[blk_ctx]) if @return_values[blk_ctx]
           end
         end
@@ -1994,16 +1915,13 @@ module TypeProf
       "{ #{ bsig }-> #{ ret_ty } }"
     end
 
-    def proc_screen_name(blk)
-      show_proc_signature([blk])
-    end
-
     def show_proc_signature(blks)
       farg_tys, ret_ty = nil, Type.bot
 
+      # XXX: Support TypedBlock
       blks.each do |blk|
         blk.each_child_global do |blk|
-          @block_to_ctx[blk].each do |blk_ctx|
+          @block_to_ctx[blk.block_body].each do |blk_ctx|
             if farg_tys
               farg_tys = farg_tys.merge(@method_signatures[blk_ctx])
             else
