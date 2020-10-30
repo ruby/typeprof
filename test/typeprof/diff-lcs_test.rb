@@ -18,8 +18,7 @@ module TypeProf
         # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)
 
         assert(actual =~ /^module Diff\n  module LCS\n(?:(?:    .*?\n|\n)*)^  end\n^end\n/)
-        assert_include($&, "def self.diff : (Array[T] | LCS, Array[T], ?nil) ?{ -> nil } -> (Array[(Array[Change?] | Change | ContextChange)?])")
-                           #def self.diff : (Array[T] | Diff::LCS, Array[T], ?nil) ?{ -> nil } -> (Array[(Array[Diff::LCS::Change?] | Diff::LCS::Change | Diff::LCS::ContextChange)?])")
+        assert_include($&, "def self.diff : (Array[T] | LCS, Array[T], ?nil) ?{ (Array[Change] | Change | ContextChange) -> nil } -> (Array[(Array[Change?] | Change | ContextChange)?])")
 
         assert(actual =~ /^    class Change\n(?:(?:      .*?\n|\n)*)^    end\n/)
         assert_equal(<<-END, $&)

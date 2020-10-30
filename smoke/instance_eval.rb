@@ -13,6 +13,6 @@ end
 __END__
 # Classes
 class C
-  def self.foo : { -> nil } -> C
+  def self.foo : { (C, *nil) -> nil } -> C
   def log : (Integer) -> nil
 end

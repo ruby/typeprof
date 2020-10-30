@@ -246,6 +246,7 @@ module TypeProf
 
       @callsites, @return_envs, @sig_fargs, @sig_ret = {}, {}, {}, {}
       @block_to_ctx = {}
+      @block_signatures = {}
       @gvar_table = VarTable.new
 
       @errors = []
@@ -622,6 +623,14 @@ module TypeProf
     def add_block_to_ctx!(blk, ctx)
       @block_to_ctx[blk] ||= Utils::MutableSet.new
       @block_to_ctx[blk] << ctx
+    end
+
+    def add_block_signature!(blk, bsig)
+      if @block_signatures[blk]
+        @block_signatures[blk] = @block_signatures[blk].merge(bsig)
+      else
+        @block_signatures[blk] = bsig
+      end
     end
 
     class VarTable
@@ -1896,6 +1905,9 @@ module TypeProf
           blk_env = @return_envs[blk_ep]
           blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
           arg_blk = aargs.blk_ty
+
+          add_block_signature!(blk, globalize_type(aargs, env, ep).to_block_signature)
+
           aargs_ = aargs.lead_tys.map {|aarg| globalize_type(aarg, env, ep) }
           # XXX: aargs.opt_tys and aargs.kw_tys
           argc = blk_iseq.fargs_format[:lead_num] || 0
@@ -1982,10 +1994,41 @@ module TypeProf
     end
 
     def proc_screen_name(blk)
-      show_block_signature([blk])
+      show_proc_signature([blk])
     end
 
     def show_block_signature(blks)
+      bsig = nil
+      ret_ty = Type.bot
+
+      blks.each do |blk|
+        blk.each_child_global do |blk|
+          bsig0 = @block_signatures[blk]
+          if bsig0
+            if bsig
+              bsig = bsig.merge(bsig0)
+            else
+              bsig = bsig0
+            end
+          end
+
+          @block_to_ctx[blk].each do |blk_ctx|
+            ret_ty = ret_ty.union(@sig_ret[blk_ctx]) if @sig_ret[blk_ctx]
+          end
+        end
+      end
+
+      bsig ||= BlockSignature.new([], [], nil, Type.nil)
+
+      bsig = bsig.screen_name(self)#, block: true)
+      ret_ty = ret_ty.screen_name(self)
+      ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
+
+      bsig = bsig + " " if bsig != ""
+      "^#{ bsig }-> #{ ret_ty }"
+    end
+
+    def show_proc_signature(blks)
       farg_tys, ret_ty = nil, Type.bot
 
       blks.each do |blk|

@@ -228,7 +228,7 @@ module TypeProf
           types.delete(Type.any) unless Config.options[:pedantic_output]
           iseq_proc_tys, types = types.partition {|ty| ty.is_a?(ISeqProc) }
           types = types.map {|ty| ty.screen_name(scratch) }
-          types << scratch.show_block_signature(iseq_proc_tys) unless iseq_proc_tys.empty?
+          types << scratch.show_proc_signature(iseq_proc_tys) unless iseq_proc_tys.empty?
           types << "bool" if bool
           types = types.sort
           if optional
@@ -947,12 +947,112 @@ module TypeProf
     end
   end
 
+  class BlockSignature
+    include Utils::StructuralEquality
+
+    def initialize(lead_tys, opt_tys, rest_ty, blk_ty)
+      @lead_tys = lead_tys
+      @opt_tys = opt_tys
+      @rest_ty = rest_ty
+      @blk_ty = blk_ty
+      # TODO: kw_tys
+    end
+
+    attr_reader :lead_tys, :opt_tys, :rest_ty, :blk_ty
+
+    def merge(bsig)
+      if @rest_ty && bsig.rest_ty
+        rest_ty = @rest_ty.union(bsig.rest_ty)
+        BlockSignature.new(@lead_tys, [], rest_ty, @blk_ty.union(bsig.blk_ty))
+      elsif @rest_ty || bsig.rest_ty
+        rest_ty = @rest_ty || bsig.rest_ty
+        rest_ty = @opt_tys.inject(rest_ty, &:union)
+        rest_ty = bsig.opt_tys.inject(rest_ty, &:union)
+
+        lead_tys = []
+        [@lead_tys.size, bsig.lead_tys.size].max.times do |i|
+          ty1 = @lead_tys[i]
+          ty2 = bsig.lead_tys[i]
+          if ty1 && ty2
+            lead_tys << ty1.union(ty2)
+          else
+            rest_ty = rest_ty.union(ty1 || ty2)
+          end
+        end
+
+        BlockSignature.new(lead_tys, [], rest_ty, @blk_ty.union(bsig.blk_ty))
+      else
+        lead_tys = []
+        n = [@lead_tys.size, bsig.lead_tys.size].min
+        n.times do |i|
+          lead_tys << @lead_tys[i].union(bsig.lead_tys[i])
+        end
+        opt_tys1 = @lead_tys[n..] + @opt_tys
+        opt_tys2 = bsig.lead_tys[n..] + bsig.opt_tys
+        opt_tys = []
+        [opt_tys1.size, opt_tys2.size].max.times do |i|
+          if opt_tys1[i] && opt_tys2[i]
+            opt_tys << opt_tys1[i].union(opt_tys2[i])
+          else
+            opt_tys << (opt_tys1[i] || opt_tys2[i])
+          end
+        end
+        BlockSignature.new(lead_tys, opt_tys, nil, @blk_ty.union(bsig.blk_ty))
+      end
+    end
+
+    def screen_name(scratch)
+      # XXX: code clone; almost same as FormalArguments#screen_name
+      fargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
+      if @opt_tys
+        fargs += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
+      end
+      if @rest_ty
+        fargs << ("*" + @rest_ty.screen_name(scratch))
+      end
+      if @kw_tys
+        @kw_tys.each do |req, sym, ty|
+          opt = req ? "" : "?"
+          fargs << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
+        end
+      end
+      if @kw_rest_ty
+        fargs << ("**" + @kw_rest_ty.screen_name(scratch))
+      end
+      fargs = fargs.empty? ? "" : "(#{ fargs.join(", ") })"
+
+      optional = false
+      blks = []
+      @blk_ty.each_child_global do |ty|
+        if ty.is_a?(Type::ISeqProc)
+          blks << ty
+        else
+          # XXX: how should we handle types other than Type.nil
+          optional = true
+        end
+      end
+      if blks != []
+        fargs << " " if fargs != ""
+        fargs << "?" if optional
+        fargs << "{ #{ scratch.show_block_signature(blks).sub(/\A\^/, "") } }"
+      end
+
+      fargs
+    end
+  end
+
   # Arguments from caller side
   class ActualArguments
+    include Utils::StructuralEquality
+
+    def to_block_signature
+      BlockSignature.new(@lead_tys, [], @rest_ty, @blk_ty)
+    end
+
     def initialize(lead_tys, rest_ty, kw_tys, blk_ty)
       @lead_tys = lead_tys
       @rest_ty = rest_ty
-      @kw_tys = kw_tys # kw_tys should be {:key1 => Type.bool, :key2 => Type.bool, ...} or {nil => Type.bool}
+      @kw_tys = kw_tys # kw_tys should be {:key1 => Type, :key2 => Type, ...} or {nil => Type}
       raise if !kw_tys.is_a?(::Hash)
       @blk_ty = blk_ty
       raise unless blk_ty
