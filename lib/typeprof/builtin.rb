@@ -59,8 +59,7 @@ module TypeProf
     end
 
     def proc_call(recv, mid, aargs, ep, env, scratch, &ctn)
-      given_block = env.static_env.blk_ty == recv
-      scratch.do_invoke_block(given_block, recv, aargs, ep, env, &ctn)
+      scratch.do_invoke_block(recv, aargs, ep, env, &ctn)
     end
 
     def object_s_new(recv, mid, aargs, ep, env, scratch, &ctn)
@@ -143,8 +142,7 @@ module TypeProf
         return
       end
       naargs = ActualArguments.new([recv], nil, {}, Type.nil)
-      given_block = env.static_env.blk_ty == recv
-      scratch.do_invoke_block(given_block, aargs.blk_ty, naargs, ep, env, replace_recv_ty: recv) do |_ret_ty, ep|
+      scratch.do_invoke_block(aargs.blk_ty, naargs, ep, env, replace_recv_ty: recv) do |_ret_ty, ep|
         ctn[recv, ep, scratch.return_envs[ep]]
       end
     end

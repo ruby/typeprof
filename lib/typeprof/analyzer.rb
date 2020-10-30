@@ -1266,7 +1266,7 @@ module TypeProf
           blk_nil = Type.nil
           #
           aargs = ActualArguments.new(aargs, nil, {}, blk_nil)
-          do_invoke_block(true, env.static_env.blk_ty, aargs, ep, env) do |ret_ty, ep, env|
+          do_invoke_block(blk, aargs, ep, env) do |ret_ty, ep, env|
             nenv, ret_ty, = localize_type(ret_ty, env, ep)
             nenv = nenv.push(ret_ty)
             merge_env(ep.next, nenv)
@@ -1889,7 +1889,7 @@ module TypeProf
       end
     end
 
-    def do_invoke_block(given_block, blk, aargs, ep, env, replace_recv_ty: nil, &ctn)
+    def do_invoke_block(blk, aargs, ep, env, replace_recv_ty: nil, &ctn)
       blk.each_child do |blk|
         case blk
         when Type::TypedProc
@@ -1970,19 +1970,6 @@ module TypeProf
           end
 
           merge_env(nep, nenv)
-
-          # caution: given_block flag is not complete
-          #
-          # def foo
-          #   bar do |&blk|
-          #     yield
-          #     blk.call
-          #   end
-          # end
-          #
-          # yield and blk.call call different blocks.
-          # So, a context can have two blocks.
-          # given_block is calculated by comparing "context's block (yield target)" and "blk", but it is not a correct result
 
           add_block_to_ctx!(blk, nep.ctx)
           add_callsite!(nep.ctx, ep, env, &ctn)

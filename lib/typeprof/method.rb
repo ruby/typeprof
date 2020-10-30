@@ -228,7 +228,7 @@ module TypeProf
             end
             0.upto(nfargs.opt_tys.size) do |n|
               naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, {}, Type.nil) # XXX: support block to block?
-              scratch.do_invoke_block(false, aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
+              scratch.do_invoke_block(aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
                 subst2 = {}
                 if blk_ret_ty.consistent?(fargs.blk_ty.ret_ty, subst2)
                   if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
