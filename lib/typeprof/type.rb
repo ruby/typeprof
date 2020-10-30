@@ -811,27 +811,6 @@ module TypeProf
 
     attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :kw_tys, :kw_rest_ty, :blk_ty
 
-    def consistent?(fargs, subst)
-      warn "used?"
-      return false if @lead_tys.size != fargs.lead_tys.size
-      return false unless @lead_tys.zip(fargs.lead_tys).all? {|ty1, ty2| ty1.consistent?(ty2, subst) }
-      return false if (@opt_tys || []) != (fargs.opt_tys || []) # ??
-      if @rest_ty
-        return false unless @rest_ty.consistent?(fargs.rest_ty, subst)
-      end
-      if @post_tys
-        return false if @post_tys.size != fargs.post_tys.size
-        return false unless @post_tys.zip(fargs.post_tys).all? {|ty1, ty2| ty1.consistent?(ty2, subst) }
-      end
-      return false if @kw_tys.size != fargs.kw_tys.size
-      return false unless @kw_tys.zip(fargs.kw_tys).all? {|(_, ty1), (_, ty2)| ty1.consistent?(ty2, subst) }
-      if @kw_rest_ty
-        return false unless @kw_rest_ty.consistent?(fargs.kw_rest_ty, subst)
-      end
-      # intentionally skip blk_ty
-      true
-    end
-
     def substitute(subst, depth)
       lead_tys = @lead_tys.map {|ty| ty.substitute(subst, depth - 1) }
       opt_tys = @opt_tys.map {|ty| ty.substitute(subst, depth - 1) }
@@ -878,7 +857,7 @@ module TypeProf
       if blks != []
         fargs << " " if fargs != ""
         fargs << "?" if optional
-        fargs << "{ #{ scratch.show_block_signature(blks).sub(/\A\^/, "") } }"
+        fargs << scratch.show_block_signature(blks)
       end
 
       fargs
@@ -1034,7 +1013,7 @@ module TypeProf
       if blks != []
         fargs << " " if fargs != ""
         fargs << "?" if optional
-        fargs << "{ #{ scratch.show_block_signature(blks).sub(/\A\^/, "") } }"
+        fargs << scratch.show_block_signature(blks)
       end
 
       fargs

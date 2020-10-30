@@ -251,9 +251,9 @@ module TypeProf
                 ret_ty = ret_ty.remove_type_vars
                 # XXX: check the return type from the block
                 # sig.blk_ty.ret_ty.eql?(_ret_ty) ???
-                scratch.add_return_type!(dummy_ctx, ret_ty)
+                scratch.add_return_value!(dummy_ctx, ret_ty)
               end
-              # scratch.add_return_type!(dummy_ctx, ret_ty) ?
+              # scratch.add_return_value!(dummy_ctx, ret_ty) ?
               # This makes `def foo; 1.times { return "str" }; end` return Integer|String
             end
           else

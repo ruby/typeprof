@@ -244,9 +244,11 @@ module TypeProf
 
       @alloc_site_to_global_id = {}
 
-      @callsites, @return_envs, @sig_fargs, @sig_ret = {}, {}, {}, {}
+      @callsites, @return_envs = {}, {}
       @block_to_ctx = {}
+      @method_signatures = {}
       @block_signatures = {}
+      @return_values = {}
       @gvar_table = VarTable.new
 
       @errors = []
@@ -590,7 +592,7 @@ module TypeProf
       @callsites[callee_ctx][caller_ep] = ctn
       merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env }
 
-      ret_ty = @sig_ret[callee_ctx] ||= Type.bot
+      ret_ty = @return_values[callee_ctx] ||= Type.bot
       if ret_ty != Type.bot
         @callsites[callee_ctx].each do |caller_ep, ctn|
           ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
@@ -598,11 +600,11 @@ module TypeProf
       end
     end
 
-    def add_signature!(callee_ctx, fargs)
-      if @sig_fargs[callee_ctx]
-        @sig_fargs[callee_ctx] = @sig_fargs[callee_ctx].merge(fargs)
+    def add_method_signature!(callee_ctx, fargs)
+      if @method_signatures[callee_ctx]
+        @method_signatures[callee_ctx] = @method_signatures[callee_ctx].merge(fargs)
       else
-        @sig_fargs[callee_ctx] = fargs
+        @method_signatures[callee_ctx] = fargs
       end
     end
 
@@ -610,9 +612,9 @@ module TypeProf
       @return_envs[caller_ep] = yield @return_envs[caller_ep]
     end
 
-    def add_return_type!(callee_ctx, ret_ty)
-      @sig_ret[callee_ctx] ||= Type.bot
-      @sig_ret[callee_ctx] = @sig_ret[callee_ctx].union(ret_ty)
+    def add_return_value!(callee_ctx, ret_ty)
+      @return_values[callee_ctx] ||= Type.bot
+      @return_values[callee_ctx] = @return_values[callee_ctx].union(ret_ty)
 
       @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx].each do |caller_ep, ctn|
@@ -873,12 +875,7 @@ module TypeProf
 
       Reporters.show_gvars(self, @gvar_table, output)
 
-      #RubySignatureExporter2.new(
-      #  self, @include_relations, @ivar_table.write, @cvar_table.write, @class_defs
-      #).show
-
-      #return
-      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs, @sig_fargs, @sig_ret).show(stat_eps, output)
+      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show(stat_eps, output)
     end
 
     def globalize_type(ty, env, ep)
@@ -1031,7 +1028,7 @@ module TypeProf
           blk_ty = Type.nil
         end
         fargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
-        add_signature!(ep.ctx, fargs)
+        add_method_signature!(ep.ctx, fargs)
       when :putspecialobject
         kind, = operands
         ty = case kind
@@ -1300,7 +1297,7 @@ module TypeProf
         end
         env, (ty,) = env.pop(1)
         ty = globalize_type(ty, env, ep)
-        add_return_type!(ep.ctx, ty)
+        add_return_value!(ep.ctx, ty)
         return
       when :throw
         throwtype, = operands
@@ -1314,7 +1311,7 @@ module TypeProf
           ty = globalize_type(ty, env, ep)
           tmp_ep = ep
           tmp_ep = tmp_ep.outer while tmp_ep.outer
-          add_return_type!(tmp_ep.ctx, ty)
+          add_return_value!(tmp_ep.ctx, ty)
           return
         when :break
           tmp_ep = ep
@@ -1974,10 +1971,6 @@ module TypeProf
       end
     end
 
-    def proc_screen_name(blk)
-      show_proc_signature([blk])
-    end
-
     def show_block_signature(blks)
       bsig = nil
       ret_ty = Type.bot
@@ -1994,7 +1987,7 @@ module TypeProf
           end
 
           @block_to_ctx[blk].each do |blk_ctx|
-            ret_ty = ret_ty.union(@sig_ret[blk_ctx]) if @sig_ret[blk_ctx]
+            ret_ty = ret_ty.union(@return_values[blk_ctx]) if @return_values[blk_ctx]
           end
         end
       end
@@ -2006,7 +1999,11 @@ module TypeProf
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 
       bsig = bsig + " " if bsig != ""
-      "^#{ bsig }-> #{ ret_ty }"
+      "{ #{ bsig }-> #{ ret_ty } }"
+    end
+
+    def proc_screen_name(blk)
+      show_proc_signature([blk])
     end
 
     def show_proc_signature(blks)
@@ -2016,12 +2013,12 @@ module TypeProf
         blk.each_child_global do |blk|
           @block_to_ctx[blk].each do |blk_ctx|
             if farg_tys
-              farg_tys = farg_tys.merge(@sig_fargs[blk_ctx])
+              farg_tys = farg_tys.merge(@method_signatures[blk_ctx])
             else
-              farg_tys = @sig_fargs[blk_ctx]
+              farg_tys = @method_signatures[blk_ctx]
             end
 
-            ret_ty = ret_ty.union(@sig_ret[blk_ctx]) if @sig_ret[blk_ctx]
+            ret_ty = ret_ty.union(@return_values[blk_ctx]) if @return_values[blk_ctx]
           end
         end
       end
@@ -2034,7 +2031,10 @@ module TypeProf
       "^#{ farg_tys }-> #{ ret_ty }"
     end
 
-    def show_method_signature(farg_tys, ret_ty)
+    def show_method_signature(ctx)
+      farg_tys = @method_signatures[ctx]
+      ret_ty = @return_values[ctx] || Type.bot
+
       farg_tys = farg_tys.screen_name(self)
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
