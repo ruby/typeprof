@@ -149,8 +149,8 @@ module TypeProf
   end
 
   class TypedMethodDef < MethodDef
-    def initialize(sigs, rbs_source) # sigs: Array<[FormalArguments, (return)Type]>
-      @sigs = sigs
+    def initialize(sig_rets, rbs_source) # sig_rets: Array<[MethodSignature, (return)Type]>
+      @sig_rets = sig_rets
       @rbs_source = rbs_source
     end
 
@@ -160,12 +160,12 @@ module TypeProf
       recv = scratch.globalize_type(recv_orig, caller_env, caller_ep)
       found = false
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
-      @sigs.each do |fargs, ret_ty|
+      @sig_rets.each do |msig, ret_ty|
         ncaller_env = caller_env
-        #pp [mid, aargs, fargs]
-        # XXX: support self type in fargs
+        #pp [mid, aargs, msig]
+        # XXX: support self type in msig
         subst = { Type::Var.new(:self) => recv }
-        next unless aargs.consistent_with_formal_arguments?(fargs, subst)
+        next unless aargs.consistent_with_method_signature?(msig, subst)
         case
         when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
           tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
@@ -209,10 +209,10 @@ module TypeProf
         when Type::ISeqProc
           dummy_ctx = TypedContext.new(caller_ep, mid)
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
-          dummy_env = Env.new(StaticEnv.new(recv, fargs.blk_ty, false), [], [], Utils::HashWrapper.new({}))
-          if fargs.blk_ty.is_a?(Type::TypedProc)
+          dummy_env = Env.new(StaticEnv.new(recv, msig.blk_ty, false), [], [], Utils::HashWrapper.new({}))
+          if msig.blk_ty.is_a?(Type::TypedProc)
             scratch.add_callsite!(dummy_ctx, caller_ep, ncaller_env, &ctn)
-            nfargs = fargs.blk_ty.fargs
+            nfargs = msig.blk_ty.msig
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
             nlead_tys = (nfargs.lead_tys + nfargs.opt_tys).map.with_index do |ty, i|
               if recv.is_a?(Type::Array)
@@ -230,7 +230,7 @@ module TypeProf
               naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, {}, Type.nil) # XXX: support block to block?
               scratch.do_invoke_block(aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
                 subst2 = {}
-                if blk_ret_ty.consistent?(fargs.blk_ty.ret_ty, subst2)
+                if blk_ret_ty.consistent?(msig.blk_ty.ret_ty, subst2)
                   if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
                     tyvar_elem = Type::Var.new(:Elem)
                     if subst2[tyvar_elem]
@@ -278,8 +278,8 @@ module TypeProf
 
     def do_match_iseq_mdef(iseq_mdef, recv, mid, env, ep, scratch)
       recv = scratch.globalize_type(recv, env, ep)
-      @sigs.each do |fargs, _ret_ty|
-        iseq_mdef.do_check_send_core(fargs, recv, mid, ep, scratch)
+      @sig_rets.each do |msig, _ret_ty|
+        iseq_mdef.do_check_send_core(msig, recv, mid, ep, scratch)
       end
     end
   end

@@ -562,13 +562,13 @@ module TypeProf
     end
 
     class TypedProc < Type
-      def initialize(fargs, ret_ty, type)
-        @fargs = fargs
+      def initialize(msig, ret_ty, type)
+        @msig = msig
         @ret_ty = ret_ty
         @type = type
       end
 
-      attr_reader :fargs, :ret_ty
+      attr_reader :msig, :ret_ty
 
       def consistent?(other, subst)
         case other
@@ -596,10 +596,10 @@ module TypeProf
       end
 
       def substitute(subst, depth)
-        fargs = @fargs.substitute(subst, depth)
+        msig = @msig.substitute(subst, depth)
         ret_ty = @ret_ty.substitute(subst, depth)
         type = @type.substitute(subst, depth)
-        TypedProc.new(fargs, ret_ty, type)
+        TypedProc.new(msig, ret_ty, type)
       end
     end
 
@@ -794,10 +794,52 @@ module TypeProf
     end
   end
 
-  # Arguments for callee side
-  class FormalArguments
+  class Signature
     include Utils::StructuralEquality
 
+    def screen_name(scratch)
+      str = @lead_tys.map {|ty| ty.screen_name(scratch) }
+      if @opt_tys
+        str += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
+      end
+      if @rest_ty
+        str << ("*" + @rest_ty.screen_name(scratch))
+      end
+      if @post_tys
+        str += @post_tys.map {|ty| ty.screen_name(scratch) }
+      end
+      if @kw_tys
+        @kw_tys.each do |req, sym, ty|
+          opt = req ? "" : "?"
+          str << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
+        end
+      end
+      if @kw_rest_ty
+        str << ("**" + @kw_rest_ty.screen_name(scratch))
+      end
+      str = str.empty? ? "" : "(#{ str.join(", ") })"
+
+      optional = false
+      blks = []
+      @blk_ty.each_child_global do |ty|
+        if ty.is_a?(Type::ISeqProc)
+          blks << ty
+        else
+          # XXX: how should we handle types other than Type.nil
+          optional = true
+        end
+      end
+      if blks != []
+        str << " " if str != ""
+        str << "?" if optional
+        str << scratch.show_block_signature(blks)
+      end
+
+      str
+    end
+  end
+
+  class MethodSignature < Signature
     def initialize(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
       @lead_tys = lead_tys
       @opt_tys = opt_tys
@@ -819,48 +861,7 @@ module TypeProf
       kw_tys = @kw_tys.map {|req, key, ty| [req, key, ty.substitute(subst, depth - 1)] }
       kw_rest_ty = @kw_rest_ty&.substitute(subst, depth - 1)
       blk_ty = @blk_ty.substitute(subst, depth - 1)
-      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
-    end
-
-    def screen_name(scratch)
-      fargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
-      if @opt_tys
-        fargs += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
-      end
-      if @rest_ty
-        fargs << ("*" + @rest_ty.screen_name(scratch))
-      end
-      if @post_tys
-        fargs += @post_tys.map {|ty| ty.screen_name(scratch) }
-      end
-      if @kw_tys
-        @kw_tys.each do |req, sym, ty|
-          opt = req ? "" : "?"
-          fargs << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
-        end
-      end
-      if @kw_rest_ty
-        fargs << ("**" + @kw_rest_ty.screen_name(scratch))
-      end
-      fargs = fargs.empty? ? "" : "(#{ fargs.join(", ") })"
-
-      optional = false
-      blks = []
-      @blk_ty.each_child_global do |ty|
-        if ty.is_a?(Type::ISeqProc)
-          blks << ty
-        else
-          # XXX: how should we handle types other than Type.nil
-          optional = true
-        end
-      end
-      if blks != []
-        fargs << " " if fargs != ""
-        fargs << "?" if optional
-        fargs << scratch.show_block_signature(blks)
-      end
-
-      fargs
+      MethodSignature.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
     end
 
     def merge(other)
@@ -922,13 +923,11 @@ module TypeProf
         end
       end
       blk_ty = @blk_ty.union(other.blk_ty) if @blk_ty
-      FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
+      MethodSignature.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
     end
   end
 
-  class BlockSignature
-    include Utils::StructuralEquality
-
+  class BlockSignature < Signature
     def initialize(lead_tys, opt_tys, rest_ty, blk_ty)
       @lead_tys = lead_tys
       @opt_tys = opt_tys
@@ -979,55 +978,26 @@ module TypeProf
         BlockSignature.new(lead_tys, opt_tys, nil, @blk_ty.union(bsig.blk_ty))
       end
     end
+  end
 
-    def screen_name(scratch)
-      # XXX: code clone; almost same as FormalArguments#screen_name
-      fargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
-      if @opt_tys
-        fargs += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
-      end
-      if @rest_ty
-        fargs << ("*" + @rest_ty.screen_name(scratch))
-      end
-      if @kw_tys
-        @kw_tys.each do |req, sym, ty|
-          opt = req ? "" : "?"
-          fargs << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
-        end
-      end
-      if @kw_rest_ty
-        fargs << ("**" + @kw_rest_ty.screen_name(scratch))
-      end
-      fargs = fargs.empty? ? "" : "(#{ fargs.join(", ") })"
-
-      optional = false
-      blks = []
-      @blk_ty.each_child_global do |ty|
-        if ty.is_a?(Type::ISeqProc)
-          blks << ty
-        else
-          # XXX: how should we handle types other than Type.nil
-          optional = true
-        end
-      end
-      if blks != []
-        fargs << " " if fargs != ""
-        fargs << "?" if optional
-        fargs << scratch.show_block_signature(blks)
-      end
-
-      fargs
+  # Arguments for callee side
+  class FormalArguments
+    def initialize(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
+      @lead_tys = lead_tys
+      @opt_tys = opt_tys
+      @rest_ty = rest_ty
+      @post_tys = post_tys
+      @kw_tys = kw_tys
+      kw_tys.each {|a| raise if a.size != 3 } if kw_tys
+      @kw_rest_ty = kw_rest_ty
+      @blk_ty = blk_ty
     end
+
+    attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :kw_tys, :kw_rest_ty, :blk_ty
   end
 
   # Arguments from caller side
   class ActualArguments
-    include Utils::StructuralEquality
-
-    def to_block_signature
-      BlockSignature.new(@lead_tys, [], @rest_ty, @blk_ty)
-    end
-
     def initialize(lead_tys, rest_ty, kw_tys, blk_ty)
       @lead_tys = lead_tys
       @rest_ty = rest_ty
@@ -1169,54 +1139,54 @@ module TypeProf
       end
     end
 
-    def consistent_with_formal_arguments?(fargs, subst)
+    def consistent_with_method_signature?(msig, subst)
       aargs = @lead_tys.dup
 
       # aargs: lead_tys, rest_ty
-      # fargs: lead_tys, opt_tys, rest_ty, post_tys
+      # msig: lead_tys, opt_tys, rest_ty, post_tys
       if @rest_ty
-        lower_bound = [0, fargs.lead_tys.size + fargs.post_tys.size - aargs.size].max
-        upper_bound = [0, lower_bound + fargs.opt_tys.size].max
+        lower_bound = [0, msig.lead_tys.size + msig.post_tys.size - aargs.size].max
+        upper_bound = [0, lower_bound + msig.opt_tys.size].max
         (lower_bound..upper_bound).each do |n|
           tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_tys, @blk_ty)
-          if tmp_aargs.consistent_with_formal_arguments?(fargs, subst) # XXX: wrong subst handling in the loop!
+          if tmp_aargs.consistent_with_method_signature?(msig, subst) # XXX: wrong subst handling in the loop!
             return true
           end
         end
         return false
       end
 
-      if fargs.rest_ty
-        return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
-        aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
+      if msig.rest_ty
+        return false if aargs.size < msig.lead_tys.size + msig.post_tys.size
+        aargs.shift(msig.lead_tys.size).zip(msig.lead_tys) do |aarg, farg|
           return false unless aarg.consistent?(farg, subst)
         end
-        aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
+        aargs.pop(msig.post_tys.size).zip(msig.post_tys) do |aarg, farg|
           return false unless aarg.consistent?(farg, subst)
         end
-        fargs.opt_tys.each do |farg|
+        msig.opt_tys.each do |farg|
           aarg = aargs.shift
           return false unless aarg.consistent?(farg, subst)
         end
         aargs.each do |aarg|
-          return false unless aarg.consistent?(fargs.rest_ty, subst)
+          return false unless aarg.consistent?(msig.rest_ty, subst)
         end
       else
-        return false if aargs.size < fargs.lead_tys.size + fargs.post_tys.size
-        return false if aargs.size > fargs.lead_tys.size + fargs.post_tys.size + fargs.opt_tys.size
-        aargs.shift(fargs.lead_tys.size).zip(fargs.lead_tys) do |aarg, farg|
+        return false if aargs.size < msig.lead_tys.size + msig.post_tys.size
+        return false if aargs.size > msig.lead_tys.size + msig.post_tys.size + msig.opt_tys.size
+        aargs.shift(msig.lead_tys.size).zip(msig.lead_tys) do |aarg, farg|
           return false unless aarg.consistent?(farg, subst)
         end
-        aargs.pop(fargs.post_tys.size).zip(fargs.post_tys) do |aarg, farg|
+        aargs.pop(msig.post_tys.size).zip(msig.post_tys) do |aarg, farg|
           return false unless aarg.consistent?(farg, subst)
         end
-        aargs.zip(fargs.opt_tys) do |aarg, farg|
+        aargs.zip(msig.opt_tys) do |aarg, farg|
           return false unless aarg.consistent?(farg, subst)
         end
       end
-      # XXX: fargs.keyword_tys
+      # XXX: msig.keyword_tys
 
-      case fargs.blk_ty
+      case msig.blk_ty
       when Type::TypedProc
         return false if @blk_ty == Type.nil
       when Type.nil
@@ -1226,6 +1196,10 @@ module TypeProf
         raise "unknown typo of formal block signature"
       end
       true
+    end
+
+    def to_block_signature
+      BlockSignature.new(@lead_tys, [], @rest_ty, @blk_ty)
     end
   end
 end

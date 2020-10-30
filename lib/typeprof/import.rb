@@ -553,7 +553,7 @@ module TypeProf
       ret_ty = conv_type(ret_ty)
 
       blks.map do |blk|
-        [FormalArguments.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk), ret_ty]
+        [MethodSignature.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, blk), ret_ty]
       end
     end
 
@@ -562,9 +562,9 @@ module TypeProf
       req, lead_tys, opt_tys, ret_ty = blk
       lead_tys = lead_tys.map {|ty| conv_type(ty) }
       opt_tys = opt_tys.map {|ty| conv_type(ty) }
-      fargs = FormalArguments.new(lead_tys, opt_tys, nil, nil, nil, nil, nil)
+      msig = MethodSignature.new(lead_tys, opt_tys, nil, nil, nil, nil, nil)
       ret_ty = conv_type(ret_ty)
-      ret = [Type::TypedProc.new(fargs, ret_ty, Type::Builtin[:proc])]
+      ret = [Type::TypedProc.new(msig, ret_ty, Type::Builtin[:proc])]
       ret << Type.nil unless req
       ret
     end
@@ -612,8 +612,8 @@ module TypeProf
       when :var
         Type::Var.new(ty[1])
       when :proc
-        fargs, ret_ty = conv_func(ty[1]).first # Currently, RBS Proc does not accept a block, so the size should be always one
-        Type::TypedProc.new(fargs, ret_ty, Type::Instance.new(Type::Builtin[:proc]))
+        msig, ret_ty = conv_func(ty[1]).first # Currently, RBS Proc does not accept a block, so the size should be always one
+        Type::TypedProc.new(msig, ret_ty, Type::Instance.new(Type::Builtin[:proc]))
       else
         pp ty
         raise NotImplementedError

@@ -547,14 +547,6 @@ module TypeProf
       add_method(klass, mid, true, ISeqMethodDef.new(iseq, cref))
     end
 
-    def add_typed_method(recv_ty, mid, fargs, ret_ty)
-      add_method(recv_ty.klass, mid, false, TypedMethodDef.new([[fargs, ret_ty]]))
-    end
-
-    def add_singleton_typed_method(recv_ty, mid, fargs, ret_ty)
-      add_method(recv_ty.klass, mid, true, TypedMethodDef.new([[fargs, ret_ty]]))
-    end
-
     def set_custom_method(klass, mid, impl)
       set_method(klass, mid, false, CustomMethodDef.new(impl))
     end
@@ -600,11 +592,11 @@ module TypeProf
       end
     end
 
-    def add_method_signature!(callee_ctx, fargs)
+    def add_method_signature!(callee_ctx, msig)
       if @method_signatures[callee_ctx]
-        @method_signatures[callee_ctx] = @method_signatures[callee_ctx].merge(fargs)
+        @method_signatures[callee_ctx] = @method_signatures[callee_ctx].merge(msig)
       else
-        @method_signatures[callee_ctx] = fargs
+        @method_signatures[callee_ctx] = msig
       end
     end
 
@@ -1027,8 +1019,8 @@ module TypeProf
         else
           blk_ty = Type.nil
         end
-        fargs = FormalArguments.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
-        add_method_signature!(ep.ctx, fargs)
+        msig = MethodSignature.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
+        add_method_signature!(ep.ctx, msig)
       when :putspecialobject
         kind, = operands
         ty = case kind
@@ -1885,7 +1877,7 @@ module TypeProf
         case blk
         when Type::TypedProc
           subst = { Type::Var.new(:self) => env.static_env.recv_ty } # XXX: support other type variables
-          unless aargs.consistent_with_formal_arguments?(blk.fargs, subst)
+          unless aargs.consistent_with_method_signature?(blk.msig, subst)
             warn(ep, "The arguments is not compatibile to RBS block")
             next
           end
