@@ -34,20 +34,20 @@ module TypeProf
 
       scratch.add_block_signature!(self, aargs.to_block_signature)
 
-      # XXX: Support aargs.rest_tys, aargs.kw_tys, aargs.blk_tys
-      bargs, start_pcs = aargs.block_arguments(@iseq.fargs_format)
-      if bargs.is_a?(String)
-        scratch.error(caller_ep, bargs)
+      locals = [Type.nil] * @iseq.locals.size
+
+      blk_ty, start_pcs = aargs.setup_formal_arguments(:block, locals, @iseq.fargs_format)
+      if blk_ty.is_a?(String)
+        scratch.error(caller_ep, blk_ty)
         ctn[Type.any, caller_ep, caller_env]
         return
       end
 
-      locals = [Type.nil] * @iseq.locals.size
       nctx = Context.new(@iseq, @outer_ep.ctx.cref, nil)
       callee_ep = ExecutionPoint.new(nctx, 0, @outer_ep)
       nenv = Env.new(blk_env.static_env, locals, [], nil)
       alloc_site = AllocationSite.new(callee_ep)
-      bargs.each_with_index do |ty, i|
+      locals.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(i)
         nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(i, ty)
@@ -89,6 +89,7 @@ module TypeProf
       unless aargs.consistent_with_method_signature?(@msig, subst)
         scratch.warn(caller_ep, "The arguments is not compatibile to RBS block")
       end
+      # XXX: Update type vars
       ctn[@ret_ty, caller_ep, caller_env]
     end
   end

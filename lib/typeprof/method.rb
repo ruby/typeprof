@@ -14,19 +14,20 @@ module TypeProf
       recv = scratch.globalize_type(recv, caller_env, caller_ep)
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
 
-      margs, blk_ty, start_pcs = aargs.method_arguments(@iseq.fargs_format)
-      if margs.is_a?(String)
-        scratch.error(caller_ep, margs)
+      locals = [Type.nil] * @iseq.locals.size
+
+      blk_ty, start_pcs = aargs.setup_formal_arguments(:method, locals, @iseq.fargs_format)
+      if blk_ty.is_a?(String)
+        scratch.error(caller_ep, blk_ty)
         ctn[Type.any, caller_ep, caller_env]
         return
       end
 
-      locals = [Type.nil] * @iseq.locals.size
       nctx = Context.new(@iseq, @cref, mid)
       callee_ep = ExecutionPoint.new(nctx, 0, nil)
       nenv = Env.new(StaticEnv.new(recv, blk_ty, false), locals, [], Utils::HashWrapper.new({}))
       alloc_site = AllocationSite.new(callee_ep)
-      margs.each_with_index do |ty, i|
+      locals.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(i)
         # nenv is top-level, so it is okay to call Type#localize directly
         nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
