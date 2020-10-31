@@ -1918,9 +1918,10 @@ module TypeProf
     def show_proc_signature(blks)
       farg_tys, ret_ty = nil, Type.bot
 
-      # XXX: Support TypedBlock
       blks.each do |blk|
         blk.each_child_global do |blk|
+          next if blk.block_body.is_a?(TypedBlock) # XXX: Support TypedBlock
+          next unless @block_to_ctx[blk.block_body] # this occurs when screen_name is called before type-profiling finished (e.g., error message)
           @block_to_ctx[blk.block_body].each do |blk_ctx|
             if farg_tys
               farg_tys = farg_tys.merge(@method_signatures[blk_ctx])
@@ -1933,7 +1934,7 @@ module TypeProf
         end
       end
 
-      farg_tys = farg_tys.screen_name(self)#, block: true)
+      farg_tys = farg_tys ? farg_tys.screen_name(self) : "(unknown)"
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 
