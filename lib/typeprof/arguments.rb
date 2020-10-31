@@ -364,14 +364,17 @@ module TypeProf
           # p0   = a[[2,len(a)-2].max]
           # p1   = a[[3,len(a)-1].max]
 
-          # l0, l1, o0, o1
+          # l0, l1
           bargs = []
-          (lead_num + opt.size - 1).times {|i| bargs[i] = lead_tys[i] || Type.nil }
-          opt_count = [0, lead_tys.size - lead_num, opt.size - 1].sort[1]
+          lead_num.times {|i| bargs[i] = lead_tys[i] || Type.nil }
+
+          # o0, o1
+          opt_count = (lead_tys.size - lead_num - post_num).clamp(0, opt.size - 1)
+          (opt.size - 1).times {|i| bargs[lead_num + i] = i < opt_count ? lead_tys[lead_num + i] : Type.nil }
 
           # rest
-          rest_b = lead_num + opt.size - 1
-          rest_e = [rest_b, lead_tys.size - post_num].max
+          rest_b = lead_num + opt_count
+          rest_e = lead_tys.size - post_num
           ty = (lead_tys[rest_b...rest_e] || []).inject(Type.bot, &:union)
           bargs[rest_index] = Type::Array.new(Type::Array::Elements.new([], ty), Type::Instance.new(Type::Builtin[:ary]))
 
@@ -389,14 +392,25 @@ module TypeProf
           # lead_ty argc == 5: a0  a1  a2    -   a3  a4
           # lead_ty argc == 6: a0  a1  a2   a3   a4  a5
           # lead_ty argc == 7: a0  a1  a2   a3   a4  a5 (a6: drop)
+          #
+          # l0 = a0
+          # l1 = a1
+          # o0 = a2
+          # o1 = a3
+          # p0 = a2|a3|a4
+          # p1 = a3|a4|a5
 
-          # l0, l1, o0, o1
+          # l0, l1
           bargs = []
-          (lead_num + opt.size - 1).times {|i| bargs[i] = lead_tys[i] || Type.nil }
-          opt_count = [0, lead_tys.size - lead_num, opt.size - 1].sort[1]
+          lead_num.times {|i| bargs[i] = lead_tys[i] || Type.nil }
+
+          # o0, o1
+          opt_count = (lead_tys.size - lead_num - post_num).clamp(0, opt.size - 1)
+          (opt.size - 1).times {|i| bargs[lead_num + i] = i < opt_count ? lead_tys[lead_num + i] : Type.nil }
 
           # p0, p1
-          post_num.times {|i| bargs[post_index + i] = lead_tys[lead_num + opt.size - 1 + i] || Type.nil }
+          off = lead_num + opt_count
+          post_num.times {|i| bargs[post_index + i] = lead_tys[off + i] || Type.nil }
         end
       end
 
