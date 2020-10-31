@@ -306,11 +306,11 @@ module TypeProf
           opt_count = opt.size - 1
 
           # rest
-          ty = cum_lead_ty[lead_num + opt.size - 1]
+          ty = cum_lead_tys[lead_num + opt.size - 1] || rest_ty
           bargs[rest_index] = Type::Array.new(Type::Array::Elements.new([], ty), Type::Instance.new(Type::Builtin[:ary]))
 
           # p0, p1
-          post_num.times {|i| bargs[post_index + i] = cum_lead_tys[lead_tys.size + i] }
+          post_num.times {|i| bargs[post_index + i] = cum_lead_tys[lead_tys.size + i] || rest_ty }
         else
           # yield a0, a1, a2, ...(rest_ty) -->
           #                do |l0, l1, o0=, o1=, p0, p1|
