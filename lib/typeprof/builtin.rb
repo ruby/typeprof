@@ -531,6 +531,7 @@ module TypeProf
       scratch.set_custom_method(klass_obj, :class, Builtin.method(:object_class))
       scratch.set_custom_method(klass_obj, :send, Builtin.method(:object_send))
       scratch.set_custom_method(klass_obj, :instance_eval, Builtin.method(:object_instance_eval))
+      scratch.set_custom_method(klass_obj, :proc, Builtin.method(:lambda))
 
       scratch.set_custom_method(klass_module, :include, Builtin.method(:module_include))
       scratch.set_custom_method(klass_module, :extend, Builtin.method(:module_extend))
