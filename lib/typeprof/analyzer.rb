@@ -183,6 +183,7 @@ module TypeProf
     end
 
     def deploy_cell_type(alloc_site, elems, base_ty)
+      raise if elems.is_a?(::Array)
       local_ty = Type::LocalCell.new(alloc_site, base_ty)
       type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
       nenv = Env.new(@static_env, @locals, @stack, type_params)
@@ -756,7 +757,7 @@ module TypeProf
           elems = yield elems
           menv = menv.update_container_elem_types(id, elems)
           gid = @alloc_site_to_global_id[id]
-          if gid
+          if !elems.is_a?(Type::Cell::Elements) && gid
             ty = globalize_type(elems.to_local_type(id), env, ep)
             add_ivar_write!(*gid, ty, ep)
           end
@@ -768,7 +769,7 @@ module TypeProf
         elems = yield elems
         env = env.update_container_elem_types(id, elems)
         gid = @alloc_site_to_global_id[id]
-        if gid
+        if !elems.is_a?(Type::Cell::Elements) && gid
           ty = globalize_type(elems.to_local_type(id), env, ep)
           add_ivar_write!(*gid, ty, ep)
         end

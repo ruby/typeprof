@@ -185,11 +185,11 @@ module TypeProf
             if ty
               ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
               ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
-                Utils.array_update(elems, idx, elems[idx].union(ty))
+                elems.update(idx, ty)
               end
             end
           end
-          tyvars.zip(recv.elems) do |tyvar, elem|
+          tyvars.zip(recv.elems.elems) do |tyvar, elem|
             if subst[tyvar]
               subst[tyvar] = subst[tyvar].union(elem)
             else

@@ -65,7 +65,7 @@ module TypeProf
     def object_s_new(recv, mid, aargs, ep, env, scratch, &ctn)
       ty = Type::Instance.new(recv)
       if recv.type_params.size >= 1
-        ty = Type::Cell.new([Type.bot] * recv.type_params.size, ty)
+        ty = Type::Cell.new(Type::Cell::Elements.new([Type.bot] * recv.type_params.size), ty)
         env, ty = scratch.localize_type(ty, env, ep, AllocationSite.new(ep).add_id(:object_s_new))
       end
       meths = scratch.get_method(recv, false, :initialize)

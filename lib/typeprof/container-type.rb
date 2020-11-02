@@ -22,7 +22,8 @@ module TypeProf
     # The most basic container type for default type parameter class
     class Cell < Type
       def initialize(elems, base_type)
-        @elems = elems # Array[Symbol]
+        raise if !elems.is_a?(Cell::Elements)
+        @elems = elems # Cell::Elements
         raise unless base_type
         @base_type = base_type
       end
@@ -34,22 +35,23 @@ module TypeProf
       end
 
       def screen_name(scratch)
-        "#{ @base_type.screen_name(scratch) }[#{ @elems.map {|elem| elem.screen_name(scratch) }.join(", ") }]"
+        str = @elems.screen_name(scratch)
+        if str.start_with?("*")
+          str = @base_type.screen_name(scratch) + str[1..]
+        end
+        str
       end
 
       def localize(env, alloc_site, depth)
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:cell)
-        elems = @elems.map.with_index do |elem, idx|
-          env, elem = elem.localize(env, alloc_site.add_id(idx), depth - 1)
-          elem
-        end
+        env, elems = @elems.localize(env, alloc_site, depth)
         env.deploy_cell_type(alloc_site, elems, @base_type)
       end
 
       def limit_size(limit)
         return Type.any if limit <= 0
-        Cell.new(@elems.map {|elem| elem.limit_size(limit - 1) }, @base_type)
+        Cell.new(@elems.limit_size(limit - 1), @base_type)
       end
 
       def get_method(mid, scratch)
@@ -76,8 +78,82 @@ module TypeProf
 
       def substitute(subst, depth)
         return Type.any if depth <= 0
-        elems = @elems.map {|elem| elem.substitute(subst, depth - 1) }
+        elems = @elems.substitute(subst, depth)
         Cell.new(elems, @base_type)
+      end
+
+      class Elements
+        include Utils::StructuralEquality
+
+        def initialize(elems)
+          @elems = elems
+        end
+
+        attr_reader :elems
+
+        def to_local_type(id)
+          raise
+          base_ty = Type::Instance.new(Type::Builtin[:ary])
+          Type::LocalArray.new(id, base_ty)
+        end
+
+        def globalize(env, visited, depth)
+          Elements.new(@elems.map {|ty| ty.globalize(env, visited, depth) })
+        end
+
+        def localize(env, alloc_site, depth)
+          elems = @elems.map.with_index do |ty, i|
+            alloc_site2 = alloc_site.add_id(i)
+            env, ty = ty.localize(env, alloc_site2, depth)
+            ty
+          end
+          return env, Elements.new(elems)
+        end
+
+        def limit_size(limit)
+          Elements.new(@elems.map {|ty| ty.limit_size(limit) })
+        end
+
+        def screen_name(scratch)
+          "*[#{ @elems.map {|ty| ty.screen_name(scratch) }.join(", ") }]"
+        end
+
+        def pretty_print(q)
+          q.group(9, "Elements[", "]") do
+            q.seplist(@elems) do |elem|
+              q.pp elem
+            end
+          end
+        end
+
+        def consistent?(other, subst)
+          false if @elems.size != other.elems.size
+          @elems.zip(other.elems) do |ty0, ty1|
+            return false unless ty0.consistent?(ty1, subst)
+          end
+          return true
+        end
+
+        def substitute(subst, depth)
+          Elements.new(@elems.map {|ty| ty.substitute(subst, depth) })
+        end
+
+        def [](idx)
+          @elems[idx]
+        end
+
+        def update(idx, ty)
+          Elements.new(Utils.array_update(@elems, idx, @elems[idx].union(ty)))
+        end
+
+        def union(other)
+          return self if self == other
+          elems = []
+          @elems.zip(other.elems) do |ty0, ty1|
+            elems << ty0.union(ty1)
+          end
+          Elements.new(elems)
+        end
       end
     end
 
@@ -106,9 +182,9 @@ module TypeProf
           visited[self] = true
           elems = env.get_container_elem_types(@id)
           if elems
-            elems = elems.map {|elem| elem.globalize(env, visited, depth - 1) }
+            elems = elems.globalize(env, visited, depth - 1)
           else
-            elems = [] # XXX
+            elems = Cell::Elements.new([]) # XXX
           end
           Cell.new(elems, @base_type)
         end
