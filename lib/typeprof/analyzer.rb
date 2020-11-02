@@ -1475,6 +1475,10 @@ module TypeProf
 
         ret_ty.each_child do |ret_ty|
           flow_env = env.local_update(-var_idx+2, ret_ty)
+          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::Symbol)
+          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::LocalCell)
+          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::LocalArray)
+          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::LocalHash)
           if ret_ty.is_a?(Type::Instance)
             if ret_ty.klass == pattern_ty # XXX: inheritance
               merge_env(branchtype == :if ? ep_else : ep_then, flow_env)

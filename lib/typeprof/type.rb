@@ -554,15 +554,15 @@ module TypeProf
     end
 
     class Symbol < Type
-      def initialize(sym, type)
+      def initialize(sym, base_type)
         @sym = sym
-        @type = type
+        @base_type = base_type
       end
 
-      attr_reader :sym, :type
+      attr_reader :sym, :base_type
 
       def inspect
-        "Type::Symbol[#{ @sym ? @sym.inspect : "(dynamic symbol)" }, #{ @type.inspect }]"
+        "Type::Symbol[#{ @sym ? @sym.inspect : "(dynamic symbol)" }, #{ @base_type.inspect }]"
       end
 
       def consistent?(other, subst)
@@ -572,7 +572,7 @@ module TypeProf
         when Symbol
           @sym == other.sym
         else
-          @type.consistent?(other, subst)
+          @base_type.consistent?(other, subst)
         end
       end
 
@@ -580,12 +580,12 @@ module TypeProf
         if @sym
           @sym.inspect
         else
-          @type.screen_name(scratch)
+          @base_type.screen_name(scratch)
         end
       end
 
       def get_method(mid, scratch)
-        @type.get_method(mid, scratch)
+        @base_type.get_method(mid, scratch)
       end
 
       def substitute(_subst, _depth)

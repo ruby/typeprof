@@ -57,10 +57,10 @@ module TypeProf
     @skips_fail_examples : bool
     attr_reader patterns : Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?]
     attr_reader globs : Array[Glob?]
-    attr_reader passes : Array[[]]
-    attr_reader fails : Array[[]]
+    attr_reader passes : Array[untyped]
+    attr_reader fails : Array[untyped]
     attr_reader negated : bool
-    def initialize : (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[[]], fails: Array[[]], negated: bool) -> false
+    def initialize : (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[untyped], fails: Array[untyped], negated: bool) -> false
     def by_pattern! : -> Trigger
     def by_pattern? : -> bool
     def skips_fail_examples! : (?bool) -> Trigger
