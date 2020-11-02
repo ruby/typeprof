@@ -217,7 +217,7 @@ module TypeProf
         ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
         found = true
         if aargs.blk_ty.is_a?(Type::Proc)
-          raise NotImplementedError unless aargs.blk_ty.block_body.is_a?(ISeqBlock) # XXX
+          #raise NotImplementedError unless aargs.blk_ty.block_body.is_a?(ISeqBlock) # XXX
           dummy_ctx = TypedContext.new(caller_ep, mid)
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
           dummy_env = Env.new(StaticEnv.new(recv, msig.blk_ty, false), [], [], Utils::HashWrapper.new({}))

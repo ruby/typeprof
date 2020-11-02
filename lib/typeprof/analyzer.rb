@@ -1810,16 +1810,22 @@ module TypeProf
         blk_ty = Type.nil
       end
 
+      new_blk_ty = Type.bot
       blk_ty.each_child do |blk_ty|
         case blk_ty
         when Type.nil
         when Type.any
         when Type::Proc
+        when Type::Symbol
+          blk_ty = Type::Proc.new(SymbolBlock.new(blk_ty.sym), Type::Instance.new(Type::Builtin[:proc]))
         else
+          # XXX: attempt to call to_proc
           error(ep, "wrong argument type #{ blk_ty.screen_name(self) } (expected Proc)")
           blk_ty = Type.any
         end
+        new_blk_ty = new_blk_ty.union(blk_ty)
       end
+      blk_ty = new_blk_ty
 
       if flag_args_splat
         # assert !flag_args_kwarg

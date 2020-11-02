@@ -93,4 +93,41 @@ module TypeProf
       ctn[@ret_ty, caller_ep, caller_env]
     end
   end
+
+  class SymbolBlock < Block
+    def initialize(sym)
+      @sym = sym
+    end
+
+    attr_reader :iseq, :outer_ep
+
+    def inspect
+      "#<SymbolBlock: #{ @sym }>"
+    end
+
+    def consistent?(other)
+      true # XXX
+    end
+
+    def substitute(_subst, _depth)
+      self
+    end
+
+    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
+      if aargs.lead_tys.size >= 1
+        recv = aargs.lead_tys[0]
+        aargs = ActualArguments.new(aargs.lead_tys[1..], aargs.rest_ty, aargs.kw_tys, aargs.blk_ty)
+      elsif aargs.rest_ty
+        recv = aargs.rest_ty.elems.squash # XXX: need to shift
+      else
+        raise
+      end
+
+      scratch.add_block_signature!(self, aargs.to_block_signature)
+
+      recv.each_child do |recv|
+        scratch.do_send(recv, @sym, aargs, caller_ep, caller_env, &ctn)
+      end
+    end
+  end
 end
