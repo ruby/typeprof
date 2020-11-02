@@ -217,6 +217,17 @@ module TypeProf
         @insns[j + 1] = [:send_branch, [getlocal_operands, send_operands, branch_operands]]
       end
 
+      # find a pattern: dup, branch
+      (@insns.size - 1).times do |i|
+        next if branch_targets[i + 1]
+        insn0, dup_operands = @insns[i]
+        insn1, branch_operands = @insns[i + 1]
+        if insn0 == :dup && insn1 == :branch
+          @insns[i    ] = [:nop]
+          @insns[i + 1] = [:dup_branch, [dup_operands, branch_operands]]
+        end
+      end
+
       # find a pattern: getlocal, branch
       (@insns.size - 1).times do |i|
         next if branch_targets[i + 1]

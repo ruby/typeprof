@@ -1486,8 +1486,8 @@ module TypeProf
               merge_env(branchtype == :if ? ep_then : ep_else, flow_env)
             end
           else
-            merge_env(ep_then, env)
-            merge_env(ep_else, env)
+            merge_env(ep_then, flow_env)
+            merge_env(ep_else, flow_env)
           end
         end
         return
@@ -1560,6 +1560,28 @@ module TypeProf
       when :dup
         env, (ty,) = env.pop(1)
         env = env.push(ty).push(ty)
+      when :dup_branch
+        _dup_operands, branch_operands = operands
+        env, (ty,) = env.pop(1)
+
+        branchtype, target, = branch_operands
+        # branchtype: :if or :unless or :nil
+        ep_then = ep.next
+        ep_else = ep.jump(target)
+
+        ty.each_child do |ty|
+          flow_env = env.push(ty)
+          case ty
+          when Type.any
+            merge_env(ep_then, flow_env)
+            merge_env(ep_else, flow_env)
+          when Type::Instance.new(Type::Builtin[:false]), Type.nil
+            merge_env(branchtype == :if ? ep_then : ep_else, flow_env)
+          else
+            merge_env(branchtype == :if ? ep_else : ep_then, flow_env)
+          end
+        end
+        return
       when :duphash
         raw_hash, = operands
         ty = Type.guess_literal_type(raw_hash)
