@@ -182,23 +182,8 @@ module TypeProf
       Env.new(@static_env, Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
-    def deploy_cell_type(alloc_site, elems, base_ty)
-      raise if elems.is_a?(::Array)
-      local_ty = Type::LocalCell.new(alloc_site, base_ty)
-      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
-      nenv = Env.new(@static_env, @locals, @stack, type_params)
-      return nenv, local_ty
-    end
-
-    def deploy_array_type(alloc_site, elems, base_ty)
-      local_ty = Type::LocalArray.new(alloc_site, base_ty)
-      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
-      nenv = Env.new(@static_env, @locals, @stack, type_params)
-      return nenv, local_ty
-    end
-
-    def deploy_hash_type(alloc_site, elems, base_ty)
-      local_ty = Type::LocalHash.new(alloc_site, base_ty)
+    def deploy_type(klass, alloc_site, elems, base_ty)
+      local_ty = klass.new(alloc_site, base_ty)
       type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
       nenv = Env.new(@static_env, @locals, @stack, type_params)
       return nenv, local_ty
@@ -748,7 +733,7 @@ module TypeProf
       env.get_container_elem_types(id)
     end
 
-    def update_container_elem_types(env, ep, id)
+    def update_container_elem_types(env, ep, id, base_type)
       if ep.outer
         tmp_ep = ep
         tmp_ep = tmp_ep.outer while tmp_ep.outer
@@ -757,8 +742,8 @@ module TypeProf
           elems = yield elems
           menv = menv.update_container_elem_types(id, elems)
           gid = @alloc_site_to_global_id[id]
-          if !elems.is_a?(Type::Cell::Elements) && gid
-            ty = globalize_type(elems.to_local_type(id), env, ep)
+          if gid
+            ty = globalize_type(elems.to_local_type(id, base_type), env, ep)
             add_ivar_write!(*gid, ty, ep)
           end
           menv
@@ -769,8 +754,8 @@ module TypeProf
         elems = yield elems
         env = env.update_container_elem_types(id, elems)
         gid = @alloc_site_to_global_id[id]
-        if !elems.is_a?(Type::Cell::Elements) && gid
-          ty = globalize_type(elems.to_local_type(id), env, ep)
+        if gid
+          ty = globalize_type(elems.to_local_type(id, base_type), env, ep)
           add_ivar_write!(*gid, ty, ep)
         end
         env
@@ -937,7 +922,7 @@ module TypeProf
         alloc_site = AllocationSite.new(ep)
         nenv, ty = localize_type(ty, env, ep, alloc_site)
         case ty
-        when Type::LocalArray, Type::LocalHash
+        when Type::LocalCell, Type::LocalArray, Type::LocalHash
           @alloc_site_to_global_id[ty.id] = [recv, var] # need overwrite check??
         end
         yield ty, nenv
@@ -1701,11 +1686,11 @@ module TypeProf
           if ary2.is_a?(Type::LocalArray)
             elems2 = get_container_elem_types(env, ep, ary2.id)
             elems = Type::Array::Elements.new([], elems1.squash.union(elems2.squash))
-            env = update_container_elem_types(env, ep, ary1.id) { elems }
+            env = update_container_elem_types(env, ep, ary1.id, ary1.base_type) { elems }
             env = env.push(ary1)
           else
             elems = Type::Array::Elements.new([], Type.any)
-            env = update_container_elem_types(env, ep, ary1.id) { elems }
+            env = update_container_elem_types(env, ep, ary1.id, ary1.base_type) { elems }
             env = env.push(ary1)
           end
         else

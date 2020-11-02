@@ -261,7 +261,7 @@ module TypeProf
 
       ty = aargs.lead_tys.last
 
-      env = scratch.update_container_elem_types(env, ep, recv.id) do |elems|
+      env = scratch.update_container_elem_types(env, ep, recv.id, recv.base_type) do |elems|
         elems.update(idx, ty)
       end
 
@@ -312,7 +312,7 @@ module TypeProf
         return ctn[ty, ep, env]
       end
 
-      env = scratch.update_container_elem_types(env, ep, recv.id) do |elems|
+      env = scratch.update_container_elem_types(env, ep, recv.id, recv.base_type) do |elems|
         elems.update(idx, ty)
       end
 

@@ -46,7 +46,7 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:cell)
         env, elems = @elems.localize(env, alloc_site, depth)
-        env.deploy_cell_type(alloc_site, elems, @base_type)
+        env.deploy_type(LocalCell, alloc_site, elems, @base_type)
       end
 
       def limit_size(limit)
@@ -91,10 +91,8 @@ module TypeProf
 
         attr_reader :elems
 
-        def to_local_type(id)
-          raise
-          base_ty = Type::Instance.new(Type::Builtin[:ary])
-          Type::LocalArray.new(id, base_ty)
+        def to_local_type(id, base_ty)
+          Type::LocalCell.new(id, base_ty)
         end
 
         def globalize(env, visited, depth)
@@ -227,7 +225,7 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:ary)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
-        env.deploy_array_type(alloc_site, elems, @base_type)
+        env.deploy_type(LocalArray, alloc_site, elems, @base_type)
       end
 
       def limit_size(limit)
@@ -272,8 +270,7 @@ module TypeProf
 
         attr_reader :lead_tys, :rest_ty
 
-        def to_local_type(id)
-          base_ty = Type::Instance.new(Type::Builtin[:ary])
+        def to_local_type(id, base_ty)
           Type::LocalArray.new(id, base_ty)
         end
 
@@ -539,7 +536,7 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:hash)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
-        env.deploy_hash_type(alloc_site, elems, @base_type)
+        env.deploy_type(LocalHash, alloc_site, elems, @base_type)
       end
 
       def limit_size(limit)
@@ -591,8 +588,7 @@ module TypeProf
 
         attr_reader :map_tys
 
-        def to_local_type(id)
-          base_ty = Type::Instance.new(Type::Builtin[:hash])
+        def to_local_type(id, base_ty)
           Type::LocalHash.new(id, base_ty)
         end
 

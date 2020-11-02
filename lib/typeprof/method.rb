@@ -184,7 +184,7 @@ module TypeProf
             ty = subst[tyvar]
             if ty
               ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
-              ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
+              ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
                 elems.update(idx, ty)
               end
             end
@@ -201,7 +201,7 @@ module TypeProf
           if subst[tyvar_elem]
             ty = subst[tyvar_elem]
             ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
-            ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
+            ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
               elems.update(nil, ty)
             end
           end
@@ -245,7 +245,7 @@ module TypeProf
                   if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
                     tyvar_elem = Type::Var.new(:Elem)
                     if subst2[tyvar_elem]
-                      ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id) do |elems|
+                      ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
                         elems.update(nil, subst2[tyvar_elem])
                       end
                       scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
