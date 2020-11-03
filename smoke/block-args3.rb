@@ -64,7 +64,7 @@ class Object
   def f4 : { (:a, :b, :c) -> nil } -> (^(:a, ?:b | :opt, *bot, :c) -> nil)
   def log4 : (:a, :b | :opt, [], :c) -> nil
   def f5 : { (:a, :b, :c, :d) -> nil } -> (^(:a, ?:b | :opt, *:c, :d) -> nil)
-  def log5 : (:a, :b | :opt, Array[:c], :d) -> nil
+  def log5 : (:a, :b | :opt, [:c], :d) -> nil
   def f6 : { (:a, :b, :c, :d, :e) -> nil } -> (^(:a, ?:b | :opt, *:c | :d, :e) -> nil)
-  def log6 : (:a, :b | :opt, Array[:c | :d], :e) -> nil
+  def log6 : (:a, :b | :opt, [:c, :d], :e) -> nil
 end

@@ -53,7 +53,7 @@ class Object
   def f3 : { (:a, :b) -> nil } -> ^(:a, *bot, :b) -> nil
   def log3 : (:a, [], :b) -> nil
   def f4 : { (:a, :b, :c) -> nil } -> ^(:a, *:b, :c) -> nil
-  def log4 : (:a, Array[:b], :c) -> nil
+  def log4 : (:a, [:b], :c) -> nil
   def f5 : { (:a, :b, :c, :d) -> nil } -> (^(:a, *:b | :c, :d) -> nil)
-  def log5 : (:a, Array[:b | :c], :d) -> nil
+  def log5 : (:a, [:b, :c], :d) -> nil
 end

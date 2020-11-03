@@ -157,14 +157,28 @@ module TypeProf
       # Normal case: copy actual args to formal args
       if rest_ty
         ty = Type.bot
+        additional_lead_size = nil
         rest_ty.each_child_global do |ty0|
           if ty0.is_a?(Type::Array)
-            ty = ty.union(ty0.elems.squash)
+            additional_lead_size = [additional_lead_size, ty0.elems.lead_tys.size].compact.min
+          else
+            additional_lead_size = 0
+          end
+        end
+        additional_lead_tys = [Type.bot] * (additional_lead_size || 0)
+        rest_ty.each_child_global do |ty0|
+          if ty0.is_a?(Type::Array)
+            tys, new_rest_ty = ty0.elems.take_first(additional_lead_size)
+            tys.each_with_index do |ty00, i|
+              additional_lead_tys[i] = additional_lead_tys[i].union(ty00)
+            end
+            ty = ty.union(new_rest_ty.elems.squash)
           else
             # XXX: to_ary?
             ty = ty.union(ty0)
           end
         end
+        lead_tys += additional_lead_tys
         rest_ty = ty
 
         # XXX: Strictly speaking, this is needed, but it brings false positives. Which is better?
@@ -280,8 +294,7 @@ module TypeProf
           # rest
           rest_b = lead_num + opt_count
           rest_e = [0, lead_tys.size - post_num].max
-          ty = (lead_tys[rest_b...rest_e] || []).inject(Type.bot, &:union)
-          locals[rest_index] = Type::Array.new(Type::Array::Elements.new([], ty), Type::Instance.new(Type::Builtin[:ary]))
+          locals[rest_index] = Type::Array.new(Type::Array::Elements.new(lead_tys[rest_b...rest_e] || [], Type.bot), Type::Instance.new(Type::Builtin[:ary]))
 
           # p0, p1
           off = [lead_num, lead_tys.size - post_num].max
