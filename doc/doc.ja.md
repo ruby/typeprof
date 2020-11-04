@@ -1,5 +1,9 @@
 # TypeProf: 抽象解釈に基づくRubyコードの型解析ツール
 
+## とりあえずデモ
+
+[demo.md](demo.md) を参照。
+
 ## TypeProfの使い方
 
 app.rb を解析する。

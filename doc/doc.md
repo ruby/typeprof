@@ -1,5 +1,9 @@
 # TypeProf: A type analysis tool for Ruby code based on abstract interpretation
 
+## Show me demo first
+
+See [demo.md](demo.md).
+
 ## How to use TypeProf
 
 Analyze app.rb:
