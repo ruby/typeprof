@@ -553,6 +553,11 @@ module TypeProf
       scratch.set_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
       scratch.set_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
       scratch.set_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
+
+      # ENV: Hash[String, String]
+      str_ty = Type::Instance.new(Type::Builtin[:str])
+      env_ty = Type.gen_hash {|h| h[str_ty] = Type.optional(str_ty) }
+      scratch.add_constant(klass_obj, :ENV, env_ty, false)
     end
   end
 end
