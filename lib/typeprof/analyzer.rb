@@ -767,7 +767,7 @@ module TypeProf
 
       if elems
         return elems[idx] || Type.nil if idx
-        return elems.squash
+        return elems.squash_or_any
       else
         Type.any
       end

@@ -118,7 +118,7 @@ module TypeProf
         recv = aargs.lead_tys[0]
         aargs = ActualArguments.new(aargs.lead_tys[1..], aargs.rest_ty, aargs.kw_tys, aargs.blk_ty)
       elsif aargs.rest_ty
-        recv = aargs.rest_ty.elems.squash # XXX: need to shift
+        recv = aargs.rest_ty.elems.squash_or_any # XXX: need to shift
       else
         raise
       end

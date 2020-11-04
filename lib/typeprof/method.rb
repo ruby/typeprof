@@ -205,7 +205,7 @@ module TypeProf
               elems.update(nil, ty)
             end
           end
-          subst.merge!({ tyvar_elem => recv.elems.squash })
+          subst.merge!({ tyvar_elem => recv.elems.squash_or_any })
         when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
@@ -228,7 +228,7 @@ module TypeProf
             nlead_tys = (nfargs.lead_tys + nfargs.opt_tys).map.with_index do |ty, i|
               if recv.is_a?(Type::Array)
                 tyvar_elem = Type::Var.new(:Elem)
-                ty = ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash }), Config.options[:type_depth_limit])
+                ty = ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash_or_any }), Config.options[:type_depth_limit])
               else
                 ty = ty.substitute(subst, Config.options[:type_depth_limit])
               end

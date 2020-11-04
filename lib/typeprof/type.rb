@@ -232,8 +232,9 @@ module TypeProf
           types << "bool" if bool
           types = types.sort
           if optional
-            if types.size == 1
-              types.first + "?"
+            case types.size
+            when 0 then "nil"
+            when 1 then types.first + "?"
             else
               "(#{ types.join (" | ") })?"
             end

@@ -338,6 +338,11 @@ module TypeProf
           @lead_tys.inject(@rest_ty) {|ty1, ty2| ty1.union(ty2) } #.union(Type.nil) # is this needed?
         end
 
+        def squash_or_any
+          ty = squash
+          ty == Type.bot ? Type.any : ty
+        end
+
         def [](idx)
           if idx >= 0
             if idx < @lead_tys.size
