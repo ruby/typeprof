@@ -1,7 +1,7 @@
 def foo(n)
   z = "str"
   n.times {|i| z = i }
-  # TODO: n.times { z = 42 }
+  n.times { z = 42 }
   z
 end
 

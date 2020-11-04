@@ -8,9 +8,6 @@ foo do |dummy, &blk|
   blk.call(42)
 end
 
-# truly expected:
-# Object#foo :: (&Proc[(Symbol, &Proc[(Integer) -> String]) -> String]) -> String
-
 __END__
 # Classes
 class Object
