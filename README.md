@@ -33,3 +33,9 @@ end
 ## Documentation
 
 [English](doc/doc.md) / [日本語](doc/doc.ja.md)
+
+## Playground
+
+Accessing below URL, you can try to use typeprof gem on Web.
+
+https://mame.github.io/typeprof-playground/
