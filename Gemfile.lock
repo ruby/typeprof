@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     typeprof (0.4.0)
-      rbs (>= 0.13.1)
+      rbs (>= 0.16.0)
 
 GEM
   remote: https://rubygems.org/
@@ -11,7 +11,7 @@ GEM
     docile (1.3.2)
     power_assert (1.2.0)
     rake (13.0.1)
-    rbs (0.14.0)
+    rbs (0.16.0)
     simplecov (0.19.1)
       docile (~> 1.1)
       simplecov-html (~> 0.11)

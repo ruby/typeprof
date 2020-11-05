@@ -29,9 +29,10 @@ module TypeProf
     end
 
     def self.load_rbs(env, builtin: false, **opt)
-      loader = RBS::EnvironmentLoader.new
-      unless builtin
-        loader.no_builtin!
+      if builtin
+        loader = RBS::EnvironmentLoader.new
+      else
+        loader = RBS::EnvironmentLoader.new(core_root: nil)
         loader.add(**opt)
       end
       new_decls = loader.load(env: env)
@@ -427,7 +428,7 @@ module TypeProf
     def self.import_library(scratch, feature)
       begin
         json = scratch.rbs_reader.load_library(feature)
-      rescue RBS::EnvironmentLoader::UnknownLibraryNameError
+      rescue RBS::EnvironmentLoader::UnknownLibraryError
         return nil
       end
       # need cache?
