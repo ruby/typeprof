@@ -369,6 +369,7 @@ module TypeProf
         end
       when RBS::Types::Bases::Bool   then [:bool]
       when RBS::Types::Bases::Any    then [:any]
+      when RBS::Types::Bases::Top    then [:any]
       when RBS::Types::Bases::Void   then [:void]
       when RBS::Types::Bases::Self   then [:self]
       when RBS::Types::Bases::Nil    then [:nil]
