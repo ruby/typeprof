@@ -19,8 +19,24 @@ module TypeProf
     # Cell, Array, and Hash are types for global interface, e.g., TypedISeq.
     # Do not push such types to local environment, stack, etc.
 
+    class ContainerType < Type
+      def match?(other)
+        return nil if self.class != other.class
+        return nil unless @base_type.consistent?(other.base_type)
+        @elems.match?(other.elems)
+      end
+
+      def each_free_type_variable(&blk)
+        @elems.each_free_type_variable(&blk)
+      end
+
+      def consistent?(other)
+        raise "must not be used"
+      end
+    end
+
     # The most basic container type for default type parameter class
-    class Cell < Type
+    class Cell < ContainerType
       def initialize(elems, base_type)
         raise if !elems.is_a?(Cell::Elements)
         @elems = elems # Cell::Elements
@@ -56,24 +72,6 @@ module TypeProf
 
       def get_method(mid, scratch)
         raise
-      end
-
-      def consistent?(other, subst)
-        case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          other.types.each do |ty2|
-            return true if consistent?(ty2, subst)
-          end
-          return false
-        when Type::Cell
-          @elems.size == other.elems.size &&
-            @base_type.consistent?(other.base_type, subst) &&
-            @elems.zip(other.elems).all? {|elem1, elem2| elem1..consistent?(elem2, subst) }
-        else
-          self == other
-        end
       end
 
       def substitute(subst, depth)
@@ -124,12 +122,21 @@ module TypeProf
           end
         end
 
-        def consistent?(other, subst)
-          false if @elems.size != other.elems.size
+        def match?(other)
+          return nil if @elems.size != other.elems.size
+          subst = nil
           @elems.zip(other.elems) do |ty0, ty1|
-            return false unless ty0.consistent?(ty1, subst)
+            subst2 = Type.match?(ty0, ty1)
+            return nil unless subst2
+            subst = Type.merge_substitution(subst, subst2)
           end
-          return true
+          subst
+        end
+
+        def each_free_type_variable
+          @elems.each do |ty|
+            ty.each_free_type_variable(&blk)
+          end
         end
 
         def substitute(subst, depth)
@@ -155,7 +162,7 @@ module TypeProf
       end
     end
 
-    class LocalCell < Type
+    class LocalCell < ContainerType
       def initialize(id, base_type)
         @id = id
         raise unless base_type
@@ -191,14 +198,10 @@ module TypeProf
       def get_method(mid, scratch)
         @base_type.get_method(mid, scratch)
       end
-
-      def consistent?(other, subst)
-        raise "must not be used"
-      end
     end
 
     # Do not insert Array type to local environment, stack, etc.
-    class Array < Type
+    class Array < ContainerType
       def initialize(elems, base_type)
         raise unless elems.is_a?(Array::Elements)
         @elems = elems # Array::Elements
@@ -235,22 +238,6 @@ module TypeProf
 
       def get_method(mid, scratch)
         raise
-      end
-
-      def consistent?(other, subst)
-        case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          other.types.each do |ty2|
-            return true if consistent?(ty2, subst)
-          end
-          return false
-        when Type::Array
-          @base_type.consistent?(other.base_type, subst) && @elems.consistent?(other.elems, subst)
-        else
-          self == other
-        end
       end
 
       def substitute(subst, depth)
@@ -318,14 +305,24 @@ module TypeProf
           end
         end
 
-        def consistent?(other, subst)
+        def match?(other)
           n = [@lead_tys.size, other.lead_tys.size].min
-          n.times do |i|
-            return false unless @lead_tys[i].consistent?(other.lead_tys[i], subst)
-          end
           rest_ty1 = @lead_tys[n..].inject(@rest_ty) {|ty1, ty2| ty1.union(ty2) }
           rest_ty2 = other.lead_tys[n..].inject(other.rest_ty) {|ty1, ty2| ty1.union(ty2) }
-          rest_ty1.consistent?(rest_ty2, subst)
+          subst = nil
+          (@lead_tys[0, n] + [rest_ty1]).zip(other.lead_tys[0, n] + [rest_ty2]) do |ty0, ty1|
+            subst2 = Type.match?(ty0, ty1)
+            return nil unless subst2
+            subst = Type.merge_substitution(subst, subst2)
+          end
+          subst
+        end
+
+        def each_free_type_variable(&blk)
+          @lead_tys.each do |ty|
+            ty.each_free_type_variable(&blk)
+          end
+          @rest_ty&.each_free_type_variable(&blk)
         end
 
         def substitute(subst, depth)
@@ -476,7 +473,7 @@ module TypeProf
     end
 
     # Do not insert Array type to local environment, stack, etc.
-    class LocalArray < Type
+    class LocalArray < ContainerType
       def initialize(id, base_type)
         @id = id
         raise unless base_type
@@ -513,14 +510,10 @@ module TypeProf
       def get_method(mid, scratch)
         @base_type.get_method(mid, scratch)
       end
-
-      def consistent?(other, subst)
-        raise "must not be used"
-      end
     end
 
 
-    class Hash < Type
+    class Hash < ContainerType
       def initialize(elems, base_type)
         @elems = elems
         raise unless elems
@@ -551,22 +544,6 @@ module TypeProf
 
       def get_method(mid, scratch)
         raise
-      end
-
-      def consistent?(other, subst)
-        case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          other.types.each do |ty2|
-            return true if consistent?(ty2, subst)
-          end
-          return false
-        when Type::Hash
-          @base_type.consistent?(other.base_type, subst) && @elems.consistent?(other.elems, subst)
-        else
-          self == other
-        end
       end
 
       def substitute(subst, depth)
@@ -657,22 +634,31 @@ module TypeProf
           end
         end
 
-        def consistent?(other, subst)
-          subst2 = subst.dup
+        def match?(other)
+          subst = nil
           other.map_tys.each do |k1, v1|
-            found = false
+            subst2 = nil
             @map_tys.each do |k0, v0|
-              subst3 = subst2.dup
-              if k0.consistent?(k1, subst3) && v0.consistent?(v1, subst3)
-                subst2.replace(subst3)
-                found = true
-                break
+              subst3 = Type.match?(k0, k1)
+              if subst3
+                subst4 = Type.match?(k0, k1)
+                if subst4
+                  subst2 = Type.merge_substitution(subst2, subst3)
+                  subst2 = Type.merge_substitution(subst2, subst4)
+                end
               end
             end
-            return false unless found
+            return nil unless subst2
+            subst = Type.merge_substitution(subst, subst2)
           end
-          subst.replace(subst2)
-          true
+          subst
+        end
+
+        def each_free_type_variable(&blk)
+          @map_tys.each do |k, v|
+            k.each_free_type_variable(&blk)
+            v.each_free_type_variable(&blk)
+          end
         end
 
         def substitute(subst, depth)
@@ -706,7 +692,7 @@ module TypeProf
         def [](key_ty)
           val_ty = Type.bot
           @map_tys.each do |k_ty, v_ty|
-            if k_ty.consistent?(key_ty, {})
+            if Type.match?(k_ty, key_ty)
               val_ty = val_ty.union(v_ty)
             end
           end
@@ -763,7 +749,7 @@ module TypeProf
       end
     end
 
-    class LocalHash < Type
+    class LocalHash < ContainerType
       def initialize(id, base_type)
         @id = id
         @base_type = base_type
@@ -797,10 +783,6 @@ module TypeProf
 
       def get_method(mid, scratch)
         @base_type.get_method(mid, scratch)
-      end
-
-      def consistent?(other, subst)
-        raise "must not be used"
       end
     end
   end

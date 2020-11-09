@@ -20,16 +20,69 @@ module TypeProf
       self
     end
 
-    def consistent?(other, subst)
-      case other
-      when Type::Any then true
-      when Type::Var then other.add_subst!(self, subst)
+    def self.match?(ty1, ty2)
+      # both ty1 and ty2 should be global
+      # ty1 is always concrete; it should not have type variables
+      # ty2 might be abstract; it may have type variables
+      case ty2
+      when Type::Var
+        { ty2 => ty1 }
+      when Type::Any
+        {}
       when Type::Union
-        other.types.each do |ty2|
-          return true if consistent?(ty2, subst)
+        subst = nil
+        ty2.each_child_global do |ty2|
+          # this is very conservative to create subst:
+          # Type.match?( int | str, int | X) creates { X => int | str } but should be { X => str }???
+          subst2 = Type.match?(ty1, ty2)
+          next unless subst2
+          subst = Type.merge_substitution(subst, subst2)
         end
+        subst
       else
-        self == other
+        case ty1
+        when Type::Var then raise "should not occur"
+        when Type::Any
+          subst = {}
+          ty2.each_free_type_variable do |tyvar|
+            subst[tyvar] = Type.any
+          end
+          subst
+        when Type::Union
+          subst = nil
+          ty1.each_child_global do |ty1|
+            subst2 = Type.match?(ty1, ty2)
+            next unless subst2
+            subst = Type.merge_substitution(subst, subst2)
+          end
+          subst
+        else
+          if ty2.is_a?(Type::ContainerType)
+            # ty2 may have type variables
+            return nil if ty1.class != ty2.class
+            ty1.match?(ty2)
+          elsif ty1.is_a?(Type::ContainerType)
+            nil
+          else
+            ty1.consistent?(ty2) ? {} : nil
+          end
+        end
+      end
+    end
+
+    def self.merge_substitution(subst1, subst2)
+      if subst1
+        subst1 = subst1.dup
+        subst2.each do |tyvar, ty|
+          if subst1[tyvar]
+            subst1[tyvar] = subst1[tyvar].union(ty)
+          else
+            subst1[tyvar] = ty
+          end
+        end
+        subst1
+      else
+        subst2
       end
     end
 
@@ -39,6 +92,9 @@ module TypeProf
 
     def each_child_global
       yield self
+    end
+
+    def each_free_type_variable
     end
 
     def union(other)
@@ -118,10 +174,8 @@ module TypeProf
         nil
       end
 
-      def consistent?(other, subst)
-        # need to create a type assignment if other is Var
-        other.add_subst!(self, subst) if other.is_a?(Type::Var)
-        true
+      def consistent?(_other)
+        raise "should not be called"
       end
 
       def substitute(_subst, _depth)
@@ -154,6 +208,12 @@ module TypeProf
         raise if local && elems
 
         @elems = elems
+      end
+
+      def each_free_type_variable(&blk)
+        each_child_global do |ty|
+          ty.each_free_type_variable(&blk)
+        end
       end
 
       def limit_size(limit)
@@ -285,34 +345,8 @@ module TypeProf
         return env, ty
       end
 
-      def consistent?(other, subst)
-        case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          # this is very conservative to create subst:
-          # consistent?( int | str, int | X) creates { X => int | str } but should be { X => str }???
-          @types.each do |ty1|
-            other.types.each do |ty2|
-              subst2 = subst.dup
-              if ty1.consistent?(ty2, subst2)
-                subst.replace(subst2)
-                # XXX: need to check other pairs to create conservative substitution??
-                # consistent?( X | :foo, str | int ) may return { X => str } or { X => int } but should be { X => str | int }?
-                return true
-              end
-            end
-          end
-          return true if @types.size == 0 && other.types.size == 0 # XXX: is this okay?
-          # TODO: array argument?
-          return false
-        else
-          @types.each do |ty1|
-            return true if ty1.consistent?(other, subst)
-          end
-          # TODO: array argument?
-          return false
-        end
+      def consistent?(_other)
+        raise "should not be called"
       end
 
       def substitute(subst, depth)
@@ -371,6 +405,10 @@ module TypeProf
         "Var[#{ @name }]"
       end
 
+      def each_free_type_variable
+        yield self
+      end
+
       def substitute(subst, depth)
         if subst[self]
           subst[self].limit_size(depth)
@@ -379,7 +417,7 @@ module TypeProf
         end
       end
 
-      def consistent?(other, subst)
+      def consistent?(_other)
         raise "should not be called: #{ self }"
       end
 
@@ -420,15 +458,8 @@ module TypeProf
         scratch.get_method(self, true, mid)
       end
 
-      def consistent?(other, subst)
+      def consistent?(other)
         case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          other.types.each do |ty|
-            return true if consistent?(ty, subst)
-          end
-          return false
         when Type::Class
           ty = self
           loop do
@@ -479,17 +510,10 @@ module TypeProf
         scratch.get_method(@klass, false, mid)
       end
 
-      def consistent?(other, subst)
+      def consistent?(other)
         case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          other.types.each do |ty|
-            return true if consistent?(ty, subst)
-          end
-          return false
         when Type::Instance
-          @klass.consistent?(other.klass, subst)
+          @klass.consistent?(other.klass)
         when Type::Class
           return true if @klass == Type::Builtin[:obj] || @klass == Type::Builtin[:class] || @klass == Type::Builtin[:module]
           return false
@@ -503,6 +527,7 @@ module TypeProf
       end
     end
 
+    # This is an internal object in MRI, so a user program cannot create this object explicitly
     class ISeq < Type
       def initialize(iseq)
         @iseq = iseq
@@ -520,20 +545,14 @@ module TypeProf
     end
 
     class Proc < Type
-      def initialize(block_body, type)
-        @block_body, @type = block_body, type
+      def initialize(block_body, base_type)
+        @block_body, @base_type = block_body, base_type
       end
 
-      attr_reader :block_body, :type
+      attr_reader :block_body, :base_type
 
-      def consistent?(other, subst)
+      def consistent?(other)
         case other
-        when Type::Any then true
-        when Type::Var then other.add_subst!(self, subst)
-        when Type::Union
-          other.types.each do |ty2|
-            return true if consistent?(ty2, subst)
-          end
         when Type::Proc
           @block_body.consistent?(other.block_body)
         else
@@ -542,11 +561,11 @@ module TypeProf
       end
 
       def get_method(mid, scratch)
-        @type.get_method(mid, scratch)
+        @base_type.get_method(mid, scratch)
       end
 
       def substitute(subst, depth)
-        Proc.new(@block_body.substitute(subst, depth), @type)
+        Proc.new(@block_body.substitute(subst, depth), @base_type)
       end
 
       def screen_name(scratch)
@@ -566,14 +585,12 @@ module TypeProf
         "Type::Symbol[#{ @sym ? @sym.inspect : "(dynamic symbol)" }, #{ @base_type.inspect }]"
       end
 
-      def consistent?(other, subst)
+      def consistent?(other)
         case other
-        when Var
-          other.add_subst!(self, subst)
         when Symbol
           @sym == other.sym
         else
-          @base_type.consistent?(other, subst)
+          @base_type.consistent?(other)
         end
       end
 
@@ -594,33 +611,33 @@ module TypeProf
       end
     end
 
-    # local info
+    # A local type
     class Literal < Type
-      def initialize(lit, type)
+      def initialize(lit, base_type)
         @lit = lit
-        @type = type
+        @base_type = base_type
       end
 
-      attr_reader :lit, :type
+      attr_reader :lit, :base_type
 
       def inspect
-        "Type::Literal[#{ @lit.inspect }, #{ @type.inspect }]"
+        "Type::Literal[#{ @lit.inspect }, #{ @base_type.inspect }]"
       end
 
       def screen_name(scratch)
-        @type.screen_name(scratch) + "<#{ @lit.inspect }>"
+        @base_type.screen_name(scratch) + "<#{ @lit.inspect }>"
       end
 
       def globalize(_env, _visited, _depth)
-        @type
+        @base_type
       end
 
       def get_method(mid, scratch)
-        @type.get_method(mid, scratch)
+        @base_type.get_method(mid, scratch)
       end
 
-      def consistent?(other, subst)
-        @type.consistent?(other, subst)
+      def consistent?(_other)
+        raise "should not called"
       end
     end
 

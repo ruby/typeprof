@@ -175,8 +175,10 @@ module TypeProf
         ncaller_env = caller_env
         #pp [mid, aargs, msig]
         # XXX: support self type in msig
-        subst = { Type::Var.new(:self) => recv }
-        next unless aargs.consistent_with_method_signature?(msig, subst)
+        subst = aargs.consistent_with_method_signature?(msig)
+        next unless subst
+        # need to check self tyvar?
+        subst[Type::Var.new(:self)] = recv
         case
         when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
           tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
@@ -240,8 +242,8 @@ module TypeProf
             0.upto(nfargs.opt_tys.size) do |n|
               naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, {}, Type.nil) # XXX: support block to block?
               scratch.do_invoke_block(aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
-                subst2 = {}
-                if blk_ret_ty.consistent?(msig.blk_ty.block_body.ret_ty, subst2)
+                subst2 = Type.match?(blk_ret_ty, msig.blk_ty.block_body.ret_ty)
+                if subst2
                   if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
                     tyvar_elem = Type::Var.new(:Elem)
                     if subst2[tyvar_elem]

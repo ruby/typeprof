@@ -25,7 +25,7 @@ module TypeProf
       self
     end
 
-    def consistent_with_method_signature?(msig, subst)
+    def consistent_with_method_signature?(msig)
       aargs = @lead_tys.dup
 
       # aargs: lead_tys, rest_ty
@@ -36,53 +36,61 @@ module TypeProf
         (lower_bound..upper_bound).each do |n|
           # BUG: @rest_ty is an Array, so need to squash
           tmp_aargs = ActualArguments.new(@lead_tys + [@rest_ty] * n, nil, @kw_tys, @blk_ty)
-          if tmp_aargs.consistent_with_method_signature?(msig, subst) # XXX: wrong subst handling in the loop!
-            return true
-          end
+          subst = tmp_aargs.consistent_with_method_signature?(msig) # XXX: wrong subst handling in the loop!
+          return subst if subst
         end
-        return false
+        return nil
       end
 
+      subst = {}
       if msig.rest_ty
-        return false if aargs.size < msig.lead_tys.size + msig.post_tys.size
+        return nil if aargs.size < msig.lead_tys.size + msig.post_tys.size
         aargs.shift(msig.lead_tys.size).zip(msig.lead_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg, subst)
+          return nil unless subst2 = Type.match?(aarg, farg)
+          subst = Type.merge_substitution(subst, subst2)
         end
         aargs.pop(msig.post_tys.size).zip(msig.post_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg, subst)
+          return nil unless subst2 = Type.match?(aarg, farg)
+          subst = Type.merge_substitution(subst, subst2)
         end
         msig.opt_tys.each do |farg|
           aarg = aargs.shift
-          return false unless aarg.consistent?(farg, subst)
+          return nil unless subst2 = Type.match?(aarg, farg)
+          subst = Type.merge_substitution(subst, subst2)
         end
         aargs.each do |aarg|
-          return false unless aarg.consistent?(msig.rest_ty, subst)
+          return nil unless subst2 = Type.match?(aarg, msig.rest_ty)
+          subst = Type.merge_substitution(subst, subst2)
         end
       else
-        return false if aargs.size < msig.lead_tys.size + msig.post_tys.size
-        return false if aargs.size > msig.lead_tys.size + msig.post_tys.size + msig.opt_tys.size
+        return nil if aargs.size < msig.lead_tys.size + msig.post_tys.size
+        return nil if aargs.size > msig.lead_tys.size + msig.post_tys.size + msig.opt_tys.size
         aargs.shift(msig.lead_tys.size).zip(msig.lead_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg, subst)
+          return nil unless subst2 = Type.match?(aarg, farg)
+          subst = Type.merge_substitution(subst, subst2)
         end
         aargs.pop(msig.post_tys.size).zip(msig.post_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg, subst)
+          return nil unless subst2 = Type.match?(aarg, farg)
+          subst = Type.merge_substitution(subst, subst2)
         end
         aargs.zip(msig.opt_tys) do |aarg, farg|
-          return false unless aarg.consistent?(farg, subst)
+          return nil unless subst2 = Type.match?(aarg, farg)
+          subst = Type.merge_substitution(subst, subst2)
         end
       end
       # XXX: msig.keyword_tys
 
       case msig.blk_ty
       when Type::Proc
-        return false if @blk_ty == Type.nil
+        return nil if @blk_ty == Type.nil
       when Type.nil
-        return false if @blk_ty != Type.nil
+        return nil if @blk_ty != Type.nil
       when Type::Any
       else
         raise "unknown type of formal block signature"
       end
-      true
+
+      subst
     end
 
     def argument_error(given, exp_lower, exp_upper)
@@ -345,7 +353,7 @@ module TypeProf
           when kw.size == 2 # optional keyword (default value is a literal)
             key, default_ty = *kw
             default_ty = Type.guess_literal_type(default_ty)
-            default_ty = default_ty.type if default_ty.is_a?(Type::Literal)
+            default_ty = default_ty.base_type if default_ty.is_a?(Type::Literal)
             req = false
           else # optional keyword (default value is an expression)
             key, = kw

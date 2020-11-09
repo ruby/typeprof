@@ -632,7 +632,7 @@ module TypeProf
         entry = @tbl[site] ||= Entry.new(!ep, {}, Type.bot, Utils::MutableSet.new)
         if ep
           if entry.rbs_declared
-            if !entry.type.consistent?(ty, {})
+            unless Type.match?(entry.type, ty)
               scratch.warn(ep, "inconsistent assignment to RBS-declared global variable")
               return
             end
@@ -896,7 +896,7 @@ module TypeProf
           when kw.size == 2 # optional keyword (default value is a literal)
             _key, default_ty = *kw
             default_ty = Type.guess_literal_type(default_ty)
-            default_ty = default_ty.type if default_ty.is_a?(Type::Literal)
+            default_ty = default_ty.base_type if default_ty.is_a?(Type::Literal)
             locals[kw_start + i] = default_ty.union(Type.any)
           else # optional keyword (default value is an expression)
           end
@@ -986,7 +986,7 @@ module TypeProf
             when kw.size == 2 # optional keyword (default value is a literal)
               key, default_ty = *kw
               default_ty = Type.guess_literal_type(default_ty)
-              default_ty = default_ty.type if default_ty.is_a?(Type::Literal)
+              default_ty = default_ty.base_type if default_ty.is_a?(Type::Literal)
               req = false
             else # optional keyword (default value is an expression)
               key, = kw

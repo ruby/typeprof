@@ -85,10 +85,13 @@ module TypeProf
     end
 
     def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
-      subst = { Type::Var.new(:self) => caller_env.static_env.recv_ty } # XXX: support other type variables
-      unless aargs.consistent_with_method_signature?(@msig, subst)
+      aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
+      subst = aargs.consistent_with_method_signature?(@msig)
+      unless subst
         scratch.warn(caller_ep, "The arguments is not compatibile to RBS block")
       end
+      # check?
+      #subst = { Type::Var.new(:self) => caller_env.static_env.recv_ty }
       # XXX: Update type vars
       ctn[@ret_ty, caller_ep, caller_env]
     end
