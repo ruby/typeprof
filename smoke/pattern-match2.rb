@@ -1,3 +1,5 @@
+# RUBY_VERSION >= 3.0
+
 def foo
   case { a: :A, b: :B, c: :C }
   in { a:, b: bb, c: :C }
@@ -9,5 +11,5 @@ foo
 __END__
 # Classes
 class Object
-  def foo : -> [:A?, :B?]
+  def foo : -> [:A, :B]
 end

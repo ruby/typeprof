@@ -7,6 +7,10 @@ module TypeProf
       rbs = path + "s" if File.readable?(path + "s") # check if .rbs exists
       name = "smoke/" + File.basename(path) 
       code, expected = File.read(path).split("__END__\n")
+      if code =~ /\A# RUBY_VERSION >= (\d+)\.(\d+)$/
+        major, minor = RUBY_VERSION.split(".")[0, 2].map {|s| s.to_i }
+        skip = true unless ([major, minor] <=> [$1.to_i, $2.to_i]) >= 0
+      end
       test name do
         actual = TestRun.run(name, rbs_path: rbs)
 
@@ -17,7 +21,7 @@ module TypeProf
         end
 
         assert_equal(expected, actual)
-      end
+      end unless skip
     end
   end
 end

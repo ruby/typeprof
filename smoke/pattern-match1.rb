@@ -1,3 +1,5 @@
+# RUBY_VERSION >= 3.0
+
 def foo
   case [:a, :b, :c]
   in [a, b, :c]
@@ -9,7 +11,13 @@ end
 foo
 
 __END__
+# Errors
+smoke/pattern-match1.rb:5: [error] undefined method: nil#length
+smoke/pattern-match1.rb:5: [error] undefined method: nil#[]
+smoke/pattern-match1.rb:5: [error] undefined method: nil#[]
+smoke/pattern-match1.rb:5: [error] undefined method: nil#[]
+
 # Classes
 class Object
-  def foo : -> [:a?, :b?]
+  def foo : -> ([:a | untyped, :b | untyped])
 end
