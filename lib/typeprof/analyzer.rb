@@ -884,24 +884,39 @@ module TypeProf
     def pend_method_execution(iseq, meth, recv, mid, cref)
       ctx = Context.new(iseq, cref, mid)
       ep = ExecutionPoint.new(ctx, 0, nil)
-      locals = [Type.any] * iseq.locals.size
+      locals = [Type.nil] * iseq.locals.size
 
-      keyword = iseq.fargs_format[:keyword]
+      fargs_format = iseq.fargs_format
+      lead_num = fargs_format[:lead_num] || 0
+      post_num = fargs_format[:post_num] || 0
+      post_index = fargs_format[:post_start]
+      rest_index = fargs_format[:rest_start]
+      keyword = fargs_format[:keyword]
+      kw_index = fargs_format[:kwbits] - keyword.size if keyword
+      kwrest_index = fargs_format[:kwrest]
+      block_index = fargs_format[:block_start]
+      opt = fargs_format[:opt] || [0]
+
+      (lead_num + opt.size - 1).times {|i| locals[i] = Type.any }
+      post_num.times {|i| locals[i + post_index] = Type.any } if post_index
+      locals[rest_index] = Type.any if rest_index
       if keyword
-        kw_start = iseq.fargs_format[:kwbits]
-        kw_start -= iseq.fargs_format[:keyword].size if kw_start
         keyword.each_with_index do |kw, i|
           case
           when kw.is_a?(Symbol) # required keyword
+            locals[kw_index + i] = Type.any
           when kw.size == 2 # optional keyword (default value is a literal)
             _key, default_ty = *kw
             default_ty = Type.guess_literal_type(default_ty)
             default_ty = default_ty.base_type if default_ty.is_a?(Type::Literal)
-            locals[kw_start + i] = default_ty.union(Type.any)
+            locals[kw_index + i] = default_ty.union(Type.any)
           else # optional keyword (default value is an expression)
+            locals[kw_index + i] = Type.any
           end
         end
       end
+      locals[kwrest_index] = Type.any if kwrest_index
+      locals[block_index] = Type.any if block_index
 
       env = Env.new(StaticEnv.new(recv, Type.any, false), locals, [], Utils::HashWrapper.new({}))
 
