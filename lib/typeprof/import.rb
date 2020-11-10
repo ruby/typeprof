@@ -365,7 +365,11 @@ module TypeProf
           raise if ty.args.size != 2
           [:array, [:Enumerator], [], conv_type(ty.args.first)]
         else
-          [:instance, klass]
+          if ty.args.empty?
+            [:instance, klass]
+          else
+            [:cell, [:instance, klass], ty.args.map {|ty| conv_type(ty) }]
+          end
         end
       when RBS::Types::Bases::Bool   then [:bool]
       when RBS::Types::Bases::Any    then [:any]
@@ -575,6 +579,8 @@ module TypeProf
       case ty.first
       when :class then path_to_klass(ty[1])
       when :instance then Type::Instance.new(path_to_klass(ty[1]))
+      when :cell
+        Type::Cell.new(Type::Cell::Elements.new(ty[2].map {|ty| conv_type(ty) }), conv_type(ty[1]))
       when :any then Type.any
       when :void then Type::Void.new
       when :nil then Type.nil
