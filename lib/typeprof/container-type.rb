@@ -80,7 +80,7 @@ module TypeProf
         Cell.new(elems, @base_type)
       end
 
-      class Elements
+      class Elements # Cell
         include Utils::StructuralEquality
 
         def initialize(elems)
@@ -133,7 +133,7 @@ module TypeProf
           subst
         end
 
-        def each_free_type_variable
+        def each_free_type_variable(&blk)
           @elems.each do |ty|
             ty.each_free_type_variable(&blk)
           end
@@ -246,7 +246,7 @@ module TypeProf
         Array.new(elems, @base_type)
       end
 
-      class Elements
+      class Elements # Array
         include Utils::StructuralEquality
 
         def initialize(lead_tys, rest_ty = Type.bot)
@@ -552,7 +552,7 @@ module TypeProf
         Hash.new(elems, @base_type)
       end
 
-      class Elements
+      class Elements # Hash
         include Utils::StructuralEquality
 
         def initialize(map_tys)
