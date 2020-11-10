@@ -7,5 +7,5 @@ end
 __END__
 # Classes
 class Object
-  def foo : -> [{:a=>Integer}, {:a=>Integer, :b=>String}]
+  def foo : -> ([{:b=>Integer | String, :a=>Integer | String}, {:a=>Integer}])
 end
