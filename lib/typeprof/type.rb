@@ -365,7 +365,7 @@ module TypeProf
         elems = @elems&.to_h do |(container_kind, base_type), elems|
           [[container_kind, base_type], elems.substitute(subst, depth - 1)]
         end
-        ty = Union.new(tys, elems)
+        ty = Union.new(tys, elems).normalize
         unions.each do |ty0|
           ty = ty.union(ty0)
         end
