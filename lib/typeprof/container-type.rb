@@ -641,7 +641,7 @@ module TypeProf
             @map_tys.each do |k0, v0|
               subst3 = Type.match?(k0, k1)
               if subst3
-                subst4 = Type.match?(k0, k1)
+                subst4 = Type.match?(v0, v1)
                 if subst4
                   subst2 = Type.merge_substitution(subst2, subst3)
                   subst2 = Type.merge_substitution(subst2, subst4)
