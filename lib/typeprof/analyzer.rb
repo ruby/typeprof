@@ -1700,15 +1700,27 @@ module TypeProf
         end
 
       when :checktype
-        type, = operands
-        raise NotImplementedError if type != 5 # T_STRING
-        # XXX: is_a?
-        env, (val,) = env.pop(1)
-        res = globalize_type(val, env, ep) == Type::Instance.new(Type::Builtin[:str])
-        if res
-          ty = Type::Instance.new(Type::Builtin[:true])
+        kind, = operands
+        case kind
+        when 5 then klass = :str  # T_STRING
+        when 7 then klass = :ary  # T_ARRAY
+        when 8 then klass = :hash # T_HASH
         else
-          ty = Type::Instance.new(Type::Builtin[:false])
+          raise NotImplementedError
+        end
+        env, (val,) = env.pop(1)
+        ty = Type.bot
+        val.each_child do |val|
+        #globalize_type(val, env, ep).each_child_global do |val|
+          val = val.base_type while val.respond_to?(:base_type)
+          case val
+          when Type::Instance.new(Type::Builtin[klass])
+            ty = ty.union(Type::Instance.new(Type::Builtin[:true]))
+          when Type.any
+            ty = Type.bool
+          else
+            ty = ty.union(Type::Instance.new(Type::Builtin[:false]))
+          end
         end
         env = env.push(ty)
       else

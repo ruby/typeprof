@@ -54,6 +54,10 @@ module TypeProf
       ctn[ret_ty, ep, env]
     end
 
+    def vmcore_raise(recv, mid, aargs, ep, env, scratch, &ctn)
+      # no-op
+    end
+
     def lambda(recv, mid, aargs, ep, env, scratch, &ctn)
       ctn[aargs.blk_ty, ep, env]
     end
@@ -520,6 +524,7 @@ module TypeProf
       scratch.set_custom_method(klass_vmcore, :"core#set_method_alias", Builtin.method(:vmcore_set_method_alias))
       scratch.set_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
       scratch.set_custom_method(klass_vmcore, :"core#hash_merge_kwd", Builtin.method(:vmcore_hash_merge_kwd))
+      scratch.set_custom_method(klass_vmcore, :"core#raise", Builtin.method(:vmcore_raise))
       scratch.set_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
       scratch.set_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_s_new))
       scratch.set_singleton_custom_method(klass_obj, :"attr_accessor", Builtin.method(:module_attr_accessor))
