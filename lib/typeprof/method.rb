@@ -227,7 +227,6 @@ module TypeProf
           # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
           subst.merge!({ tyvar_k => k_ty0, tyvar_v => v_ty0 })
         end
-        ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
         found = true
         if aargs.blk_ty.is_a?(Type::Proc)
           #raise NotImplementedError unless aargs.blk_ty.block_body.is_a?(ISeqBlock) # XXX
@@ -255,11 +254,53 @@ module TypeProf
               scratch.do_invoke_block(aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
                 subst2 = Type.match?(blk_ret_ty, msig.blk_ty.block_body.ret_ty)
                 if subst2
-                  if recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+                  subst2 = Type.merge_substitution(subst, subst2)
+                  case
+                  when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
+                    tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
+                    tyvars.each_with_index do |tyvar, idx|
+                      ty = subst2[tyvar]
+                      if ty
+                        ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
+                        ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
+                          elems.update(idx, ty)
+                        end
+                        scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
+                      end
+                    end
+                    tyvars.zip(recv.elems.elems) do |tyvar, elem|
+                      if subst2[tyvar]
+                        subst2[tyvar] = subst2[tyvar].union(elem)
+                      else
+                        subst2[tyvar] = elem
+                      end
+                    end
+                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
+                  when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
                     tyvar_elem = Type::Var.new(:Elem)
                     if subst2[tyvar_elem]
+                      ty = subst2[tyvar_elem]
+                      ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
                       ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
-                        elems.update(nil, subst2[tyvar_elem])
+                        elems.update(nil, ty)
+                      end
+                      scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
+                    end
+                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
+                  when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
+                    tyvar_k = Type::Var.new(:K)
+                    tyvar_v = Type::Var.new(:V)
+                    k_ty0, v_ty0 = recv.elems.squash
+                    if subst2[tyvar_k] && subst2[tyvar_v]
+                      k_ty = subst2[tyvar_k]
+                      v_ty = subst2[tyvar_v]
+                      k_ty0 = k_ty0.union(k_ty)
+                      v_ty0 = v_ty0.union(v_ty)
+                      alloc_site = AllocationSite.new(caller_ep)
+                      ncaller_env, k_ty = scratch.localize_type(k_ty, ncaller_env, caller_ep, alloc_site.add_id(:k))
+                      ncaller_env, v_ty = scratch.localize_type(v_ty, ncaller_env, caller_ep, alloc_site.add_id(:v))
+                      ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
+                        elems.update(k_ty, v_ty)
                       end
                       scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                     end
@@ -287,6 +328,7 @@ module TypeProf
             ctn[ret_ty, caller_ep, ncaller_env]
           end
         else
+          ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
           ret_ty = ret_ty.remove_type_vars
           ctn[ret_ty, caller_ep, ncaller_env]
         end

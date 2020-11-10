@@ -1,4 +1,5 @@
-class Foo[X]
-  def set: (X) -> void
-  def get: -> X
+class Cell[T]
+  def initialize : (T) -> void
+  def map: [A] { (T) -> A } -> Cell[A]
+  def map!: { (T) -> T } -> self
 end

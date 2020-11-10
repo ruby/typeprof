@@ -10,5 +10,5 @@ foo([1], ["str"])
 __END__
 # Classes
 class Object
-  def foo : ([Integer], [String]) -> [Integer]
+  def foo : ([Integer], [String]) -> ([Integer | String])
 end

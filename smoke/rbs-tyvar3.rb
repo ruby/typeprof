@@ -1,25 +1,17 @@
-class StringFoo
-  def initialize
-    @foo = Foo.new
-  end
-
-  def set
-    @foo.set("42")
-  end
-
-  def get
-    @foo.get
-  end
+def foo
+  cell = Cell.new(42)
+  cell.map {|s| (s + 1).to_s }
 end
 
-StringFoo.new.set
-StringFoo.new.get
+def bar
+  cell = Cell.new(42)
+  cell.map! {|s| (s + 1).to_s }
+  cell
+end
 
 __END__
 # Classes
-class StringFoo
-  @foo : Foo[String] | Foo[bot]
-  def initialize : -> Foo[bot]
-  def set : -> void
-  def get : -> String
+class Object
+  def foo : -> Cell[String]
+  def bar : -> (Cell[Integer | String])
 end
