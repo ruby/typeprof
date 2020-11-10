@@ -211,10 +211,21 @@ module TypeProf
         when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
-          # XXX: need to support destructive operation
-          k_ty, v_ty = recv.elems.squash
+          k_ty0, v_ty0 = recv.elems.squash
+          if subst[tyvar_k] && subst[tyvar_v]
+            k_ty = subst[tyvar_k]
+            v_ty = subst[tyvar_v]
+            k_ty0 = k_ty0.union(k_ty)
+            v_ty0 = v_ty0.union(v_ty)
+            alloc_site = AllocationSite.new(caller_ep)
+            ncaller_env, k_ty = scratch.localize_type(k_ty, ncaller_env, caller_ep, alloc_site.add_id(:k))
+            ncaller_env, v_ty = scratch.localize_type(v_ty, ncaller_env, caller_ep, alloc_site.add_id(:v))
+            ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
+              elems.update(k_ty, v_ty)
+            end
+          end
           # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
-          subst.merge!({ tyvar_k => k_ty, tyvar_v => v_ty })
+          subst.merge!({ tyvar_k => k_ty0, tyvar_v => v_ty0 })
         end
         ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
         found = true
