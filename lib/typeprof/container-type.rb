@@ -63,7 +63,7 @@ module TypeProf
 
       def localize(env, alloc_site, depth)
         return env, Type.any if depth <= 0
-        alloc_site = alloc_site.add_id(:cell)
+        alloc_site = alloc_site.add_id(:cell).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth)
         env.deploy_type(LocalCell, alloc_site, elems, @base_type)
       end
@@ -232,7 +232,7 @@ module TypeProf
 
       def localize(env, alloc_site, depth)
         return env, Type.any if depth <= 0
-        alloc_site = alloc_site.add_id(:ary)
+        alloc_site = alloc_site.add_id(:ary).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
         env.deploy_type(LocalArray, alloc_site, elems, @base_type)
       end
@@ -538,7 +538,7 @@ module TypeProf
 
       def localize(env, alloc_site, depth)
         return env, Type.any if depth <= 0
-        alloc_site = alloc_site.add_id(:hash)
+        alloc_site = alloc_site.add_id(:hash).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
         env.deploy_type(LocalHash, alloc_site, elems, @base_type)
       end
