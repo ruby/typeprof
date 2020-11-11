@@ -129,11 +129,7 @@ module TypeProf
             elems2 = type_params[id]
             if elems2
               if elems != elems2
-                if elems.is_a?(Array) # should be refactored as Cell::Elements
-                  type_params[id] = elems.zip(elems2).map {|elem1, elem2| elem1.union(elem2) }
-                else
-                  type_params[id] = elems.union(elems2)
-                end
+                type_params[id] = elems.union(elems2)
               end
             else
               type_params[id] = elems
