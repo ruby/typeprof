@@ -42,6 +42,9 @@ module TypeProf
         @elems = elems # Cell::Elements
         raise unless base_type
         @base_type = base_type
+        if base_type.klass.type_params.size != elems.elems.size
+          raise
+        end
       end
 
       attr_reader :elems, :base_type
@@ -153,6 +156,9 @@ module TypeProf
 
         def union(other)
           return self if self == other
+          if @elems.size != other.elems.size
+            raise "#{ @elems.size } != #{ other.elems.size }"
+          end
           elems = []
           @elems.zip(other.elems) do |ty0, ty1|
             elems << ty0.union(ty1)
