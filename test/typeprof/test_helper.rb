@@ -33,8 +33,6 @@ module TypeProf
       output.string
 
     ensure
-      ENV.delete("TP_SHOW_ERRORS")
-      ENV.delete("TP_DETAILED_STUB")
       $VERBOSE = verbose_back
     end
 
