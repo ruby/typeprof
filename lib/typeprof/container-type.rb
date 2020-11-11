@@ -197,6 +197,7 @@ module TypeProf
           else
             elems = Cell::Elements.new([]) # XXX
           end
+          visited.delete(self)
           Cell.new(elems, @base_type)
         end
       end
@@ -509,6 +510,7 @@ module TypeProf
             # TODO: currently out-of-scope array cannot be accessed
             elems = Array::Elements.new([], Type.any)
           end
+          visited.delete(self)
           Array.new(elems, @base_type)
         end
       end
@@ -783,6 +785,7 @@ module TypeProf
           else
             elems = Hash::Elements.new({Type.any => Type.any})
           end
+          visited.delete(self)
           Hash.new(elems, @base_type)
         end
       end
