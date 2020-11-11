@@ -1969,7 +1969,7 @@ module TypeProf
             end
           end
 
-          @block_to_ctx[blk.block_body].each do |blk_ctx|
+          @block_to_ctx[blk.block_body]&.each do |blk_ctx|
             ret_ty = ret_ty.union(@return_values[blk_ctx]) if @return_values[blk_ctx]
           end
         end
