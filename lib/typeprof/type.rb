@@ -331,14 +331,12 @@ module TypeProf
       def localize(env, alloc_site, depth)
         return env, Type.any if depth <= 0
         tys = @types.map do |ty|
-          alloc_site2 = alloc_site.add_id(ty)
-          env, ty2 = ty.localize(env, alloc_site2, depth - 1)
+          env, ty2 = ty.localize(env, alloc_site, depth - 1)
           ty2
         end
         @elems&.each do |(container_kind, base_type), elems|
           ty = container_kind.new(elems, base_type)
-          alloc_site2 = alloc_site.add_id(container_kind.name.to_sym).add_id(base_type)
-          env, ty = ty.localize(env, alloc_site2, depth - 1)
+          env, ty = ty.localize(env, alloc_site, depth - 1)
           tys = tys.add(ty)
         end
         ty = Union.new(tys, nil).normalize
