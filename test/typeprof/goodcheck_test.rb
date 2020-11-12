@@ -44,8 +44,8 @@ module TypeProf
     attr_reader trigger : untyped
     attr_reader buffer : Buffer
     def initialize : (rule: untyped, trigger: untyped, buffer: Buffer) -> Buffer
-    def scan : ?{ (Issue) -> Array[Issue]? } -> ((Array[Issue] | Enumerator[untyped])?)
-    def scan_simple : (Regexp) ?{ (Issue) -> Array[Issue]? } -> Array[Issue]?
+    def scan : ?{ (Issue) -> Array[Issue]? } -> ((Array[Issue] | Enumerator[Issue])?)
+    def scan_simple : (Regexp) ?{ (Issue) -> Array[Issue]? } -> ((Array[Issue] | Enumerator[Issue])?)
     def scan_var : (untyped) -> nil
   end
         END

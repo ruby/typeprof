@@ -912,9 +912,9 @@ module TypeProf
         end
       end
       locals[kwrest_index] = Type.any if kwrest_index
-      locals[block_index] = Type.any if block_index
+      locals[block_index] = Type.nil if block_index
 
-      env = Env.new(StaticEnv.new(recv, Type.any, false), locals, [], Utils::HashWrapper.new({}))
+      env = Env.new(StaticEnv.new(recv, Type.nil, false), locals, [], Utils::HashWrapper.new({}))
 
       @pending_execution[iseq] ||= [:method, [meth, ep, env]]
     end
