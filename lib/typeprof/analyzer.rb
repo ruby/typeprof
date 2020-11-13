@@ -628,7 +628,7 @@ module TypeProf
         entry = @tbl[site] ||= Entry.new(!ep, {}, Type.bot, Utils::MutableSet.new)
         if ep
           if entry.rbs_declared
-            unless Type.match?(entry.type, ty)
+            unless Type.match?(ty, entry.type)
               scratch.warn(ep, "inconsistent assignment to RBS-declared global variable")
               return
             end
