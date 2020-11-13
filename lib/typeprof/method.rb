@@ -207,7 +207,7 @@ module TypeProf
               elems.update(nil, ty)
             end
           end
-          subst.merge!({ tyvar_elem => recv.elems.squash_or_any })
+          subst.merge!({ tyvar_elem => recv.elems.squash })
         when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
