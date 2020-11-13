@@ -430,15 +430,17 @@ module TypeProf
     end
 
     class Class < Type # or Module
-      def initialize(kind, idx, type_params, superclass, name)
+      def initialize(kind, idx, type_params, superclass, superclass_type_args, name)
         @kind = kind # :class | :module
         @idx = idx
         @type_params = type_params
         @superclass = superclass
+        raise if @kind == :class && !@superclass
+        @superclass_type_args = superclass_type_args
         @_name = name
       end
 
-      attr_reader :kind, :idx, :type_params, :superclass
+      attr_reader :kind, :idx, :type_params, :superclass, :superclass_type_args
 
       def inspect
         if @_name

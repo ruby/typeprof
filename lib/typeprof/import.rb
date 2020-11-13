@@ -100,9 +100,13 @@ module TypeProf
       json = {}
 
       each_class_decl do |name, decls|
-        super_class_name = get_super_class_name(name, decls)
         klass = conv_type_name(name)
-        superclass = super_class_name ? conv_type_name(super_class_name) : nil
+        super_class_name, super_class_args = get_super_class(name, decls)
+        if super_class_name
+          name = conv_type_name(super_class_name)
+          type_args = super_class_args.map {|type| conv_type(type) }
+          superclass = [name, type_args]
+        end
 
         type_params = nil
         included_modules = []
@@ -256,14 +260,15 @@ module TypeProf
       end
     end
 
-    def get_super_class_name(name, decls)
+    def get_super_class(name, decls)
       return nil if name == RBS::BuiltinNames::BasicObject.name
 
       decls.each do |decl|
         decl = decl.decl
         case decl
         when RBS::AST::Declarations::Class
-          return decl.super_class.name if decl.super_class
+          super_class = decl.super_class
+          return super_class.name, super_class.args if super_class
         when RBS::AST::Declarations::Module, RBS::AST::Declarations::Interface
           return nil
         else
@@ -271,7 +276,7 @@ module TypeProf
         end
       end
 
-      return RBS::BuiltinNames::Object.name
+      return RBS::BuiltinNames::Object.name, []
     end
 
     def conv_method_def(rbs_method_types)
@@ -467,8 +472,8 @@ module TypeProf
     def import(explicit = false)
       classes = @json[:classes].map do |classpath, cdef|
         type_params = cdef[:type_params]
-        superclass  = cdef[:superclass]
-        members     = cdef[:members]
+        superclass, superclass_type_args = cdef[:superclass]
+        members = cdef[:members]
 
         name = classpath.last
         superclass = path_to_klass(superclass) if superclass
@@ -476,7 +481,7 @@ module TypeProf
 
         klass = @scratch.get_constant(base_klass, name)
         if klass.is_a?(Type::Any)
-          klass = @scratch.new_class(base_klass, name, type_params, superclass, nil)
+          klass = @scratch.new_class(base_klass, name, type_params, superclass, superclass_type_args, nil)
 
           # There builtin classes are needed to interpret RBS declarations
           case classpath
