@@ -91,9 +91,9 @@ module TypeProf
     def conv_class(namespace, class_def, inner_classes)
       @scratch.namespace = namespace
 
-      if class_def.superclass
-        omit = @class_defs[class_def.superclass].klass_obj == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
-        superclass = omit ? nil : @scratch.get_class_name(@class_defs[class_def.superclass].klass_obj)
+      if class_def.klass_obj.superclass != :__root__ && class_def.klass_obj.superclass
+        omit = class_def.klass_obj.superclass == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
+        superclass = omit ? nil : @scratch.get_class_name(class_def.klass_obj.superclass)
       end
 
       @scratch.namespace = class_def.name

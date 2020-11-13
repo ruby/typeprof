@@ -169,6 +169,13 @@ module TypeProf
     attr_reader :rbs_source
 
     def do_send(recv_orig, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      # TODO: create a substitution from recv to the class that this method def belongs to
+      #case recv_orig
+      #when Type::Instance
+      #  scratch.get_method_with_subst(recv_orig.klass, false, mid)
+      #when Type::Class
+      #  scratch.get_method_with_subst(recv_orig, true, mid)
+      #end
       recv = scratch.globalize_type(recv_orig, caller_env, caller_ep)
       found = false
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
@@ -183,6 +190,7 @@ module TypeProf
         case
         when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
           tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
+          # XXX: This should be skipped when the called methods belongs to superclass
           tyvars.each_with_index do |tyvar, idx|
             ty = subst[tyvar]
             if ty

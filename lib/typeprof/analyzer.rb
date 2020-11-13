@@ -281,10 +281,9 @@ module TypeProf
     attr_reader :class_defs
 
     class ClassDef # or ModuleDef
-      def initialize(kind, name, superclass, absolute_path)
+      def initialize(kind, name, absolute_path)
         raise unless name.is_a?(Array)
         @kind = kind
-        @superclass = superclass
         @modules = { true => {}, false => {} }
         @name = name
         @consts = {}
@@ -295,7 +294,7 @@ module TypeProf
         @namespace = nil
       end
 
-      attr_reader :kind, :superclass, :modules, :consts, :methods, :ivars, :cvars, :absolute_path
+      attr_reader :kind, :modules, :consts, :methods, :ivars, :cvars, :absolute_path
       attr_accessor :name, :klass_obj
 
       def include_module(mod, singleton, absolute_path)
@@ -369,25 +368,20 @@ module TypeProf
       cbase && cbase.idx != 1 ? @class_defs[cbase.idx].name : []
     end
 
-    def new_class(cbase, name, type_params, superclass, absolute_path)
+    def new_class(cbase, name, type_params, superclass, superclass_type_args, absolute_path)
       show_name = cbase_path(cbase) + [name]
       idx = @class_defs.size
       if superclass
-        if superclass == :__root__
-          superclass_idx = superclass = nil
-        else
-          superclass_idx = superclass.idx
-        end
-        @class_defs[idx] = ClassDef.new(:class, show_name, superclass_idx, absolute_path)
-        klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
+        @class_defs[idx] = ClassDef.new(:class, show_name, absolute_path)
+        klass = Type::Class.new(:class, idx, type_params, superclass, superclass_type_args, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
         add_constant(cbase, name, klass, absolute_path)
         return klass
       else
         # module
-        @class_defs[idx] = ClassDef.new(:module, show_name, nil, absolute_path)
-        mod = Type::Class.new(:module, idx, type_params, nil, show_name)
+        @class_defs[idx] = ClassDef.new(:module, show_name, absolute_path)
+        mod = Type::Class.new(:module, idx, type_params, nil, nil, show_name)
         @class_defs[idx].klass_obj = mod
         add_constant(cbase, name, mod, absolute_path)
         return mod
@@ -400,8 +394,8 @@ module TypeProf
       idx = @class_defs.size
       superclass = Type::Builtin[:struct]
       name = "AnonymousStruct_generated_#{ @anonymous_struct_gen_id += 1 }"
-      @class_defs[idx] = ClassDef.new(:class, [name], superclass.idx, ep.ctx.iseq.absolute_path)
-      klass = Type::Class.new(:class, idx, [], superclass, name)
+      @class_defs[idx] = ClassDef.new(:class, [name], ep.ctx.iseq.absolute_path)
+      klass = Type::Class.new(:class, idx, [], superclass, [], name)
       @class_defs[idx].klass_obj = klass
 
       @struct_defs[ep] = klass
@@ -432,27 +426,52 @@ module TypeProf
     end
 
     def get_method(klass, singleton, mid)
-      idx = klass.idx
-      while idx
-        class_def = @class_defs[idx]
+      if klass.kind == :class
+        while klass != :__root__
+          class_def = @class_defs[klass.idx]
+          mthd = class_def.get_method(mid, singleton)
+          # Need to be conservative to include all super candidates...?
+          return mthd if mthd
+          klass = klass.superclass
+        end
+      else
+        # module
+        class_def = @class_defs[klass.idx]
         mthd = class_def.get_method(mid, singleton)
-        # Need to be conservative to include all super candidates...?
         return mthd if mthd
-        idx = class_def.superclass
       end
       return get_method(Type::Builtin[:class], false, mid) if singleton
       nil
     end
 
-    def get_super_method(ctx, singleton)
-      idx = ctx.cref.klass.idx
+    def get_method_with_subst(klass, singleton, mid)
+      while klass != :__root__
+        p klass.type_params
+        class_def = @class_defs[klass.idx]
+        mthd = class_def.get_method(mid, singleton)
+        # Need to be conservative to include all super candidates...?
+        return mthd if mthd
+        p klass.superclass_type_args
+        klass = klass.superclass
+      end
+    end
+
+    def get_super_method(ctx, singleton) # XXX: This will not work great when modules are involved
+      klass = ctx.cref.klass
       mid = ctx.mid
-      idx = @class_defs[idx].superclass
-      while idx
-        class_def = @class_defs[idx]
+      if klass.kind == :class
+        klass = klass.superclass
+        while klass != :__root__
+          class_def = @class_defs[klass.idx]
+          mthd = class_def.get_method(mid, singleton)
+          return mthd if mthd
+          klass = klass.superclass
+        end
+      else
+        # module
+        class_def = @class_defs[klass.idx]
         mthd = class_def.get_method(mid, singleton)
         return mthd if mthd
-        idx = class_def.superclass
       end
       nil
     end
@@ -1157,7 +1176,8 @@ module TypeProf
             if cbase == Type.any
               klass = Type.any
             else
-              klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
+              superclass_type_args = superclass.type_params.map { Type.any } if superclass
+              klass = new_class(cbase, id, [], superclass, superclass_type_args, ep.ctx.iseq.absolute_path)
             end
           end
           singleton = false
