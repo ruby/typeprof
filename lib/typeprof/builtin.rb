@@ -67,17 +67,11 @@ module TypeProf
     end
 
     def object_s_new(recv, mid, aargs, ep, env, scratch, &ctn)
-      ty = Type::Instance.new(recv)
       if recv.type_params.size >= 1
-        case recv
-        when Type::Builtin[:ary] # XXX: check inheritance...
-          ty = Type::Array.new(Type::Array::Elements.new([], Type.bot), ty)
-        when Type::Builtin[:hash]
-          ty = Type.gen_hash {|h| }
-        else
-          ty = Type::Cell.new(Type::Cell::Elements.new([Type.bot] * recv.type_params.size), ty)
-        end
+        ty = Type::ContainerType.create_empty_instance(recv)
         env, ty = scratch.localize_type(ty, env, ep, AllocationSite.new(ep).add_id(:object_s_new))
+      else
+        ty = Type::Instance.new(recv)
       end
       meths = scratch.get_method(recv, false, :initialize)
       meths.flat_map do |meth|

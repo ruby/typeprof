@@ -87,6 +87,11 @@ module TypeProf
       @recv_ty = recv_ty
       @blk_ty = blk_ty
       @mod_func = mod_func
+
+      return if recv_ty == :top #OK
+      recv_ty.each_child_global do |ty|
+        raise ty.inspect if !ty.is_a?(Type::Instance) && !ty.is_a?(Type::Class) && ty != Type.any
+      end
     end
 
     attr_reader :recv_ty, :blk_ty, :mod_func
@@ -147,6 +152,8 @@ module TypeProf
       tys.each do |ty|
         raise "nil cannot be pushed to the stack" if ty.nil?
         ty.each_child do |ty|
+          raise if ty.is_a?(Type::Var)
+          #raise if ty.is_a?(Type::Instance) && ty.klass.type_params.size > 1
           raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
           raise "Hash cannot be pushed to the stack" if ty.is_a?(Type::Hash)
         end
@@ -647,6 +654,7 @@ module TypeProf
     end
 
     def get_ivar(recv)
+      recv = recv.base_type while recv.respond_to?(:base_type)
       case recv
       when Type::Class
         [@class_defs[recv.idx], true]
@@ -1040,7 +1048,17 @@ module TypeProf
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
         env = env.push(ty)
       when :putself
-        env, ty = localize_type(env.static_env.recv_ty, env, ep)
+        ty = env.static_env.recv_ty
+        if ty.is_a?(Type::Instance)
+          klass = ty.klass
+          if klass.type_params.size >= 1
+            ty = Type::ContainerType.create_empty_instance(klass)
+            env, ty = localize_type(ty, env, ep, AllocationSite.new(ep))
+          else
+            ty = Type::Instance.new(klass)
+          end
+          env, ty = localize_type(ty, env, ep)
+        end
         env = env.push(ty)
       when :newarray, :newarraykwsplat
         len, = operands

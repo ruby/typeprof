@@ -11,6 +11,7 @@ module TypeProf
     end
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      recv = recv.base_type while recv.respond_to?(:base_type)
       recv = scratch.globalize_type(recv, caller_env, caller_ep)
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
 
@@ -232,7 +233,9 @@ module TypeProf
           #raise NotImplementedError unless aargs.blk_ty.block_body.is_a?(ISeqBlock) # XXX
           dummy_ctx = TypedContext.new(caller_ep, mid)
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
-          dummy_env = Env.new(StaticEnv.new(recv, msig.blk_ty, false), [], [], Utils::HashWrapper.new({}))
+          s_recv = recv
+          s_recv = s_recv.base_type while s_recv.respond_to?(:base_type)
+          dummy_env = Env.new(StaticEnv.new(s_recv, msig.blk_ty, false), [], [], Utils::HashWrapper.new({}))
           if msig.blk_ty.is_a?(Type::Proc)
             scratch.add_callsite!(dummy_ctx, caller_ep, ncaller_env, &ctn)
             nfargs = msig.blk_ty.block_body.msig

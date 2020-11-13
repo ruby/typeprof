@@ -33,6 +33,18 @@ module TypeProf
       def consistent?(other)
         raise "must not be used"
       end
+
+      def self.create_empty_instance(klass)
+        base_type = Type::Instance.new(klass)
+        case klass
+        when Type::Builtin[:ary] # XXX: check inheritance...
+          Type::Array.new(Type::Array::Elements.new([], Type.bot), base_type)
+        when Type::Builtin[:hash]
+          Type.gen_hash(base_type) {|h| }
+        else
+          Type::Cell.new(Type::Cell::Elements.new([Type.bot] * klass.type_params.size), base_type)
+        end
+      end
     end
 
     # The most basic container type for default type parameter class
