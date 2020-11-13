@@ -504,24 +504,25 @@ module TypeProf
         end
 
         ivars.each do |ivar_name, ty|
-          ty = conv_type(ty)
+          ty = conv_type(ty).remove_type_vars
           @scratch.add_ivar_write!(Type::Instance.new(klass), ivar_name, ty, nil)
         end
 
         cvars.each do |ivar_name, ty|
-          ty = conv_type(ty)
+          ty = conv_type(ty).remove_type_vars
           @scratch.add_cvar_write!(klass, ivar_name, ty, nil)
         end
       end
 
       @json[:constants].each do |classpath, value|
         base_klass = path_to_klass(classpath[0..-2])
-        value = conv_type(value)
+        value = conv_type(value).remove_type_vars
         @scratch.add_constant(base_klass, classpath[-1], value, nil)
       end
 
-      @json[:globals].each do |name, value|
-        @scratch.add_gvar_write!(name, conv_type(value), nil)
+      @json[:globals].each do |name, ty|
+        ty = conv_type(ty).remove_type_vars
+        @scratch.add_gvar_write!(name, ty, nil)
       end
 
       true
