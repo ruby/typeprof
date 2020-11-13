@@ -210,7 +210,7 @@ module TypeProf
       #   * superclasses and modules appear earlier than their subclasses (Object is earlier than String)
       #   * namespace module appers earlier than its children (Process is earlier than Process::Status)
       visited = {}
-      queue = @cur_env.class_decls.keys.map {|name| [:visit, name] }
+      queue = @cur_env.class_decls.keys.map {|name| [:visit, name] }.reverse
       until queue.empty?
         event, name = queue.pop
         case event
