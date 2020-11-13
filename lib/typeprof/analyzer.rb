@@ -575,9 +575,7 @@ module TypeProf
 
       ret_ty = @return_values[callee_ctx] ||= Type.bot
       if ret_ty != Type.bot
-        @callsites[callee_ctx].each do |caller_ep, ctn|
-          ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
-        end
+        ctn[ret_ty, caller_ep, @return_envs[caller_ep]]
       end
     end
 
