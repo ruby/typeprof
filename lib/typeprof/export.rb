@@ -105,12 +105,12 @@ module TypeProf
         consts[name] = ty.screen_name(@scratch)
       end
 
-      included_mods = class_def.modules[false].filter_map do |mod_def, absolute_paths|
+      included_mods = class_def.modules[false].filter_map do |mod_def, (_type_args, absolute_paths)|
         next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
         Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
       end
 
-      extended_mods = class_def.modules[true].filter_map do |mod_def, absolute_paths|
+      extended_mods = class_def.modules[true].filter_map do |mod_def, (_type_args, absolute_paths)|
         next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
         Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
       end

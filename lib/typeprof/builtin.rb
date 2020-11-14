@@ -156,7 +156,7 @@ module TypeProf
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
-          scratch.include_module(recv, arg, false, ep.ctx.iseq.absolute_path)
+          scratch.include_module(recv, arg, nil, false, ep.ctx.iseq.absolute_path)
         end
       end
       ctn[recv, ep, env]
@@ -166,7 +166,7 @@ module TypeProf
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
-          scratch.include_module(recv, arg, true, ep.ctx.iseq.absolute_path)
+          scratch.include_module(recv, arg, nil, true, ep.ctx.iseq.absolute_path)
         end
       end
       ctn[recv, ep, env]

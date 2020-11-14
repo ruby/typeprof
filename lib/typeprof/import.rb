@@ -169,7 +169,8 @@ module TypeProf
               name = member.name
               if name.kind == :class
                 mod = conv_type_name(name)
-                included_modules << mod
+                type_args = member.args.map {|type| conv_type(type) }
+                included_modules << [mod, type_args]
               else
                 # including an interface is not supported yet
               end
@@ -178,7 +179,8 @@ module TypeProf
               name = member.name
               if name.kind == :class
                 mod = conv_type_name(name)
-                extended_modules << mod
+                type_args = member.args.map {|type| conv_type(type) }
+                extended_modules << [mod, type_args]
               else
                 # extending a module with an interface is not supported yet
               end
@@ -481,6 +483,7 @@ module TypeProf
 
         klass = @scratch.get_constant(base_klass, name)
         if klass.is_a?(Type::Any)
+          superclass_type_args = superclass_type_args&.map {|ty| conv_type(ty) }
           klass = @scratch.new_class(base_klass, name, type_params, superclass, superclass_type_args, nil)
 
           # There builtin classes are needed to interpret RBS declarations
@@ -508,12 +511,14 @@ module TypeProf
         cvars = members[:cvars]
         rbs_sources = members[:rbs_sources]
 
-        included_modules.each do |mod|
-          @scratch.include_module(klass, path_to_klass(mod), false, nil)
+        included_modules.each do |mod, type_args|
+          type_args = type_args&.map {|ty| conv_type(ty) }
+          @scratch.include_module(klass, path_to_klass(mod), type_args, false, nil)
         end
 
-        extended_modules.each do |mod|
-          @scratch.include_module(klass, path_to_klass(mod), true, nil)
+        extended_modules.each do |mod, type_args|
+          type_args = type_args&.map {|ty| conv_type(ty) }
+          @scratch.include_module(klass, path_to_klass(mod), type_args, true, nil)
         end
 
         methods.each do |(singleton, method_name), mdef|
