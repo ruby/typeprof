@@ -297,11 +297,13 @@ module TypeProf
       attr_reader :kind, :modules, :consts, :methods, :ivars, :cvars, :absolute_path
       attr_accessor :name, :klass_obj
 
-      def include_module(mod, singleton, absolute_path)
-        # XXX: need to check if mod is already included by the ancestors?
-        absolute_paths = @modules[singleton][mod]
-        unless absolute_paths
-          @modules[singleton][mod] = absolute_paths = Utils::MutableSet.new
+      def include_module(mod, type_args, singleton, absolute_path)
+        module_type_args, absolute_paths = @modules[singleton][mod]
+        if module_type_args
+          raise "inconsistent include/extend type args in RBS?" if module_type_args != type_args && type_args != []
+        else
+          absolute_paths = Utils::MutableSet.new
+          @modules[singleton][mod] = [type_args, absolute_paths]
         end
         absolute_paths << absolute_path
       end
@@ -348,7 +350,7 @@ module TypeProf
       end
     end
 
-    def include_module(including_mod, included_mod, singleton, absolute_path)
+    def include_module(including_mod, included_mod, type_args, singleton, absolute_path)
       return if included_mod == Type.any
 
       including_mod = @class_defs[including_mod.idx]
@@ -356,7 +358,7 @@ module TypeProf
         if included_mod.is_a?(Type::Class)
           included_mod = @class_defs[included_mod.idx]
           if included_mod && included_mod.kind == :module
-            including_mod.include_module(included_mod, singleton, absolute_path)
+            including_mod.include_module(included_mod, type_args, singleton, absolute_path)
           else
             warn "including something that is not a module"
           end
