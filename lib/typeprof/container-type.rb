@@ -632,9 +632,13 @@ module TypeProf
 
         def screen_name(scratch)
           s = @map_tys.map do |k_ty, v_ty|
-            k = k_ty.screen_name(scratch)
             v = v_ty.screen_name(scratch)
-            "#{ k }=>#{ v }"
+            if k_ty.is_a?(Type::Symbol)
+              "#{ k_ty.sym }: #{ v }"
+            else
+              k = k_ty.screen_name(scratch)
+              "#{ k }=>#{ v }"
+            end
           end.join(", ")
           "{#{ s }}"
         end

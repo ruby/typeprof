@@ -24,7 +24,7 @@ __END__
 # Classes
 class Foo
   attr_reader array : Array[:sym | Integer | String]
-  attr_reader hash : {:a=>Integer, :b=>String, :c=>:sym}
+  attr_reader hash : {a: Integer, b: String, c: :sym}
   def initialize : -> {}
   def set : -> :sym
 end

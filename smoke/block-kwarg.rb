@@ -46,7 +46,7 @@ class Object
   def f3 : { -> nil } -> nil
   def log3 : (Integer | String) -> nil
   def f4 : { -> nil } -> nil
-  def log4 : ({:k=>Integer}) -> nil
+  def log4 : ({k: Integer}) -> nil
   def f5 : { -> nil } -> untyped
   def f6 : { -> nil } -> untyped
 end

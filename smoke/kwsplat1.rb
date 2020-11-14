@@ -37,6 +37,6 @@ smoke/kwsplat1.rb:30: [error] undefined method: Object#any
 class Object
   def foo : (k: Integer) -> nil
   def bar : (int: Integer, str: String) -> nil
-  def baz : (**{:int=>Integer, :str=>String}) -> nil
+  def baz : (**{int: Integer, str: String}) -> nil
   def qux : (**{untyped=>untyped}) -> nil
 end
