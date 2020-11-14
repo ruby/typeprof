@@ -10,7 +10,10 @@ module TypeProf
     def self.get_builtin_env
       unless @builtin_env
         @builtin_env = RBS::Environment.new
-        @builtin_env_json = load_rbs(@builtin_env, builtin: true)
+
+        loader = RBS::EnvironmentLoader.new
+        new_decls = loader.load(env: @builtin_env).map {|decl,| decl }
+        @builtin_env_json = load_rbs(@builtin_env, new_decls)
       end
 
       return @builtin_env.dup, @builtin_env_json
@@ -21,27 +24,34 @@ module TypeProf
     end
 
     def load_library(lib)
-      RBSReader.load_rbs(@env, library: lib)
+      loader = RBS::EnvironmentLoader.new(core_root: nil)
+      loader.add(library: lib)
+      new_decls = loader.load(env: @env).map {|decl,| decl }
+      RBSReader.load_rbs(@env, new_decls)
     end
 
     def load_path(path)
-      RBSReader.load_rbs(@env, path: path)
+      loader = RBS::EnvironmentLoader.new(core_root: nil)
+      loader.add(path: path)
+      new_decls = loader.load(env: @env).map {|decl,| decl }
+      RBSReader.load_rbs(@env, new_decls)
     end
 
-    def self.load_rbs(env, builtin: false, **opt)
-      if builtin
-        loader = RBS::EnvironmentLoader.new
-      else
-        loader = RBS::EnvironmentLoader.new(core_root: nil)
-        loader.add(**opt)
+    def load_rbs_string(name, content)
+      buffer = RBS::Buffer.new(name: name, content: content)
+      new_decls = []
+      RBS::Parser.parse_signature(buffer).each do |decl|
+        @env << decl
+        new_decls << decl
       end
-      new_decls = loader.load(env: env)
+      RBSReader.load_rbs(@env, new_decls)
+    end
 
+    def self.load_rbs(env, new_decls)
       all_env = env.resolve_type_names
-
       resolver = RBS::TypeNameResolver.from_env(all_env)
       cur_env = RBS::Environment.new
-      new_decls.each do |decl,|
+      new_decls.each do |decl|
         cur_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
       end
 
@@ -443,6 +453,10 @@ module TypeProf
     def self.import_rbs_file(scratch, rbs_path)
       rbs_path = Pathname(rbs_path) unless rbs_path.is_a?(Pathname)
       Import.new(scratch, scratch.rbs_reader.load_path(rbs_path)).import(true)
+    end
+
+    def self.import_rbs_code(scratch, rbs_name, rbs_code)
+      Import.new(scratch, scratch.rbs_reader.load_rbs_string(rbs_name, rbs_code)).import(true)
     end
 
     def initialize(scratch, json)

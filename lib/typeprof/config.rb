@@ -69,19 +69,23 @@ module TypeProf
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
     prologue_env = Env.new(StaticEnv.new(:top, Type.nil, false), [], [], Utils::HashWrapper.new({}))
 
-    Config.rb_files.each do |file|
-      if file.respond_to?(:read)
-        iseq = ISeq.compile_str(file.read, file.to_s)
+    Config.rb_files.each do |rb|
+      if rb.is_a?(Array) # [String name, String content]
+        iseq = ISeq.compile_str(*rb.reverse)
       else
-        iseq = ISeq.compile(file)
+        iseq = ISeq.compile(rb)
       end
       ep, env = TypeProf.starting_state(iseq)
       scratch.merge_env(ep, env)
       scratch.add_callsite!(ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
     end
 
-    Config.rbs_files.each do |path|
-      Import.import_rbs_file(scratch, path)
+    Config.rbs_files.each do |rbs|
+      if rbs.is_a?(Array) # [String name, String content]
+        Import.import_rbs_code(scratch, *rbs)
+      else
+        Import.import_rbs_file(scratch, rbs)
+      end
     end
 
     result = scratch.type_profile
