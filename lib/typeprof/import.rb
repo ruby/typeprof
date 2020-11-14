@@ -504,11 +504,11 @@ module TypeProf
         rbs_sources = members[:rbs_sources]
 
         included_modules.each do |mod|
-          @scratch.include_module(klass, path_to_klass(mod), nil)
+          @scratch.include_module(klass, path_to_klass(mod), false, nil)
         end
 
         extended_modules.each do |mod|
-          @scratch.extend_module(klass, path_to_klass(mod), nil)
+          @scratch.include_module(klass, path_to_klass(mod), true, nil)
         end
 
         methods.each do |(singleton, method_name), mdef|
