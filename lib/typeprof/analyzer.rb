@@ -284,7 +284,7 @@ module TypeProf
       def initialize(kind, name, absolute_path)
         raise unless name.is_a?(Array)
         @kind = kind
-        @modules = { true => {}, false => {} }
+        @modules = { true => [], false => [] }
         @name = name
         @consts = {}
         @methods = {}
@@ -298,12 +298,12 @@ module TypeProf
       attr_accessor :name, :klass_obj
 
       def include_module(mod, type_args, singleton, absolute_path)
-        module_type_args, absolute_paths = @modules[singleton][mod]
+        module_type_args, _, absolute_paths = @modules[singleton].find {|m,| m == mod }
         if module_type_args
-          raise "inconsistent include/extend type args in RBS?" if module_type_args != type_args && type_args != []
+          raise "inconsistent include/extend type args in RBS?" if module_type_args != type_args && type_args != [] && type_args != nil
         else
           absolute_paths = Utils::MutableSet.new
-          @modules[singleton][mod] = [type_args, absolute_paths]
+          @modules[singleton].unshift([mod, type_args, absolute_paths])
         end
         absolute_paths << absolute_path
       end
@@ -320,13 +320,11 @@ module TypeProf
         @consts[name] = [ty, absolute_path]
       end
 
-      def get_method(mid, singleton)
-        @methods[[singleton, mid]] || begin
-          @modules[singleton].each_key do |mod|
-            meth = mod.get_method(mid, false)
-            return meth if meth
-          end
-          nil
+      def search_method(singleton, mid, &blk)
+        mthds = @methods[[singleton, mid]]
+        yield mthds, @klass_obj, singleton if mthds
+        @modules[singleton].each do |mod_def,|
+          mod_def.search_method(false, mid, &blk)
         end
       end
 
@@ -427,34 +425,34 @@ module TypeProf
       end
     end
 
-    def get_method(klass, singleton, mid)
+    def search_method(klass, singleton, mid, &blk)
+      # XXX: support method alias correctly
+      klass_orig = klass
       if klass.kind == :class
         while klass != :__root__
           class_def = @class_defs[klass.idx]
-          mthd = class_def.get_method(mid, singleton)
-          # Need to be conservative to include all super candidates...?
-          return mthd if mthd
+          class_def.search_method(singleton, mid, &blk)
           klass = klass.superclass
         end
       else
         # module
         class_def = @class_defs[klass.idx]
-        mthd = class_def.get_method(mid, singleton)
-        return mthd if mthd
+        class_def.search_method(singleton, mid, &blk)
       end
-      return get_method(Type::Builtin[:class], false, mid) if singleton
-      nil
+      if singleton
+        search_method(Type::Builtin[klass_orig.kind], false, mid, &blk)
+      end
     end
 
-    def get_method_with_subst(klass, singleton, mid)
-      while klass != :__root__
-        p klass.type_params
-        class_def = @class_defs[klass.idx]
-        mthd = class_def.get_method(mid, singleton)
-        # Need to be conservative to include all super candidates...?
-        return mthd if mthd
-        p klass.superclass_type_args
-        klass = klass.superclass
+    def get_method(klass, singleton, mid)
+      search_method(klass, singleton, mid) {|mthds,| return mthds }
+    end
+
+    def get_all_super_methods(klass, singleton, current_klass, mid)
+      hit = false
+      search_method(klass, singleton, mid) do |mthds, klass0, singleton0|
+        yield mthds, klass0, singleton0 if hit
+        hit = klass0 == current_klass
       end
     end
 
@@ -1267,30 +1265,30 @@ module TypeProf
         end
       when :invokesuper
         env, recv, _, aargs = setup_actual_arguments(:method, operands, ep, env)
-
-        env, recv = localize_type(env.static_env.recv_ty, env, ep)
-        mid  = ep.ctx.mid
-        singleton = !recv.is_a?(Type::Instance) # TODO: any?
-        # XXX: need to support included module...
-        meths = get_super_method(ep.ctx, singleton) # TODO: multiple return values
-        if meths
-          meths.each do |meth|
-            # XXX: this decomposition is really needed??
-            # It calls `Object.new` with union receiver which causes an error, but
-            # it may be a fault of builtin Object.new implementation.
-            recv.each_child do |recv|
-              meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
-                nenv, ret_ty, = localize_type(ret_ty, env, ep)
-                nenv = nenv.push(ret_ty)
-                merge_env(ep.next, nenv)
+        mid = ep.ctx.mid
+        found = false
+        recv.each_child_global do |recv|
+          klass, singleton = recv.method_dispatch_info
+          next unless klass
+          get_all_super_methods(klass, singleton, ep.ctx.cref.klass, ep.ctx.mid) do |meths, klass|
+            found = true
+            meths.each do |meth|
+              # XXX: this decomposition is really needed??
+              # It calls `Object.new` with union receiver which causes an error, but
+              # it may be a fault of builtin Object.new implementation.
+              recv.each_child do |recv|
+                meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
+                  nenv, ret_ty, = localize_type(ret_ty, env, ep)
+                  nenv = nenv.push(ret_ty)
+                  merge_env(ep.next, nenv)
+                end
               end
             end
           end
-          return
-        else
-          error(ep, "no superclass method: #{ env.static_env.recv_ty.screen_name(self) }##{ mid }")
-          env = env.push(Type.any)
         end
+        return if found
+        error(ep, "no superclass method: #{ env.static_env.recv_ty.screen_name(self) }##{ mid }")
+        env = env.push(Type.any)
       when :invokebuiltin
         raise NotImplementedError
       when :leave
@@ -1938,7 +1936,8 @@ module TypeProf
     end
 
     def do_send(recv, mid, aargs, ep, env, &ctn)
-      meths = recv.get_method(mid, self)
+      klass, singleton = recv.method_dispatch_info
+      meths = get_method(klass, singleton, mid) if klass
       if meths
         meths.each do |meth|
           meth.do_send(recv, mid, aargs, ep, env, self, &ctn)

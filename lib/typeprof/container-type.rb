@@ -85,7 +85,7 @@ module TypeProf
         Cell.new(@elems.limit_size(limit - 1), @base_type)
       end
 
-      def get_method(mid, scratch)
+      def method_dispatch_info
         raise
       end
 
@@ -214,8 +214,8 @@ module TypeProf
         end
       end
 
-      def get_method(mid, scratch)
-        @base_type.get_method(mid, scratch)
+      def method_dispatch_info
+        @base_type.method_dispatch_info
       end
     end
 
@@ -255,7 +255,7 @@ module TypeProf
         Array.new(@elems.limit_size(limit - 1), @base_type)
       end
 
-      def get_method(mid, scratch)
+      def method_dispatch_info
         raise
       end
 
@@ -530,8 +530,8 @@ module TypeProf
         end
       end
 
-      def get_method(mid, scratch)
-        @base_type.get_method(mid, scratch)
+      def method_dispatch_info
+        @base_type.method_dispatch_info
       end
     end
 
@@ -565,7 +565,7 @@ module TypeProf
         Hash.new(@elems.limit_size(limit - 1), @base_type)
       end
 
-      def get_method(mid, scratch)
+      def method_dispatch_info
         raise
       end
 
@@ -815,8 +815,8 @@ module TypeProf
         end
       end
 
-      def get_method(mid, scratch)
-        @base_type.get_method(mid, scratch)
+      def method_dispatch_info
+        @base_type.method_dispatch_info
       end
     end
   end
