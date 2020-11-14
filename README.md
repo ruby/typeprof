@@ -36,6 +36,6 @@ end
 
 ## Playground
 
-Accessing below URL, you can try to use typeprof gem on Web.
+You can try typeprof gem on the Web via the URL below.
 
 https://mame.github.io/typeprof-playground/
