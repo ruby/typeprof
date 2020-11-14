@@ -100,7 +100,8 @@ module TypeProf
       raise unless aargs.lead_tys.size != 0
       sym = get_sym("respond_to?", aargs.lead_tys[0], ep, scratch)
       if sym
-        if recv.get_method(sym, scratch)
+        klass, singleton = recv.method_dispatch_info
+        if scratch.get_method(klass, singleton, sym)
           true_val = Type::Instance.new(Type::Builtin[:true])
           ctn[true_val, ep, env]
         else
@@ -143,7 +144,7 @@ module TypeProf
     def object_instance_eval(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size >= 1
         scratch.warn(ep, "instance_eval with arguments are ignored")
-        ctn[type.any, ep, env]
+        ctn[Type.any, ep, env]
         return
       end
       naargs = ActualArguments.new([recv], nil, {}, Type.nil)
@@ -153,6 +154,11 @@ module TypeProf
     end
 
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size != 1
+        scratch.warn(ep, "Module#include without an argument are ignored")
+        ctn[Type.any, ep, env]
+        return
+      end
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
@@ -163,6 +169,11 @@ module TypeProf
     end
 
     def module_extend(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size != 1
+        scratch.warn(ep, "Module#extend without an argument are ignored")
+        ctn[Type.any, ep, env]
+        return
+      end
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
@@ -178,7 +189,7 @@ module TypeProf
       else
         aargs.lead_tys.each do |aarg|
           sym = get_sym("module_function", aarg, ep, scratch) or next
-          meths = Type::Instance.new(recv).get_method(sym, scratch)
+          meths = scratch.get_method(recv, false, sym)
           meths.each do |mdef|
             scratch.add_method(recv, sym, true, mdef)
           end

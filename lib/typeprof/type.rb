@@ -170,7 +170,7 @@ module TypeProf
         "untyped"
       end
 
-      def get_method(mid, scratch)
+      def method_dispatch_info
         nil
       end
 
@@ -454,8 +454,8 @@ module TypeProf
         "singleton(#{ scratch.get_class_name(self) })"
       end
 
-      def get_method(mid, scratch)
-        scratch.get_method(self, true, mid)
+      def method_dispatch_info
+        [self, true]
       end
 
       def consistent?(other)
@@ -506,8 +506,8 @@ module TypeProf
         end
       end
 
-      def get_method(mid, scratch)
-        scratch.get_method(@klass, false, mid)
+      def method_dispatch_info
+        [@klass, false]
       end
 
       def consistent?(other)
@@ -560,8 +560,8 @@ module TypeProf
         end
       end
 
-      def get_method(mid, scratch)
-        @base_type.get_method(mid, scratch)
+      def method_dispatch_info
+        @base_type.method_dispatch_info
       end
 
       def substitute(subst, depth)
@@ -602,8 +602,8 @@ module TypeProf
         end
       end
 
-      def get_method(mid, scratch)
-        @base_type.get_method(mid, scratch)
+      def method_dispatch_info
+        @base_type.method_dispatch_info
       end
 
       def substitute(_subst, _depth)
@@ -632,8 +632,8 @@ module TypeProf
         @base_type
       end
 
-      def get_method(mid, scratch)
-        @base_type.get_method(mid, scratch)
+      def method_dispatch_info
+        @base_type.method_dispatch_info
       end
 
       def consistent?(_other)
