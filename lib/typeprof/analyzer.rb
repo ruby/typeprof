@@ -320,6 +320,21 @@ module TypeProf
         @consts[name] = [ty, absolute_path]
       end
 
+      def generate_substitution(singleton, mid, mthd, subst, &blk)
+        mthds = @methods[[singleton, mid]]
+        yield subst if mthds&.include?(mthd)
+        @modules[singleton].each do |mod_def, type_args,|
+          if mod_def.klass_obj.type_params && type_args
+            subst2 = {}
+            mod_def.klass_obj.type_params.zip(type_args) do |(tyvar, *), tyarg|
+              tyvar = Type::Var.new(tyvar)
+              subst2[tyvar] = tyarg.substitute(subst, Config.options[:type_depth_limit])
+            end
+            mod_def.generate_substitution(false, mid, mthd, subst2, &blk)
+          end
+        end
+      end
+
       def search_method(singleton, mid, &blk)
         mthds = @methods[[singleton, mid]]
         yield mthds, @klass_obj, singleton if mthds
@@ -425,6 +440,28 @@ module TypeProf
       end
     end
 
+    def generate_substitution(klass, singleton, mid, mthd, subst, &blk)
+      if klass.kind == :class
+        while klass != :__root__
+          class_def = @class_defs[klass.idx]
+          class_def.generate_substitution(singleton, mid, mthd, subst, &blk)
+          if klass.superclass && klass.superclass_type_args
+            subst2 = {}
+            klass.superclass.type_params.zip(klass.superclass_type_args) do |(tyvar, *), tyarg|
+              tyvar = Type::Var.new(tyvar)
+              subst2[tyvar] = tyarg.substitute(subst, Config.options[:type_depth_limit])
+            end
+            subst = subst2
+          end
+          klass = klass.superclass
+        end
+      else
+        # module
+        class_def = @class_defs[klass.idx]
+        class_def.generate_substitution(singleton, mid, mthd, subst, &blk)
+      end
+    end
+
     def search_method(klass, singleton, mid, &blk)
       # XXX: support method alias correctly
       klass_orig = klass
@@ -456,7 +493,7 @@ module TypeProf
       end
     end
 
-    def get_super_method(ctx, singleton) # XXX: This will not work great when modules are involved
+    def get_super_method(ctx, singleton)
       klass = ctx.cref.klass
       mid = ctx.mid
       if klass.kind == :class
