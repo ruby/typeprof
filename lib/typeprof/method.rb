@@ -169,14 +169,35 @@ module TypeProf
     attr_reader :rbs_source
 
     def do_send(recv_orig, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      # TODO: create a substitution from recv to the class that this method def belongs to
-      #case recv_orig
-      #when Type::Instance
-      #  scratch.get_method_with_subst(recv_orig.klass, false, mid)
-      #when Type::Class
-      #  scratch.get_method_with_subst(recv_orig, true, mid)
-      #end
       recv = scratch.globalize_type(recv_orig, caller_env, caller_ep)
+
+      tmp_subst = {}
+      case
+      when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
+        tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
+        tyvars.zip(recv.elems.elems) do |tyvar, elem|
+          if tmp_subst[tyvar]
+            tmp_subst[tyvar] = tmp_subst[tyvar].union(elem)
+          else
+            tmp_subst[tyvar] = elem
+          end
+        end
+      when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+        tmp_subst = { Type::Var.new(:Elem) => recv.elems.squash }
+      when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
+        tyvar_k = Type::Var.new(:K)
+        tyvar_v = Type::Var.new(:V)
+        k_ty0, v_ty0 = recv.elems.squash
+        # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
+        tmp_subst = { tyvar_k => k_ty0, tyvar_v => v_ty0 }
+      end
+
+      klass, singleton = recv_orig.method_dispatch_info
+      cur_subst = {}
+      scratch.generate_substitution(klass, singleton, mid, self, tmp_subst) do |subst|
+        cur_subst = Type.merge_substitution(cur_subst, subst)
+      end
+
       found = false
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
       @sig_rets.each do |msig, ret_ty|
@@ -185,8 +206,6 @@ module TypeProf
         # XXX: support self type in msig
         subst = aargs.consistent_with_method_signature?(msig)
         next unless subst
-        # need to check self tyvar?
-        subst[Type::Var.new(:self)] = recv
         case
         when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
           tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
@@ -200,13 +219,6 @@ module TypeProf
               end
             end
           end
-          tyvars.zip(recv.elems.elems) do |tyvar, elem|
-            if subst[tyvar]
-              subst[tyvar] = subst[tyvar].union(elem)
-            else
-              subst[tyvar] = elem
-            end
-          end
         when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
           tyvar_elem = Type::Var.new(:Elem)
           if subst[tyvar_elem]
@@ -216,16 +228,12 @@ module TypeProf
               elems.update(nil, ty)
             end
           end
-          subst.merge!({ tyvar_elem => recv.elems.squash })
         when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
-          k_ty0, v_ty0 = recv.elems.squash
           if subst[tyvar_k] && subst[tyvar_v]
             k_ty = subst[tyvar_k]
             v_ty = subst[tyvar_v]
-            k_ty0 = k_ty0.union(k_ty)
-            v_ty0 = v_ty0.union(v_ty)
             alloc_site = AllocationSite.new(caller_ep)
             ncaller_env, k_ty = scratch.localize_type(k_ty, ncaller_env, caller_ep, alloc_site.add_id(:k))
             ncaller_env, v_ty = scratch.localize_type(v_ty, ncaller_env, caller_ep, alloc_site.add_id(:v))
@@ -233,9 +241,10 @@ module TypeProf
               elems.update(k_ty, v_ty)
             end
           end
-          # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
-          subst.merge!({ tyvar_k => k_ty0, tyvar_v => v_ty0 })
         end
+        subst = Type.merge_substitution(subst, cur_subst)
+        # need to check self tyvar?
+        subst[Type::Var.new(:self)] = recv
         found = true
         if aargs.blk_ty.is_a?(Type::Proc)
           #raise NotImplementedError unless aargs.blk_ty.block_body.is_a?(ISeqBlock) # XXX
