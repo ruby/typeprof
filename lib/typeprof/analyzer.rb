@@ -1135,35 +1135,29 @@ module TypeProf
           else
             if existing_klass != Type.any
               error(ep, "the class \"#{ id }\" is #{ existing_klass.screen_name(self) }")
-              id = :"#{ id }(dummy)"
             end
-            existing_klass = get_constant(cbase, id) # TODO: multiple return values
-            if existing_klass != Type.any
-              klass = existing_klass
-            else
-              if type == :class
-                if superclass.is_a?(Type::Class)
-                  # okay
-                elsif superclass == Type.any
-                  warn(ep, "superclass is any; Object is used instead")
-                  superclass = Type::Builtin[:obj]
-                elsif superclass == Type.nil
-                  superclass = Type::Builtin[:obj]
-                elsif superclass.is_a?(Type::Instance)
-                  warn(ep, "superclass is an instance; Object is used instead")
-                  superclass = Type::Builtin[:obj]
-                else
-                  warn(ep, "superclass is not a class; Object is used instead")
-                  superclass = Type::Builtin[:obj]
-                end
-              else # module
-                superclass = nil
-              end
-              if cbase == Type.any
-                klass = Type.any
+            if type == :class
+              if superclass.is_a?(Type::Class)
+                # okay
+              elsif superclass == Type.any
+                warn(ep, "superclass is any; Object is used instead")
+                superclass = Type::Builtin[:obj]
+              elsif superclass == Type.nil
+                superclass = Type::Builtin[:obj]
+              elsif superclass.is_a?(Type::Instance)
+                warn(ep, "superclass is an instance; Object is used instead")
+                superclass = Type::Builtin[:obj]
               else
-                klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
+                warn(ep, "superclass is not a class; Object is used instead")
+                superclass = Type::Builtin[:obj]
               end
+            else # module
+              superclass = nil
+            end
+            if cbase == Type.any
+              klass = Type.any
+            else
+              klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
             end
           end
           singleton = false
