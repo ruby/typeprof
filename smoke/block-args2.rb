@@ -47,11 +47,11 @@ __END__
 # Classes
 class Object
   def f1 : { -> nil } -> ^(nil, *bot, nil) -> nil
-  def log1 : (nil, [], nil) -> nil
+  def log1 : (nil, Array[bot], nil) -> nil
   def f2 : { (:a) -> nil } -> ^(:a, *bot, nil) -> nil
-  def log2 : (:a, [], nil) -> nil
+  def log2 : (:a, Array[bot], nil) -> nil
   def f3 : { (:a, :b) -> nil } -> ^(:a, *bot, :b) -> nil
-  def log3 : (:a, [], :b) -> nil
+  def log3 : (:a, Array[bot], :b) -> nil
   def f4 : { (:a, :b, :c) -> nil } -> ^(:a, *:b, :c) -> nil
   def log4 : (:a, [:b], :c) -> nil
   def f5 : { (:a, :b, :c, :d) -> nil } -> (^(:a, *:b | :c, :d) -> nil)

@@ -306,6 +306,9 @@ module TypeProf
 
         def screen_name(scratch)
           if Config.options[:show_container_raw_elements] || @rest_ty == Type.bot
+            if @lead_tys.empty?
+              return "Array[bot]" # RBS does not allow an empty tuple "[]"
+            end
             s = @lead_tys.map do |ty|
               ty.screen_name(scratch)
             end

@@ -13,6 +13,6 @@ bar([])
 __END__
 # Classes
 class Object
-  def foo : -> []
-  def bar : ([]) -> []
+  def foo : -> Array[bot]
+  def bar : (Array[bot]) -> Array[bot]
 end
