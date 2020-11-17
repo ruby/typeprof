@@ -174,7 +174,7 @@ module TypeProf
       cvars = cvars.map do |var, entry|
         next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
         [var, entry.type.screen_name(@scratch), entry.rbs_declared]
-      end
+      end.compact
 
       if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
         return nil if consts.empty? && included_mods.empty? && extended_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty? && inner_classes.empty?
