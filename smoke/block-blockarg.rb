@@ -23,5 +23,5 @@ class Object
   def log1 : (:a) -> nil
   def log2 : (:b) -> nil
   def log3 : (:c) -> nil
-  def f : { { (:a) -> :b } -> :c } -> :d
+  def f : { -> :c } -> :d
 end

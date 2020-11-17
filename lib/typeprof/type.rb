@@ -785,6 +785,10 @@ module TypeProf
       end
       str = str.empty? ? "" : "(#{ str.join(", ") })"
 
+      # Dirty Hack: Stop the iteration at most once!
+      # I'll remove this hack if RBS removes the limitation of nesting blocks
+      return str if caller_locations.any? {|frame| frame.label == "show_block_signature" }
+
       optional = false
       blks = []
       @blk_ty.each_child_global do |ty|
