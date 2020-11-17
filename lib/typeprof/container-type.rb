@@ -631,16 +631,22 @@ module TypeProf
         end
 
         def screen_name(scratch)
-          s = @map_tys.map do |k_ty, v_ty|
-            v = v_ty.screen_name(scratch)
-            if k_ty.is_a?(Type::Symbol)
+          if @map_tys.all? {|k_ty,| k_ty.is_a?(Type::Symbol) }
+            s = @map_tys.map do |k_ty, v_ty|
+              v = v_ty.screen_name(scratch)
               "#{ k_ty.sym }: #{ v }"
-            else
-              k = k_ty.screen_name(scratch)
-              "#{ k }=>#{ v }"
+            end.join(", ")
+            "{#{ s }}"
+          else
+            k_ty = v_ty = Type.bot
+            @map_tys.each do |k, v|
+              k_ty = k_ty.union(k)
+              v_ty = v_ty.union(v)
             end
-          end.join(", ")
-          "{#{ s }}"
+            k_ty = k_ty.screen_name(scratch)
+            v_ty = v_ty.screen_name(scratch)
+            "Hash[#{ k_ty }, #{ v_ty }]"
+          end
         end
 
         def pretty_print(q)

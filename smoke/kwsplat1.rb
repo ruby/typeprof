@@ -38,5 +38,5 @@ class Object
   def foo : (k: Integer) -> nil
   def bar : (int: Integer, str: String) -> nil
   def baz : (**{int: Integer, str: String}) -> nil
-  def qux : (**{untyped=>untyped}) -> nil
+  def qux : (**Hash[untyped, untyped]) -> nil
 end

@@ -5,6 +5,7 @@ end
 foo
 
 def bar
+  # This returns {Integer=>Integer | String, String=>String} but RBS cannot express it
   { 1 => 1, 2 => "str", "s" => "s" }
 end
 
@@ -14,5 +15,5 @@ __END__
 # Classes
 class Object
   def foo : -> {int: Integer, str: String}
-  def bar : -> ({Integer=>Integer | String, String=>String})
+  def bar : -> (Hash[Integer | String, Integer | String])
 end

@@ -9,5 +9,5 @@ array("foo")
 __END__
 # Classes
 class Object
-  def array : (Array[Integer] | String | {Integer=>Integer}) -> (Array[Integer | String | {Integer=>Integer}])
+  def array : (Array[Integer] | Hash[Integer, Integer] | String) -> (Array[Hash[Integer, Integer] | Integer | String])
 end
