@@ -30,7 +30,11 @@ module TypeProf
       config = TypeProf::ConfigData.new(rb_files: rb_files, rbs_files: rbs_files, output: output, options: options, verbose: 0)
       TypeProf.analyze(config)
 
-      output.string
+      output = output.string
+
+      RBS::Parser.parse_signature(output[/# Classes.*\z/m])
+
+      output
 
     ensure
       $VERBOSE = verbose_back
