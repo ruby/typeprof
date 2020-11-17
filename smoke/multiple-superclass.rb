@@ -15,7 +15,7 @@ smoke/multiple-superclass.rb:9: [warning] superclass is not a class; Object is u
 
 # Classes
 class Object
-  Base : A.class | B.class
+  Base : singleton(A) | singleton(B)
 end
 
 class A

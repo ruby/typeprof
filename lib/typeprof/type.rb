@@ -449,7 +449,7 @@ module TypeProf
       end
 
       def screen_name(scratch)
-        "#{ scratch.get_class_name(self) }.class"
+        "singleton(#{ scratch.get_class_name(self) })"
       end
 
       def get_method(mid, scratch)
