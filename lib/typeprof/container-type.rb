@@ -634,7 +634,7 @@ module TypeProf
         end
 
         def screen_name(scratch)
-          if @map_tys.all? {|k_ty,| k_ty.is_a?(Type::Symbol) }
+          if !@map_tys.empty? && @map_tys.all? {|k_ty,| k_ty.is_a?(Type::Symbol) }
             s = @map_tys.map do |k_ty, v_ty|
               v = v_ty.screen_name(scratch)
               "#{ k_ty.sym }: #{ v }"
