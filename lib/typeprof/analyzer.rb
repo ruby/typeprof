@@ -252,6 +252,8 @@ module TypeProf
       @rbs_reader = RBSReader.new
 
       @terminated = false
+
+      @anonymous_struct_gen_id = 0
     end
 
     attr_reader :return_envs, :loaded_features, :rbs_reader
@@ -397,8 +399,9 @@ module TypeProf
 
       idx = @class_defs.size
       superclass = Type::Builtin[:struct]
-      @class_defs[idx] = ClassDef.new(:class, ["(Anonymous Struct)"], superclass.idx, ep.ctx.iseq.absolute_path)
-      klass = Type::Class.new(:class, idx, [], superclass, "(Anonymous Struct)")
+      name = "AnonymousStruct_generated_#{ @anonymous_struct_gen_id += 1 }"
+      @class_defs[idx] = ClassDef.new(:class, [name], superclass.idx, ep.ctx.iseq.absolute_path)
+      klass = Type::Class.new(:class, idx, [], superclass, name)
       @class_defs[idx].klass_obj = klass
 
       @struct_defs[ep] = klass
