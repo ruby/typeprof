@@ -62,6 +62,7 @@ module TypeProf
   class RBS2JSON
     def initialize(all_env, cur_env)
       @all_env, @cur_env = all_env, cur_env
+      @env_walker = RBS::EnvironmentWalker.new(env: @cur_env) # Currently, only each_type_name is used
     end
 
     def dump_json
@@ -237,7 +238,7 @@ module TypeProf
             @all_env.class_decls[name].decls.each do |decl|
               decl = decl.decl
               next if decl.is_a?(RBS::AST::Declarations::Module)
-              each_ancestor(decl) {|name| queue << [:visit, name] }
+              each_reference(decl) {|name| queue << [:visit, name] }
             end
             queue << [:visit, name.namespace.to_type_name] if !name.namespace.empty?
           end
@@ -252,13 +253,23 @@ module TypeProf
       end
     end
 
-    def each_ancestor(decl, &blk)
+    def each_reference(decl, &blk)
       yield decl.name
-      super_class = decl.super_class || RBS::BuiltinNames::Object
+      if decl.super_class
+        name = decl.super_class.name
+        args = decl.super_class.args
+        if args
+          args.each do |ty|
+            @env_walker.each_type_name(ty, &blk)
+          end
+        end
+      else
+        name = RBS::BuiltinNames::Object.name
+      end
       return if decl.name == RBS::BuiltinNames::BasicObject.name
-      return if decl.name == super_class.name
-      @all_env.class_decls[super_class.name].decls.each do |decl|
-        each_ancestor(decl.decl, &blk)
+      return if decl.name == name
+      @all_env.class_decls[name].decls.each do |decl|
+        each_reference(decl.decl, &blk)
       end
     end
 
