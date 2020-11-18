@@ -113,6 +113,7 @@ module TypeProf
         included_modules = []
         extended_modules = []
         methods = {}
+        attr_methods = {}
         ivars = {}
         cvars = {}
         rbs_sources = {}
@@ -148,15 +149,15 @@ module TypeProf
               end
             when RBS::AST::Members::AttrReader
               ty = conv_type(member.type)
-              methods[[false, member.name]] = attr_reader_def(ty)
+              attr_methods[[false, member.name]] = attr_method_def(:reader, member.name, ty)
             when RBS::AST::Members::AttrWriter
               ty = conv_type(member.type)
-              methods[[false, :"#{ member.name }="]] = attr_writer_def(ty)
+              attr_methods[[false, member.name]] = attr_method_def(:writer, member.name, ty)
             when RBS::AST::Members::AttrAccessor
               ty = conv_type(member.type)
-              methods[[false, member.name]] = attr_reader_def(ty)
-              methods[[false, :"#{ member.name }="]] = attr_writer_def(ty)
+              attr_methods[[false, member.name]] = attr_method_def(:accessor, member.name, ty)
             when RBS::AST::Members::Alias
+              # XXX: an alias to attr methods?
               if member.instance?
                 method_def = methods[[false, member.old_name]]
                 methods[[false, member.new_name]] = method_def if method_def
@@ -212,6 +213,7 @@ module TypeProf
             included_modules: included_modules,
             extended_modules: extended_modules,
             methods: methods,
+            attr_methods: attr_methods,
             ivars: ivars,
             cvars: cvars,
             rbs_sources: rbs_sources,
@@ -325,32 +327,12 @@ module TypeProf
       }
     end
 
-    def attr_reader_def(ty)
-      [{
-        type_params: [],
-        lead_tys: [],
-        opt_tys: [],
-        rest_ty: nil,
-        req_kw_tys: {},
-        opt_kw_tys: {},
-        rest_kw_ty: nil,
-        blk: nil,
-        ret_ty: ty,
-      }]
-    end
-
-    def attr_writer_def(ty)
-      [{
-        type_params: [],
-        lead_tys: [ty],
-        opt_tys: [],
-        rest_ty: nil,
-        req_kw_tys: {},
-        opt_kw_tys: {},
-        rest_kw_ty: nil,
-        blk: nil,
-        ret_ty: ty,
-      }]
+    def attr_method_def(kind, name, ty)
+      {
+        kind: kind,
+        ivar: name,
+        ty: ty,
+      }
     end
 
     def conv_block(rbs_block)
@@ -518,6 +500,7 @@ module TypeProf
         included_modules = members[:included_modules]
         extended_modules = members[:extended_modules]
         methods = members[:methods]
+        attr_methods = members[:attr_methods]
         ivars = members[:ivars]
         cvars = members[:cvars]
         rbs_sources = members[:rbs_sources]
@@ -536,6 +519,14 @@ module TypeProf
           rbs_source = explicit ? rbs_sources[[singleton, method_name]] : nil
           mdef = conv_method_def(method_name, mdef, rbs_source)
           @scratch.add_method(klass, method_name, singleton, mdef)
+        end
+
+        attr_methods.each do |(singleton, method_name), mdef|
+          kind = mdef[:kind]
+          ivar = mdef[:ivar]
+          ty = conv_type(mdef[:ty]).remove_type_vars
+          @scratch.add_attr_method(klass, nil, ivar, :"@#{ ivar }", kind)
+          @scratch.add_ivar_write!(Type::Instance.new(klass), :"@#{ ivar }", ty, nil)
         end
 
         ivars.each do |ivar_name, ty|

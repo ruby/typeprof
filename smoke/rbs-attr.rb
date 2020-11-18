@@ -15,8 +15,8 @@ end
 
 __END__
 # Errors
-smoke/rbs-attr.rb:11: [error] failed to resolve overload: Foo#writer_example=
-smoke/rbs-attr.rb:13: [error] failed to resolve overload: Foo#accessor_example=
+smoke/rbs-attr.rb:11: [warning] inconsistent assignment to RBS-declared global variable
+smoke/rbs-attr.rb:13: [warning] inconsistent assignment to RBS-declared global variable
 
 # Classes
 class Object

@@ -139,7 +139,7 @@ module TypeProf
               iseq_methods[method_name] << @scratch.show_method_signature(ctx)
             end
           when AttrMethodDef
-            next if Config.check_dir_filter(mdef.absolute_path) == :exclude
+            next if !mdef.absolute_path || Config.check_dir_filter(mdef.absolute_path) == :exclude
             mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
             method_name = mid
             method_name = "self.#{ mid }" if singleton
@@ -168,12 +168,14 @@ module TypeProf
         next unless var.to_s.start_with?("@")
         var = "self.#{ var }" if singleton
         next if attr_methods[[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]
-        [var, ty.screen_name(@scratch), entry.rbs_declared]
+        next if entry.rbs_declared
+        [var, ty.screen_name(@scratch)]
       end.compact
 
       cvars = cvars.map do |var, entry|
         next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
-        [var, entry.type.screen_name(@scratch), entry.rbs_declared]
+        next if entry.rbs_declared
+        [var, entry.type.screen_name(@scratch)]
       end.compact
 
       if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
@@ -277,14 +279,12 @@ module TypeProf
         output.puts indent + "  extend #{ mod }"
         first = false
       end
-      class_data.ivars.each do |var, ty, rbs_declared|
-        s = rbs_declared ? "# " : "  "
-        output.puts indent + s + "#{ var } : #{ ty }" unless var.start_with?("_")
+      class_data.ivars.each do |var, ty|
+        output.puts indent + "  #{ var } : #{ ty }" unless var.start_with?("_")
         first = false
       end
-      class_data.cvars.each do |var, ty, rbs_declared|
-        s = rbs_declared ? "# " : "  "
-        output.puts indent + s + "#{ var } : #{ ty }"
+      class_data.cvars.each do |var, ty|
+        output.puts indent + "  #{ var } : #{ ty }"
         first = false
       end
       class_data.attr_methods.each do |(method_name, hidden), (kind, ty)|
