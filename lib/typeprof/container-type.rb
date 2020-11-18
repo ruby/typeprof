@@ -363,7 +363,57 @@ module TypeProf
         end
 
         def [](idx)
-          if idx >= 0
+          if idx.is_a?(Range)
+            if @rest_ty == Type.bot
+              lead_tys = @lead_tys[idx]
+              if lead_tys
+                rest_ty = Type.bot
+              else
+                return Type.nil
+              end
+            else
+              b, e = idx.begin, idx.end
+              b = 0 if !b
+              if !e
+                lead_tys = @lead_tys[idx] || []
+                rest_ty = @rest_ty
+              elsif b >= 0
+                if e >= 0
+                  if b <= e
+                    if e < @lead_tys.size
+                      lead_tys = @lead_tys[idx]
+                      rest_ty = Type.bot
+                    else
+                      lead_tys = @lead_tys[idx] || []
+                      rest_ty = @rest_ty
+                    end
+                  else
+                    return Type.nil
+                  end
+                else
+                  lead_tys = @lead_tys[idx] || []
+                  e = idx.exclude_end? ? e : e == -1 ? @lead_tys.size : e + 1
+                  rest_ty = (@lead_tys[e + 1..] || []).inject(@rest_ty) {|ty0, ty1| ty0.union(ty1) }
+                end
+              else
+                lead_tys = []
+                if e >= 0
+                  rest_ty = e < @lead_tys.size ? Type.bot : @rest_ty
+                  range = [0, @lead_tys.size + b].max .. (idx.exclude_end? ? e - 1 : e)
+                  rest_ty = @lead_tys[range].inject(rest_ty) {|ty0, ty1| ty0.union(ty1) }
+                else
+                  if b <= e
+                    range = [0, @lead_tys.size + b].max .. (idx.exclude_end? ? e - 1 : e)
+                    rest_ty = @lead_tys[range].inject(@rest_ty) {|ty0, ty1| ty0.union(ty1) }
+                  else
+                    return Type.nil
+                  end
+                end
+              end
+            end
+            base_ty = Type::Instance.new(Type::Builtin[:ary])
+            Array.new(Elements.new(lead_tys, rest_ty), base_ty)
+          elsif idx >= 0
             if idx < @lead_tys.size
               @lead_tys[idx]
             elsif @rest_ty == Type.bot
