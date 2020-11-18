@@ -26,6 +26,7 @@ module TypeProf
         pedantic_output: false,
         show_errors: false,
         stackprof: nil,
+        stub_execution: true,
       }.merge(opt[:options])
       super(**opt)
     end

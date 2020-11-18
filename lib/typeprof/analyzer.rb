@@ -851,9 +851,7 @@ module TypeProf
 
         break if @terminated
 
-        # XXX: it would be good to provide no-dummy-execution mode.
-        # It should work as a bit smarter "rbs prototype rb";
-        # show all method definitions as "untyped" arguments and return values
+        break unless Config.options[:stub_execution]
 
         begin
           iseq, (kind, dummy_continuation) = @pending_execution.first

@@ -55,6 +55,10 @@ module TypeProf
           options[:show_errors] = true
         when "show-container-raw-elements"
           options[:show_container_raw_elements] = true
+        when "stub-execution"
+          options[:stub_execution] = true
+        when "no-stub-execution"
+          options[:stub_execution] = false
         when "stackprof"
           options[:stackprof] = args ? args.to_sym : :cpu
         else
