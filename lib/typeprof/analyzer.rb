@@ -358,8 +358,12 @@ module TypeProf
       end
 
       def set_method(mid, singleton, mdef)
-        @methods[[singleton, mid]] = Utils::MutableSet.new
-        @methods[[singleton, mid]] << mdef
+        if mdef
+          @methods[[singleton, mid]] = Utils::MutableSet.new
+          @methods[[singleton, mid]] << mdef
+        else
+          @methods.delete([singleton, mid])
+        end
       end
     end
 
@@ -1949,21 +1953,31 @@ module TypeProf
     end
 
     def do_send(recv, mid, aargs, ep, env, &ctn)
-      klass, singleton = recv.method_dispatch_info
-      meths = get_method(klass, singleton, mid) if klass
-      if meths
-        meths.each do |meth|
-          meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
-        end
-      else
-        case recv
-        when Type::Void
-          error(ep, "void's method is called: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
-        when Type::Any
-        else
-          error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
-        end
+      case recv
+      when Type::Void
+        error(ep, "void's method is called: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
         ctn[Type.any, ep, env]
+      when Type::Any
+        ctn[Type.any, ep, env]
+      else
+        klass, singleton = recv.method_dispatch_info
+        meths = get_method(klass, singleton, mid) if klass
+        if meths
+          meths.each do |meth|
+            meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
+          end
+        else
+          meths = get_method(klass, singleton, :method_missing) if klass
+          if meths
+            aargs = aargs.for_method_missing(Type::Symbol.new(mid, Type::Instance.new(Type::Builtin[:sym])))
+            meths.each do |meth|
+              meth.do_send(recv, :method_missing, aargs, ep, env, self, &ctn)
+            end
+          else
+            error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
+            ctn[Type.any, ep, env]
+          end
+        end
       end
     end
 

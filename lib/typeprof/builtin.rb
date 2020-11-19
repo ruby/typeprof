@@ -600,6 +600,9 @@ module TypeProf
       scratch.set_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
       scratch.set_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
 
+      # remove BasicObject#method_missing
+      scratch.set_method(klass_basic_obj, :method_missing, false, nil)
+
       # ENV: Hash[String, String]
       str_ty = Type::Instance.new(Type::Builtin[:str])
       env_ty = Type.gen_hash {|h| h[str_ty] = Type.optional(str_ty) }

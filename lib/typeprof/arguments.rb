@@ -10,6 +10,10 @@ module TypeProf
       raise unless blk_ty
     end
 
+    def for_method_missing(mid)
+      ActualArguments.new([mid] + @lead_tys, @rest_ty, @kw_tys, @blk_ty)
+    end
+
     attr_reader :lead_tys, :rest_ty, :kw_tys, :blk_ty
 
     def globalize(caller_env, visited, depth)
