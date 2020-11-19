@@ -4,10 +4,11 @@ module TypeProf
   end
 
   class ISeqMethodDef < MethodDef
-    def initialize(iseq, cref)
+    def initialize(iseq, cref, outer_ep)
       @iseq = iseq
       raise if iseq.nil?
       @cref = cref
+      @outer_ep = outer_ep
     end
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
@@ -25,7 +26,7 @@ module TypeProf
       end
 
       nctx = Context.new(@iseq, @cref, mid)
-      callee_ep = ExecutionPoint.new(nctx, 0, nil)
+      callee_ep = ExecutionPoint.new(nctx, 0, @outer_ep)
       nenv = Env.new(StaticEnv.new(recv, blk_ty, false), locals, [], Utils::HashWrapper.new({}))
       alloc_site = AllocationSite.new(callee_ep)
       locals.each_with_index do |ty, i|

@@ -564,12 +564,12 @@ module TypeProf
       end
     end
 
-    def add_iseq_method(klass, mid, iseq, cref)
-      add_method(klass, mid, false, ISeqMethodDef.new(iseq, cref))
+    def add_iseq_method(klass, mid, iseq, cref, outer_ep)
+      add_method(klass, mid, false, ISeqMethodDef.new(iseq, cref, outer_ep))
     end
 
-    def add_singleton_iseq_method(klass, mid, iseq, cref)
-      add_method(klass, mid, true, ISeqMethodDef.new(iseq, cref))
+    def add_singleton_iseq_method(klass, mid, iseq, cref, outer_ep)
+      add_method(klass, mid, true, ISeqMethodDef.new(iseq, cref, outer_ep))
     end
 
     def set_custom_method(klass, mid, impl)
@@ -917,9 +917,9 @@ module TypeProf
       end
     end
 
-    def pend_method_execution(iseq, meth, recv, mid, cref)
+    def pend_method_execution(iseq, meth, recv, mid, cref, ep)
       ctx = Context.new(iseq, cref, mid)
-      ep = ExecutionPoint.new(ctx, 0, nil)
+      ep = ExecutionPoint.new(ctx, 0, ep)
       locals = [Type.nil] * iseq.locals.size
 
       fargs_format = iseq.fargs_format
@@ -956,7 +956,9 @@ module TypeProf
 
       env = Env.new(StaticEnv.new(recv, Type.nil, false), locals, [], Utils::HashWrapper.new({}))
 
-      @pending_execution[iseq] ||= [:method, [meth, ep, env]]
+      if !@pending_execution[iseq] || @pending_execution[iseq][0] == :block
+        @pending_execution[iseq] = [:method, [meth, ep, env]]
+      end
     end
 
     def pend_block_dummy_execution(blk, iseq, nep, nenv)
@@ -1139,31 +1141,7 @@ module TypeProf
 
       when :definemethod
         mid, iseq = operands
-        cref = ep.ctx.cref
-        recv = env.static_env.recv_ty
-        if cref.klass.is_a?(Type::Class)
-          typed_mdef = check_typed_method(cref.klass, mid, ep.ctx.cref.singleton)
-          recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
-          if typed_mdef
-            mdef = ISeqMethodDef.new(iseq, cref)
-            typed_mdef.each do |typed_mdef|
-              typed_mdef.do_match_iseq_mdef(mdef, recv, mid, env, ep, self)
-            end
-          else
-            if ep.ctx.cref.singleton
-              meth = add_singleton_iseq_method(cref.klass, mid, iseq, cref)
-            else
-              meth = add_iseq_method(cref.klass, mid, iseq, cref)
-              if env.static_env.mod_func
-                add_singleton_iseq_method(cref.klass, mid, iseq, cref)
-              end
-            end
-
-            pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
-          end
-        else
-          # XXX: what to do?
-        end
+        do_define_iseq_method(ep, env, mid, iseq, nil)
 
       when :definesmethod
         mid, iseq = operands
@@ -1171,8 +1149,8 @@ module TypeProf
         cref = ep.ctx.cref
         recv.each_child do |recv|
           if recv.is_a?(Type::Class)
-            meth = add_singleton_iseq_method(recv, mid, iseq, cref)
-            pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref)
+            meth = add_singleton_iseq_method(recv, mid, iseq, cref, nil)
+            pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref, nil)
           else
             recv = Type.any # XXX: what to do?
           end
@@ -1997,6 +1975,34 @@ module TypeProf
           warn(ep, "non-proc is passed as a block")
           ctn[Type.any, ep, env]
         end
+      end
+    end
+
+    def do_define_iseq_method(ep, env, mid, iseq, outer_ep)
+      cref = ep.ctx.cref
+      recv = env.static_env.recv_ty
+      if cref.klass.is_a?(Type::Class)
+        typed_mdef = check_typed_method(cref.klass, mid, ep.ctx.cref.singleton)
+        recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
+        if typed_mdef
+          mdef = ISeqMethodDef.new(iseq, cref, outer_ep)
+          typed_mdef.each do |typed_mdef|
+            typed_mdef.do_match_iseq_mdef(mdef, recv, mid, env, ep, self)
+          end
+        else
+          if ep.ctx.cref.singleton
+            meth = add_singleton_iseq_method(cref.klass, mid, iseq, cref, outer_ep)
+          else
+            meth = add_iseq_method(cref.klass, mid, iseq, cref, outer_ep)
+            if env.static_env.mod_func
+              add_singleton_iseq_method(cref.klass, mid, iseq, cref, outer_ep)
+            end
+          end
+
+          pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref, outer_ep)
+        end
+      else
+        # XXX: what to do?
       end
     end
 

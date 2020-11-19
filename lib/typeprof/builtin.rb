@@ -143,7 +143,7 @@ module TypeProf
 
     def object_instance_eval(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size >= 1
-        scratch.warn(ep, "instance_eval with arguments are ignored")
+        scratch.warn(ep, "instance_eval with arguments is ignored")
         ctn[Type.any, ep, env]
         return
       end
@@ -155,7 +155,7 @@ module TypeProf
 
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 1
-        scratch.warn(ep, "Module#include without an argument are ignored")
+        scratch.warn(ep, "Module#include without an argument is ignored")
         ctn[Type.any, ep, env]
         return
       end
@@ -170,7 +170,7 @@ module TypeProf
 
     def module_extend(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 1
-        scratch.warn(ep, "Module#extend without an argument are ignored")
+        scratch.warn(ep, "Module#extend without an argument is ignored")
         ctn[Type.any, ep, env]
         return
       end
@@ -196,6 +196,35 @@ module TypeProf
         end
         ctn[recv, ep, env]
       end
+    end
+
+    def module_define_method(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size != 1
+        scratch.warn(ep, "Module#define with #{ aargs.lead_tys.size } argument is ignored")
+        ctn[Type.any, ep, env]
+        return
+      end
+
+      mid, = aargs.lead_tys
+      if mid.is_a?(Type::Symbol)
+        mid = mid.sym
+        aargs.blk_ty.each_child do |blk_ty|
+          if blk_ty.is_a?(Type::Proc)
+            blk = blk_ty.block_body
+            case blk
+            when ISeqBlock
+              scratch.do_define_iseq_method(ep, env, mid, blk.iseq, ep)
+            else
+              # XXX: what to do?
+            end
+          else
+            # XXX: what to do?
+          end
+        end
+      else
+        # XXX: what to do?
+      end
+      ctn[Type.any, ep, env]
     end
 
     def module_attr_accessor(recv, mid, aargs, ep, env, scratch, &ctn)
@@ -552,6 +581,7 @@ module TypeProf
       scratch.set_custom_method(klass_module, :include, Builtin.method(:module_include))
       scratch.set_custom_method(klass_module, :extend, Builtin.method(:module_extend))
       scratch.set_custom_method(klass_module, :module_function, Builtin.method(:module_module_function))
+      scratch.set_custom_method(klass_module, :define_method, Builtin.method(:module_define_method))
 
       scratch.set_custom_method(klass_proc, :[], Builtin.method(:proc_call))
       scratch.set_custom_method(klass_proc, :call, Builtin.method(:proc_call))
