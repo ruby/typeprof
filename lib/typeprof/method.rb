@@ -68,7 +68,8 @@ module TypeProf
       post_start = @iseq.fargs_format[:post_start]
       rest_start = @iseq.fargs_format[:rest_start]
       kw_start = @iseq.fargs_format[:kwbits]
-      kw_start -= @iseq.fargs_format[:keyword].size if kw_start
+      keyword = @iseq.fargs_format[:keyword]
+      kw_start -= keyword.size if kw_start
       kw_rest = @iseq.fargs_format[:kwrest]
       block_start = @iseq.fargs_format[:block_start]
 
@@ -108,7 +109,12 @@ module TypeProf
         end
       end
       if msig.kw_tys
-        msig.kw_tys.each_with_index do |(_, key, ty), i|
+        msig.kw_tys.each do |_, key, ty|
+          i = keyword.index(key)
+          unless i
+            # warn
+            next
+          end
           alloc_site2 = alloc_site.add_id(key)
           nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(kw_start + i, ty)
