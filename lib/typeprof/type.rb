@@ -149,6 +149,10 @@ module TypeProf
       raise "cannot substitute abstract type: #{ self.class }"
     end
 
+    def generate_substitution
+      {}
+    end
+
     DummySubstitution = Object.new
     def DummySubstitution.[](_)
       Type.any

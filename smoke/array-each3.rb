@@ -8,5 +8,5 @@ end
 __END__
 # Classes
 class Object
-  def log : (untyped) -> nil
+  def log : (bot) -> nil
 end

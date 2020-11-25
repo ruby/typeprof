@@ -97,6 +97,19 @@ module TypeProf
         Cell.new(elems, @base_type)
       end
 
+      def generate_substitution
+        subst = {}
+        tyvars = @base_type.klass.type_params.map {|name,| Type::Var.new(name) }
+        tyvars.zip(@elems.elems) do |tyvar, elem|
+          if subst[tyvar]
+            subst[tyvar] = subst[tyvar].union(elem)
+          else
+            subst[tyvar] = elem
+          end
+        end
+        subst
+      end
+
       class Elements # Cell
         include Utils::StructuralEquality
 
@@ -236,6 +249,10 @@ module TypeProf
         return Type.any if depth <= 0
         elems = @elems.substitute(subst, depth - 1)
         Array.new(elems, @base_type)
+      end
+
+      def generate_substitution
+        { Type::Var.new(:Elem) => @elems.squash }
       end
 
       class Elements # Array
@@ -558,6 +575,14 @@ module TypeProf
         Hash.new(elems, @base_type)
       end
 
+      def generate_substitution
+        tyvar_k = Type::Var.new(:K)
+        tyvar_v = Type::Var.new(:V)
+        k_ty0, v_ty0 = @elems.squash
+        # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
+        { tyvar_k => k_ty0, tyvar_v => v_ty0 }
+      end
+
       class Elements # Hash
         include Utils::StructuralEquality
 
@@ -806,6 +831,46 @@ module TypeProf
 
       def method_dispatch_info
         @base_type.method_dispatch_info
+      end
+
+      def update_container_elem_type(subst, env, caller_ep, scratch)
+        case
+        when @kind == Cell
+          tyvars = @base_type.klass.type_params.map {|name,| Type::Var.new(name) }
+          # XXX: This should be skipped when the called methods belongs to superclass
+          tyvars.each_with_index do |tyvar, idx|
+            ty = subst[tyvar]
+            if ty
+              env, ty = scratch.localize_type(ty, env, caller_ep)
+              env = scratch.update_container_elem_types(env, caller_ep, @id, @base_type) do |elems|
+                elems.update(idx, ty)
+              end
+            end
+          end
+        when @kind == Array
+          tyvar_elem = Type::Var.new(:Elem)
+          if subst[tyvar_elem]
+            ty = subst[tyvar_elem]
+            env, ty = scratch.localize_type(ty, env, caller_ep)
+            env = scratch.update_container_elem_types(env, caller_ep, @id, @base_type) do |elems|
+              elems.update(nil, ty)
+            end
+          end
+        when @kind == Hash
+          tyvar_k = Type::Var.new(:K)
+          tyvar_v = Type::Var.new(:V)
+          if subst[tyvar_k] && subst[tyvar_v]
+            k_ty = subst[tyvar_k]
+            v_ty = subst[tyvar_v]
+            alloc_site = AllocationSite.new(caller_ep)
+            env, k_ty = scratch.localize_type(k_ty, env, caller_ep, alloc_site.add_id(:k))
+            env, v_ty = scratch.localize_type(v_ty, env, caller_ep, alloc_site.add_id(:v))
+            env = scratch.update_container_elem_types(env, caller_ep, @id, @base_type) do |elems|
+              elems.update(k_ty, v_ty)
+            end
+          end
+        end
+        env
       end
     end
   end

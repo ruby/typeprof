@@ -313,7 +313,7 @@ module TypeProf
         @consts[name] = [ty, absolute_path]
       end
 
-      def generate_substitution(singleton, mid, mthd, subst, &blk)
+      def adjust_substitution(singleton, mid, mthd, subst, &blk)
         mthds = @methods[[singleton, mid]]
         yield subst if mthds&.include?(mthd)
         @modules[singleton].each do |mod_def, type_args,|
@@ -323,7 +323,7 @@ module TypeProf
               tyvar = Type::Var.new(tyvar)
               subst2[tyvar] = tyarg.substitute(subst, Config.options[:type_depth_limit])
             end
-            mod_def.generate_substitution(false, mid, mthd, subst2, &blk)
+            mod_def.adjust_substitution(false, mid, mthd, subst2, &blk)
           end
         end
       end
@@ -437,11 +437,11 @@ module TypeProf
       end
     end
 
-    def generate_substitution(klass, singleton, mid, mthd, subst, &blk)
+    def adjust_substitution(klass, singleton, mid, mthd, subst, &blk)
       if klass.kind == :class
         while klass != :__root__
           class_def = @class_defs[klass.idx]
-          class_def.generate_substitution(singleton, mid, mthd, subst, &blk)
+          class_def.adjust_substitution(singleton, mid, mthd, subst, &blk)
           if klass.superclass && klass.superclass_type_args
             subst2 = {}
             klass.superclass.type_params.zip(klass.superclass_type_args) do |(tyvar, *), tyarg|
@@ -455,7 +455,7 @@ module TypeProf
       else
         # module
         class_def = @class_defs[klass.idx]
-        class_def.generate_substitution(singleton, mid, mthd, subst, &blk)
+        class_def.adjust_substitution(singleton, mid, mthd, subst, &blk)
       end
     end
 

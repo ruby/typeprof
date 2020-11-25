@@ -178,30 +178,9 @@ module TypeProf
     def do_send(recv_orig, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = scratch.globalize_type(recv_orig, caller_env, caller_ep)
 
-      tmp_subst = {}
-      case
-      when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Cell
-        tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
-        tyvars.zip(recv.elems.elems) do |tyvar, elem|
-          if tmp_subst[tyvar]
-            tmp_subst[tyvar] = tmp_subst[tyvar].union(elem)
-          else
-            tmp_subst[tyvar] = elem
-          end
-        end
-      when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Array
-        tmp_subst = { Type::Var.new(:Elem) => recv.elems.squash }
-      when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Hash
-        tyvar_k = Type::Var.new(:K)
-        tyvar_v = Type::Var.new(:V)
-        k_ty0, v_ty0 = recv.elems.squash
-        # XXX: need to heuristically replace ret type Hash[K, V] with self, instead of conversative type?
-        tmp_subst = { tyvar_k => k_ty0, tyvar_v => v_ty0 }
-      end
-
       klass, singleton = recv_orig.method_dispatch_info
       cur_subst = {}
-      scratch.generate_substitution(klass, singleton, mid, self, tmp_subst) do |subst|
+      scratch.adjust_substitution(klass, singleton, mid, self, recv.generate_substitution) do |subst|
         cur_subst = Type.merge_substitution(cur_subst, subst)
       end
 
@@ -213,45 +192,15 @@ module TypeProf
         # XXX: support self type in msig
         subst = aargs.consistent_with_method_signature?(msig)
         next unless subst
-        case
-        when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Cell
-          tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
-          # XXX: This should be skipped when the called methods belongs to superclass
-          tyvars.each_with_index do |tyvar, idx|
-            ty = subst[tyvar]
-            if ty
-              ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
-              ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
-                elems.update(idx, ty)
-              end
-            end
-          end
-        when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Array
-          tyvar_elem = Type::Var.new(:Elem)
-          if subst[tyvar_elem]
-            ty = subst[tyvar_elem]
-            ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
-            ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
-              elems.update(nil, ty)
-            end
-          end
-        when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Hash
-          tyvar_k = Type::Var.new(:K)
-          tyvar_v = Type::Var.new(:V)
-          if subst[tyvar_k] && subst[tyvar_v]
-            k_ty = subst[tyvar_k]
-            v_ty = subst[tyvar_v]
-            alloc_site = AllocationSite.new(caller_ep)
-            ncaller_env, k_ty = scratch.localize_type(k_ty, ncaller_env, caller_ep, alloc_site.add_id(:k))
-            ncaller_env, v_ty = scratch.localize_type(v_ty, ncaller_env, caller_ep, alloc_site.add_id(:v))
-            ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
-              elems.update(k_ty, v_ty)
-            end
-          end
+
+        if recv_orig.is_a?(Type::Local)
+          ncaller_env = recv_orig.update_container_elem_type(subst, ncaller_env, caller_ep, scratch)
         end
+
         subst = Type.merge_substitution(subst, cur_subst)
         # need to check self tyvar?
         subst[Type::Var.new(:self)] = recv
+
         found = true
         if aargs.blk_ty.is_a?(Type::Proc)
           #raise NotImplementedError unless aargs.blk_ty.block_body.is_a?(ISeqBlock) # XXX
@@ -262,88 +211,30 @@ module TypeProf
           dummy_env = Env.new(StaticEnv.new(s_recv, msig.blk_ty, false), [], [], Utils::HashWrapper.new({}))
           if msig.blk_ty.is_a?(Type::Proc)
             scratch.add_callsite!(dummy_ctx, caller_ep, ncaller_env, &ctn)
-            nfargs = msig.blk_ty.block_body.msig
+            bsig = msig.blk_ty.block_body.msig
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
-            nlead_tys = (nfargs.lead_tys + nfargs.opt_tys).map.with_index do |ty, i|
-              if recv.is_a?(Type::Array)
-                tyvar_elem = Type::Var.new(:Elem)
-                ty = ty.substitute(subst.merge({ tyvar_elem => recv.elems.squash_or_any }), Config.options[:type_depth_limit])
-              else
-                ty = ty.substitute(subst, Config.options[:type_depth_limit])
-              end
-              ty = ty.remove_type_vars
-              alloc_site2 = alloc_site.add_id(i)
-              dummy_env, ty = scratch.localize_type(ty, dummy_env, dummy_ep, alloc_site2)
+            nlead_tys = (bsig.lead_tys + bsig.opt_tys).map.with_index do |ty, i|
+              ty = ty.substitute(subst, Config.options[:type_depth_limit]).remove_type_vars
+              dummy_env, ty = scratch.localize_type(ty, dummy_env, dummy_ep, alloc_site.add_id(i))
               ty
             end
-            0.upto(nfargs.opt_tys.size) do |n|
-              naargs = ActualArguments.new(nlead_tys[0, nfargs.lead_tys.size + n], nil, {}, Type.nil) # XXX: support block to block?
+            0.upto(bsig.opt_tys.size) do |n|
+              naargs = ActualArguments.new(nlead_tys[0, bsig.lead_tys.size + n], nil, {}, Type.nil) # XXX: support block to block?
               scratch.do_invoke_block(aargs.blk_ty, naargs, dummy_ep, dummy_env) do |blk_ret_ty, _ep, _env|
                 subst2 = Type.match?(blk_ret_ty, msig.blk_ty.block_body.ret_ty)
                 if subst2
                   subst2 = Type.merge_substitution(subst, subst2)
-                  case
-                  when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Cell
-                    tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
-                    tyvars.each_with_index do |tyvar, idx|
-                      ty = subst2[tyvar]
-                      if ty
-                        ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
-                        ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
-                          elems.update(idx, ty)
-                        end
-                        scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
-                      end
-                    end
-                    tyvars.zip(recv.elems.elems) do |tyvar, elem|
-                      if subst2[tyvar]
-                        subst2[tyvar] = subst2[tyvar].union(elem)
-                      else
-                        subst2[tyvar] = elem
-                      end
-                    end
-                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
-                  when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Array
-                    tyvar_elem = Type::Var.new(:Elem)
-                    if subst2[tyvar_elem]
-                      ty = subst2[tyvar_elem]
-                      ncaller_env, ty = scratch.localize_type(ty, ncaller_env, caller_ep)
-                      ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
-                        elems.update(nil, ty)
-                      end
-                      scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
-                    end
-                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
-                  when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Hash
-                    tyvar_k = Type::Var.new(:K)
-                    tyvar_v = Type::Var.new(:V)
-                    k_ty0, v_ty0 = recv.elems.squash
-                    if subst2[tyvar_k] && subst2[tyvar_v]
-                      k_ty = subst2[tyvar_k]
-                      v_ty = subst2[tyvar_v]
-                      k_ty0 = k_ty0.union(k_ty)
-                      v_ty0 = v_ty0.union(v_ty)
-                      alloc_site = AllocationSite.new(caller_ep)
-                      ncaller_env, k_ty = scratch.localize_type(k_ty, ncaller_env, caller_ep, alloc_site.add_id(:k))
-                      ncaller_env, v_ty = scratch.localize_type(v_ty, ncaller_env, caller_ep, alloc_site.add_id(:v))
-                      ncaller_env = scratch.update_container_elem_types(ncaller_env, caller_ep, recv_orig.id, recv_orig.base_type) do |elems|
-                        elems.update(k_ty, v_ty)
-                      end
-                      scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
-                    end
-                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
-                  else
-                    ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
+                  if recv_orig.is_a?(Type::Local)
+                    ncaller_env = recv_orig.update_container_elem_type(subst2, ncaller_env, caller_ep, scratch)
+                    scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                   end
+                  ret_ty2 = ret_ty.substitute(subst2, Config.options[:type_depth_limit]).remove_type_vars
                 else
-                  # raise "???"
-                  # XXX: need warning
-                  ret_ty = Type.any
+                  ret_ty2 = Type.any
                 end
-                ret_ty = ret_ty.remove_type_vars
                 # XXX: check the return type from the block
                 # sig.blk_ty.block_body.ret_ty.eql?(_ret_ty) ???
-                scratch.add_return_value!(dummy_ctx, ret_ty)
+                scratch.add_return_value!(dummy_ctx, ret_ty2)
               end
               # scratch.add_return_value!(dummy_ctx, ret_ty) ?
               # This makes `def foo; 1.times { return "str" }; end` return Integer|String
