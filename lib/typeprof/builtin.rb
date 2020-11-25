@@ -33,10 +33,10 @@ module TypeProf
       h2 = aargs.lead_tys[1]
       elems = nil
       h1.each_child do |h1|
-        if h1.is_a?(Type::LocalHash)
+        if h1.is_a?(Type::Local) && h1.kind == Type::Hash
           h1_elems = scratch.get_container_elem_types(env, ep, h1.id)
           h2.each_child do |h2|
-            if h2.is_a?(Type::LocalHash)
+            if h2.is_a?(Type::Local) && h2.kind == Type::Hash
               h2_elems = scratch.get_container_elem_types(env, ep, h2.id)
               elems0 = h1_elems.union(h2_elems)
               if elems
@@ -262,7 +262,7 @@ module TypeProf
     end
 
     def array_aref(recv, mid, aargs, ep, env, scratch, &ctn)
-      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalArray)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::Local) && recv.kind == Type::Array
 
       case aargs.lead_tys.size
       when 1
@@ -288,7 +288,7 @@ module TypeProf
     end
 
     def array_aset(recv, mid, aargs, ep, env, scratch, &ctn)
-      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalArray)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::Local) && recv.kind == Type::Array
 
       if aargs.lead_tys.size != 2
         #raise NotImplementedError # XXX
@@ -313,7 +313,7 @@ module TypeProf
     end
 
     def array_pop(recv, mid, aargs, ep, env, scratch, &ctn)
-      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalArray)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::Local) && recv.kind == Type::Array
 
       if aargs.lead_tys.size != 0
         ctn[Type.any, ep, env]
@@ -325,7 +325,7 @@ module TypeProf
     end
 
     def hash_aref(recv, mid, aargs, ep, env, scratch, &ctn)
-      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalHash)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::Local) && recv.kind == Type::Hash
 
       if aargs.lead_tys.size != 1
         ctn[Type.any, ep, env]
@@ -333,7 +333,7 @@ module TypeProf
       end
       idx = aargs.lead_tys.first
       recv.each_child do |recv|
-        if recv.is_a?(Type::LocalHash)
+        if recv.is_a?(Type::Local) && recv.kind == Type::Hash
           ty = scratch.get_hash_elem_type(env, ep, recv.id, idx)
         else
           ty = Type.any
@@ -343,7 +343,7 @@ module TypeProf
     end
 
     def hash_aset(recv, mid, aargs, ep, env, scratch, &ctn)
-      return ctn[Type.any, ep, env] unless recv.is_a?(Type::LocalHash)
+      return ctn[Type.any, ep, env] unless recv.is_a?(Type::Local) && recv.kind == Type::Hash
 
       raise NotImplementedError if aargs.lead_tys.size != 2
 
@@ -351,7 +351,7 @@ module TypeProf
       idx = scratch.globalize_type(idx, env, ep)
       ty = aargs.lead_tys.last
 
-      unless recv.is_a?(Type::LocalHash)
+      unless recv.is_a?(Type::Local) && recv.kind == Type::Hash
         # to ignore: class OptionMap < Hash
         return ctn[ty, ep, env]
       end

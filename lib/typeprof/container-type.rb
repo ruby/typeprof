@@ -77,7 +77,7 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:cell).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth)
-        env.deploy_type(LocalCell, alloc_site, elems, @base_type)
+        env.deploy_type(Local.new(Cell, alloc_site, @base_type), elems)
       end
 
       def limit_size(limit)
@@ -102,10 +102,14 @@ module TypeProf
           @elems = elems
         end
 
+        def self.dummy_elements
+          Elements.new([]) # XXX
+        end
+
         attr_reader :elems
 
         def to_local_type(id, base_ty)
-          Type::LocalCell.new(id, base_ty)
+          Type::Local.new(Cell, id, base_ty)
         end
 
         def globalize(env, visited, depth)
@@ -180,45 +184,6 @@ module TypeProf
       end
     end
 
-    class LocalCell < ContainerType
-      def initialize(id, base_type)
-        @id = id
-        raise unless base_type
-        @base_type = base_type
-      end
-
-      attr_reader :id, :base_type
-
-      def inspect
-        "Type::LocalCell[#{ @id }, base_type: #{ @base_type.inspect }]"
-      end
-
-      def screen_name(scratch)
-        #raise "LocalArray must not be included in signature"
-        "LocalCell!"
-      end
-
-      def globalize(env, visited, depth)
-        if visited[self] || depth <= 0
-          Type.any
-        else
-          visited[self] = true
-          elems = env.get_container_elem_types(@id)
-          if elems
-            elems = elems.globalize(env, visited, depth - 1)
-          else
-            elems = Cell::Elements.new([]) # XXX
-          end
-          visited.delete(self)
-          Cell.new(elems, @base_type)
-        end
-      end
-
-      def method_dispatch_info
-        @base_type.method_dispatch_info
-      end
-    end
-
     # Do not insert Array type to local environment, stack, etc.
     class Array < ContainerType
       def initialize(elems, base_type)
@@ -226,6 +191,10 @@ module TypeProf
         @elems = elems # Array::Elements
         raise unless base_type
         @base_type = base_type
+      end
+
+      def self.dummy_elements
+        Elements.new([], Type.any)
       end
 
       attr_reader :elems, :base_type
@@ -247,7 +216,7 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:ary).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
-        env.deploy_type(LocalArray, alloc_site, elems, @base_type)
+        env.deploy_type(Local.new(Array, alloc_site, @base_type), elems)
       end
 
       def limit_size(limit)
@@ -277,7 +246,7 @@ module TypeProf
         attr_reader :lead_tys, :rest_ty
 
         def to_local_type(id, base_ty)
-          Type::LocalArray.new(id, base_ty)
+          Type::Local.new(Array, id, base_ty)
         end
 
         def globalize(env, visited, depth)
@@ -544,48 +513,6 @@ module TypeProf
       end
     end
 
-    # Do not insert Array type to local environment, stack, etc.
-    class LocalArray < ContainerType
-      def initialize(id, base_type)
-        @id = id
-        raise unless base_type
-        @base_type = base_type
-      end
-
-      attr_reader :id, :base_type
-
-      def inspect
-        "Type::LocalArray[#{ @id }, base_type: #{ @base_type.inspect }]"
-      end
-
-      def screen_name(scratch)
-        #raise "LocalArray must not be included in signature"
-        "LocalArray!"
-      end
-
-      def globalize(env, visited, depth)
-        if visited[self] || depth <= 0
-          Type.any
-        else
-          visited[self] = true
-          elems = env.get_container_elem_types(@id)
-          if elems
-            elems = elems.globalize(env, visited, depth - 1)
-          else
-            # TODO: currently out-of-scope array cannot be accessed
-            elems = Array::Elements.new([], Type.any)
-          end
-          visited.delete(self)
-          Array.new(elems, @base_type)
-        end
-      end
-
-      def method_dispatch_info
-        @base_type.method_dispatch_info
-      end
-    end
-
-
     class Hash < ContainerType
       def initialize(elems, base_type)
         @elems = elems
@@ -607,7 +534,7 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:hash).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
-        env.deploy_type(LocalHash, alloc_site, elems, @base_type)
+        env.deploy_type(Local.new(Hash, alloc_site, @base_type), elems)
       end
 
       def limit_size(limit)
@@ -633,18 +560,21 @@ module TypeProf
             raise unless k_ty.is_a?(Type)
             raise unless v_ty.is_a?(Type)
             raise if k_ty.is_a?(Type::Union)
-            raise if k_ty.is_a?(Type::LocalArray)
-            raise if k_ty.is_a?(Type::LocalHash)
+            raise if k_ty.is_a?(Type::Local)
             raise if k_ty.is_a?(Type::Array)
             raise if k_ty.is_a?(Type::Hash)
           end
           @map_tys = map_tys
         end
 
+        def self.dummy_elements
+          Elements.new({Type.any => Type.any})
+        end
+
         attr_reader :map_tys
 
         def to_local_type(id, base_ty)
-          Type::LocalHash.new(id, base_ty)
+          Type::Local.new(Hash, id, base_ty)
         end
 
         def globalize(env, visited, depth)
@@ -832,21 +762,23 @@ module TypeProf
       end
     end
 
-    class LocalHash < ContainerType
-      def initialize(id, base_type)
+    class Local < ContainerType
+      def initialize(kind, id, base_type)
+        @kind = kind
         @id = id
+        raise unless base_type
         @base_type = base_type
       end
 
-      attr_reader :id, :base_type
+      attr_reader :kind, :id, :base_type
 
       def inspect
-        "Type::LocalHash[#{ @id }]"
+        "Type::Local[#{ @kind }, #{ @id }, base_type: #{ @base_type.inspect }]"
       end
 
       def screen_name(scratch)
-        #raise "LocalHash must not be included in signature"
-        "LocalHash!"
+        #raise "Local type must not be included in signature"
+        "Local[#{ @kind }]"
       end
 
       def globalize(env, visited, depth)
@@ -858,10 +790,11 @@ module TypeProf
           if elems
             elems = elems.globalize(env, visited, depth - 1)
           else
-            elems = Hash::Elements.new({Type.any => Type.any})
+            # TODO: currently out-of-scope array cannot be accessed
+            elems = @kind::Elements.dummy_elements
           end
           visited.delete(self)
-          Hash.new(elems, @base_type)
+          @kind.new(elems, @base_type)
         end
       end
 

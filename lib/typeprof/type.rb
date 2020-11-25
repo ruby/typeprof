@@ -203,7 +203,7 @@ module TypeProf
         local = nil
         tys.each do |ty|
           raise ty.inspect unless ty.is_a?(Type)
-          local = true if ty.is_a?(LocalArray) || ty.is_a?(LocalHash)
+          local = true if ty.is_a?(Local)
         end
         raise if local && elems
 

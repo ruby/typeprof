@@ -180,7 +180,7 @@ module TypeProf
 
       tmp_subst = {}
       case
-      when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
+      when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Cell
         tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
         tyvars.zip(recv.elems.elems) do |tyvar, elem|
           if tmp_subst[tyvar]
@@ -189,9 +189,9 @@ module TypeProf
             tmp_subst[tyvar] = elem
           end
         end
-      when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+      when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Array
         tmp_subst = { Type::Var.new(:Elem) => recv.elems.squash }
-      when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
+      when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Hash
         tyvar_k = Type::Var.new(:K)
         tyvar_v = Type::Var.new(:V)
         k_ty0, v_ty0 = recv.elems.squash
@@ -214,7 +214,7 @@ module TypeProf
         subst = aargs.consistent_with_method_signature?(msig)
         next unless subst
         case
-        when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
+        when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Cell
           tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
           # XXX: This should be skipped when the called methods belongs to superclass
           tyvars.each_with_index do |tyvar, idx|
@@ -226,7 +226,7 @@ module TypeProf
               end
             end
           end
-        when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+        when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Array
           tyvar_elem = Type::Var.new(:Elem)
           if subst[tyvar_elem]
             ty = subst[tyvar_elem]
@@ -235,7 +235,7 @@ module TypeProf
               elems.update(nil, ty)
             end
           end
-        when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
+        when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Hash
           tyvar_k = Type::Var.new(:K)
           tyvar_v = Type::Var.new(:V)
           if subst[tyvar_k] && subst[tyvar_v]
@@ -283,7 +283,7 @@ module TypeProf
                 if subst2
                   subst2 = Type.merge_substitution(subst, subst2)
                   case
-                  when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::LocalCell)
+                  when recv.is_a?(Type::Cell) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Cell
                     tyvars = recv.base_type.klass.type_params.map {|name,| Type::Var.new(name) }
                     tyvars.each_with_index do |tyvar, idx|
                       ty = subst2[tyvar]
@@ -303,7 +303,7 @@ module TypeProf
                       end
                     end
                     ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
-                  when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::LocalArray)
+                  when recv.is_a?(Type::Array) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Array
                     tyvar_elem = Type::Var.new(:Elem)
                     if subst2[tyvar_elem]
                       ty = subst2[tyvar_elem]
@@ -314,7 +314,7 @@ module TypeProf
                       scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                     end
                     ret_ty = ret_ty.substitute(subst2, Config.options[:type_depth_limit])
-                  when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::LocalHash)
+                  when recv.is_a?(Type::Hash) && recv_orig.is_a?(Type::Local) && recv_orig.kind == Type::Hash
                     tyvar_k = Type::Var.new(:K)
                     tyvar_v = Type::Var.new(:V)
                     k_ty0, v_ty0 = recv.elems.squash

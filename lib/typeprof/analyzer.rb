@@ -185,9 +185,8 @@ module TypeProf
       Env.new(@static_env, Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
-    def deploy_type(klass, alloc_site, elems, base_ty)
-      local_ty = klass.new(alloc_site, base_ty)
-      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ alloc_site => elems }))
+    def deploy_type(local_ty, elems)
+      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ local_ty.id => elems }))
       nenv = Env.new(@static_env, @locals, @stack, type_params)
       return nenv, local_ty
     end
@@ -979,7 +978,7 @@ module TypeProf
         alloc_site = AllocationSite.new(ep)
         nenv, ty = localize_type(ty, env, ep, alloc_site)
         case ty
-        when Type::LocalCell, Type::LocalArray, Type::LocalHash
+        when Type::Local
           @alloc_site_to_global_id[ty.id] = [recv, var] # need overwrite check??
         end
         yield ty, nenv
@@ -1529,9 +1528,7 @@ module TypeProf
         ret_ty.each_child do |ret_ty|
           flow_env = env.local_update(-var_idx+2, ret_ty)
           ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::Symbol)
-          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::LocalCell)
-          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::LocalArray)
-          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::LocalHash)
+          ret_ty = ret_ty.base_type if ret_ty.is_a?(Type::Local)
           if ret_ty.is_a?(Type::Instance)
             if ret_ty.klass == pattern_ty # XXX: inheritance
               merge_env(branchtype == :if ? ep_else : ep_then, flow_env)
@@ -1697,9 +1694,13 @@ module TypeProf
         from_head = flag & 2 == 0
         ary.each_child do |ary|
           case ary
-          when Type::LocalArray
-            elems = get_container_elem_types(env, ep, ary.id)
-            elems ||= Type::Array::Elements.new([], Type.any) # XXX
+          when Type::Local
+            if ary.kind == Type::Array
+              elems = get_container_elem_types(env, ep, ary.id)
+              elems ||= Type::Array::Elements.new([], Type.any) # XXX
+            else
+              elems = Type::Array::Elements.new([], Type.any) # XXX
+            end
             do_expand_array(ep, env, elems, num, splat, from_head)
           when Type::Any
             nnum = num
@@ -1719,9 +1720,9 @@ module TypeProf
         return
       when :concatarray
         env, (ary1, ary2) = env.pop(2)
-        if ary1.is_a?(Type::LocalArray)
+        if ary1.is_a?(Type::Local) && ary1.kind == Type::Array
           elems1 = get_container_elem_types(env, ep, ary1.id)
-          if ary2.is_a?(Type::LocalArray)
+          if ary2.is_a?(Type::Local) && ary2.kind == Type::Array
             elems2 = get_container_elem_types(env, ep, ary2.id)
             elems = Type::Array::Elements.new([], elems1.squash.union(elems2.squash))
             env = update_container_elem_types(env, ep, ary1.id, ary1.base_type) { elems }
