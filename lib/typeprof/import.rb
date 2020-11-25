@@ -310,7 +310,7 @@ module TypeProf
       opt_kw_tys = func.optional_keywords.to_h {|key, type| [key, conv_type(type.type)] }
       req_kw_tys = func.required_keywords.to_h {|key, type| [key, conv_type(type.type)] }
       rest_kw_ty = func.rest_keywords
-      raise NotImplementedError if rest_kw_ty # XXX
+      rest_kw_ty = conv_type(rest_kw_ty.type) if rest_kw_ty
 
       ret_ty = conv_type(func.return_type)
 
