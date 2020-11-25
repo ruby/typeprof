@@ -50,7 +50,8 @@ module TypeProf
         when "type-depth-limit"
           options[:type_depth_limit] = Integer(args)
         when "pedantic-output"
-          options[:pedantic_output] = true
+          warn "Use --show-untyped instead of --pedantic-output"
+          options[:show_untyped] = true
         when "show-errors"
           options[:show_errors] = true
         when "show-container-raw-elements"

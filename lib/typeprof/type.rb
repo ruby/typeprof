@@ -289,7 +289,7 @@ module TypeProf
             types.delete(Type::Instance.new(Type::Builtin[:true]))
             bool = true
           end
-          types.delete(Type.any) unless Config.options[:pedantic_output]
+          types.delete(Type.any) unless Config.options[:show_untyped]
           proc_tys, types = types.partition {|ty| ty.is_a?(Proc) }
           types = types.map {|ty| ty.screen_name(scratch) }
           types << scratch.show_proc_signature(proc_tys) unless proc_tys.empty?

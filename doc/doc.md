@@ -35,7 +35,7 @@ Here is a list of currently avaiable options:
 * `--exclude-dir DIR`: Omit the result of files that are placed under the directory `DIR`.  If there are some directory specifications, the latter one is stronger.  (Assuming that `--include-dir foo --exclude-dir foo/bar` is specified, the analysis result of foo/bar/baz.rb is omitted, but foo/baz.rb is shown.)
 * `--include-dir DIR`: Show the result of files that are placed under the directory `DIR`.  If there are some directory specifications, the latter one is stronger.  (Assuming that `--exclude-dir foo --include-dir foo/bar` is specified, the analysis result of foo/bar/baz.rb is shown, but foo/baz.rb is omitted.)
 * `-fshow-errors`: Prints out possible bugs found during execution (often a lot of false positives).
-* `-fpedantic-output`: When TypeProf inferred a type `A | untyped`, it simply outputs `A` by default. But this option forces it to output `A | untyped`.
+* `-fshow-untyped`: When TypeProf infers a type `A | untyped`, it simply outputs `A` by default. But this option forces to output `A | untyped`.
 * `-fshow-container-raw-elements`: (undocumented yet)
 * `-ftype-depth-limit=NUM`: (undocumented yet)
 

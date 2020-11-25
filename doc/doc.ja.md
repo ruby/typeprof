@@ -36,7 +36,7 @@ $ typeprof sig/app.rbs app.rb -o sig/app.gen.rbs
 * `--include-dir DIR`: `DIR`以下のファイルの解析結果を出力に含める。後に指定されているほうが優先される（`--exclude-dir foo --include-dir foo/bar`の場合、
 foo/bar/baz.rbの結果は出力されるが、foo/baz.rbの結果は出力されない）。
 * `-fshow-errors`: 実行中に見つけたバグの可能性を出力します（多くの場合、大量のfalse positiveが出ます）。
-* `-fpedantic-output`: デフォルトでは`A | untyped`と推定されたところを単に`A`と出力しますが、より生の出力、つまり`A | untyped`と出力します。
+* `-fshow-untyped`: デフォルトでは`A | untyped`と推定されたところを単に`A`と出力しますが、より生の出力、つまり`A | untyped`と出力します。
 * `-fshow-container-raw-elements`: （後で書く）
 * `-ftype-depth-limit=NUM`: （後で書く）
 

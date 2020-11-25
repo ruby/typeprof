@@ -25,7 +25,7 @@ module TypeProf
       rb_files = [@name]
       rbs_files = [@rbs_path].compact
       output = StringIO.new("")
-      options[:pedantic_output] = true unless options.key?(:pedantic_output)
+      options[:show_untyped] = true unless options.key?(:show_untyped)
       options[:show_errors] = true unless options.key?(:show_errors)
       config = TypeProf::ConfigData.new(rb_files: rb_files, rbs_files: rbs_files, output: output, options: options, verbose: 0)
       TypeProf.analyze(config)

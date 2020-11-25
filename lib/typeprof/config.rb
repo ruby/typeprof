@@ -23,7 +23,7 @@ module TypeProf
       opt[:options] ||= {}
       opt[:options] = {
         type_depth_limit: 5,
-        pedantic_output: false,
+        show_untyped: false,
         show_errors: false,
         stackprof: nil,
         stub_execution: true,
