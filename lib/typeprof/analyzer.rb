@@ -185,17 +185,11 @@ module TypeProf
       Env.new(@static_env, Utils.array_update(@locals, idx, ty), @stack, @type_params)
     end
 
-    def deploy_type(local_ty, elems)
-      type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ local_ty.id => elems }))
-      nenv = Env.new(@static_env, @locals, @stack, type_params)
-      return nenv, local_ty
-    end
-
     def get_container_elem_types(id)
       @type_params.internal_hash[id]
     end
 
-    def update_container_elem_types(id, elems)
+    def deploy_type(id, elems)
       type_params = Utils::HashWrapper.new(@type_params.internal_hash.merge({ id => elems }))
       Env.new(@static_env, @locals, @stack, type_params)
     end
@@ -781,7 +775,7 @@ module TypeProf
         merge_return_env(tmp_ep) do |menv|
           elems = menv.get_container_elem_types(id)
           elems = yield elems
-          menv = menv.update_container_elem_types(id, elems)
+          menv = menv.deploy_type(id, elems)
           gid = @alloc_site_to_global_id[id]
           if gid
             ty = globalize_type(elems.to_local_type(id, base_type), env, ep)
@@ -793,7 +787,7 @@ module TypeProf
       else
         elems = env.get_container_elem_types(id)
         elems = yield elems
-        env = env.update_container_elem_types(id, elems)
+        env = env.deploy_type(id, elems)
         gid = @alloc_site_to_global_id[id]
         if gid
           ty = globalize_type(elems.to_local_type(id, base_type), env, ep)

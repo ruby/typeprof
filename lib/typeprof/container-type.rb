@@ -77,7 +77,9 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:cell).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth)
-        env.deploy_type(Local.new(Cell, alloc_site, @base_type), elems)
+        ty = Local.new(Cell, alloc_site, @base_type)
+        env = env.deploy_type(alloc_site, elems)
+        return env, ty
       end
 
       def limit_size(limit)
@@ -216,7 +218,9 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:ary).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
-        env.deploy_type(Local.new(Array, alloc_site, @base_type), elems)
+        ty = Local.new(Array, alloc_site, @base_type)
+        env = env.deploy_type(alloc_site, elems)
+        return env, ty
       end
 
       def limit_size(limit)
@@ -534,7 +538,9 @@ module TypeProf
         return env, Type.any if depth <= 0
         alloc_site = alloc_site.add_id(:hash).add_id(@base_type)
         env, elems = @elems.localize(env, alloc_site, depth - 1)
-        env.deploy_type(Local.new(Hash, alloc_site, @base_type), elems)
+        ty = Local.new(Hash, alloc_site, @base_type)
+        env = env.deploy_type(alloc_site, elems)
+        return env, ty
       end
 
       def limit_size(limit)
