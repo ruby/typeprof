@@ -45,6 +45,14 @@ module TypeProf
     end
 
     def do_check_send(msig, recv, mid, ep, scratch)
+      klass, singleton = recv.method_dispatch_info
+      cur_subst = {}
+      direct_method = true
+      scratch.adjust_substitution(klass, singleton, mid, self, recv.generate_substitution) do |subst, direct|
+        direct_method &&= direct
+        cur_subst = Type.merge_substitution(cur_subst, subst)
+      end
+
       lead_num = @iseq.fargs_format[:lead_num] || 0
       post_num = @iseq.fargs_format[:post_num] || 0
       rest_start = @iseq.fargs_format[:rest_start]
@@ -85,12 +93,14 @@ module TypeProf
       msig.lead_tys.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(idx += 1)
         # nenv is top-level, so it is okay to call Type#localize directly
+        ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
         nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
         nenv = nenv.local_update(i, ty)
       end
       if msig.opt_tys
         msig.opt_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
+          ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
           nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(lead_num + i, ty)
         end
@@ -98,12 +108,14 @@ module TypeProf
       if msig.rest_ty
         alloc_site2 = alloc_site.add_id(idx += 1)
         ty = Type::Array.new(Type::Array::Elements.new([], msig.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
+        ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
         nenv, rest_ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
         nenv = nenv.local_update(rest_start, rest_ty)
       end
       if msig.post_tys
         msig.post_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
+          ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
           nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(post_start + i, ty)
         end
@@ -116,6 +128,7 @@ module TypeProf
             next
           end
           alloc_site2 = alloc_site.add_id(key)
+          ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
           nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
           nenv = nenv.local_update(kw_start + i, ty)
         end
@@ -123,6 +136,7 @@ module TypeProf
       if msig.kw_rest_ty
         ty = msig.kw_rest_ty
         alloc_site2 = alloc_site.add_id(:**)
+        ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
         nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
         nenv = nenv.local_update(kw_rest, ty)
       end
