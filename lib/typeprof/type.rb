@@ -822,6 +822,7 @@ module TypeProf
       @opt_tys = opt_tys
       @rest_ty = rest_ty
       @post_tys = post_tys
+      raise unless post_tys
       @kw_tys = kw_tys
       kw_tys.each {|a| raise if a.size != 3 } if kw_tys
       @kw_rest_ty = kw_rest_ty

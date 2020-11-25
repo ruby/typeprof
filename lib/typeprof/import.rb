@@ -595,7 +595,7 @@ module TypeProf
       req, lead_tys, opt_tys, ret_ty = blk
       lead_tys = lead_tys.map {|ty| conv_type(ty) }
       opt_tys = opt_tys.map {|ty| conv_type(ty) }
-      msig = MethodSignature.new(lead_tys, opt_tys, nil, nil, nil, nil, nil)
+      msig = MethodSignature.new(lead_tys, opt_tys, nil, [], {}, nil, Type.nil)
       ret_ty = conv_type(ret_ty)
       ret = [Type::Proc.new(TypedBlock.new(msig, ret_ty), Type::Builtin[:proc])]
       ret << Type.nil unless req
