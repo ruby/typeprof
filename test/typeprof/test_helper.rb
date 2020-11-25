@@ -27,6 +27,7 @@ module TypeProf
       output = StringIO.new("")
       options[:show_untyped] = true unless options.key?(:show_untyped)
       options[:show_errors] = true unless options.key?(:show_errors)
+      options[:show_indicator] = false unless options.key?(:show_indicator)
       config = TypeProf::ConfigData.new(rb_files: rb_files, rbs_files: rbs_files, output: output, options: options, verbose: 0)
       TypeProf.analyze(config)
 

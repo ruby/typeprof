@@ -830,7 +830,7 @@ module TypeProf
           ep = @worklist.deletemin
 
           iter_counter += 1
-          if Config.verbose >= 1
+          if Config.options[:show_indicator]
             tick2 = Time.now
             if tick2 - tick >= 1
               tick = tick2
@@ -875,7 +875,7 @@ module TypeProf
           end
         end
       end
-      $stderr.print "\r\e[K" if Config.verbose >= 1
+      $stderr.print "\r\e[K" if Config.options[:show_indicator]
 
       stat_eps
     end

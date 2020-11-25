@@ -22,11 +22,12 @@ module TypeProf
       opt[:verbose] ||= 0
       opt[:options] ||= {}
       opt[:options] = {
-        type_depth_limit: 5,
+        show_indicator: true,
         show_untyped: false,
         show_errors: false,
-        stackprof: nil,
         stub_execution: true,
+        type_depth_limit: 5,
+        stackprof: nil,
       }.merge(opt[:options])
       super(**opt)
     end

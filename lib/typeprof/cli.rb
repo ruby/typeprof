@@ -7,65 +7,59 @@ module TypeProf
     def parse(argv)
       opt = OptionParser.new
 
+      opt.banner = "Usage: #{ opt.program_name } [options] files..."
+
       output = nil
 
       # Verbose level:
-      # * 0: no output
-      # * 1: show indicator
-      # * 2: debug print
+      # * 0: none
+      # * 1: default level
+      # * 2: debugging level
       verbose = 1
 
       options = {}
       dir_filter = nil
       gem_rbs_features = []
-      version = false
+      show_version = false
       max_sec = max_iter = nil
 
-      opt.on("-o OUTFILE") {|v| output = v }
-      opt.on("-q", "--quiet") { verbose = 0 }
-      opt.on("-v", "--verbose") { options[:show_errors] = true }
-      opt.on("--version") { version = true }
-      opt.on("-d", "--debug") { verbose = 2 }
-      opt.on("-I DIR") {|v| $LOAD_PATH << v }
-      opt.on("-r FEATURE") {|v| gem_rbs_features << v }
-      opt.on("--max-second SECOND", Float) {|v| max_sec = v }
-      opt.on("--max-iteration TIMES", Integer) {|v| max_iter = v }
+      opt.separator ""
+      opt.separator "Options:"
+      opt.on("-o OUTFILE", "Output to OUTFILE instead of stdout") {|v| output = v }
+      opt.on("-q", "--quiet", "Do not display progress indicator") { options[:show_indicator] = false }
+      opt.on("-v", "--verbose", "Alias to --show-errors") { options[:show_errors] = true }
+      opt.on("--version", "Display typeprof version") { show_version = true }
+      opt.on("-I DIR", "Add DIR to the load/require path") {|v| $LOAD_PATH << v }
+      opt.on("-r FEATURE", "Require RBS of the FEATURE gem") {|v| gem_rbs_features << v }
 
-      opt.on("--include-dir DIR") do |dir|
+      opt.separator ""
+      opt.separator "Analysis output options:"
+      opt.on("--include-dir DIR", "Include the analysis result of .rb file in DIR") do |dir|
         # When `--include-dir` option is specified as the first directory option,
         # typeprof will exclude any files by default unless a file path matches the explicit option
         dir_filter ||= [[:exclude]]
         dir_filter << [:include, File.expand_path(dir)]
       end
-      opt.on("--exclude-dir DIR") do |dir|
+      opt.on("--exclude-dir DIR", "Exclude the analysis result of .rb file in DIR") do |dir|
         # When `--exclude-dir` option is specified as the first directory option,
         # typeprof will include any files by default, except Ruby's install directory and Gem directories
         dir_filter ||= ConfigData::DEFAULT_DIR_FILTER
         dir_filter << [:exclude, File.expand_path(dir)]
       end
+      opt.on("--[no-]show-errors", "Display possible errors found during the analysis") {|v| options[:show_errors] = v }
+      opt.on("--[no-]show-untyped", "Display \"Foo | untyped\" instead of \"Foo\"") {|v| options[:show_untyped] = v }
 
-      opt.on("-f OPTION") do |v|
-        key, args = v.split("=", 2)
-        case key
-        when "type-depth-limit"
-          options[:type_depth_limit] = Integer(args)
-        when "pedantic-output"
-          warn "Use --show-untyped instead of --pedantic-output"
-          options[:show_untyped] = true
-        when "show-errors"
-          options[:show_errors] = true
-        when "show-container-raw-elements"
-          options[:show_container_raw_elements] = true
-        when "stub-execution"
-          options[:stub_execution] = true
-        when "no-stub-execution"
-          options[:stub_execution] = false
-        when "stackprof"
-          options[:stackprof] = args ? args.to_sym : :cpu
-        else
-          raise OptionParser::InvalidOption.new("unknown option: #{ key }")
-        end
-      end
+      opt.separator ""
+      opt.separator "Analysis limit options:"
+      opt.on("--max-second SECOND", Float, "Limit the maxium time of analysis (in second)") {|v| max_sec = v }
+      opt.on("--max-iteration TIMES", Integer, "Limit the maxium iteration count of analysis") {|v| max_iter = v }
+
+      opt.separator ""
+      opt.separator "Advanced options:"
+      opt.on("--[no-]stub-execution", "Force to call all unreachable methods with \"untyped\" arguments") {|v| options[:stub_execution] = v }
+      opt.on("--type-depth-limit DEPTH", Integer, "Limit the maximum depth of nested types") {|v| options[:type_depth_limit] = v }
+      opt.on("--debug", "Display analysis log (for debugging purpose)") { verbose = 2 }
+      opt.on("--[no-]stackprof MODE", /\Acpu|wall|object\z/, "Enable stackprof (for debugging purpose)") {|v| options[:stackprof] = v.to_sym }
 
       opt.parse!(argv)
 
@@ -80,9 +74,9 @@ module TypeProf
         end
       end
 
-      puts "typeprof #{ VERSION }" if version
+      puts "typeprof #{ VERSION }" if show_version
       if rb_files.empty?
-        exit if version
+        exit if show_version
         raise OptionParser::InvalidOption.new("no input files")
       end
 
