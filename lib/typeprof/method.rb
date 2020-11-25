@@ -180,7 +180,9 @@ module TypeProf
 
       klass, singleton = recv_orig.method_dispatch_info
       cur_subst = {}
-      scratch.adjust_substitution(klass, singleton, mid, self, recv.generate_substitution) do |subst|
+      direct_method = true
+      scratch.adjust_substitution(klass, singleton, mid, self, recv.generate_substitution) do |subst, direct|
+        direct_method &&= direct
         cur_subst = Type.merge_substitution(cur_subst, subst)
       end
 
@@ -193,7 +195,7 @@ module TypeProf
         subst = aargs.consistent_with_method_signature?(msig)
         next unless subst
 
-        if recv_orig.is_a?(Type::Local)
+        if direct_method && recv_orig.is_a?(Type::Local)
           ncaller_env = recv_orig.update_container_elem_type(subst, ncaller_env, caller_ep, scratch)
         end
 
@@ -224,7 +226,7 @@ module TypeProf
                 subst2 = Type.match?(blk_ret_ty, msig.blk_ty.block_body.ret_ty)
                 if subst2
                   subst2 = Type.merge_substitution(subst, subst2)
-                  if recv_orig.is_a?(Type::Local)
+                  if direct_method && recv_orig.is_a?(Type::Local)
                     ncaller_env = recv_orig.update_container_elem_type(subst2, ncaller_env, caller_ep, scratch)
                     scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                   end
