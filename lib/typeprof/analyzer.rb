@@ -414,7 +414,7 @@ module TypeProf
       superclass = Type::Builtin[:struct]
       name = "AnonymousStruct_generated_#{ @anonymous_struct_gen_id += 1 }"
       @class_defs[idx] = ClassDef.new(:class, [name], ep.ctx.iseq.absolute_path)
-      klass = Type::Class.new(:class, idx, [], superclass, [], name)
+      klass = Type::Class.new(:class, idx, [], superclass, [Type.any], name)
       @class_defs[idx].klass_obj = klass
 
       @struct_defs[ep] = klass

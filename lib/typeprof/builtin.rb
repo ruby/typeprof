@@ -508,6 +508,31 @@ module TypeProf
       ctn[result, ep, env]
     end
 
+    def kernel_autoload(recv, mid, aargs, ep, env, scratch, &ctn)
+      raise NotImplementedError if aargs.lead_tys.size != 2
+      feature = aargs.lead_tys[1]
+      if feature.is_a?(Type::Literal)
+        feature = feature.lit
+
+        action, arg = Builtin.file_require(feature, scratch)
+        case action
+        when :do
+          Builtin.file_load(arg, ep, env, scratch, &ctn)
+        when :done
+        when :error
+          scratch.warn(ep, arg)
+        end
+        ctn[Type.nil, ep, env]
+      else
+        scratch.warn(ep, "autoload target cannot be identified statically")
+        ctn[Type.nil, ep, env]
+      end
+    end
+
+    def module_autoload(recv, mid, aargs, ep, env, scratch, &ctn)
+      kernel_autoload(recv, mid, aargs, ep, env, scratch, &ctn)
+    end
+
     def kernel_Array(recv, mid, aargs, ep, env, scratch, &ctn)
       raise NotImplementedError if aargs.lead_tys.size != 1
       ty = aargs.lead_tys.first
@@ -599,6 +624,8 @@ module TypeProf
       scratch.set_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
       scratch.set_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
       scratch.set_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
+      scratch.set_custom_method(klass_obj, :autoload, Builtin.method(:kernel_autoload))
+      scratch.set_custom_method(klass_module, :autoload, Builtin.method(:module_autoload))
 
       # remove BasicObject#method_missing
       scratch.set_method(klass_basic_obj, :method_missing, false, nil)
