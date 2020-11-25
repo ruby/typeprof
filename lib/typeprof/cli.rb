@@ -52,7 +52,7 @@ module TypeProf
       opt.separator ""
       opt.separator "Analysis limit options:"
       opt.on("--max-second SECOND", Float, "Limit the maxium time of analysis (in second)") {|v| max_sec = v }
-      opt.on("--max-iteration TIMES", Integer, "Limit the maxium iteration count of analysis") {|v| max_iter = v }
+      opt.on("--max-iteration TIMES", Integer, "Limit the maxium instruction count of analysis") {|v| max_iter = v }
 
       opt.separator ""
       opt.separator "Advanced options:"

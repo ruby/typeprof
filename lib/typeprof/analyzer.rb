@@ -834,7 +834,7 @@ module TypeProf
             tick2 = Time.now
             if tick2 - tick >= 1
               tick = tick2
-              $stderr << "\rType Profiling... (%d steps @ %s)\e[K" % [iter_counter, ep.source_location]
+              $stderr << "\rType Profiling... (%d instructions @ %s)\e[K" % [iter_counter, ep.source_location]
               $stderr.flush
             end
           end
