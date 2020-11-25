@@ -212,6 +212,7 @@ module TypeProf
         raise if local && elems
 
         @elems = elems
+        raise elems.inspect if elems && !elems.is_a?(::Hash)
       end
 
       def each_free_type_variable(&blk)

@@ -152,12 +152,14 @@ module TypeProf
               lead_tys = ty.elems.lead_tys
               rest_ty = ty.elems.rest_ty
             when Type::Union
-              other_elems = nil
-              ty.elems&.each do |(container_kind, base_type), elems|
-                if container_kind == Type::Array
-                  rest_ty = rest_ty ? rest_ty.union(elems.squash) : elems.squash
-                else
-                  other_elems = other_elems ? other_elems.union(elems) : elems
+              if ty.elems
+                other_elems = {}
+                ty.elems.each do |(container_kind, base_type), elems|
+                  if container_kind == Type::Array
+                    rest_ty = rest_ty ? rest_ty.union(elems.squash) : elems.squash
+                  else
+                    other_elems[[container_kind, base_type]] = elems
+                  end
                 end
               end
               lead_tys = [Type::Union.new(ty.types, other_elems)]
