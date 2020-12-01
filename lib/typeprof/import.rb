@@ -62,7 +62,6 @@ module TypeProf
   class RBS2JSON
     def initialize(all_env, cur_env)
       @all_env, @cur_env = all_env, cur_env
-      @env_walker = RBS::EnvironmentWalker.new(env: @cur_env) # Currently, only each_type_name is used
     end
 
     def dump_json
