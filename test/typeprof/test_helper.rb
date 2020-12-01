@@ -19,7 +19,7 @@ module TypeProf
       @name, @rbs_path = name, rbs_path
     end
 
-    def run(**options)
+    def run(gem_rbs_features: [], **options)
       verbose_back, $VERBOSE = $VERBOSE, nil
 
       rb_files = [@name]
@@ -28,7 +28,14 @@ module TypeProf
       options[:show_untyped] = true unless options.key?(:show_untyped)
       options[:show_errors] = true unless options.key?(:show_errors)
       options[:show_indicator] = false unless options.key?(:show_indicator)
-      config = TypeProf::ConfigData.new(rb_files: rb_files, rbs_files: rbs_files, output: output, options: options, verbose: 0)
+      config = TypeProf::ConfigData.new(
+        rb_files: rb_files,
+        rbs_files: rbs_files,
+        gem_rbs_features: gem_rbs_features,
+        output: output,
+        options: options,
+        verbose: 0,
+      )
       TypeProf.analyze(config)
 
       output = output.string
