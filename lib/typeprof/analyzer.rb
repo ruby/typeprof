@@ -387,12 +387,12 @@ module TypeProf
       cbase && cbase.idx != 1 ? @class_defs[cbase.idx].name : []
     end
 
-    def new_class(cbase, name, type_params, superclass, superclass_type_args, absolute_path)
+    def new_class(cbase, name, type_params, superclass, absolute_path)
       show_name = cbase_path(cbase) + [name]
       idx = @class_defs.size
       if superclass
         @class_defs[idx] = ClassDef.new(:class, show_name, absolute_path)
-        klass = Type::Class.new(:class, idx, type_params, superclass, superclass_type_args, show_name)
+        klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
         add_constant(cbase, name, klass, absolute_path)
@@ -400,11 +400,15 @@ module TypeProf
       else
         # module
         @class_defs[idx] = ClassDef.new(:module, show_name, absolute_path)
-        mod = Type::Class.new(:module, idx, type_params, nil, nil, show_name)
+        mod = Type::Class.new(:module, idx, type_params, nil, show_name)
         @class_defs[idx].klass_obj = mod
         add_constant(cbase, name, mod, absolute_path)
         return mod
       end
+    end
+
+    def add_superclass_type_args!(klass, tyargs)
+      klass.superclass_type_args = tyargs
     end
 
     def new_struct(ep)
@@ -414,7 +418,8 @@ module TypeProf
       superclass = Type::Builtin[:struct]
       name = "AnonymousStruct_generated_#{ @anonymous_struct_gen_id += 1 }"
       @class_defs[idx] = ClassDef.new(:class, [name], ep.ctx.iseq.absolute_path)
-      klass = Type::Class.new(:class, idx, [], superclass, [Type.any], name)
+      klass = Type::Class.new(:class, idx, [], superclass, name)
+      add_superclass_type_args!(klass, [Type.any])
       @class_defs[idx].klass_obj = klass
 
       @struct_defs[ep] = klass
@@ -1195,8 +1200,8 @@ module TypeProf
             if cbase == Type.any
               klass = Type.any
             else
-              superclass_type_args = superclass.type_params.map { Type.any } if superclass
-              klass = new_class(cbase, id, [], superclass, superclass_type_args, ep.ctx.iseq.absolute_path)
+              klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
+              add_superclass_type_args!(klass, superclass.type_params.map { Type.any }) if superclass
             end
           end
           singleton = false

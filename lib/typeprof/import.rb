@@ -259,12 +259,6 @@ module TypeProf
       yield decl.name
       if decl.super_class
         name = decl.super_class.name
-        args = decl.super_class.args
-        if args
-          args.each do |ty|
-            @env_walker.each_type_name(ty, &blk)
-          end
-        end
       else
         name = RBS::BuiltinNames::Object.name
       end
@@ -476,8 +470,7 @@ module TypeProf
 
         klass = @scratch.get_constant(base_klass, name)
         if klass.is_a?(Type::Any)
-          superclass_type_args = superclass_type_args&.map {|ty| conv_type(ty) }
-          klass = @scratch.new_class(base_klass, name, type_params, superclass, superclass_type_args, nil)
+          klass = @scratch.new_class(base_klass, name, type_params, superclass, nil)
 
           # There builtin classes are needed to interpret RBS declarations
           case classpath
@@ -493,10 +486,11 @@ module TypeProf
           end
         end
 
-        [klass, members]
+        [klass, superclass_type_args, members]
       end
 
-      classes.each do |klass, members|
+      classes.each do |klass, superclass_type_args, members|
+        @scratch.add_superclass_type_args!(klass, superclass_type_args&.map {|ty| conv_type(ty) })
         included_modules = members[:included_modules]
         extended_modules = members[:extended_modules]
         methods = members[:methods]
