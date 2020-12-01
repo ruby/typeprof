@@ -11,5 +11,6 @@ foo
 __END__
 # Classes
 class Object
+  private
   def foo : -> [:A, :B]
 end

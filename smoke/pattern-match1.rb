@@ -19,5 +19,6 @@ smoke/pattern-match1.rb:5: [error] undefined method: nil#[]
 
 # Classes
 class Object
+  private
   def foo : -> ([:a | untyped, :b | untyped])
 end
