@@ -10,6 +10,7 @@ fuga
 __END__
 # Classes
 class Object
+  private
   def hoge : -> Enumerator[Integer]
   def fuga : -> Enumerator[Integer]
 end

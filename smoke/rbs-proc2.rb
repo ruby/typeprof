@@ -15,6 +15,7 @@ log2
 __END__
 # Classes
 class Object
+  private
   def log1 : (untyped) -> untyped
   def log2 : -> String
 end

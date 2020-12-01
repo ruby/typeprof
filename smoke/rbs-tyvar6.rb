@@ -11,6 +11,7 @@ log3(obj.test_module)
 __END__
 # Classes
 class Object
+  private
   def log1 : (Bar[String]) -> nil
   def log2 : (Array[String]) -> nil
   def log3 : (Integer) -> nil

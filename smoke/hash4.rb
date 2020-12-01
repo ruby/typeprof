@@ -6,5 +6,6 @@ foo
 __END__
 # Classes
 class Object
+  private
   def foo : -> Hash[bot, bot]
 end

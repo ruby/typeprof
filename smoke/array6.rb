@@ -11,5 +11,6 @@ __END__
 # Classes
 class Object
   ARY : Array[bot]
+  private
   def foo : (Integer, String) -> Array[bot]
 end

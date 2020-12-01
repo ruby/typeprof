@@ -16,5 +16,6 @@ smoke/manual-rbs2.rb:4: [error] undefined method: A::B#unknown
 
 # Classes
 class Object
+  private
   def bar : -> untyped
 end

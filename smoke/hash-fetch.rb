@@ -21,6 +21,7 @@ baz(h)
 __END__
 # Classes
 class Object
+  private
   def foo : ({a: :A, b: :B}) -> (:A | :B)
   def bar : ({a: :A, b: :B}) -> (:A | :B | :C)
   def baz : ({a: :A, b: :B}) -> ([:A | :B | :C, (:a | :b)?])

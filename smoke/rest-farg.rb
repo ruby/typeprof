@@ -6,5 +6,6 @@ end
 __END__
 # Classes
 class Object
+  private
   def foo : -> bool
 end

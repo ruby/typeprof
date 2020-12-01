@@ -19,6 +19,7 @@ log(Foo.new.foo)
 __END__
 # Classes
 class Object
+  private
   def log : (Integer | String) -> nil
 end
 

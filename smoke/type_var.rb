@@ -6,5 +6,6 @@ number?('string')
 __END__
 # Classes
 class Object
+  private
   def number? : (String) -> nil
 end

@@ -56,6 +56,7 @@ dispatch(:a, :b, :c, :d, :e)
 __END__
 # Classes
 class Object
+  private
   def f1 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
   def f2 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
   def f3 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])

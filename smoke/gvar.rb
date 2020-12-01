@@ -9,5 +9,6 @@ $foo : Integer | String
 
 # Classes
 class Object
+  private
   def log : (Integer | String) -> nil
 end

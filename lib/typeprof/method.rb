@@ -4,12 +4,15 @@ module TypeProf
   end
 
   class ISeqMethodDef < MethodDef
-    def initialize(iseq, cref, outer_ep)
+    def initialize(iseq, cref, outer_ep, pub_meth)
       @iseq = iseq
       raise if iseq.nil?
       @cref = cref
       @outer_ep = outer_ep
+      @pub_meth = pub_meth
     end
+
+    attr_accessor :pub_meth
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = recv.base_type while recv.respond_to?(:base_type)
@@ -27,7 +30,7 @@ module TypeProf
 
       nctx = Context.new(@iseq, @cref, mid)
       callee_ep = ExecutionPoint.new(nctx, 0, @outer_ep)
-      nenv = Env.new(StaticEnv.new(recv, blk_ty, false), locals, [], Utils::HashWrapper.new({}))
+      nenv = Env.new(StaticEnv.new(recv, blk_ty, false, true), locals, [], Utils::HashWrapper.new({}))
       alloc_site = AllocationSite.new(callee_ep)
       locals.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(i)
@@ -87,7 +90,7 @@ module TypeProf
       callee_ep = ExecutionPoint.new(ctx, 0, nil)
 
       locals = [Type.nil] * @iseq.locals.size
-      nenv = Env.new(StaticEnv.new(recv, msig.blk_ty, false), locals, [], Utils::HashWrapper.new({}))
+      nenv = Env.new(StaticEnv.new(recv, msig.blk_ty, false, true), locals, [], Utils::HashWrapper.new({}))
       alloc_site = AllocationSite.new(callee_ep)
       idx = 0
       msig.lead_tys.each_with_index do |ty, i|
@@ -224,7 +227,7 @@ module TypeProf
           dummy_ep = ExecutionPoint.new(dummy_ctx, -1, caller_ep)
           s_recv = recv
           s_recv = s_recv.base_type while s_recv.respond_to?(:base_type)
-          dummy_env = Env.new(StaticEnv.new(s_recv, msig.blk_ty, false), [], [], Utils::HashWrapper.new({}))
+          dummy_env = Env.new(StaticEnv.new(s_recv, msig.blk_ty, false, true), [], [], Utils::HashWrapper.new({}))
           if msig.blk_ty.is_a?(Type::Proc)
             scratch.add_callsite!(dummy_ctx, caller_ep, ncaller_env, &ctn)
             bsig = msig.blk_ty.block_body.msig

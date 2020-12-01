@@ -8,5 +8,6 @@ foo("")
 __END__
 # Classes
 class Object
+  private
   def foo : (Integer | String) -> (singleton(Integer) | singleton(String))
 end

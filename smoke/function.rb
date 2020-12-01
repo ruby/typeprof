@@ -11,6 +11,7 @@ one_argument(1)
 __END__
 # Classes
 class Object
+  private
   def no_argument : -> String
   def one_argument : (Integer) -> nil
 end

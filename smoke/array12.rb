@@ -18,6 +18,7 @@ foo
 __END__
 # Classes
 class Object
+  private
   def bar : ([Integer]) -> nil
   def test_yield : { -> nil } -> nil
   def foo : -> [Integer]

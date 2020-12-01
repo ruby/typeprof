@@ -9,5 +9,6 @@ log(foo)
 __END__
 # Classes
 class Object
+  private
   def log : (Foo[Integer]) -> Integer
 end

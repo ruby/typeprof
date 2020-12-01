@@ -46,6 +46,7 @@ end
 __END__
 # Classes
 class Object
+  private
   def f1 : { -> nil } -> ^(nil, *bot, nil) -> nil
   def log1 : (nil, Array[bot], nil) -> nil
   def f2 : { (:a) -> nil } -> ^(:a, *bot, nil) -> nil

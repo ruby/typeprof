@@ -83,10 +83,11 @@ module TypeProf
   class StaticEnv
     include Utils::StructuralEquality
 
-    def initialize(recv_ty, blk_ty, mod_func)
+    def initialize(recv_ty, blk_ty, mod_func, pub_meth)
       @recv_ty = recv_ty
       @blk_ty = blk_ty
       @mod_func = mod_func
+      @pub_meth = pub_meth
 
       return if recv_ty == :top #OK
       recv_ty.each_child_global do |ty|
@@ -94,13 +95,14 @@ module TypeProf
       end
     end
 
-    attr_reader :recv_ty, :blk_ty, :mod_func
+    attr_reader :recv_ty, :blk_ty, :mod_func, :pub_meth
 
     def merge(other)
       recv_ty = @recv_ty.union(other.recv_ty)
       blk_ty = @blk_ty.union(other.blk_ty)
       mod_func = @mod_func & other.mod_func # ??
-      StaticEnv.new(recv_ty, blk_ty, mod_func)
+      pub_meth = @pub_meth & other.pub_meth # ??
+      StaticEnv.new(recv_ty, blk_ty, mod_func, pub_meth)
     end
   end
 
@@ -195,12 +197,17 @@ module TypeProf
     end
 
     def enable_module_function
-      senv = StaticEnv.new(@static_env.recv_ty, @static_env.blk_ty, true)
+      senv = StaticEnv.new(@static_env.recv_ty, @static_env.blk_ty, true, @static_env.pub_meth)
+      Env.new(senv, @locals, @stack, @type_params)
+    end
+
+    def method_public_set(flag)
+      senv = StaticEnv.new(@static_env.recv_ty, @static_env.blk_ty, @static_env.mod_func, flag)
       Env.new(senv, @locals, @stack, @type_params)
     end
 
     def replace_recv_ty(ty)
-      senv = StaticEnv.new(ty, @static_env.blk_ty, @static_env.mod_func)
+      senv = StaticEnv.new(ty, @static_env.blk_ty, @static_env.mod_func, @static_env.pub_meth)
       Env.new(senv, @locals, @stack, @type_params)
     end
 
@@ -563,12 +570,12 @@ module TypeProf
       end
     end
 
-    def add_iseq_method(klass, mid, iseq, cref, outer_ep)
-      add_method(klass, mid, false, ISeqMethodDef.new(iseq, cref, outer_ep))
+    def add_iseq_method(klass, mid, iseq, cref, outer_ep, pub_meth)
+      add_method(klass, mid, false, ISeqMethodDef.new(iseq, cref, outer_ep, pub_meth))
     end
 
-    def add_singleton_iseq_method(klass, mid, iseq, cref, outer_ep)
-      add_method(klass, mid, true, ISeqMethodDef.new(iseq, cref, outer_ep))
+    def add_singleton_iseq_method(klass, mid, iseq, cref, outer_ep, pub_meth)
+      add_method(klass, mid, true, ISeqMethodDef.new(iseq, cref, outer_ep, pub_meth))
     end
 
     def set_custom_method(klass, mid, impl)
@@ -953,7 +960,7 @@ module TypeProf
       locals[kwrest_index] = Type.any if kwrest_index
       locals[block_index] = Type.nil if block_index
 
-      env = Env.new(StaticEnv.new(recv, Type.nil, false), locals, [], Utils::HashWrapper.new({}))
+      env = Env.new(StaticEnv.new(recv, Type.nil, false, true), locals, [], Utils::HashWrapper.new({}))
 
       if !@pending_execution[iseq] || @pending_execution[iseq][0] == :block
         @pending_execution[iseq] = [:method, [meth, ep, env]]
@@ -1148,7 +1155,7 @@ module TypeProf
         cref = ep.ctx.cref
         recv.each_child do |recv|
           if recv.is_a?(Type::Class)
-            meth = add_singleton_iseq_method(recv, mid, iseq, cref, nil)
+            meth = add_singleton_iseq_method(recv, mid, iseq, cref, nil, env.static_env.pub_meth)
             pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref, nil)
           else
             recv = Type.any # XXX: what to do?
@@ -1211,7 +1218,7 @@ module TypeProf
         nctx = Context.new(iseq, ncref, nil)
         nep = ExecutionPoint.new(nctx, 0, nil)
         locals = [Type.nil] * iseq.locals.size
-        nenv = Env.new(StaticEnv.new(recv, blk, false), locals, [], Utils::HashWrapper.new({}))
+        nenv = Env.new(StaticEnv.new(recv, blk, false, true), locals, [], Utils::HashWrapper.new({}))
         merge_env(nep, nenv)
         add_callsite!(nep.ctx, ep, env) do |ret_ty, ep, env|
           nenv, ret_ty = localize_type(ret_ty, env, ep)
@@ -1940,7 +1947,7 @@ module TypeProf
         nctx = Context.new(blk_iseq, ep.ctx.cref, ep.ctx.mid)
         nep = ExecutionPoint.new(nctx, 0, ep)
         nlocals = [Type.any] * blk_iseq.locals.size
-        nsenv = StaticEnv.new(env.static_env.recv_ty, Type.any, env.static_env.mod_func)
+        nsenv = StaticEnv.new(env.static_env.recv_ty, Type.any, env.static_env.mod_func, env.static_env.pub_meth)
         nenv = Env.new(nsenv, nlocals, [], nil)
         pend_block_dummy_execution(blk_ty, blk_iseq, nep, nenv)
         merge_return_env(ep) {|tenv| tenv ? tenv.merge(env) : env }
@@ -1996,17 +2003,17 @@ module TypeProf
         typed_mdef = check_typed_method(cref.klass, mid, ep.ctx.cref.singleton)
         recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
         if typed_mdef
-          mdef = ISeqMethodDef.new(iseq, cref, outer_ep)
+          mdef = ISeqMethodDef.new(iseq, cref, outer_ep, env.static_env.pub_meth)
           typed_mdef.each do |typed_mdef|
             typed_mdef.do_match_iseq_mdef(mdef, recv, mid, env, ep, self)
           end
         else
           if ep.ctx.cref.singleton
-            meth = add_singleton_iseq_method(cref.klass, mid, iseq, cref, outer_ep)
+            meth = add_singleton_iseq_method(cref.klass, mid, iseq, cref, outer_ep, true)
           else
-            meth = add_iseq_method(cref.klass, mid, iseq, cref, outer_ep)
+            meth = add_iseq_method(cref.klass, mid, iseq, cref, outer_ep, env.static_env.pub_meth)
             if env.static_env.mod_func
-              add_singleton_iseq_method(cref.klass, mid, iseq, cref, outer_ep)
+              add_singleton_iseq_method(cref.klass, mid, iseq, cref, outer_ep, true)
             end
           end
 

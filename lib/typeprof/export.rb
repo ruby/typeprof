@@ -135,8 +135,9 @@ module TypeProf
               method_name = ctx.mid
               method_name = "self.#{ method_name }" if singleton
 
-              iseq_methods[method_name] ||= []
-              iseq_methods[method_name] << @scratch.show_method_signature(ctx)
+              iseq_methods[method_name] ||= [true, []]
+              iseq_methods[method_name][0] &&= mdef.pub_meth
+              iseq_methods[method_name][1] << @scratch.show_method_signature(ctx)
             end
           when AttrMethodDef
             next if !mdef.absolute_path || Config.check_dir_filter(mdef.absolute_path) == :exclude
@@ -296,8 +297,13 @@ module TypeProf
         output.puts indent + "# def #{ method_name } : #{ sigs }"
         first = false
       end
-      class_data.iseq_methods.each do |method_name, sigs|
+      prev_pub_meth = true
+      class_data.iseq_methods.each do |method_name, (pub_meth, sigs)|
         sigs = sigs.sort.join("\n" + indent + " " * (method_name.size + 7) + "| ")
+        if prev_pub_meth != pub_meth
+          output.puts indent + "  #{ pub_meth ? "public" : "private" }"
+          prev_pub_meth = pub_meth
+        end
         output.puts indent + "  def #{ method_name } : #{ sigs }"
         first = false
       end

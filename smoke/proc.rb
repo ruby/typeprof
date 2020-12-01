@@ -14,6 +14,7 @@ bar
 __END__
 # Classes
 class Object
+  private
   def foo : -> Integer
   def bar : -> String
 end

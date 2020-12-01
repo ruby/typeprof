@@ -34,6 +34,7 @@ Baz.new.f(A.new)
 __END__
 # Classes
 class Object
+  private
   def log : (Baz) -> nil
 end
 

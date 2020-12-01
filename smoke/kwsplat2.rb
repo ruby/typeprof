@@ -8,5 +8,6 @@ foo(*a, **h)
 __END__
 # Classes
 class Object
+  private
   def foo : (*Integer | {k: Integer}, k: Integer) -> nil
 end

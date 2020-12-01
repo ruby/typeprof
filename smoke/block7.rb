@@ -14,5 +14,6 @@ smoke/block7.rb:8: [error] wrong argument type Integer<1> (expected Proc)
 
 # Classes
 class Object
+  private
   def foo : -> untyped
 end

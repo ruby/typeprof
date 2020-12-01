@@ -15,6 +15,7 @@ A.new(nil)
 __END__
 # Classes
 class Object
+  private
   def log : (A) -> nil
 end
 

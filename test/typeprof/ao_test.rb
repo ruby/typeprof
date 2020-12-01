@@ -15,6 +15,7 @@ class Object
   IMAGE_HEIGHT : Integer
   NSUBSAMPLES : Integer
   NAO_SAMPLES : Integer
+  private
   def clamp : (Float) -> Integer
   def otherBasis : (Vec) -> [Vec, Vec, Vec]
   def top : -> Integer

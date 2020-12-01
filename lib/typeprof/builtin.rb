@@ -198,6 +198,38 @@ module TypeProf
       end
     end
 
+    def module_public(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.empty?
+        ctn[recv, ep, env.method_public_set(true)]
+      else
+        aargs.lead_tys.each do |aarg|
+          sym = get_sym("public", aarg, ep, scratch) or next
+          meths = scratch.get_method(recv, false, sym)
+          next unless meths
+          meths.each do |mdef|
+            mdef.pub_meth = true
+          end
+        end
+        ctn[recv, ep, env]
+      end
+    end
+
+    def module_private(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.empty?
+        ctn[recv, ep, env.method_public_set(false)]
+      else
+        aargs.lead_tys.each do |aarg|
+          sym = get_sym("private", aarg, ep, scratch) or next
+          meths = scratch.get_method(recv, false, sym)
+          next unless meths
+          meths.each do |mdef|
+            mdef.pub_meth = false
+          end
+        end
+        ctn[recv, ep, env]
+      end
+    end
+
     def module_define_method(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 1
         scratch.warn(ep, "Module#define with #{ aargs.lead_tys.size } argument is ignored")
@@ -606,6 +638,8 @@ module TypeProf
       scratch.set_custom_method(klass_module, :include, Builtin.method(:module_include))
       scratch.set_custom_method(klass_module, :extend, Builtin.method(:module_extend))
       scratch.set_custom_method(klass_module, :module_function, Builtin.method(:module_module_function))
+      scratch.set_custom_method(klass_module, :public, Builtin.method(:module_public))
+      scratch.set_custom_method(klass_module, :private, Builtin.method(:module_private))
       scratch.set_custom_method(klass_module, :define_method, Builtin.method(:module_define_method))
 
       scratch.set_custom_method(klass_proc, :[], Builtin.method(:proc_call))

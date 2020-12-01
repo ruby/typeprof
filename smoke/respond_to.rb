@@ -18,5 +18,6 @@ foo(true)
 __END__
 # Classes
 class Object
+  private
   def foo : (Integer | String | true) -> (Integer | String | bool)
 end

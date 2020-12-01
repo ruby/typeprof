@@ -17,6 +17,7 @@ bar
 __END__
 # Classes
 class Object
+  private
   def foo : -> [:foo]
   def bar : -> [:bar]
 end

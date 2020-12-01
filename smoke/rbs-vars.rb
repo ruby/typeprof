@@ -26,6 +26,7 @@ __END__
 
 # Classes
 class Object
+  private
   def gvar_test : -> :gvar_example
 end
 

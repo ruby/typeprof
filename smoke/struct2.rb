@@ -14,6 +14,7 @@ foobar.bar = :sym
 __END__
 # Classes
 class Object
+  private
   def gen_foobar : -> FooBar
 end
 

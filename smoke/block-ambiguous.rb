@@ -25,6 +25,7 @@ f4 {|x,| log4(x) }
 __END__
 # Classes
 class Object
+  private
   def f1 : { (:a, :b, :c) -> nil } -> nil
   def log1 : (:a) -> nil
   def f2 : { (:a, :b, :c) -> nil } -> nil

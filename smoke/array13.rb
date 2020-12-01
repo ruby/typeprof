@@ -23,6 +23,7 @@ end
 __END__
 # Classes
 class Object
+  private
   def tuple_set : -> [:a, :b, :z]
   def tuple_get : -> :c
   def seq_set : -> (Array[:a | :b | :c | :z])

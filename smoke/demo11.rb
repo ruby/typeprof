@@ -7,5 +7,6 @@ swap(a)
 __END__
 # Classes
 class Object
+  private
   def swap : ([Integer, String]) -> [String, Integer]
 end

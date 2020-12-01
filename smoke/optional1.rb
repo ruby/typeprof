@@ -9,5 +9,6 @@ foo("A", "B", "C", "Z")
 __END__
 # Classes
 class Object
+  private
   def foo : (String, ?Integer | String, ?Integer | String, String) -> ([String, Integer | String, Integer | String, String])
 end

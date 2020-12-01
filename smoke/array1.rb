@@ -18,6 +18,7 @@ quux(a[n])
 __END__
 # Classes
 class Object
+  private
   def foo : ([Integer, String]) -> Integer
   def bar : (Integer) -> nil
   def baz : (String) -> nil

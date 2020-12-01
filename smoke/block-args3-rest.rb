@@ -58,6 +58,7 @@ __END__
 # Classes
 class Object
   StringArray : Array[String]
+  private
   def f1 : { (*String) -> nil } -> (^(String, ?:opt | String, *String, String) -> nil)
   def log1 : (String, :opt | String, Array[String], String) -> nil
   def f2 : { (:a, *String) -> nil } -> (^(:a, ?:opt | String, *String, String) -> nil)

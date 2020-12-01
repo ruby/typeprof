@@ -10,5 +10,6 @@ foo([:a, :b, :c])
 __END__
 # Classes
 class Object
+  private
   def foo : ([:a, :b, :c]) -> :a
 end

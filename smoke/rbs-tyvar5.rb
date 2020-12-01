@@ -8,5 +8,6 @@ end
 __END__
 # Classes
 class Object
+  private
   def foo : -> Cell[Foo[:a, :b]]
 end

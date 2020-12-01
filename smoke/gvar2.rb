@@ -13,5 +13,6 @@ smoke/gvar2.rb:1: [warning] inconsistent assignment to RBS-declared global varia
 
 # Classes
 class Object
+  private
   def log : -> String
 end

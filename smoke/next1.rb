@@ -15,6 +15,7 @@ end
 __END__
 # Classes
 class Object
+  private
   def bar : (Integer) -> Integer
   def foo : { (Integer) -> String } -> String
 end

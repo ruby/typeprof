@@ -42,6 +42,7 @@ f10 {|n| }
 __END__
 # Classes
 class Object
+  private
   def f1 : -> nil
   def f2 : (:x, :y, :z) -> nil
   def f3 : (?String, ?String) -> nil

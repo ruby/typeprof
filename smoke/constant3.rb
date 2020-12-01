@@ -5,5 +5,6 @@ foo
 __END__
 # Classes
 class Object
+  private
   def foo : -> untyped
 end

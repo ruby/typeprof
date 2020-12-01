@@ -16,5 +16,6 @@ foo(:sym)
 __END__
 # Classes
 class Object
+  private
   def foo : (:sym | Integer | String) -> (:sym | Integer | String)
 end

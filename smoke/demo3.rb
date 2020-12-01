@@ -12,5 +12,6 @@ fib(40000)
 __END__
 # Classes
 class Object
+  private
   def fib : (Integer) -> Integer
 end

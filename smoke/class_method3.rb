@@ -19,9 +19,11 @@ v.foo
 __END__
 # Classes
 class ForWin
+  private
   def self.foo : -> nil
 end
 
 class ForLinux
+  private
   def self.foo : -> nil
 end

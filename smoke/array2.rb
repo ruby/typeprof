@@ -21,6 +21,7 @@ log(a)
 __END__
 # Classes
 class Object
+  private
   def foo : -> [[String]]
   def bar : ([[Integer]]) -> [[String]]
   def log : ([[Integer]]) -> nil

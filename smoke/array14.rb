@@ -9,5 +9,6 @@ f(:a, :b, :c)
 __END__
 # Classes
 class Object
+  private
   def f : (:a, :b, :c) -> :c
 end

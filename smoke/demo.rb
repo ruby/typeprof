@@ -65,6 +65,7 @@ B.new.foo("str")
 __END__
 # Classes
 class Object
+  private
   def foo : (bool) -> (Integer | String)
   def identity : (:sym | Integer | String) -> (:sym | Integer | String)
   def fib : (Integer) -> Integer

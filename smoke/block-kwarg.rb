@@ -39,6 +39,7 @@ smoke/block-kwarg.rb:31: [error] no argument for required keywords
 
 # Classes
 class Object
+  private
   def f1 : { -> nil } -> nil
   def log1 : (Integer) -> nil
   def f2 : { -> nil } -> nil

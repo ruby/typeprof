@@ -8,5 +8,6 @@ foo(a:1)
 __END__
 # Classes
 class Object
+  private
   def foo : (a: Integer) -> Integer
 end

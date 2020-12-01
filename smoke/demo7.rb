@@ -10,5 +10,6 @@ end
 __END__
 # Classes
 class Object
+  private
   def foo : (Integer) { (Integer) -> String } -> String
 end

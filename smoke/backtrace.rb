@@ -26,6 +26,7 @@ smoke/backtrace.rb:2: [error] undefined method: Object#unknown_method
 
 # Classes
 class Object
+  private
   def foo : -> untyped
   def bar : -> untyped
   def baz : -> untyped

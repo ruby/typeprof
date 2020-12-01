@@ -9,5 +9,6 @@ foo(nil)
 __END__
 # Classes
 class Object
+  private
   def foo : (Integer?) -> Integer
 end

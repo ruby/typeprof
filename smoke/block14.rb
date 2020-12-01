@@ -13,5 +13,6 @@ $blk : ^(Integer) -> nil
 
 # Classes
 class Object
+  private
   def foo : { (Integer) -> nil } -> nil
 end

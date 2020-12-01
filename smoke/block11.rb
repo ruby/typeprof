@@ -31,6 +31,7 @@ bar
 __END__
 # Classes
 class Object
+  private
   def log1 : (Integer?) -> nil
   def log2 : (Integer?) -> nil
   def foo : -> Integer?

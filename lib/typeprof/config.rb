@@ -69,7 +69,7 @@ module TypeProf
 
     prologue_ctx = Context.new(nil, nil, nil)
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
-    prologue_env = Env.new(StaticEnv.new(:top, Type.nil, false), [], [], Utils::HashWrapper.new({}))
+    prologue_env = Env.new(StaticEnv.new(:top, Type.nil, false, true), [], [], Utils::HashWrapper.new({}))
 
     Config.rb_files.each do |rb|
       if rb.is_a?(Array) # [String name, String content]
@@ -113,7 +113,7 @@ module TypeProf
     ctx = Context.new(iseq, cref, nil)
     ep = ExecutionPoint.new(ctx, 0, nil)
     locals = [Type.nil] * iseq.locals.size
-    env = Env.new(StaticEnv.new(recv, Type.nil, false), locals, [], Utils::HashWrapper.new({}))
+    env = Env.new(StaticEnv.new(recv, Type.nil, false, false), locals, [], Utils::HashWrapper.new({}))
 
     return ep, env
   end

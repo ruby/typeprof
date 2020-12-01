@@ -20,6 +20,7 @@ Test.new.qux("str")
 __END__
 # Classes
 class Object
+  private
   def foo : (Integer) -> Integer
   def bar : (String) -> String
 end

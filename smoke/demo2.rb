@@ -10,5 +10,6 @@ my_to_s(:sym)
 __END__
 # Classes
 class Object
+  private
   def my_to_s : (:sym | Integer | String) -> String
 end

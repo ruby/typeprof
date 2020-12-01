@@ -18,5 +18,6 @@ smoke/expandarray1.rb:3: [error] undefined method: Object#unknown
 
 # Classes
 class Object
+  private
   def foo : -> ([:a, [:b, :c]] | untyped)
 end

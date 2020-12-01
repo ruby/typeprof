@@ -27,6 +27,7 @@ grault(*string_array)
 __END__
 # Classes
 class Object
+  private
   def foo : (*String) -> nil
   def bar : (*Integer | String) -> nil
   def baz : (String, *String) -> nil

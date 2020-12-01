@@ -55,6 +55,7 @@ end
 __END__
 # Classes
 class Object
+  private
   def f1 : { -> nil } -> ^(nil, ?:opt, *bot, nil) -> nil
   def log1 : (nil, :opt, Array[bot], nil) -> nil
   def f2 : { (:a) -> nil } -> ^(:a, ?:opt, *bot, nil) -> nil
