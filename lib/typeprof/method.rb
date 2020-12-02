@@ -125,7 +125,7 @@ module TypeProf
       end
       if msig.kw_tys
         msig.kw_tys.each do |_, key, ty|
-          i = keyword.index(key)
+          i = keyword.index {|callee_key,| callee_key == key }
           unless i
             # warn
             next
