@@ -123,7 +123,7 @@ module TypeProf
           nenv = nenv.local_update(post_start + i, ty)
         end
       end
-      if msig.kw_tys
+      if msig.kw_tys && keyword # TODO: support the case where RBS writes kw_tys and RB method accepts **kwrest
         msig.kw_tys.each do |_, key, ty|
           i = keyword.index {|callee_key,| callee_key == key }
           unless i
