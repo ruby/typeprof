@@ -822,7 +822,7 @@ module TypeProf
             elems = elems.globalize(env, visited, depth - 1)
           else
             # TODO: currently out-of-scope array cannot be accessed
-            elems = @kind::Elements.dummy_elements
+            elems = @kind.dummy_elements
           end
           visited.delete(self)
           @kind.new(elems, @base_type)
