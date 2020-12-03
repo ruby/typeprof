@@ -26,6 +26,13 @@ module TypeProf
     def load_library(lib)
       loader = RBS::EnvironmentLoader.new(core_root: nil)
       loader.add(library: lib)
+
+      case lib
+      when "yaml"
+        loader.add(library: "pstore")
+        loader.add(library: "dbm")
+      end
+
       new_decls = loader.load(env: @env).map {|decl,| decl }
       RBSReader.load_rbs(@env, new_decls)
     end
@@ -441,6 +448,8 @@ module TypeProf
         json = scratch.rbs_reader.load_library(feature)
       rescue RBS::EnvironmentLoader::UnknownLibraryError
         return nil
+      rescue RBS::DuplicatedDeclarationError
+        return true
       end
       # need cache?
       Import.new(scratch, json).import
