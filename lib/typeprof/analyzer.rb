@@ -1613,7 +1613,7 @@ module TypeProf
           warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(self) }::#{ name }")
         end
         ty.each_child do |ty|
-          if ty.is_a?(Type::Class) && ty.superclass == Type::Builtin[:struct]
+          if ty.is_a?(Type::Class) && cbase.is_a?(Type::Class) && ty.superclass == Type::Builtin[:struct]
             @class_defs[ty.idx].name = cbase_path(cbase) + [name]
           end
         end
