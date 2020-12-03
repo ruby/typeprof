@@ -124,8 +124,10 @@ module TypeProf
     def object_send(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size >= 1
         mid_ty, = aargs.lead_tys
-      else
+      elsif aargs.rest_ty
         mid_ty = aargs.rest_ty
+      else
+        return ctn[Type.any, ep, env]
       end
       aargs = ActualArguments.new(aargs.lead_tys[1..-1], aargs.rest_ty, aargs.kw_tys, aargs.blk_ty)
       found = false
