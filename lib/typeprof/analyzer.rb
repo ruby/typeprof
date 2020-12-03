@@ -1343,11 +1343,24 @@ module TypeProf
           return
         when :break
           tmp_ep = ep
-          tmp_ep = tmp_ep.outer while tmp_ep.ctx.iseq.type != :block
-          tmp_ep = tmp_ep.outer
-          nenv = @return_envs[tmp_ep].push(ty)
-          merge_env(tmp_ep.next, nenv)
-          # TODO: jump to ensure?
+          while true
+            if tmp_ep.ctx.iseq.type == :block
+              tmp_ep = tmp_ep.outer
+              nenv = @return_envs[tmp_ep].push(ty)
+              merge_env(tmp_ep.next, nenv)
+              break
+            end
+            _type, _iseq, cont, stack_depth = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc]&.find {|type,| type == :break }
+            if cont
+              nenv = @return_envs[tmp_ep]
+              nenv, = nenv.pop(nenv.stack.size - stack_depth)
+              nenv = nenv.push(ty)
+              tmp_ep = tmp_ep.jump(cont)
+              merge_env(tmp_ep, nenv)
+              break
+            end
+            tmp_ep = tmp_ep.outer
+          end
         when :next, :redo
           # begin; rescue; next; end
           tmp_ep = ep.outer
