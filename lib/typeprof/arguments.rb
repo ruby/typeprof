@@ -58,6 +58,7 @@ module TypeProf
           subst = Type.merge_substitution(subst, subst2)
         end
         msig.opt_tys.each do |farg|
+          break if aargs.empty?
           aarg = aargs.shift
           return nil unless subst2 = Type.match?(aarg, farg)
           subst = Type.merge_substitution(subst, subst2)
