@@ -870,7 +870,7 @@ module TypeProf
           @pending_execution.delete(iseq)
         end while @executed_iseqs.include?(iseq)
 
-        puts "DEBUG: trigger dummy execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.verbose >= 2
+        puts "DEBUG: trigger stub execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.verbose >= 2
 
         break if !iseq
         case kind
