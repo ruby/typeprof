@@ -613,6 +613,10 @@ module TypeProf
       @iseq_method_to_ctxs[iseq_mdef] << ctx
     end
 
+    def add_executed_iseq(iseq)
+      @executed_iseqs << iseq
+    end
+
     def add_callsite!(callee_ctx, caller_ep, caller_env, &ctn)
       @executed_iseqs << callee_ctx.iseq if callee_ctx.is_a?(Context)
 

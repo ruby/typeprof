@@ -148,6 +148,7 @@ module TypeProf
       opt.each do |start_pc|
         scratch.merge_env(ExecutionPoint.new(ctx, start_pc, @outer_ep), nenv)
       end
+      scratch.add_executed_iseq(@iseq)
 
       ctx
     end
