@@ -676,7 +676,7 @@ module TypeProf
       def add_read!(site, ep, &ctn)
         entry = @tbl[site] ||= Entry.new(false, {}, Type.bot, Utils::MutableSet.new)
         entry.read_continuations[ep] = ctn
-        entry.absolute_paths << ep.ctx.iseq.absolute_path
+        entry.absolute_paths << ep.ctx.iseq.absolute_path if ep.ctx.is_a?(Context)
         ctn[entry.type, ep]
       end
 
