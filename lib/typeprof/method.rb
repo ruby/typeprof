@@ -87,7 +87,7 @@ module TypeProf
       # XXX: need to check .rbs msig and .rb fargs
 
       ctx = Context.new(@iseq, @cref, mid)
-      callee_ep = ExecutionPoint.new(ctx, 0, nil)
+      callee_ep = ExecutionPoint.new(ctx, 0, @outer_ep)
 
       locals = [Type.nil] * @iseq.locals.size
       nenv = Env.new(StaticEnv.new(recv, msig.blk_ty, false, true), locals, [], Utils::HashWrapper.new({}))
@@ -95,16 +95,15 @@ module TypeProf
       idx = 0
       msig.lead_tys.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(idx += 1)
-        # nenv is top-level, so it is okay to call Type#localize directly
         ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
-        nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+        nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(i, ty)
       end
       if msig.opt_tys
         msig.opt_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
           ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
-          nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+          nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
           nenv = nenv.local_update(lead_num + i, ty)
         end
       end
@@ -112,14 +111,14 @@ module TypeProf
         alloc_site2 = alloc_site.add_id(idx += 1)
         ty = Type::Array.new(Type::Array::Elements.new([], msig.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
         ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
-        nenv, rest_ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+        nenv, rest_ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(rest_start, rest_ty)
       end
       if msig.post_tys
         msig.post_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
           ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
-          nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+          nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
           nenv = nenv.local_update(post_start + i, ty)
         end
       end
@@ -132,7 +131,7 @@ module TypeProf
           end
           alloc_site2 = alloc_site.add_id(key)
           ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
-          nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+          nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
           nenv = nenv.local_update(kw_start + i, ty)
         end
       end
@@ -140,13 +139,13 @@ module TypeProf
         ty = msig.kw_rest_ty
         alloc_site2 = alloc_site.add_id(:**)
         ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
-        nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+        nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(kw_rest, ty)
       end
       nenv = nenv.local_update(block_start, msig.blk_ty) if block_start
 
       opt.each do |start_pc|
-        scratch.merge_env(ExecutionPoint.new(ctx, start_pc, @outer_ep), nenv)
+        scratch.merge_env(callee_ep.jump(start_pc), nenv)
       end
       scratch.add_executed_iseq(@iseq)
 
