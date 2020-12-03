@@ -207,7 +207,7 @@ module TypeProf
           meths = scratch.get_method(recv, false, sym)
           next unless meths
           meths.each do |mdef|
-            mdef.pub_meth = true
+            mdef.pub_meth = true if mdef.respond_to?(:pub_meth=)
           end
         end
         ctn[recv, ep, env]
@@ -223,7 +223,7 @@ module TypeProf
           meths = scratch.get_method(recv, false, sym)
           next unless meths
           meths.each do |mdef|
-            mdef.pub_meth = false
+            mdef.pub_meth = false if mdef.respond_to?(:pub_meth=)
           end
         end
         ctn[recv, ep, env]
