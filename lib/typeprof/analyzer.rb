@@ -34,6 +34,14 @@ module TypeProf
     end
 
     attr_reader :iseq, :cref, :mid
+
+    def source_location(pc)
+      if @iseq
+        @iseq.source_location(pc)
+      else
+        "<builtin>"
+      end
+    end
   end
 
   class TypedContext
@@ -45,6 +53,14 @@ module TypeProf
     end
 
     attr_reader :caller_ep, :mid
+
+    def source_location(_pc)
+      if @caller_ep
+        @caller_ep.source_location
+      else
+        "<typed-context:#{ @mid }>"
+      end
+    end
   end
 
   class ExecutionPoint
@@ -71,12 +87,7 @@ module TypeProf
     end
 
     def source_location
-      iseq = @ctx.iseq
-      if iseq
-        iseq.source_location(@pc)
-      else
-        "<builtin>"
-      end
+      @ctx.source_location(@pc)
     end
   end
 
