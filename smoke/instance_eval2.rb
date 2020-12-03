@@ -6,7 +6,5 @@ end
 __END__
 # Classes
 class String
-  @a : :a
-  @b : :b
-  @c : :c
+  @a : Integer
 end
