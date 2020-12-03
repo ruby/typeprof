@@ -29,7 +29,10 @@ module TypeProf
 
     def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
       blk_env = scratch.return_envs[@outer_ep]
-      blk_env = blk_env.replace_recv_ty(replace_recv_ty) if replace_recv_ty
+      if replace_recv_ty
+        replace_recv_ty = scratch.globalize_type(replace_recv_ty, caller_env, caller_ep)
+        blk_env = blk_env.replace_recv_ty(replace_recv_ty)
+      end
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
 
       scratch.add_block_signature!(self, aargs.to_block_signature)
