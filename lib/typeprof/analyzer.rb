@@ -2021,9 +2021,9 @@ module TypeProf
               add_singleton_iseq_method(cref.klass, mid, iseq, cref, outer_ep, true)
             end
           end
-
-          pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref, outer_ep)
         end
+
+        pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref, outer_ep)
       else
         # XXX: what to do?
       end

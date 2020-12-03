@@ -146,7 +146,7 @@ module TypeProf
       nenv = nenv.local_update(block_start, msig.blk_ty) if block_start
 
       opt.each do |start_pc|
-        scratch.merge_env(ExecutionPoint.new(ctx, start_pc, nil), nenv)
+        scratch.merge_env(ExecutionPoint.new(ctx, start_pc, @outer_ep), nenv)
       end
 
       ctx
