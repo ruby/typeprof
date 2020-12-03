@@ -263,8 +263,11 @@ module TypeProf
       end
       return if decl.name == RBS::BuiltinNames::BasicObject.name
       return if decl.name == name
-      @all_env.class_decls[name].decls.each do |decl|
-        each_reference(decl.decl, &blk)
+      decls = @all_env.class_decls[name]
+      if decls
+        decls.decls.each do |decl|
+          each_reference(decl.decl, &blk)
+        end
       end
     end
 
