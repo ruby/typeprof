@@ -989,10 +989,14 @@ module TypeProf
 
     def pend_block_dummy_execution(blk, iseq, nep, nenv)
       @pending_execution[iseq] ||= [:block, [blk, {}]]
-      if @pending_execution[iseq][1][1][nep]
-        @pending_execution[iseq][1][1][nep] = @pending_execution[iseq][1][1][nep].merge(nenv)
+      if @pending_execution[iseq][0] == :block
+        if @pending_execution[iseq][1][1][nep]
+          @pending_execution[iseq][1][1][nep] = @pending_execution[iseq][1][1][nep].merge(nenv)
+        else
+          @pending_execution[iseq][1][1][nep] = nenv
+        end
       else
-        @pending_execution[iseq][1][1][nep] = nenv
+        # XXX: what to do?
       end
     end
 
