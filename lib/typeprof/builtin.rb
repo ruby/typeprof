@@ -507,12 +507,12 @@ module TypeProf
           ctn[result, ep, env]
         when :error
           scratch.warn(ep, arg)
-          result = Type::Instance.new(Type.bool)
+          result = Type.bool
           ctn[result, ep, env]
         end
       else
         scratch.warn(ep, "require target cannot be identified statically")
-        result = Type::Instance.new(Type.bool)
+        result = Type.bool
         ctn[result, ep, env]
       end
     end

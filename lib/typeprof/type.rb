@@ -497,6 +497,7 @@ module TypeProf
       def initialize(klass)
         raise unless klass
         raise if klass == Type.any
+        raise if klass.is_a?(Type::Union)
         @klass = klass
       end
 
