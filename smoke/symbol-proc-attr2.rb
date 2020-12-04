@@ -10,6 +10,6 @@ end
 __END__
 # Classes
 class Foo
-  attr_reader foo : Array[bot]
-  def initialize : -> Array[bot]
+  attr_reader foo : [Integer]
+  def initialize : -> [Integer]
 end
