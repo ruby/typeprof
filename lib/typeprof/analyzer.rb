@@ -1905,6 +1905,10 @@ module TypeProf
         rest_ty = aargs.last
         aargs = aargs[0..-2]
         if flag_args_kw_splat
+          # XXX: The types contained in ActualArguments are expected to be all local types.
+          # This "globalize_type" breaks the invariant, and violates the assertion of Union#globalize that asserts @elems be nil.
+          # To fix this issue fundamentally, ActualArguments should keep all arguments as-is (as like the VM does),
+          # and globalize some types on the on-demand bases.
           ty = globalize_type(rest_ty, env, ep)
           if ty.is_a?(Type::Array)
             _, (ty,) = ty.elems.take_last(1)
@@ -1937,6 +1941,10 @@ module TypeProf
         aargs = ActualArguments.new(aargs, rest_ty, kw_tys, blk_ty)
       elsif flag_args_kw_splat
         last = aargs.last
+        # XXX: The types contained in ActualArguments are expected to be all local types.
+        # This "globalize_type" breaks the invariant, and violates the assertion of Union#globalize that asserts @elems be nil.
+        # To fix this issue fundamentally, ActualArguments should keep all arguments as-is (as like the VM does),
+        # and globalize some types on the on-demand bases.
         ty = globalize_type(last, env, ep)
         case ty
         when Type::Hash

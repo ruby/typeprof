@@ -315,9 +315,14 @@ module TypeProf
       def globalize(env, visited, depth)
         return Type.any if depth <= 0
         tys = Utils::Set[]
-        raise if @elems
+        if @elems
+          # XXX: If @elems is non nil, the Union type should global, so calling globalize against such a type should not occur.
+          # However, currently, ActualArguments may contain global types for flag_args_kw_splat case.
+          # This should be fixed in future in ActualArguments side. See Scratch#setup_actual_arguments.
+          #raise
+        end
 
-        elems = {}
+        elems = @elems ? @elems.dup : {}
         @types.each do |ty|
           ty = ty.globalize(env, visited, depth - 1)
           case ty
