@@ -325,14 +325,19 @@ module TypeProf
       return ctn[Type.any, ep, env] unless recv.is_a?(Type::Local) && recv.kind == Type::Array
 
       if aargs.lead_tys.size != 2
+        # XXX: Support `ary[idx, len] = val`
         #raise NotImplementedError # XXX
-        ctn[Type.any, ep, env]
+        return ctn[Type.any, ep, env]
       end
 
       idx = aargs.lead_tys.first
       if idx.is_a?(Type::Literal)
         idx = idx.lit
-        raise NotImplementedError if !idx.is_a?(Integer)
+        if !idx.is_a?(Integer)
+          # XXX: Support `ary[idx..end] = val`
+          #raise NotImplementedError # XXX
+          return ctn[Type.any, ep, env]
+        end
       else
         idx = nil
       end
