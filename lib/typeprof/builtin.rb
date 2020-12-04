@@ -82,14 +82,17 @@ module TypeProf
     end
 
     def object_is_a?(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise unless aargs.lead_tys.size != 0
-      if recv.is_a?(Type::Instance)
-        if recv.klass == aargs.lead_tys[0] # XXX: inheritance
-          true_val = Type::Instance.new(Type::Builtin[:true])
-          ctn[true_val, ep, env]
+      if aargs.lead_tys.size == 1
+        if recv.is_a?(Type::Instance)
+          if recv.klass == aargs.lead_tys[0] # XXX: inheritance
+            true_val = Type::Instance.new(Type::Builtin[:true])
+            ctn[true_val, ep, env]
+          else
+            false_val = Type::Instance.new(Type::Builtin[:false])
+            ctn[false_val, ep, env]
+          end
         else
-          false_val = Type::Instance.new(Type::Builtin[:false])
-          ctn[false_val, ep, env]
+          ctn[Type.bool, ep, env]
         end
       else
         ctn[Type.bool, ep, env]
@@ -97,16 +100,19 @@ module TypeProf
     end
 
     def object_respond_to?(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise unless aargs.lead_tys.size != 0
-      sym = get_sym("respond_to?", aargs.lead_tys[0], ep, scratch)
-      if sym
-        klass, singleton = recv.method_dispatch_info
-        if scratch.get_method(klass, singleton, sym)
-          true_val = Type::Instance.new(Type::Builtin[:true])
-          ctn[true_val, ep, env]
+      if aargs.lead_tys.size == 1
+        sym = get_sym("respond_to?", aargs.lead_tys[0], ep, scratch)
+        if sym
+          klass, singleton = recv.method_dispatch_info
+          if scratch.get_method(klass, singleton, sym)
+            true_val = Type::Instance.new(Type::Builtin[:true])
+            ctn[true_val, ep, env]
+          else
+            false_val = Type::Instance.new(Type::Builtin[:false])
+            ctn[false_val, ep, env]
+          end
         else
-          false_val = Type::Instance.new(Type::Builtin[:false])
-          ctn[false_val, ep, env]
+          ctn[Type.bool, ep, env]
         end
       else
         ctn[Type.bool, ep, env]
