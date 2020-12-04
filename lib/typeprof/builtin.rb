@@ -380,6 +380,7 @@ module TypeProf
       recv.each_child do |recv|
         if recv.is_a?(Type::Local) && recv.kind == Type::Hash
           ty = scratch.get_hash_elem_type(env, ep, recv.id, idx)
+          ty = Type.nil if ty == Type.bot
         else
           ty = Type.any
         end
