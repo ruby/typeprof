@@ -122,6 +122,7 @@ module TypeProf
     def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
       if aargs.lead_tys.size >= 1
         recv = aargs.lead_tys[0]
+        recv = Type.any if recv == Type.bot
         aargs = ActualArguments.new(aargs.lead_tys[1..], aargs.rest_ty, aargs.kw_tys, aargs.blk_ty)
       elsif aargs.rest_ty
         recv = aargs.rest_ty.elems.squash_or_any # XXX: need to shift
