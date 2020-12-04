@@ -166,8 +166,8 @@ module TypeProf
       case @kind
       when :reader
         if aargs.lead_tys.size == 0
-          scratch.get_instance_variable(recv, @ivar, caller_ep, caller_env) do |ty, nenv|
-            ctn[ty, caller_ep, nenv]
+          scratch.add_ivar_read!(recv, @ivar, caller_ep) do |ty, _ep|
+            ctn[ty, caller_ep, caller_env]
           end
         else
           ctn[Type.any, caller_ep, caller_env]
