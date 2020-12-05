@@ -410,7 +410,6 @@ module TypeProf
     end
 
     def struct_initialize(recv, mid, aargs, ep, env, scratch, &ctn)
-      recv = Type::Instance.new(recv)
       scratch.add_ivar_read!(recv, :_members, ep) do |member_ary_ty, ep|
         member_ary_ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
           ty ||= Type.nil
@@ -435,9 +434,10 @@ module TypeProf
         end
       end
       meths = scratch.get_method(recv, false, :initialize)
+      recv = Type::Instance.new(recv)
       meths.flat_map do |meth|
         meth.do_send(recv, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
-          ctn[Type::Instance.new(recv), ep, env]
+          ctn[recv, ep, env]
         end
       end
     end
