@@ -49,10 +49,18 @@ module TypeProf
         insns[i, 0] = [[:_iseq_body_start]]
       end
 
+      # rescue/ensure clauses need to have a dedicated return addresses
+      # because they requires to be virtually called.
+      # So, this preprocess adds "nop" to make a new insn for their return addresses
+      special_labels = {}
+      catch_table.map do |type, iseq, first, last, cont, stack_depth|
+        special_labels[cont] = true if type == :rescue || type == :ensure
+      end
+
       @insns = []
       @linenos = []
 
-      labels = setup_iseq(insns)
+      labels = setup_iseq(insns, special_labels)
 
       # checkmatch->branch
       # send->branch
@@ -60,7 +68,8 @@ module TypeProf
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
         iseq = iseq ? ISeq.new(iseq) : nil
-        entry = [type, iseq, labels[cont], stack_depth]
+        target = labels[special_labels[cont] ? :"#{ cont }_special" : cont]
+        entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
           @catch_table[i] ||= []
           @catch_table[i] << entry
@@ -76,19 +85,26 @@ module TypeProf
       @id <=> other.id
     end
 
-    def setup_iseq(insns)
+    def setup_iseq(insns, special_labels)
       i = 0
       labels = {}
+      ninsns = []
       insns.each do |e|
         if e.is_a?(Symbol) && e.to_s.start_with?("label")
+          if special_labels[e]
+            labels[:"#{ e }_special"] = i
+            ninsns << [:nop]
+            i += 1
+          end
           labels[e] = i
-        elsif e.is_a?(Array)
-          i += 1
+        else
+          i += 1 if e.is_a?(Array)
+          ninsns << e
         end
       end
 
       lineno = 0
-      insns.each do |e|
+      ninsns.each do |e|
         case e
         when Integer # lineno
           lineno = e
