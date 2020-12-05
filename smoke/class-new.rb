@@ -1,6 +1,7 @@
 Foo = Class.new
 Foo::Bar = 1
 Foo.extend(Enumerable)
+Foo.include(Enumerable)
 
 # XXX: should be supported better
 
