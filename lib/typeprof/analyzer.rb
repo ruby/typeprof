@@ -378,7 +378,7 @@ module TypeProf
       end
     end
 
-    def include_module(including_mod, included_mod, type_args, singleton, absolute_path)
+    def include_module(including_mod, included_mod, type_args, singleton, caller_ep)
       return if included_mod == Type.any
 
       including_mod = @class_defs[including_mod.idx]
@@ -386,9 +386,9 @@ module TypeProf
         if included_mod.is_a?(Type::Class)
           included_mod = @class_defs[included_mod.idx]
           if included_mod && included_mod.kind == :module
-            including_mod.include_module(included_mod, type_args, singleton, absolute_path)
+            including_mod.include_module(included_mod, type_args, singleton, caller_ep ? caller_ep.ctx.iseq.absolute_path : nil)
           else
-            #XXX: "including something that is not a module"
+            warn(caller_ep, "including something that is not a module")
           end
         end
       end
