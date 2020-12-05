@@ -1,5 +1,6 @@
 Foo = Class.new
 Foo::Bar = 1
+Foo.extend(Enumerable)
 
 # XXX: should be supported better
 

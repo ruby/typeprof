@@ -184,6 +184,12 @@ module TypeProf
         ctn[Type.any, ep, env]
         return
       end
+
+      unless recv.is_a?(Type::Class)
+        # XXX: warn?
+        return ctn[Type.any, ep, env]
+      end
+
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
