@@ -102,7 +102,7 @@ module TypeProf
 
       return if recv_ty == :top #OK
       recv_ty.each_child_global do |ty|
-        raise ty.inspect if !ty.is_a?(Type::Instance) && !ty.is_a?(Type::Class) && ty != Type.any
+        raise ty.inspect if !ty.is_a?(Type::Instance) && !ty.is_a?(Type::Class) && !ty.is_a?(Type::Symbol) && ty != Type.any
       end
     end
 
