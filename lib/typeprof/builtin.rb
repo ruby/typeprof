@@ -224,13 +224,17 @@ module TypeProf
       if aargs.lead_tys.empty?
         ctn[recv, ep, env.method_public_set(true)]
       else
-        aargs.lead_tys.each do |aarg|
-          sym = get_sym("public", aarg, ep, scratch) or next
-          meths = scratch.get_method(recv, false, sym)
-          next unless meths
-          meths.each do |mdef|
-            mdef.pub_meth = true if mdef.respond_to?(:pub_meth=)
+        if recv.is_a?(Type::Class)
+          aargs.lead_tys.each do |aarg|
+            sym = get_sym("public", aarg, ep, scratch) or next
+            meths = scratch.get_method(recv, false, sym)
+            next unless meths
+            meths.each do |mdef|
+              mdef.pub_meth = true if mdef.respond_to?(:pub_meth=)
+            end
           end
+        else
+          # XXX: warn?
         end
         ctn[recv, ep, env]
       end
@@ -240,13 +244,17 @@ module TypeProf
       if aargs.lead_tys.empty?
         ctn[recv, ep, env.method_public_set(false)]
       else
-        aargs.lead_tys.each do |aarg|
-          sym = get_sym("private", aarg, ep, scratch) or next
-          meths = scratch.get_method(recv, false, sym)
-          next unless meths
-          meths.each do |mdef|
-            mdef.pub_meth = false if mdef.respond_to?(:pub_meth=)
+        if recv.is_a?(Type::Class)
+          aargs.lead_tys.each do |aarg|
+            sym = get_sym("private", aarg, ep, scratch) or next
+            meths = scratch.get_method(recv, false, sym)
+            next unless meths
+            meths.each do |mdef|
+              mdef.pub_meth = false if mdef.respond_to?(:pub_meth=)
+            end
           end
+        else
+          # XXX: warn?
         end
         ctn[recv, ep, env]
       end

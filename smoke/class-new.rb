@@ -4,6 +4,7 @@ Foo.extend(Enumerable)
 Foo.include(Enumerable)
 class Foo::Baz
 end
+Foo.send(:private, :foo)
 
 # XXX: should be supported better
 
