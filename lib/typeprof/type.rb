@@ -829,6 +829,7 @@ module TypeProf
     def initialize(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
       @lead_tys = lead_tys
       @opt_tys = opt_tys
+      raise unless opt_tys.is_a?(Array)
       @rest_ty = rest_ty
       @post_tys = post_tys
       raise unless post_tys
@@ -849,6 +850,44 @@ module TypeProf
       kw_rest_ty = @kw_rest_ty&.substitute(subst, depth - 1)
       blk_ty = @blk_ty.substitute(subst, depth - 1)
       MethodSignature.new(lead_tys, opt_tys, rest_ty, post_tys, kw_tys, kw_rest_ty, blk_ty)
+    end
+
+    def merge_as_block_arguments(other)
+      lead_tys1, opt_tys1, rest_ty1, post_tys1 = @lead_tys, @opt_tys, @rest_ty, @post_tys
+      lead_tys2, opt_tys2, rest_ty2, post_tys2 = other.lead_tys, other.opt_tys, other.rest_ty, other.post_tys
+
+      case
+      when lead_tys1.size > lead_tys2.size
+        n = lead_tys2.size
+        lead_tys1, opt_tys1 = lead_tys1[0, n], lead_tys1[n..] + opt_tys1
+      when lead_tys1.size < lead_tys2.size
+        n = lead_tys1.size
+        lead_tys2, opt_tys2 = lead_tys2[0, n], lead_tys2[n..] + opt_tys2
+      end
+      case
+      when post_tys1.size > post_tys2.size
+        i = post_tys1.size - post_tys2.size
+        if rest_ty1
+          rest_ty1 = post_tys[0, i].inject(rest_ty1) {|ty1, ty2| ty1.union(ty2) }
+          post_tys1 = post_tys1[i..]
+        else
+          opt_tys1, post_tys1 = opt_tys1 + post_tys1[0, i], post_tys1[i..]
+        end
+      when post_tys1.size < post_tys2.size
+        i = post_tys2.size - post_tys1.size
+        if rest_ty2
+          rest_ty2 = post_tys[0, i].inject(rest_ty2) {|ty1, ty2| ty1.union(ty2) }
+          post_tys2 = post_tys2[i..]
+        else
+          opt_tys2, post_tys2 = opt_tys2 + post_tys2[0, i], post_tys2[i..]
+        end
+      end
+
+      # XXX: tweak keywords too
+
+      msig1 = MethodSignature.new(lead_tys1, opt_tys1, rest_ty1, post_tys1, @kw_tys, @kw_rest_ty, @blk_ty)
+      msig2 = MethodSignature.new(lead_tys2, opt_tys2, rest_ty2, post_tys2, other.kw_tys, other.kw_rest_ty, other.blk_ty)
+      msig1.merge(msig2)
     end
 
     def merge(other)

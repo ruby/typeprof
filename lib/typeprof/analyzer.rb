@@ -1050,7 +1050,7 @@ module TypeProf
         block_start = iseq.fargs_format[:block_start]
 
         lead_tys = env.locals[0, lead_num].map {|ty| globalize_type(ty, env, ep) }
-        opt_tys = opt.size > 1 ? env.locals[lead_num, opt.size - 1].map {|ty| globalize_type(ty, env, ep) } : nil
+        opt_tys = opt.size > 1 ? env.locals[lead_num, opt.size - 1].map {|ty| globalize_type(ty, env, ep) } : []
         if rest_start # XXX:squash
           ty = globalize_type(env.locals[lead_num + opt.size - 1], env, ep)
           rest_ty = Type.bot
@@ -2114,7 +2114,7 @@ module TypeProf
           next unless @block_to_ctx[blk.block_body] # this occurs when screen_name is called before type-profiling finished (e.g., error message)
           @block_to_ctx[blk.block_body].each do |blk_ctx|
             if farg_tys
-              farg_tys = farg_tys.merge(@method_signatures[blk_ctx])
+              farg_tys = farg_tys.merge_as_block_arguments(@method_signatures[blk_ctx])
             else
               farg_tys = @method_signatures[blk_ctx]
             end
