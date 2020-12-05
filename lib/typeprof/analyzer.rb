@@ -559,9 +559,7 @@ module TypeProf
     end
 
     def add_constant(klass, name, value, user_defined)
-      if klass == Type.any
-        self
-      else
+      if klass.is_a?(Type::Class)
         @class_defs[klass.idx].add_constant(name, value, user_defined)
       end
     end
