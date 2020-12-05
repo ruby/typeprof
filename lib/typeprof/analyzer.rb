@@ -746,6 +746,7 @@ module TypeProf
 
     def add_cvar_read!(klass, var, ep, &ctn)
       klass.each_child do |klass|
+        next unless klass.is_a?(Type::Class)
         class_def = @class_defs[klass.idx]
         next unless class_def
         class_def.cvars.add_read!(var, ep, &ctn)
@@ -754,6 +755,7 @@ module TypeProf
 
     def add_cvar_write!(klass, var, ty, ep)
       klass.each_child do |klass|
+        next unless klass.is_a?(Type::Class)
         class_def = @class_defs[klass.idx]
         next unless class_def
         class_def.cvars.add_write!(var, ty, ep, self)
