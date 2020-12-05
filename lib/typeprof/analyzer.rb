@@ -1219,11 +1219,11 @@ module TypeProf
             else # module
               superclass = nil
             end
-            if cbase == Type.any
-              klass = Type.any
-            else
+            if cbase.is_a?(Type::Class)
               klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
               add_superclass_type_args!(klass, superclass.type_params.map { Type.any }) if superclass
+            else
+              klass = Type.any
             end
           end
           singleton = false
