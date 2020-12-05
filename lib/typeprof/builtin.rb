@@ -156,7 +156,9 @@ module TypeProf
         return
       end
       naargs = ActualArguments.new([recv], nil, {}, Type.nil)
-      scratch.do_invoke_block(aargs.blk_ty, naargs, ep, env, replace_recv_ty: recv) do |_ret_ty, ep|
+      nrecv = recv
+      nrecv = nrecv.base_type if nrecv.is_a?(Type::ContainerType)
+      scratch.do_invoke_block(aargs.blk_ty, naargs, ep, env, replace_recv_ty: nrecv) do |_ret_ty, ep|
         ctn[recv, ep, env]
       end
     end
