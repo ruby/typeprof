@@ -627,6 +627,7 @@ module TypeProf
       Type::Builtin[:int]       = scratch.get_constant(klass_obj, :Integer)
       Type::Builtin[:float]     = scratch.get_constant(klass_obj, :Float)
       Type::Builtin[:rational]  = scratch.get_constant(klass_obj, :Rational)
+      Type::Builtin[:complex]   = scratch.get_constant(klass_obj, :Complex)
       Type::Builtin[:sym]       = scratch.get_constant(klass_obj, :Symbol)
       Type::Builtin[:str]       = scratch.get_constant(klass_obj, :String)
       Type::Builtin[:struct]    = scratch.get_constant(klass_obj, :Struct)

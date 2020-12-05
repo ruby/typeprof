@@ -689,6 +689,8 @@ module TypeProf
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:int]))
       when ::Rational
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:rational]))
+      when ::Complex
+        Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:complex]))
       when ::Float
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:float]))
       when ::Class
