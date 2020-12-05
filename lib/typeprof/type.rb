@@ -725,6 +725,8 @@ module TypeProf
         Type.nil
       when ::Range
         Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:range]))
+      when ::Encoding
+        Type::Literal.new(obj, Type::Instance.new(Type::Builtin[:encoding]))
       else
         raise "unknown object: #{ obj.inspect }"
       end

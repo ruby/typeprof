@@ -640,6 +640,7 @@ module TypeProf
       Type::Builtin[:class]     = scratch.get_constant(klass_obj, :Class)
       Type::Builtin[:module]    = scratch.get_constant(klass_obj, :Module)
       Type::Builtin[:exc]       = scratch.get_constant(klass_obj, :Exception)
+      Type::Builtin[:encoding]  = scratch.get_constant(klass_obj, :Encoding)
 
       klass_vmcore = Type::Builtin[:vmcore]
       klass_ary    = Type::Builtin[:ary]
