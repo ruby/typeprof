@@ -346,11 +346,14 @@ module TypeProf
         end
       end
 
-      def search_method(singleton, mid, &blk)
+      def search_method(singleton, mid, visited, &blk)
+        # Currently, circular inclusion of modules is allowed
+        return if visited[self]
+        visited[self] = true
         mthds = @methods[[singleton, mid]]
         yield mthds, @klass_obj, singleton if mthds
         @modules[singleton].each do |mod_def,|
-          mod_def.search_method(false, mid, &blk)
+          mod_def.search_method(false, mid, visited, &blk)
         end
       end
 
@@ -490,13 +493,13 @@ module TypeProf
       if klass.kind == :class
         while klass != :__root__
           class_def = @class_defs[klass.idx]
-          class_def.search_method(singleton, mid, &blk)
+          class_def.search_method(singleton, mid, {}, &blk)
           klass = klass.superclass
         end
       else
         # module
         class_def = @class_defs[klass.idx]
-        class_def.search_method(singleton, mid, &blk)
+        class_def.search_method(singleton, mid, {}, &blk)
       end
       if singleton
         search_method(Type::Builtin[klass_orig.kind], false, mid, &blk)
