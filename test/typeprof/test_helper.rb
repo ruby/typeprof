@@ -40,7 +40,7 @@ module TypeProf
 
       output = output.string
 
-      RBS::Parser.parse_signature(output[/# Classes.*\z/m])
+      RBS::Parser.parse_signature(output[/# Classes.*\z/m]) unless options[:skip_parsing_test]
 
       output
 

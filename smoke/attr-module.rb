@@ -1,3 +1,5 @@
+# SKIP_PARSING_TEST
+
 module Foo
   attr_accessor :foo
   module_function :foo=, :foo
