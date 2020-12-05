@@ -3,6 +3,7 @@ module TypeProf
   class ActualArguments
     def initialize(lead_tys, rest_ty, kw_tys, blk_ty)
       @lead_tys = lead_tys
+      raise unless lead_tys
       @rest_ty = rest_ty
       @kw_tys = kw_tys # kw_tys should be {:key1 => Type, :key2 => Type, ...} or {nil => Type}
       raise if !kw_tys.is_a?(::Hash)
