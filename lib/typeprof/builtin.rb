@@ -518,6 +518,10 @@ module TypeProf
       if feature.is_a?(Type::Literal)
         feature = feature.lit
 
+        unless feature.is_a?(String)
+          return ctn[Type.any, ep, env]
+        end
+
         action, arg = Builtin.file_require(feature, scratch)
         case action
         when :do
@@ -547,6 +551,10 @@ module TypeProf
       feature = aargs.lead_tys.first
       if feature.is_a?(Type::Literal)
         feature = feature.lit
+
+        unless feature.is_a?(String)
+          return ctn[Type.any, ep, env]
+        end
 
         if scratch.loaded_features[feature]
           result = Type::Instance.new(Type::Builtin[:false])
