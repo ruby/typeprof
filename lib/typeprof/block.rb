@@ -127,7 +127,7 @@ module TypeProf
       elsif aargs.rest_ty
         recv = aargs.rest_ty.elems.squash_or_any # XXX: need to shift
       else
-        raise
+        recv = Type.any
       end
 
       scratch.add_block_signature!(self, aargs.to_block_signature)
