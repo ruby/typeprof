@@ -309,8 +309,8 @@ module TypeProf
       attr_accessor :name, :klass_obj
 
       def include_module(mod, type_args, singleton, absolute_path)
-        module_type_args, _, absolute_paths = @modules[singleton].find {|m,| m == mod }
-        if module_type_args
+        mod_, module_type_args, absolute_paths = @modules[singleton].find {|m,| m == mod }
+        if mod_
           raise "inconsistent include/extend type args in RBS?" if module_type_args != type_args && type_args != [] && type_args != nil
         else
           absolute_paths = Utils::MutableSet.new
@@ -388,7 +388,7 @@ module TypeProf
           if included_mod && included_mod.kind == :module
             including_mod.include_module(included_mod, type_args, singleton, absolute_path)
           else
-            warn "including something that is not a module"
+            #XXX: "including something that is not a module"
           end
         end
       end
