@@ -410,7 +410,15 @@ module TypeProf
     end
 
     def struct_initialize(recv, mid, aargs, ep, env, scratch, &ctn)
-      scratch.add_ivar_read!(recv, :_members, ep) do |member_ary_ty, ep|
+      struct_klass = recv.klass
+      while struct_klass.superclass != Type::Builtin[:struct]
+        struct_klass = struct_klass.superclass
+      end
+      if struct_klass.superclass != Type::Builtin[:struct]
+        ctn[Type.any, ep, env]
+        return
+      end
+      scratch.add_ivar_read!(Type::Instance.new(struct_klass), :_members, ep) do |member_ary_ty, ep|
         member_ary_ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
           ty ||= Type.nil
           scratch.set_instance_variable(recv, sym.sym, ty, ep, env)
@@ -420,19 +428,8 @@ module TypeProf
     end
 
     def struct_i_new(recv, mid, aargs, ep, env, scratch, &ctn)
-      struct_klass = recv
-      while struct_klass.superclass != Type::Builtin[:struct]
-        struct_klass = struct_klass.superclass
-      end
-      if struct_klass.superclass != Type::Builtin[:struct]
-        ctn[Type.any, ep, env]
-        return
-      end
-      if struct_klass != recv
-        scratch.add_ivar_read!(Type::Instance.new(struct_klass), :_members, ep) do |ty, ep|
-          scratch.add_ivar_write!(Type::Instance.new(recv), :_members, ty, ep)
-        end
-      end
+      # TODO: keyword_init
+
       meths = scratch.get_method(recv, false, :initialize)
       recv = Type::Instance.new(recv)
       meths.flat_map do |meth|
