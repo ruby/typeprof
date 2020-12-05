@@ -391,7 +391,11 @@ module TypeProf
     def hash_aset(recv, mid, aargs, ep, env, scratch, &ctn)
       return ctn[Type.any, ep, env] unless recv.is_a?(Type::Local) && recv.kind == Type::Hash
 
-      raise NotImplementedError if aargs.lead_tys.size != 2
+      if aargs.lead_tys.size != 2
+        # XXX: error?
+        ctn[Type.any, ep, env]
+        return
+      end
 
       idx = aargs.lead_tys.first
       idx = scratch.globalize_type(idx, env, ep)
@@ -502,7 +506,12 @@ module TypeProf
     end
 
     def kernel_require(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 1
+      if aargs.lead_tys.size != 1
+        # XXX: handle correctly
+        ctn[Type.any, ep, env]
+        return
+      end
+
       feature = aargs.lead_tys.first
       if feature.is_a?(Type::Literal)
         feature = feature.lit
@@ -527,7 +536,12 @@ module TypeProf
     end
 
     def kernel_require_relative(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 1
+      if aargs.lead_tys.size != 1
+        # XXX: handle correctly
+        ctn[Type.any, ep, env]
+        return
+      end
+
       feature = aargs.lead_tys.first
       if feature.is_a?(Type::Literal)
         feature = feature.lit
@@ -552,7 +566,12 @@ module TypeProf
     end
 
     def kernel_autoload(recv, mid, aargs, ep, env, scratch, &ctn)
-      raise NotImplementedError if aargs.lead_tys.size != 2
+      if aargs.lead_tys.size != 1
+        # XXX: handle correctly
+        ctn[Type.any, ep, env]
+        return
+      end
+
       feature = aargs.lead_tys[1]
       if feature.is_a?(Type::Literal)
         feature = feature.lit
