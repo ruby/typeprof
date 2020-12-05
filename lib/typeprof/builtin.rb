@@ -566,7 +566,7 @@ module TypeProf
     end
 
     def kernel_autoload(recv, mid, aargs, ep, env, scratch, &ctn)
-      if aargs.lead_tys.size != 1
+      if aargs.lead_tys.size != 2
         # XXX: handle correctly
         ctn[Type.any, ep, env]
         return
