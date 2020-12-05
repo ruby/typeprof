@@ -261,7 +261,7 @@ module TypeProf
             blk = blk_ty.block_body
             case blk
             when ISeqBlock
-              scratch.do_define_iseq_method(ep, env, mid, blk.iseq, ep)
+              scratch.do_define_iseq_method(ep, env, mid, blk.iseq, blk.outer_ep)
             else
               # XXX: what to do?
             end
