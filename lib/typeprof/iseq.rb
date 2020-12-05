@@ -209,7 +209,7 @@ module TypeProf
         end
       end
       send_branch_list.each do |i, j|
-        next if (i + 1 .. j).any? {|i| branch_targets[i] }
+        next if (i + 1 .. j + 1).any? {|i| branch_targets[i] }
         _insn, getlocal_operands = @insns[i]
         _insn, send_operands = @insns[j]
         _insn, branch_operands = @insns[j + 1]
