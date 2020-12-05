@@ -291,7 +291,6 @@ module TypeProf
     end
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
-      scratch.merge_return_env(caller_ep) {|env| env ? env.merge(caller_env) : caller_env } # for Kernel#lambda
       @impl[recv, mid, aargs, caller_ep, caller_env, scratch, &ctn]
     end
   end

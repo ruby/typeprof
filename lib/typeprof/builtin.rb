@@ -157,7 +157,7 @@ module TypeProf
       end
       naargs = ActualArguments.new([recv], nil, {}, Type.nil)
       scratch.do_invoke_block(aargs.blk_ty, naargs, ep, env, replace_recv_ty: recv) do |_ret_ty, ep|
-        ctn[recv, ep, scratch.return_envs[ep]]
+        ctn[recv, ep, env]
       end
     end
 
