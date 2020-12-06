@@ -1702,10 +1702,16 @@ module TypeProf
         env = env.push(Type.optional(sym_ty))
       when :checkmatch
         flag, = operands
+
+        # This flag means that the stack top is an array, and the check needs to be applied to find all elements
+        # However, currently TypeProf uses very conservative interpretation (all check returns both true and false),
+        # so we just ignore the flag now
         _array = flag & 4 != 0
+
         case flag & 3
-        when 1
-          raise NotImplementedError
+        when 1 # VM_CHECKMATCH_TYPE_WHEN
+          env, = env.pop(2)
+          env = env.push(Type.bool)
         when 2 # VM_CHECKMATCH_TYPE_CASE
           env, = env.pop(2)
           env = env.push(Type.bool)
