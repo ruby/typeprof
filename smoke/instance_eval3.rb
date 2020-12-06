@@ -12,14 +12,14 @@ end
 
 __END__
 # Classes
+class Array
+  @bar : Integer
+end
+
 class Hash
   @baz : Integer
 end
 
 class Symbol
   @foo : Integer
-end
-
-class Array
-  @bar : Integer
 end
