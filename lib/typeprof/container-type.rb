@@ -208,10 +208,6 @@ module TypeProf
         @base_type = base_type
       end
 
-      def self.dummy_elements
-        Elements.new([], Type.any)
-      end
-
       attr_reader :elems, :base_type
 
       def inspect
@@ -262,6 +258,10 @@ module TypeProf
           raise unless lead_tys.all? {|ty| ty.is_a?(Type) }
           raise unless rest_ty.is_a?(Type)
           @lead_tys, @rest_ty = lead_tys, rest_ty
+        end
+
+        def self.dummy_elements
+          Elements.new([], Type.any)
         end
 
         attr_reader :lead_tys, :rest_ty
@@ -796,6 +796,7 @@ module TypeProf
     class Local < ContainerType
       def initialize(kind, id, base_type)
         @kind = kind
+        raise if @kind != Cell && @kind != Array && @kind != Hash
         @id = id
         raise unless base_type
         @base_type = base_type
@@ -822,7 +823,7 @@ module TypeProf
             elems = elems.globalize(env, visited, depth - 1)
           else
             # TODO: currently out-of-scope array cannot be accessed
-            elems = @kind.dummy_elements
+            elems = @kind::Elements.dummy_elements
           end
           visited.delete(self)
           @kind.new(elems, @base_type)
