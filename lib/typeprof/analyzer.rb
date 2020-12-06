@@ -1629,7 +1629,6 @@ module TypeProf
       when :getspecial
         key, type = operands
         if type == 0
-          raise NotImplementedError
           case key
           when 0 # VM_SVAR_LASTLINE
             env = env.push(Type.any) # or String | NilClass only?
@@ -1647,8 +1646,12 @@ module TypeProf
           return
         end
       when :setspecial
-        # flip-flop
-        raise NotImplementedError, "setspecial"
+        key, = operands
+        if key >= 2 # flip-flop
+          env, = env.pop(1)
+        else
+          raise "unknown setspecial key: #{ key }"
+        end
 
       when :dup
         env, (ty,) = env.pop(1)
