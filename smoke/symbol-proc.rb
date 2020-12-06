@@ -16,10 +16,10 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Array[String]
-  def bar : -> Array[:foo]
+  def foo: -> Array[String]
+  def bar: -> Array[:foo]
 end
 
 class Foo
-  def foo : -> :foo
+  def foo: -> :foo
 end

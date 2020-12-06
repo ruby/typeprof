@@ -10,5 +10,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> {int: Integer, str: String}
+  def foo: -> {int: Integer, str: String}
 end

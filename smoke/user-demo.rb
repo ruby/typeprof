@@ -9,7 +9,7 @@ end
 __END__
 # Classes
 class User
-  attr_reader name : String | untyped
-  attr_reader age : Integer | untyped
-  def foo : (?name: String | untyped, ?age: Integer | untyped) -> ([String | untyped, Integer | untyped])
+  attr_reader name: String | untyped
+  attr_reader age: Integer | untyped
+  def foo: (?name: String | untyped, ?age: Integer | untyped) -> ([String | untyped, Integer | untyped])
 end

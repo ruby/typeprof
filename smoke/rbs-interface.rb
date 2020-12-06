@@ -18,8 +18,8 @@ __END__
 # Classes
 class Object
   private
-  def get_module : -> M
-  def get_module_foo : -> Integer
-  def get_interface : -> _I
-  def get_interface_foo : -> Integer
+  def get_module: -> M
+  def get_module_foo: -> Integer
+  def get_interface: -> _I
+  def get_interface_foo: -> Integer
 end

@@ -26,12 +26,12 @@ __END__
 # Classes
 class Object
   private
-  def f1 : { (:a, :b, :c) -> nil } -> nil
-  def log1 : (:a) -> nil
-  def f2 : { (:a, :b, :c) -> nil } -> nil
-  def log2 : (:a) -> nil
-  def f3 : { ([:a, :b, :c]) -> nil } -> nil
-  def log3 : ([:a, :b, :c]) -> nil
-  def f4 : { ([:a, :b, :c]) -> nil } -> nil
-  def log4 : (:a) -> nil
+  def f1: { (:a, :b, :c) -> nil } -> nil
+  def log1: (:a) -> nil
+  def f2: { (:a, :b, :c) -> nil } -> nil
+  def log2: (:a) -> nil
+  def f3: { ([:a, :b, :c]) -> nil } -> nil
+  def log3: ([:a, :b, :c]) -> nil
+  def f4: { ([:a, :b, :c]) -> nil } -> nil
+  def log4: (:a) -> nil
 end

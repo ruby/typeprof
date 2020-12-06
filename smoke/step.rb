@@ -12,7 +12,7 @@ __END__
 # Classes
 class Object
   private
-  def log1 : (Integer | Numeric) -> nil
-  def log2 : (void) -> nil
-  def log3 : (Enumerator[Integer | Numeric]) -> nil
+  def log1: (Integer | Numeric) -> nil
+  def log2: (void) -> nil
+  def log3: (Enumerator[Integer | Numeric]) -> nil
 end

@@ -21,11 +21,11 @@ end
 __END__
 # Classes
 class SuperBase
-  def self.foo : -> (singleton(A) | singleton(B))
+  def self.foo: -> (singleton(A) | singleton(B))
 end
 
 class Base < SuperBase
-  def self.foo : -> (singleton(A) | singleton(B))
+  def self.foo: -> (singleton(A) | singleton(B))
 end
 
 class A < Base

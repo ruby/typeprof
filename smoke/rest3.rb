@@ -28,10 +28,10 @@ __END__
 # Classes
 class Object
   private
-  def foo : (*String) -> nil
-  def bar : (*Integer | String) -> nil
-  def baz : (String, *String) -> nil
-  def qux : (Integer, *String) -> nil
-  def corge : (*Integer | String, Integer | String) -> nil
-  def grault : (String, ?Integer | String, *String, String) -> nil
+  def foo: (*String) -> nil
+  def bar: (*Integer | String) -> nil
+  def baz: (String, *String) -> nil
+  def qux: (Integer, *String) -> nil
+  def corge: (*Integer | String, Integer | String) -> nil
+  def grault: (String, ?Integer | String, *String, String) -> nil
 end

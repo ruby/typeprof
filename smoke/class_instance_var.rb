@@ -5,5 +5,5 @@ end
 __END__
 # Classes
 class Foo
-  self.@foo : Integer
+  self.@foo: Integer
 end

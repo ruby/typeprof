@@ -9,5 +9,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : { -> nil } -> Integer
+  def foo: { -> nil } -> Integer
 end

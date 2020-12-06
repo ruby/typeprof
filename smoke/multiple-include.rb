@@ -10,5 +10,5 @@ __END__
 # Classes
 class Foo
   include Comparable
-  def foo : -> nil
+  def foo: -> nil
 end

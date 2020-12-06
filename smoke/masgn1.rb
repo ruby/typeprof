@@ -10,5 +10,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> [Integer, [String, :sym], nil]
+  def foo: -> [Integer, [String, :sym], nil]
 end

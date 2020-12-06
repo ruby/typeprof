@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def swap : ([Integer, String]) -> [String, Integer]
+  def swap: ([Integer, String]) -> [String, Integer]
 end

@@ -12,5 +12,5 @@ Foo.new[1] = "str"
 __END__
 # Classes
 class Foo
-  def []= : (*Integer | String) -> Array[bot]
+  def []=: (*Integer | String) -> Array[bot]
 end

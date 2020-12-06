@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> (:sym | Integer | String)
+  def foo: -> (:sym | Integer | String)
 end

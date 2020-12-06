@@ -24,7 +24,7 @@ smoke/module6.rb:17: [error] undefined method: C#foo
 # Classes
 class Object
   private
-  def log : -> untyped
+  def log: -> untyped
 end
 
 module A

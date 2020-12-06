@@ -10,5 +10,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : (Integer, Integer) -> Range
+  def foo: (Integer, Integer) -> Range
 end

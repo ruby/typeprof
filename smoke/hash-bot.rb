@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Hash[Integer, Array[bot]]
+  def foo: -> Hash[Integer, Array[bot]]
 end

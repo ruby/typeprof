@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : (?n: Integer, ?s: String | [Integer]) -> ([Integer, String | [Integer]])
+  def foo: (?n: Integer, ?s: String | [Integer]) -> ([Integer, String | [Integer]])
 end

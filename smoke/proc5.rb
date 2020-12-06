@@ -10,10 +10,10 @@ $blk.call(42)
 
 __END__
 # Global variables
-$blk : ^(?Integer) -> nil
+$blk: ^(?Integer) -> nil
 
 # Classes
 class Object
   private
-  def foo : { (Integer) -> nil } -> nil
+  def foo: { (Integer) -> nil } -> nil
 end

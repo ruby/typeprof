@@ -13,6 +13,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> untyped
-  def bar : -> Integer
+  def foo: -> untyped
+  def bar: -> Integer
 end

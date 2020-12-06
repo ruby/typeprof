@@ -30,7 +30,7 @@ obj.foo(:b)
 __END__
 # Classes
 class Foo
-  @ivar : Array[Array[String]]
-  def initialize : (Array[Array[String]]) -> Array[Array[String]]
-  def foo : (:a | :b) -> nil
+  @ivar: Array[Array[String]]
+  def initialize: (Array[Array[String]]) -> Array[Array[String]]
+  def foo: (:a | :b) -> nil
 end

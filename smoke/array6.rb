@@ -10,7 +10,7 @@ foo(1, "str")
 __END__
 # Classes
 class Object
-  ARY : Array[bot]
+  ARY: Array[bot]
   private
-  def foo : (Integer, String) -> Array[bot]
+  def foo: (Integer, String) -> Array[bot]
 end

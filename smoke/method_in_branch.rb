@@ -17,7 +17,7 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> nil
-  def bar : -> Integer
+  def foo: -> nil
+  def bar: -> Integer
           | -> String
 end

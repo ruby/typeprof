@@ -48,16 +48,16 @@ end
 __END__
 # Classes
 class Object
-  StringArray : Array[String]
+  StringArray: Array[String]
   private
-  def f1 : { (*String) -> nil } -> (^(String, ?:opt | String, String) -> nil)
-  def log1 : (String, :opt | String, String) -> nil
-  def f2 : { (:a, *String) -> nil } -> (^(:a, ?:opt | String, String) -> nil)
-  def log2 : (:a, :opt | String, String) -> nil
-  def f3 : { (:a, :b, *String) -> nil } -> (^(:a, ?:b | :opt, :b | String) -> nil)
-  def log3 : (:a, :b | :opt, :b | String) -> nil
-  def f4 : { (:a, :b, :c, *String) -> nil } -> (^(:a, ?:b | :opt, :b | :c) -> nil)
-  def log4 : (:a, :b | :opt, :b | :c) -> nil
-  def f5 : { (:a, :b, :c, :d, *String) -> nil } -> (^(:a, ?:b | :opt, :b | :c) -> nil)
-  def log5 : (:a, :b | :opt, :b | :c) -> nil
+  def f1: { (*String) -> nil } -> (^(String, ?:opt | String, String) -> nil)
+  def log1: (String, :opt | String, String) -> nil
+  def f2: { (:a, *String) -> nil } -> (^(:a, ?:opt | String, String) -> nil)
+  def log2: (:a, :opt | String, String) -> nil
+  def f3: { (:a, :b, *String) -> nil } -> (^(:a, ?:b | :opt, :b | String) -> nil)
+  def log3: (:a, :b | :opt, :b | String) -> nil
+  def f4: { (:a, :b, :c, *String) -> nil } -> (^(:a, ?:b | :opt, :b | :c) -> nil)
+  def log4: (:a, :b | :opt, :b | :c) -> nil
+  def f5: { (:a, :b, :c, :d, *String) -> nil } -> (^(:a, ?:b | :opt, :b | :c) -> nil)
+  def log5: (:a, :b | :opt, :b | :c) -> nil
 end

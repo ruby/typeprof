@@ -13,5 +13,5 @@ end
 __END__
 # Classes
 class Foo < Struct
-  def initialize : -> Foo
+  def initialize: -> Foo
 end

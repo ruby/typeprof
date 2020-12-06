@@ -19,9 +19,9 @@ __END__
 class A
   class B
     class C
-      def get_a : -> A
-      def get_b : -> B
-      def get_c : -> C
+      def get_a: -> A
+      def get_b: -> B
+      def get_c: -> C
     end
   end
 end

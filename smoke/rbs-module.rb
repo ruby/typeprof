@@ -19,8 +19,8 @@ end
 __END__
 # Classes
 module Foo
-# def self.foo : -> Integer
-# def bar : -> Integer
-  def self.foo2 : -> Integer
-  def bar2 : -> Integer
+# def self.foo: -> Integer
+# def bar: -> Integer
+  def self.foo2: -> Integer
+  def bar2: -> Integer
 end

@@ -13,7 +13,7 @@ end
 __END__
 # Classes
 class Object
-  Ary : [Integer, String]
+  Ary: [Integer, String]
   private
-  def foo : -> (Integer | String)
+  def foo: -> (Integer | String)
 end

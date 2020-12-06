@@ -15,6 +15,6 @@ smoke/struct-keyword_init.rb:10: [error] wrong number of arguments (given 1, exp
 
 # Classes
 class Foo < Struct
-  attr_accessor foo() : nil
-  def initialize : (foo: untyped) -> Foo
+  attr_accessor foo(): nil
+  def initialize: (foo: untyped) -> Foo
 end

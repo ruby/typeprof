@@ -11,5 +11,5 @@ __END__
 # Classes
 class Object
   private
-  def log : ((:sym | Integer | String)?) -> nil
+  def log: ((:sym | Integer | String)?) -> nil
 end

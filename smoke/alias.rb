@@ -21,11 +21,11 @@ __END__
 # Classes
 class Object
   private
-  def foo : (Integer) -> Integer
-  def bar : (String) -> String
+  def foo: (Integer) -> Integer
+  def bar: (String) -> String
 end
 
 class Test
-  def baz : (Integer) -> Integer
-  def qux : (String) -> String
+  def baz: (Integer) -> Integer
+  def qux: (String) -> String
 end

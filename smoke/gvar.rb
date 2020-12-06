@@ -5,10 +5,10 @@ log($foo)
 
 __END__
 # Global variables
-$foo : Integer | String
+$foo: Integer | String
 
 # Classes
 class Object
   private
-  def log : (Integer | String) -> nil
+  def log: (Integer | String) -> nil
 end

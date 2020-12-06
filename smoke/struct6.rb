@@ -7,9 +7,9 @@ end
 __END__
 # Classes
 class AnonymousStruct_generated_1 < Struct
-  attr_accessor foo() : untyped
+  attr_accessor foo(): untyped
 end
 
 class Foo < AnonymousStruct_generated_1
-  def initialize : (untyped) -> Foo
+  def initialize: (untyped) -> Foo
 end

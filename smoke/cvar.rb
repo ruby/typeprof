@@ -19,12 +19,12 @@ __END__
 # Classes
 class Object
   private
-  def log1 : (Integer) -> nil
-  def log2 : (Integer) -> nil
+  def log1: (Integer) -> nil
+  def log2: (Integer) -> nil
 end
 
 class A
-  FOO : Integer
-  @@var : Integer
-  def foo : -> nil
+  FOO: Integer
+  @@var: Integer
+  def foo: -> nil
 end

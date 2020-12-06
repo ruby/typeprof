@@ -22,13 +22,13 @@ end
 __END__
 # Classes
 class Foo
-  def foo : -> nil
+  def foo: -> nil
   private
-  def bar : -> nil
+  def bar: -> nil
   public
-  def baz : -> nil
+  def baz: -> nil
   private
-  def qux : -> nil
+  def qux: -> nil
   public
-  def corge : -> nil
+  def corge: -> nil
 end

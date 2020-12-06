@@ -6,5 +6,5 @@ __END__
 # Classes
 class Object
   private
-  def log : -> Integer
+  def log: -> Integer
 end

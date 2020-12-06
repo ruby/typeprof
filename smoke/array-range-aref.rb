@@ -57,15 +57,15 @@ __END__
 # Classes
 class Object
   private
-  def f1 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f2 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f3 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f4 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f5 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f6 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f7 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f8 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f9 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def f10 : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
-  def dispatch : (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f1: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f2: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f3: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f4: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f5: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f6: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f7: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f8: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f9: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def f10: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
+  def dispatch: (*:a | :b | :c | :d | :e) -> (Array[:a | :b | :c | :d | :e])
 end

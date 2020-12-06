@@ -13,6 +13,6 @@ C.new.foo
 __END__
 # Classes
 class C
-  def foo : -> :x
-  def bar : -> :x
+  def foo: -> :x
+  def bar: -> :x
 end

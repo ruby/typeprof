@@ -72,7 +72,7 @@ module TypeProf
       gvars.dump.each do |gvar_name, entry|
         next if entry.type == Type.bot
         s = entry.rbs_declared ? "#" : ""
-        output.puts s + "#{ gvar_name } : #{ entry.type.screen_name(scratch) }"
+        output.puts s + "#{ gvar_name }: #{ entry.type.screen_name(scratch) }"
       end
       output.puts
     end
@@ -269,7 +269,7 @@ module TypeProf
       output.puts indent + "#{ class_data.kind } #{ name }#{ superclass }"
       first = true
       class_data.consts.each do |name, ty|
-        output.puts indent + "  #{ name } : #{ ty }"
+        output.puts indent + "  #{ name }: #{ ty }"
         first = false
       end
       class_data.included_mods.sort.each do |mod|
@@ -281,20 +281,20 @@ module TypeProf
         first = false
       end
       class_data.ivars.each do |var, ty|
-        output.puts indent + "  #{ var } : #{ ty }" unless var.start_with?("_")
+        output.puts indent + "  #{ var }: #{ ty }" unless var.start_with?("_")
         first = false
       end
       class_data.cvars.each do |var, ty|
-        output.puts indent + "  #{ var } : #{ ty }"
+        output.puts indent + "  #{ var }: #{ ty }"
         first = false
       end
       class_data.attr_methods.each do |(method_name, hidden), (kind, ty)|
-        output.puts indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" } : #{ ty }"
+        output.puts indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }"
         first = false
       end
       class_data.explicit_methods.each do |method_name, sigs|
         sigs = sigs.sort.join("\n" + indent + "#" + " " * (method_name.size + 6) + "| ")
-        output.puts indent + "# def #{ method_name } : #{ sigs }"
+        output.puts indent + "# def #{ method_name }: #{ sigs }"
         first = false
       end
       prev_pub_meth = true
@@ -304,7 +304,7 @@ module TypeProf
           output.puts indent + "  #{ pub_meth ? "public" : "private" }"
           prev_pub_meth = pub_meth
         end
-        output.puts indent + "  def #{ method_name } : #{ sigs }"
+        output.puts indent + "  def #{ method_name }: #{ sigs }"
         first = false
       end
       show_class_hierarchy(depth + 1, class_data.inner_classes, output, first)

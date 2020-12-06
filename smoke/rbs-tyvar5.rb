@@ -9,5 +9,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Cell[Foo[:a, :b]]
+  def foo: -> Cell[Foo[:a, :b]]
 end

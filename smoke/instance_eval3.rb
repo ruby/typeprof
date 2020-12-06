@@ -13,13 +13,13 @@ end
 __END__
 # Classes
 class Array
-  @bar : Integer
+  @bar: Integer
 end
 
 class Hash
-  @baz : Integer
+  @baz: Integer
 end
 
 class Symbol
-  @foo : Integer
+  @foo: Integer
 end

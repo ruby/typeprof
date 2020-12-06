@@ -7,5 +7,5 @@ __END__
 # Classes
 class Object
   private
-  def number? : (String) -> nil
+  def number?: (String) -> nil
 end

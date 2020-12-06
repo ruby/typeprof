@@ -40,33 +40,33 @@ module TypeProf
         assert(actual =~ /^module Goodcheck\n.*(^  class Analyzer\n(?:(?:    .*?\n|\n)*)^  end\n).*^end\n/m)
         assert_equal(<<-END, $1)
   class Analyzer
-    attr_reader rule : untyped
-    attr_reader trigger : untyped
-    attr_reader buffer : Buffer
-    def initialize : (rule: untyped, trigger: untyped, buffer: Buffer) -> Buffer
-    def scan : ?{ (Issue) -> Array[bot]? } -> ((Array[Issue] | Enumerator[Issue])?)
-    def scan_simple : (Regexp) ?{ (Issue) -> Array[bot]? } -> ((Array[Issue] | Enumerator[Issue])?)
-    def scan_var : (untyped) -> nil
+    attr_reader rule: untyped
+    attr_reader trigger: untyped
+    attr_reader buffer: Buffer
+    def initialize: (rule: untyped, trigger: untyped, buffer: Buffer) -> Buffer
+    def scan: ?{ (Issue) -> Array[bot]? } -> ((Array[Issue] | Enumerator[Issue])?)
+    def scan_simple: (Regexp) ?{ (Issue) -> Array[bot]? } -> ((Array[Issue] | Enumerator[Issue])?)
+    def scan_var: (untyped) -> nil
   end
         END
 
         assert(actual =~ /^module Goodcheck\n.*(^  class Trigger\n(?:(?:    .*?\n|\n)*)^  end\n).*^end\n/m)
         assert_equal(<<-END, $1)
   class Trigger
-    @by_pattern : bool
-    @skips_fail_examples : bool
-    attr_reader patterns : Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?]
-    attr_reader globs : Array[Glob?]
-    attr_reader passes : Array[untyped]
-    attr_reader fails : Array[untyped]
-    attr_reader negated : bool
-    def initialize : (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[untyped], fails: Array[untyped], negated: bool) -> false
-    def by_pattern! : -> Trigger
-    def by_pattern? : -> bool
-    def skips_fail_examples! : (?bool) -> Trigger
-    def skips_fail_examples? : -> bool
-    def negated? : -> bool
-    def fires_for? : (path: untyped) -> bool
+    @by_pattern: bool
+    @skips_fail_examples: bool
+    attr_reader patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?]
+    attr_reader globs: Array[Glob?]
+    attr_reader passes: Array[untyped]
+    attr_reader fails: Array[untyped]
+    attr_reader negated: bool
+    def initialize: (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[untyped], fails: Array[untyped], negated: bool) -> false
+    def by_pattern!: -> Trigger
+    def by_pattern?: -> bool
+    def skips_fail_examples!: (?bool) -> Trigger
+    def skips_fail_examples?: -> bool
+    def negated?: -> bool
+    def fires_for?: (path: untyped) -> bool
   end
         END
 

@@ -66,16 +66,16 @@ __END__
 # Classes
 class Object
   private
-  def foo : (bool) -> (Integer | String)
-  def identity : (:sym | Integer | String) -> (:sym | Integer | String)
-  def fib : (Integer) -> Integer
+  def foo: (bool) -> (Integer | String)
+  def identity: (:sym | Integer | String) -> (:sym | Integer | String)
+  def fib: (Integer) -> Integer
 end
 
 class A
-  def foo : (Integer | String) -> nil
-  def bar : (Integer | String) -> nil
+  def foo: (Integer | String) -> nil
+  def bar: (Integer | String) -> nil
 end
 
 class B < A
-  def bar : (Integer | String) -> nil
+  def bar: (Integer | String) -> nil
 end

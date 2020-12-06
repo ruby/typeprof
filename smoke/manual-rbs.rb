@@ -20,9 +20,9 @@ end
 __END__
 # Classes
 class Object
-# def foo : (Integer) -> Integer
+# def foo: (Integer) -> Integer
 #         | (String) -> String
   private
-  def ret_int : -> Integer
-  def ret_str : -> String
+  def ret_int: -> Integer
+  def ret_str: -> String
 end

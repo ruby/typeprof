@@ -9,5 +9,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> [Integer, nil, nil]
+  def foo: -> [Integer, nil, nil]
 end

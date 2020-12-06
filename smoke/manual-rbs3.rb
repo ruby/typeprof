@@ -7,6 +7,6 @@ end
 __END__
 # Classes
 class Foo
-  @foo : Integer
-# def foo : -> Integer
+  @foo: Integer
+# def foo: -> Integer
 end

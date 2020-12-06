@@ -19,9 +19,9 @@ __END__
 # Classes
 class Object
   private
-  def foo : ([Integer, String]) -> Integer
-  def bar : (Integer) -> nil
-  def baz : (String) -> nil
-  def qux : (nil) -> nil
-  def quux : (Integer | String) -> nil
+  def foo: ([Integer, String]) -> Integer
+  def bar: (Integer) -> nil
+  def baz: (String) -> nil
+  def qux: (nil) -> nil
+  def quux: (Integer | String) -> nil
 end

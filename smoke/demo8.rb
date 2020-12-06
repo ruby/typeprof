@@ -14,6 +14,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : { (:sym | String) -> (:sym | String) } -> (:sym | String)
-  def bar : { (:sym | String) -> (:sym | String) } -> (:sym | String)
+  def foo: { (:sym | String) -> (:sym | String) } -> (:sym | String)
+  def bar: { (:sym | String) -> (:sym | String) } -> (:sym | String)
 end

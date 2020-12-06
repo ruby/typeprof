@@ -20,8 +20,8 @@ C.new.bar
 __END__
 # Classes
 module M
-  def foo : -> :foo
-  def bar : -> :bar
+  def foo: -> :foo
+  def bar: -> :bar
 end
 
 class C

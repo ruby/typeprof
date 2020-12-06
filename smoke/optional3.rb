@@ -7,5 +7,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : (?Integer | String) -> nil
+  def foo: (?Integer | String) -> nil
 end

@@ -13,10 +13,10 @@ __END__
 # Classes
 class Object
   private
-  def log : -> (Array[Integer | untyped])
+  def log: -> (Array[Integer | untyped])
 end
 
 class Foo
-  attr_reader foo : Integer | untyped
-  def initialize : (Integer | untyped) -> (Integer | untyped)
+  attr_reader foo: Integer | untyped
+  def initialize: (Integer | untyped) -> (Integer | untyped)
 end

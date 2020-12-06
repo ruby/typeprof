@@ -17,10 +17,10 @@ end
 __END__
 # Classes
 module Bar
-  def bar : -> :bar
+  def bar: -> :bar
 end
 
 module Foo
   extend Bar
-  def foo : -> :foo
+  def foo: -> :foo
 end

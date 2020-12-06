@@ -16,7 +16,7 @@ C.new.foo
 __END__
 # Classes
 module M1
-  def foo : -> :foo
+  def foo: -> :foo
 end
 
 module M2

@@ -17,7 +17,7 @@ __END__
 # Classes
 class Object
   private
-  def map_test : ([Integer, Integer, Integer]) -> Array[String]
-  def map_bang_test : ([Integer, Integer, Integer]) -> (Array[Integer | String])
-  def map_bang_test_known_bug : ([Integer, Integer, Integer]) -> [Integer, Integer, Integer]
+  def map_test: ([Integer, Integer, Integer]) -> Array[String]
+  def map_bang_test: ([Integer, Integer, Integer]) -> (Array[Integer | String])
+  def map_bang_test_known_bug: ([Integer, Integer, Integer]) -> [Integer, Integer, Integer]
 end

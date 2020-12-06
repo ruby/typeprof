@@ -10,6 +10,6 @@ Foo.new.foo
 __END__
 # Classes
 class Foo
-  @var : Array[Integer]
-  def foo : -> Array[Integer]
+  @var: Array[Integer]
+  def foo: -> Array[Integer]
 end

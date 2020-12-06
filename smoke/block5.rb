@@ -14,7 +14,7 @@ end
 __END__
 # Classes
 class Object
-  F : ^(Integer) -> String
+  F: ^(Integer) -> String
   private
-  def foo : { (:sym) -> String } -> String
+  def foo: { (:sym) -> String } -> String
 end

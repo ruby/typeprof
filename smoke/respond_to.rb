@@ -19,5 +19,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : (Integer | String | true) -> (Integer | String | bool)
+  def foo: (Integer | String | true) -> (Integer | String | bool)
 end

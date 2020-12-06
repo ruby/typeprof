@@ -9,9 +9,9 @@ end
 __END__
 # Classes
 class A
-  @@var : :a
+  @@var: :a
 end
 
 class B < A
-  @@var : :b
+  @@var: :b
 end

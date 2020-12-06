@@ -8,5 +8,5 @@ end
 __END__
 # Classes
 class Object
-  V : Object
+  V: Object
 end

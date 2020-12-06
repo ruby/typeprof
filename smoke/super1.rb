@@ -35,7 +35,7 @@ __END__
 # Classes
 class Object
   private
-  def log : (Baz) -> nil
+  def log: (Baz) -> nil
 end
 
 class A
@@ -57,13 +57,13 @@ class Z
 end
 
 class Foo
-  def f : (C) -> X
+  def f: (C) -> X
 end
 
 class Bar < Foo
-  def f : (B) -> Y
+  def f: (B) -> Y
 end
 
 class Baz < Bar
-  def f : (A) -> Z
+  def f: (A) -> Z
 end

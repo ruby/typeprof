@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Array[Integer]
+  def foo: -> Array[Integer]
 end

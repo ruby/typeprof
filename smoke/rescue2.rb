@@ -18,6 +18,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : ((:sym | Integer | String)?) -> Integer
-  def bar : -> Integer
+  def foo: ((:sym | Integer | String)?) -> Integer
+  def bar: -> Integer
 end

@@ -8,7 +8,7 @@ __END__
 # Classes
 class App
   class FooBar < Struct
-    attr_accessor foo() : Integer
-    attr_accessor bar() : String
+    attr_accessor foo(): Integer
+    attr_accessor bar(): String
   end
 end

@@ -15,6 +15,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> {int: Integer, str: String}
-  def bar : -> (Hash[Integer | String, Integer | String])
+  def foo: -> {int: Integer, str: String}
+  def bar: -> (Hash[Integer | String, Integer | String])
 end

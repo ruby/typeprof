@@ -43,14 +43,14 @@ __END__
 # Classes
 class Object
   private
-  def f1 : -> nil
-  def f2 : (:x, :y, :z) -> nil
-  def f3 : (?String, ?String) -> nil
-  def f4 : (*:a | :b | :c) -> nil
-  def f5 : (:x, ?String, :z) -> nil
-  def f6 : (k: :kk) -> nil
-  def f7 : (?k: Integer) -> nil
-  def f8 : (?k: String) -> nil
-  def f9 : (**{k: :kk}) -> nil
-  def f10 : { (Integer) -> nil } -> nil
+  def f1: -> nil
+  def f2: (:x, :y, :z) -> nil
+  def f3: (?String, ?String) -> nil
+  def f4: (*:a | :b | :c) -> nil
+  def f5: (:x, ?String, :z) -> nil
+  def f6: (k: :kk) -> nil
+  def f7: (?k: Integer) -> nil
+  def f8: (?k: String) -> nil
+  def f9: (**{k: :kk}) -> nil
+  def f10: { (Integer) -> nil } -> nil
 end

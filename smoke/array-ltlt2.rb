@@ -13,5 +13,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> (Array[Integer | String])
+  def foo: -> (Array[Integer | String])
 end

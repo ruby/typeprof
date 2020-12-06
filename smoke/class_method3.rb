@@ -20,10 +20,10 @@ __END__
 # Classes
 class ForWin
   private
-  def self.foo : -> nil
+  def self.foo: -> nil
 end
 
 class ForLinux
   private
-  def self.foo : -> nil
+  def self.foo: -> nil
 end

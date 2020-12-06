@@ -6,5 +6,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Encoding
+  def foo: -> Encoding
 end

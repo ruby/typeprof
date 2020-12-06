@@ -14,6 +14,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> (Cell[Integer | String])
-  def bar : -> (Integer | String)
+  def foo: -> (Cell[Integer | String])
+  def bar: -> (Integer | String)
 end

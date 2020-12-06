@@ -31,16 +31,16 @@ Foo::Bar.new.get4 # Integer
 __END__
 # Classes
 class Object
-  CONST : Integer
+  CONST: Integer
 end
 
 class Foo
-  CONST : String
+  CONST: String
 
   class Bar
-    def get1 : -> String
-    def get2 : -> Integer
-    def get3 : -> Integer
-    def get4 : -> Integer
+    def get1: -> String
+    def get2: -> Integer
+    def get3: -> Integer
+    def get4: -> Integer
   end
 end

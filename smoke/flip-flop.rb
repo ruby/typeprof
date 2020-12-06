@@ -22,7 +22,7 @@ __END__
 # Classes
 class Object
   private
-  def cond1? : -> bool
-  def cond2? : -> bool
-  def foo : -> (Integer | String)
+  def cond1?: -> bool
+  def cond2?: -> bool
+  def foo: -> (Integer | String)
 end

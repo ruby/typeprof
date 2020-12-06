@@ -21,7 +21,7 @@ smoke/rbs-attr.rb:13: [warning] inconsistent assignment to RBS-declared global v
 # Classes
 class Object
   private
-  def read_test_1 : -> Integer
-  def read_test_2 : -> Integer
-  def write_test : -> String
+  def read_test_1: -> Integer
+  def read_test_2: -> Integer
+  def write_test: -> String
 end

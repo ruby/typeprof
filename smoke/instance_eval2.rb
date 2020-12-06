@@ -6,5 +6,5 @@ end
 __END__
 # Classes
 class String
-  @a : Integer
+  @a: Integer
 end

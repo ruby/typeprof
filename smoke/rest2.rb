@@ -27,5 +27,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : (Integer, String, :s) -> [Integer, String, :s]
+  def foo: (Integer, String, :s) -> [Integer, String, :s]
 end

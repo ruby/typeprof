@@ -13,6 +13,6 @@ __END__
 # Classes
 class Object
   private
-  def ary : -> [Integer, String, :sym, Float]
-  def foo : -> [Integer, [String, :sym], Float]
+  def ary: -> [Integer, String, :sym, Float]
+  def foo: -> [Integer, [String, :sym], Float]
 end

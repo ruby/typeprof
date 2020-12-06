@@ -14,6 +14,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : (*:s | Integer | String) -> nil
-  def bar : (Integer, :s | String, :s | String) -> nil
+  def foo: (*:s | Integer | String) -> nil
+  def bar: (Integer, :s | String, :s | String) -> nil
 end

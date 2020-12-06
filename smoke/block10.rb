@@ -11,5 +11,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : ([Integer], [String]) -> ([Integer | String])
+  def foo: ([Integer], [String]) -> ([Integer | String])
 end

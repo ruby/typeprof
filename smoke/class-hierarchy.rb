@@ -25,7 +25,7 @@ end
 __END__
 # Classes
 class Object
-  A : Integer
+  A: Integer
 end
 
 module Lib
@@ -37,18 +37,18 @@ module Lib
 end
 
 module App
-  CONST3 : Foo::Bar
+  CONST3: Foo::Bar
 
   class Foo < Lib::Base
-    CONST1 : Foo
+    CONST1: Foo
     include Lib::Mod
 
     class Bar
-      CONST2 : Bar
+      CONST2: Bar
     end
   end
 
   class Baz < Foo
-    CONST4 : Foo::Bar
+    CONST4: Foo::Bar
   end
 end

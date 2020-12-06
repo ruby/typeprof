@@ -11,5 +11,5 @@ __END__
 # Classes
 class Object
   private
-  def my_to_s : (:sym | Integer | String) -> String
+  def my_to_s: (:sym | Integer | String) -> String
 end

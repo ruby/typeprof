@@ -22,7 +22,7 @@ __END__
 # Classes
 class Object
   private
-  def bar : { -> String } -> String
-  def baz : { -> String } -> String
-  def foo : -> (Integer | String)
+  def bar: { -> String } -> String
+  def baz: { -> String } -> String
+  def foo: -> (Integer | String)
 end

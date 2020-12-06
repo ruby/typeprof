@@ -15,6 +15,6 @@ F.new.bar
 __END__
 # Classes
 class F
-  def foo : -> nil
-  def bar : -> nil
+  def foo: -> nil
+  def bar: -> nil
 end

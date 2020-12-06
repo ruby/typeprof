@@ -18,6 +18,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> [:foo]
-  def bar : -> [:bar]
+  def foo: -> [:foo]
+  def bar: -> [:bar]
 end

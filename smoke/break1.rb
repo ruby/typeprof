@@ -14,6 +14,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : { (Integer) -> bot } -> bot
-  def bar : -> String
+  def foo: { (Integer) -> bot } -> bot
+  def bar: -> String
 end

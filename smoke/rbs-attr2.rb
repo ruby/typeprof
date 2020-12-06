@@ -7,5 +7,5 @@ end
 __END__
 # Classes
 class Foo
-  def foo : -> String
+  def foo: -> String
 end

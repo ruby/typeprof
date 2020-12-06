@@ -13,6 +13,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Cell[String]
-  def bar : -> (Cell[Integer | String])
+  def foo: -> Cell[String]
+  def bar: -> (Cell[Integer | String])
 end

@@ -11,5 +11,5 @@ end
 __END__
 # Classes
 class Object
-  def foo : -> nil
+  def foo: -> nil
 end

@@ -18,11 +18,11 @@ Bar.new.bar
 __END__
 # Classes
 module Foo
-  def foo : (:x | :y) -> (:x | :y)
-  def self.foo : (:x | :y) -> (:x | :y)
+  def foo: (:x | :y) -> (:x | :y)
+  def self.foo: (:x | :y) -> (:x | :y)
 end
 
 class Bar
   include Foo
-  def bar : -> (:x | :y)
+  def bar: -> (:x | :y)
 end

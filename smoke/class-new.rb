@@ -11,5 +11,5 @@ Foo.send(:private, :foo)
 __END__
 # Classes
 class Object
-  Foo : Class
+  Foo: Class
 end

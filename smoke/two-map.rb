@@ -13,6 +13,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Array[String]
-  def bar : -> Array[Integer]
+  def foo: -> Array[String]
+  def bar: -> Array[Integer]
 end

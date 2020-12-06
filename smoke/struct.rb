@@ -6,7 +6,7 @@ Foo.new.a = 1
 __END__
 # Classes
 class AnonymousStruct_generated_1 < Struct
-  attr_accessor a() : untyped
+  attr_accessor a(): untyped
 end
 
 class Foo < AnonymousStruct_generated_1

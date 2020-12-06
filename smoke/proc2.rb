@@ -13,5 +13,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Integer
+  def foo: -> Integer
 end

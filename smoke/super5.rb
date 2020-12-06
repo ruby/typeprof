@@ -18,19 +18,19 @@ E.new.f(:top)
 __END__
 # Classes
 module M
-  def f : (:D | :E) -> nil
+  def f: (:D | :E) -> nil
 end
 
 class C
-  def f : (:M) -> nil
+  def f: (:M) -> nil
 end
 
 class D < C
   include M
-  def f : (:M) -> nil
+  def f: (:M) -> nil
 end
 
 class E < D
   include M
-  def f : (:top) -> nil
+  def f: (:top) -> nil
 end

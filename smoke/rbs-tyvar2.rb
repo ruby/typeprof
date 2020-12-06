@@ -16,6 +16,6 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> (Cell[:a1 | :a2, :b1 | :b2, :c1 | :c2])
-  def bar : -> (:b1 | :b2)
+  def foo: -> (Cell[:a1 | :a2, :b1 | :b2, :c1 | :c2])
+  def bar: -> (:b1 | :b2)
 end

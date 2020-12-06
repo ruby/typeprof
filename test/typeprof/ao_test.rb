@@ -11,63 +11,63 @@ module TypeProf
       expected = <<-END
 # Classes
 class Object
-  IMAGE_WIDTH : Integer
-  IMAGE_HEIGHT : Integer
-  NSUBSAMPLES : Integer
-  NAO_SAMPLES : Integer
+  IMAGE_WIDTH: Integer
+  IMAGE_HEIGHT: Integer
+  NSUBSAMPLES: Integer
+  NAO_SAMPLES: Integer
   private
-  def clamp : (Float) -> Integer
-  def otherBasis : (Vec) -> [Vec, Vec, Vec]
-  def top : -> Integer
+  def clamp: (Float) -> Integer
+  def otherBasis: (Vec) -> [Vec, Vec, Vec]
+  def top: -> Integer
 end
 
 class Vec
-  attr_accessor x : Float
-  attr_accessor y : Float
-  attr_accessor z : Float
-  def initialize : (Float, Float, Float) -> Float
-  def vadd : (Vec) -> Vec
-  def vsub : (Vec) -> Vec
-  def vcross : (Vec) -> Vec
-  def vdot : (Vec) -> Float
-  def vlength : -> Float
-  def vnormalize : -> Vec
+  attr_accessor x: Float
+  attr_accessor y: Float
+  attr_accessor z: Float
+  def initialize: (Float, Float, Float) -> Float
+  def vadd: (Vec) -> Vec
+  def vsub: (Vec) -> Vec
+  def vcross: (Vec) -> Vec
+  def vdot: (Vec) -> Float
+  def vlength: -> Float
+  def vnormalize: -> Vec
 end
 
 class Sphere
-  attr_reader center : Vec
-  attr_reader radius : Float
-  def initialize : (Vec, Float) -> Float
-  def intersect : (Ray, Isect) -> Vec?
+  attr_reader center: Vec
+  attr_reader radius: Float
+  def initialize: (Vec, Float) -> Float
+  def intersect: (Ray, Isect) -> Vec?
 end
 
 class Plane
-  @p : Vec
-  @n : Vec
-  def initialize : (Vec, Vec) -> Vec
-  def intersect : (Ray, Isect) -> Vec?
+  @p: Vec
+  @n: Vec
+  def initialize: (Vec, Vec) -> Vec
+  def intersect: (Ray, Isect) -> Vec?
 end
 
 class Ray
-  attr_accessor org : Vec
-  attr_accessor dir : Vec
-  def initialize : (Vec, Vec) -> Vec
+  attr_accessor org: Vec
+  attr_accessor dir: Vec
+  def initialize: (Vec, Vec) -> Vec
 end
 
 class Isect
-  attr_accessor t : Float
-  attr_accessor hit : bool
-  attr_accessor pl : Vec
-  attr_accessor n : Vec
-  def initialize : -> Vec
+  attr_accessor t: Float
+  attr_accessor hit: bool
+  attr_accessor pl: Vec
+  attr_accessor n: Vec
+  def initialize: -> Vec
 end
 
 class Scene
-  @spheres : [Sphere, Sphere, Sphere]
-  @plane : Plane
-  def initialize : -> Plane
-  def ambient_occlusion : (Isect) -> Vec
-  def render : (Integer, Integer, Integer) -> Integer
+  @spheres: [Sphere, Sphere, Sphere]
+  @plane: Plane
+  def initialize: -> Plane
+  def ambient_occlusion: (Isect) -> Vec
+  def render: (Integer, Integer, Integer) -> Integer
 end
       END
 

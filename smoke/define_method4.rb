@@ -10,6 +10,6 @@ end
 __END__
 # Classes
 class Foo
-# def foo : () -> NilClass
-  def bar : (*untyped, **Hash[untyped, untyped]) -> nil
+# def foo: () -> NilClass
+  def bar: (*untyped, **Hash[untyped, untyped]) -> nil
 end

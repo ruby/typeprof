@@ -9,10 +9,10 @@ __END__
 smoke/gvar2.rb:1: [warning] inconsistent assignment to RBS-declared global variable
 
 # Global variables
-#$foo : String
+#$foo: String
 
 # Classes
 class Object
   private
-  def log : -> String
+  def log: -> String
 end

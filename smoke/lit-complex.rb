@@ -6,5 +6,5 @@ __END__
 # Classes
 class Object
   private
-  def foo : -> Complex
+  def foo: -> Complex
 end
