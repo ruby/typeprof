@@ -2049,10 +2049,10 @@ module TypeProf
 
     def do_define_iseq_method(ep, env, mid, iseq, outer_ep)
       cref = ep.ctx.cref
-      recv = env.static_env.recv_ty
       if cref.klass.is_a?(Type::Class)
         typed_mdef = check_typed_method(cref.klass, mid, ep.ctx.cref.singleton)
-        recv = Type::Instance.new(recv) if recv.is_a?(Type::Class)
+        recv = cref.klass
+        recv = Type::Instance.new(recv) unless ep.ctx.cref.singleton
         if typed_mdef
           mdef = ISeqMethodDef.new(iseq, cref, outer_ep, env.static_env.pub_meth)
           typed_mdef.each do |typed_mdef|
