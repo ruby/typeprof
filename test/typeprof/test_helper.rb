@@ -9,14 +9,6 @@ end
 require "test-unit"
 require "stringio"
 
-# Monkey-patching: make the order of loading RBS reproducible
-class Pathname
-  remove_method :each_child
-  def each_child(with_directory = true, &blk)
-    children(with_directory).sort.each(&blk)
-  end
-end
-
 module TypeProf
   class TestRun
     def self.run(name, rbs_path: nil, **opt)

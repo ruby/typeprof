@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     typeprof (0.9.0)
-      rbs (>= 0.20.0)
+      rbs (>= 0.20.1)
 
 GEM
   remote: https://rubygems.org/
