@@ -445,7 +445,7 @@ module TypeProf
         return
       end
       scratch.add_ivar_read!(Type::Instance.new(struct_klass), :_members, ep) do |member_ary_ty, ep|
-        next if member_ary_ty == Type.bot
+        next if member_ary_ty == Type.nil
         member_ary_ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
           ty ||= Type.nil
           scratch.set_instance_variable(recv, sym.sym, ty, ep, env)
