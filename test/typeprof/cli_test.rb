@@ -30,7 +30,7 @@ module TypeProf
 class Object
   private
   def foo: (Integer) -> String
-          | (Integer) -> String
+         | (Integer) -> String
 end
       END
     end

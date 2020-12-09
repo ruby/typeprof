@@ -293,13 +293,13 @@ module TypeProf
         first = false
       end
       class_data.explicit_methods.each do |method_name, sigs|
-        sigs = sigs.sort.join("\n" + indent + "#" + " " * (method_name.size + 6) + "| ")
+        sigs = sigs.sort.join("\n" + indent + "#" + " " * (method_name.size + 5) + "| ")
         output.puts indent + "# def #{ method_name }: #{ sigs }"
         first = false
       end
       prev_pub_meth = true
       class_data.iseq_methods.each do |method_name, (pub_meth, sigs)|
-        sigs = sigs.sort.join("\n" + indent + " " * (method_name.size + 7) + "| ")
+        sigs = sigs.sort.join("\n" + indent + " " * (method_name.size + 6) + "| ")
         if prev_pub_meth != pub_meth
           output.puts indent + "  #{ pub_meth ? "public" : "private" }"
           prev_pub_meth = pub_meth

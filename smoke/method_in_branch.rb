@@ -19,5 +19,5 @@ class Object
   private
   def foo: -> nil
   def bar: -> Integer
-          | -> String
+         | -> String
 end
