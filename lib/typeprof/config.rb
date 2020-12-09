@@ -69,7 +69,7 @@ module TypeProf
 
     prologue_ctx = Context.new(nil, nil, nil)
     prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
-    prologue_env = Env.new(StaticEnv.new(:top, Type.nil, false, true), [], [], Utils::HashWrapper.new({}))
+    prologue_env = Env.new(TopStaticEnv.new, [], [], Utils::HashWrapper.new({}))
 
     Config.rb_files.each do |rb|
       if rb.is_a?(Array) # [String name, String content]

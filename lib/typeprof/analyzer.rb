@@ -117,6 +117,30 @@ module TypeProf
     end
   end
 
+  class TopStaticEnv
+    include Utils::StructuralEquality
+
+    def recv_ty
+      Type.bot
+    end
+
+    def blk_ty
+      Type.nil
+    end
+
+    def mod_func
+      false
+    end
+
+    def pub_meth
+      true
+    end
+
+    def merge(other)
+      raise unless other.is_a?(TopStaticEnv)
+    end
+  end
+
   class Env
     include Utils::StructuralEquality
 
