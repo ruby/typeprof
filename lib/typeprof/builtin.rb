@@ -268,23 +268,25 @@ module TypeProf
       end
 
       mid, = aargs.lead_tys
-      if mid.is_a?(Type::Symbol)
-        mid = mid.sym
-        aargs.blk_ty.each_child do |blk_ty|
-          if blk_ty.is_a?(Type::Proc)
-            blk = blk_ty.block_body
-            case blk
-            when ISeqBlock
-              scratch.do_define_iseq_method(ep, env, mid, blk.iseq, blk.outer_ep)
+      mid.each_child do |mid|
+        if mid.is_a?(Type::Symbol)
+          mid = mid.sym
+          aargs.blk_ty.each_child do |blk_ty|
+            if blk_ty.is_a?(Type::Proc)
+              blk = blk_ty.block_body
+              case blk
+              when ISeqBlock
+                scratch.do_define_iseq_method(ep, env, mid, blk.iseq, blk.outer_ep)
+              else
+                # XXX: what to do?
+              end
             else
               # XXX: what to do?
             end
-          else
-            # XXX: what to do?
           end
+        else
+          # XXX: what to do?
         end
-      else
-        # XXX: what to do?
       end
       ctn[Type.any, ep, env]
     end
