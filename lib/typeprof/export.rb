@@ -118,6 +118,7 @@ module TypeProf
       explicit_methods = {}
       iseq_methods = {}
       attr_methods = {}
+      alias_methods = {}
       ivars = class_def.ivars.dump
       cvars = class_def.cvars.dump
 
@@ -139,6 +140,13 @@ module TypeProf
               iseq_methods[method_name][0] &&= mdef.pub_meth
               iseq_methods[method_name][1] << @scratch.show_method_signature(ctx)
             end
+          when AliasMethodDef
+            alias_name, orig_name = mid, mdef.orig_mid
+            if singleton
+              alias_name = "self.#{ alias_name }"
+              orig_name = "self.#{ orig_name }"
+            end
+            alias_methods[alias_name] = orig_name
           when AttrMethodDef
             next if !mdef.absolute_path || Config.check_dir_filter(mdef.absolute_path) == :exclude
             mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
@@ -195,13 +203,14 @@ module TypeProf
         ivars: ivars,
         cvars: cvars,
         attr_methods: attr_methods,
+        alias_methods: alias_methods,
         explicit_methods: explicit_methods,
         iseq_methods: iseq_methods,
         inner_classes: inner_classes,
       )
     end
 
-    ClassData = Struct.new(:kind, :name, :superclass, :consts, :included_mods, :extended_mods, :ivars, :cvars, :attr_methods, :explicit_methods, :iseq_methods, :inner_classes, keyword_init: true)
+    ClassData = Struct.new(:kind, :name, :superclass, :consts, :included_mods, :extended_mods, :ivars, :cvars, :attr_methods, :alias_methods, :explicit_methods, :iseq_methods, :inner_classes, keyword_init: true)
 
     def show(stat_eps, output)
       # make the class hierarchy
@@ -308,6 +317,10 @@ module TypeProf
         first = false
       end
       show_class_hierarchy(depth + 1, class_data.inner_classes, output, first)
+      class_data.alias_methods.each do |method_name, orig_name|
+        output.puts indent + "  alias #{ method_name } #{ orig_name }"
+        first = false
+      end
       output.puts indent + "end"
     end
   end

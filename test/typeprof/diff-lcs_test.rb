@@ -42,6 +42,7 @@ module TypeProf
       def changed?: -> bool
       def finished_a?: -> bool
       def finished_b?: -> bool
+      alias to_ary to_a
     end
         END
 
@@ -59,6 +60,7 @@ module TypeProf
       def self.simplify: (ContextChange) -> (Change | ContextChange)
       def ==: (untyped) -> bool
       def <=>: (untyped) -> Integer?
+      alias to_ary to_a
     end
         END
 

@@ -627,14 +627,14 @@ module TypeProf
       set_method(klass, mid, true, CustomMethodDef.new(impl))
     end
 
-    def alias_method(klass, singleton, new, old)
+    def alias_method(klass, singleton, alias_mid, orig_mid)
       if klass == Type.any
         self
       else
-        mdefs = get_method(klass, singleton, old)
+        mdefs = get_method(klass, singleton, orig_mid)
         if mdefs
           mdefs.each do |mdef|
-            @class_defs[klass.idx].add_method(new, singleton, mdef)
+            @class_defs[klass.idx].add_method(alias_mid, singleton, AliasMethodDef.new(orig_mid, mdef))
           end
         end
       end

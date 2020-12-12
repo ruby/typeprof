@@ -1,5 +1,7 @@
 module TypeProf
   class MethodDef
+    attr_accessor :pub_meth
+
     include Utils::StructuralEquality
   end
 
@@ -11,8 +13,6 @@ module TypeProf
       @outer_ep = outer_ep
       @pub_meth = pub_meth
     end
-
-    attr_accessor :pub_meth
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = recv.base_type while recv.respond_to?(:base_type)
@@ -153,11 +153,30 @@ module TypeProf
     end
   end
 
+  class AliasMethodDef < MethodDef
+    def initialize(orig_mid, mdef)
+      @orig_mid = orig_mid
+      @mdef = mdef
+      @pub_meth = mdef.pub_meth
+    end
+
+    attr_reader :orig_mid, :mdef
+
+    def do_send(recv, _mid, aargs, caller_ep, caller_env, scratch, &ctn)
+      @mdef.do_send(recv, @orig_mid, aargs, caller_ep, caller_env, scratch, &ctn)
+    end
+
+    def do_check_send(msig, recv, mid, ep, scratch)
+      @mdef.do_check_send(msig, recv, mid, ep, scratch)
+    end
+  end
+
   class AttrMethodDef < MethodDef
     def initialize(ivar, kind, absolute_path)
       @ivar = ivar
       @kind = kind # :reader | :writer
       @absolute_path = absolute_path
+      @pub_meth = true # XXX
     end
 
     attr_reader :ivar, :kind, :absolute_path
@@ -188,6 +207,7 @@ module TypeProf
     def initialize(sig_rets, rbs_source) # sig_rets: Array<[MethodSignature, (return)Type]>
       @sig_rets = sig_rets
       @rbs_source = rbs_source
+      @pub_meth = true # XXX
     end
 
     attr_reader :rbs_source
@@ -288,6 +308,7 @@ module TypeProf
   class CustomMethodDef < MethodDef
     def initialize(impl)
       @impl = impl
+      @pub_meth = true # XXX
     end
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)

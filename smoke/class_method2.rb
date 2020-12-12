@@ -16,6 +16,6 @@ Test.bar("str")
 __END__
 # Classes
 class Test
-  def self.foo: (Integer) -> Integer
-  def self.bar: (String) -> String
+  def self.foo: (Integer | String) -> (Integer | String)
+  alias self.bar self.foo
 end
