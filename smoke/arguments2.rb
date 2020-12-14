@@ -51,6 +51,6 @@ class Object
   def f6: (k: :kk) -> nil
   def f7: (?k: Integer) -> nil
   def f8: (?k: String) -> nil
-  def f9: (**{k: :kk}) -> nil
+  def f9: (**:kk) -> nil
   def f10: { (Integer) -> nil } -> nil
 end

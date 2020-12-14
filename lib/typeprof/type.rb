@@ -799,7 +799,17 @@ module TypeProf
         end
       end
       if @kw_rest_ty
-        str << ("**" + @kw_rest_ty.screen_name(scratch))
+        all_val_ty = Type.bot
+        @kw_rest_ty.each_child_global do |ty|
+          if ty == Type.any
+            val_ty = ty
+          else
+            # ty is a Type::Hash
+            _key_ty, val_ty = ty.elems.squash
+          end
+          all_val_ty = all_val_ty.union(val_ty)
+        end
+        str << ("**" + all_val_ty.screen_name(scratch))
       end
       str = str.empty? ? "" : "(#{ str.join(", ") })"
 
@@ -838,6 +848,9 @@ module TypeProf
       @kw_tys = kw_tys
       kw_tys.each {|a| raise if a.size != 3 } if kw_tys
       @kw_rest_ty = kw_rest_ty
+      kw_rest_ty&.each_child_global do |ty|
+        raise ty.inspect if ty != Type.any && !ty.is_a?(Type::Hash)
+      end
       @blk_ty = blk_ty
     end
 

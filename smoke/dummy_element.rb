@@ -10,5 +10,5 @@ Foo.new.f
 __END__
 # Classes
 class Foo
-  def f: (**Hash[untyped, untyped]) -> nil
+  def f: (**untyped) -> nil
 end

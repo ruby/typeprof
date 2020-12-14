@@ -38,6 +38,6 @@ class Object
   private
   def foo: (k: Integer) -> nil
   def bar: (int: Integer, str: String) -> nil
-  def baz: (**{int: Integer, str: String}) -> nil
-  def qux: (**Hash[untyped, untyped]) -> nil
+  def baz: (**Integer | String) -> nil
+  def qux: (**untyped) -> nil
 end

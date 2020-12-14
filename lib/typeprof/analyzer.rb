@@ -1111,6 +1111,7 @@ module TypeProf
           end
         end
         kw_rest_ty = globalize_type(env.locals[kw_rest], env, ep) if kw_rest
+        kw_rest_ty = nil if kw_rest_ty == Type.nil
         if block_start
           blk_ty = globalize_type(env.locals[block_start], env, ep)
         elsif iseq.type == :method
