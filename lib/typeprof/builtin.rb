@@ -446,36 +446,49 @@ module TypeProf
         ctn[Type.any, ep, env]
         return
       end
-      scratch.add_ivar_read!(Type::Instance.new(struct_klass), :_members, ep) do |member_ary_ty, ep|
-        next if member_ary_ty == Type.nil
-        member_ary_ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
-          ty ||= Type.nil
-          scratch.set_instance_variable(recv, sym.sym, ty, ep, env)
+      scratch.add_ivar_read!(Type::Instance.new(struct_klass), :_keyword_init, ep) do |keyword_init, ep|
+        scratch.add_ivar_read!(Type::Instance.new(struct_klass), :_members, ep) do |member_ary_ty, ep|
+          next if member_ary_ty == Type.nil
+          if keyword_init == Type::Instance.new(Type::Builtin[:true])
+            # TODO: support kw_rest_ty
+            aargs.kw_tys.each do |key, val_ty|
+              found = false
+              member_ary_ty.elems.lead_tys.each do |sym|
+                if sym.sym == key
+                  found = true
+                  scratch.set_instance_variable(recv, sym.sym, val_ty, ep, env)
+                end
+              end
+              unless found
+                # TODO: what to do when not found?
+              end
+            end
+          else
+            member_ary_ty.elems.lead_tys.zip(aargs.lead_tys) do |sym, ty|
+              ty ||= Type.nil
+              scratch.set_instance_variable(recv, sym.sym, ty, ep, env)
+            end
+          end
         end
       end
       ctn[recv, ep, env]
     end
 
-    def struct_i_new(recv, mid, aargs, ep, env, scratch, &ctn)
-      # TODO: keyword_init
-
-      meths = scratch.get_method(recv, false, :initialize)
-      recv = Type::Instance.new(recv)
-      meths.flat_map do |meth|
-        meth.do_send(recv, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
-          ctn[recv, ep, env]
-        end
-      end
-    end
-
     def struct_s_new(recv, mid, aargs, ep, env, scratch, &ctn)
       # TODO: keyword_init
+
+      keyword_init = false
+      if aargs.kw_tys && aargs.kw_tys[:keyword_init] # XXX: more canonical way to extract keyword...
+        if aargs.kw_tys[:keyword_init] == Type::Instance.new(Type::Builtin[:true])
+          keyword_init = true
+        end
+      end
 
       fields = aargs.lead_tys.map {|ty| get_sym("Struct.new", ty, ep, scratch) }.compact
       struct_klass = scratch.new_struct(ep)
 
-      scratch.set_singleton_custom_method(struct_klass, :new, Builtin.method(:struct_i_new))
-      scratch.set_singleton_custom_method(struct_klass, :[], Builtin.method(:struct_i_new))
+      scratch.set_singleton_custom_method(struct_klass, :new, Builtin.method(:object_s_new))
+      scratch.set_singleton_custom_method(struct_klass, :[], Builtin.method(:object_s_new))
       fields.each do |field|
         scratch.add_attr_method(struct_klass, ep.ctx.iseq.absolute_path, field, field, :accessor)
       end
@@ -483,6 +496,7 @@ module TypeProf
       base_ty = Type::Instance.new(Type::Builtin[:ary])
       fields = Type::Array.new(Type::Array::Elements.new(fields), base_ty)
       scratch.add_ivar_write!(Type::Instance.new(struct_klass), :_members, fields, ep)
+      scratch.add_ivar_write!(Type::Instance.new(struct_klass), :_keyword_init, Type::Instance.new(Type::Builtin[:true]), ep) if keyword_init
       #set_singleton_custom_method(struct_klass, :members, Builtin.method(:...))
 
       ctn[struct_klass, ep, env]
