@@ -12,6 +12,7 @@ __END__
 # Classes
 class Object
   F: ^(Integer) -> String
+
   private
   def foo: { (:sym) -> String } -> String
 end

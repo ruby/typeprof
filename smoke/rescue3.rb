@@ -14,6 +14,7 @@ __END__
 # Classes
 class Object
   Ary: [Integer, String]
+
   private
   def foo: -> (Integer | String)
 end

@@ -14,6 +14,7 @@ __END__
 # Classes
 class Object
   @undefined_ivar: bot
+
   private
   def foo: -> bool
   def bar: -> nil

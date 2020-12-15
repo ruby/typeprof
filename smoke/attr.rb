@@ -20,9 +20,9 @@ foo.c = :ccc
 __END__
 # Classes
 class Foo
+  def initialize: (:aaa a) -> :aaa
   attr_reader a: :aaa
   attr_writer b: :bbb
-  attr_accessor c: :ccc
-  def initialize: (:aaa a) -> :aaa
   def get_b: -> :bbb
+  attr_accessor c: :ccc
 end

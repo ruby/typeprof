@@ -55,6 +55,7 @@ module TypeProf
   class Trigger
     @by_pattern: bool
     @skips_fail_examples: bool
+
     attr_reader patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?]
     attr_reader globs: Array[Glob?]
     attr_reader passes: Array[untyped]

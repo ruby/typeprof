@@ -26,13 +26,15 @@ module TypeProf
       IntClass: untyped
       VALID_ACTIONS: [String, String, String, String, String, String]
       include Comparable
+
+      def self.valid_action?: (String action) -> bool
       attr_reader action: String
       attr_reader position: Integer
       attr_reader element: (Array[T] | T)?
-      def self.valid_action?: (String action) -> bool
       def initialize: (String action, Integer position, (Array[T] | T)? element) -> nil
       def inspect: (*untyped _args) -> String
       def to_a: -> ([String, Integer, (Array[T] | T)?])
+      alias to_ary to_a
       def self.from_a: ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]] arr) -> (Change | ContextChange)
       def ==: (untyped other) -> bool
       def <=>: (untyped other) -> Integer?
@@ -42,7 +44,6 @@ module TypeProf
       def changed?: -> bool
       def finished_a?: -> bool
       def finished_b?: -> bool
-      alias to_ary to_a
     end
         END
 
@@ -50,17 +51,18 @@ module TypeProf
         assert_equal(<<-END, $&)
     class ContextChange < Change
       @action: String
+
       attr_reader old_position: Integer
       attr_reader new_position: Integer
       attr_reader old_element: (Array[T] | T)?
       attr_reader new_element: (Array[T] | T)?
       def initialize: (String action, Integer old_position, (Array[T] | T)? old_element, Integer new_position, (Array[T] | T)? new_element) -> nil
       def to_a: -> ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]])
+      alias to_ary to_a
       def self.from_a: ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]] arr) -> (Change | ContextChange)
       def self.simplify: (ContextChange event) -> (Change | ContextChange)
       def ==: (untyped other) -> bool
       def <=>: (untyped other) -> Integer?
-      alias to_ary to_a
     end
         END
 

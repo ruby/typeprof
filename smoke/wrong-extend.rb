@@ -22,5 +22,6 @@ end
 
 module Foo
   extend Bar
+
   def foo: -> :foo
 end

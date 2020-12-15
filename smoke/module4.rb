@@ -26,6 +26,7 @@ end
 
 module M1
   extend M2
+
   def foo: -> :m1_foo
 end
 

@@ -16,6 +16,7 @@ __END__
 # Classes
 module Foo
   self.@foo: Integer
+
   attr_accessor foo: untyped
   attr_accessor self.foo: Integer
 end

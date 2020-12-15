@@ -23,5 +23,6 @@ class A
   @int: Integer
   @str: String
   @val: (Integer | String)?
+
   def initialize: ((Integer | String)? x) -> ((Integer | String)?)
 end

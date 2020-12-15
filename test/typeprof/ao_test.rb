@@ -15,6 +15,7 @@ class Object
   IMAGE_HEIGHT: Integer
   NSUBSAMPLES: Integer
   NAO_SAMPLES: Integer
+
   private
   def clamp: (Float f) -> Integer
   def otherBasis: (Vec n) -> [Vec, Vec, Vec]
@@ -22,10 +23,10 @@ class Object
 end
 
 class Vec
+  def initialize: (Float x, Float y, Float z) -> Float
   attr_accessor x: Float
   attr_accessor y: Float
   attr_accessor z: Float
-  def initialize: (Float x, Float y, Float z) -> Float
   def vadd: (Vec b) -> Vec
   def vsub: (Vec b) -> Vec
   def vcross: (Vec b) -> Vec
@@ -35,36 +36,38 @@ class Vec
 end
 
 class Sphere
+  def initialize: (Vec center, Float radius) -> Float
   attr_reader center: Vec
   attr_reader radius: Float
-  def initialize: (Vec center, Float radius) -> Float
   def intersect: (Ray ray, Isect isect) -> Vec?
 end
 
 class Plane
   @p: Vec
   @n: Vec
+
   def initialize: (Vec p, Vec n) -> Vec
   def intersect: (Ray ray, Isect isect) -> Vec?
 end
 
 class Ray
+  def initialize: (Vec org, Vec dir) -> Vec
   attr_accessor org: Vec
   attr_accessor dir: Vec
-  def initialize: (Vec org, Vec dir) -> Vec
 end
 
 class Isect
+  def initialize: -> Vec
   attr_accessor t: Float
   attr_accessor hit: bool
   attr_accessor pl: Vec
   attr_accessor n: Vec
-  def initialize: -> Vec
 end
 
 class Scene
   @spheres: [Sphere, Sphere, Sphere]
   @plane: Plane
+
   def initialize: -> Plane
   def ambient_occlusion: (Isect isect) -> Vec
   def render: (Integer w, Integer h, Integer nsubsamples) -> Integer

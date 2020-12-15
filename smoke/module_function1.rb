@@ -24,5 +24,6 @@ end
 
 class Bar
   include Foo
+
   def bar: -> (:x | :y)
 end

@@ -22,5 +22,6 @@ end
 
 module Foo
   include Bar
+
   def foo: -> :foo
 end

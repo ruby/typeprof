@@ -23,6 +23,7 @@ end
 
 class C
   @target: D
+
   def initialize: (D x) -> D
   def method_missing: (:foo m, *:X | :Y | :Z args) -> nil
 end

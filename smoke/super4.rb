@@ -34,10 +34,12 @@ end
 
 class D < C
   include M1
+
   def f: (:M2 m) -> nil
 end
 
 class E < D
   include M2
+
   def f: (:top m) -> nil
 end

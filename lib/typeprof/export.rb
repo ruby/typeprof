@@ -115,10 +115,8 @@ module TypeProf
         Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
       end
 
-      explicit_methods = {}
-      iseq_methods = {}
-      attr_methods = {}
-      alias_methods = {}
+      visibilities = {}
+      methods = {}
       ivars = class_def.ivars.dump
       cvars = class_def.cvars.dump
 
@@ -136,9 +134,9 @@ module TypeProf
               method_name = ctx.mid
               method_name = "self.#{ method_name }" if singleton
 
-              iseq_methods[method_name] ||= [true, []]
-              iseq_methods[method_name][0] &&= mdef.pub_meth
-              iseq_methods[method_name][1] << @scratch.show_method_signature(ctx)
+              key = [:iseq, method_name]
+              visibilities[key] ||= mdef.pub_meth
+              (methods[key] ||= []) << @scratch.show_method_signature(ctx)
             end
           when AliasMethodDef
             alias_name, orig_name = mid, mdef.orig_mid
@@ -146,26 +144,32 @@ module TypeProf
               alias_name = "self.#{ alias_name }"
               orig_name = "self.#{ orig_name }"
             end
-            alias_methods[alias_name] = orig_name
+            key = [:alias, alias_name]
+            visibilities[key] ||= mdef.pub_meth
+            methods[key] = orig_name
           when AttrMethodDef
             next if !mdef.absolute_path || Config.check_dir_filter(mdef.absolute_path) == :exclude
             mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
             method_name = mid
             method_name = "self.#{ mid }" if singleton
             method_name = [method_name, :"@#{ mid }" != mdef.ivar]
-            if attr_methods[method_name]
-              if attr_methods[method_name][0] != mdef.kind
-                attr_methods[method_name][0] = :accessor
+            key = [:attr, method_name]
+            visibilities[key] ||= mdef.pub_meth
+            if methods[key]
+              if methods[key][0] != mdef.kind
+                methods[key][0] = :accessor
               end
             else
               entry = ivars[[singleton, mdef.ivar]]
               ty = entry ? entry.type : Type.any
-              attr_methods[method_name] = [mdef.kind, ty.screen_name(@scratch)]
+              methods[key] = [mdef.kind, ty.screen_name(@scratch)]
             end
           when TypedMethodDef
             if mdef.rbs_source
               method_name, sigs = mdef.rbs_source
-              explicit_methods[method_name] = sigs
+              key = [:rbs, method_name]
+              methods[key] = sigs
+              visibilities[key] ||= mdef.pub_meth
             end
           end
         end
@@ -176,7 +180,7 @@ module TypeProf
         ty = entry.type
         next unless var.to_s.start_with?("@")
         var = "self.#{ var }" if singleton
-        next if attr_methods[[singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]
+        next if methods[[:attr, [singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]]
         next if entry.rbs_declared
         [var, ty.screen_name(@scratch)]
       end.compact
@@ -188,7 +192,9 @@ module TypeProf
       end.compact
 
       if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
-        return nil if consts.empty? && included_mods.empty? && extended_mods.empty? && ivars.empty? && cvars.empty? && iseq_methods.empty? && attr_methods.empty? && inner_classes.empty?
+        if methods.keys.all? {|type,| type == :rbs }
+          return nil if consts.empty? && included_mods.empty? && extended_mods.empty? && ivars.empty? && cvars.empty? && inner_classes.empty?
+        end
       end
 
       @scratch.namespace = nil
@@ -202,15 +208,13 @@ module TypeProf
         extended_mods: extended_mods,
         ivars: ivars,
         cvars: cvars,
-        attr_methods: attr_methods,
-        alias_methods: alias_methods,
-        explicit_methods: explicit_methods,
-        iseq_methods: iseq_methods,
+        methods: methods,
+        visibilities: visibilities,
         inner_classes: inner_classes,
       )
     end
 
-    ClassData = Struct.new(:kind, :name, :superclass, :consts, :included_mods, :extended_mods, :ivars, :cvars, :attr_methods, :alias_methods, :explicit_methods, :iseq_methods, :inner_classes, keyword_init: true)
+    ClassData = Struct.new(:kind, :name, :superclass, :consts, :included_mods, :extended_mods, :ivars, :cvars, :methods, :visibilities, :inner_classes, keyword_init: true)
 
     def show(stat_eps, output)
       # make the class hierarchy
@@ -297,30 +301,36 @@ module TypeProf
         output.puts indent + "  #{ var }: #{ ty }"
         first = false
       end
-      class_data.attr_methods.each do |(method_name, hidden), (kind, ty)|
-        output.puts indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }"
-        first = false
-      end
-      class_data.explicit_methods.each do |method_name, sigs|
-        sigs = sigs.sort.join("\n" + indent + "#" + " " * (method_name.size + 5) + "| ")
-        output.puts indent + "# def #{ method_name }: #{ sigs }"
-        first = false
-      end
-      prev_pub_meth = true
-      class_data.iseq_methods.each do |method_name, (pub_meth, sigs)|
-        sigs = sigs.sort.join("\n" + indent + " " * (method_name.size + 6) + "| ")
-        if prev_pub_meth != pub_meth
-          output.puts indent + "  #{ pub_meth ? "public" : "private" }"
-          prev_pub_meth = pub_meth
+      need_newline = !first
+      prev_vis = true
+      class_data.methods.each do |key, arg|
+        if need_newline
+          output.puts
+          need_newline = false
         end
-        output.puts indent + "  def #{ method_name }: #{ sigs }"
+        vis = class_data.visibilities[key]
+        if prev_vis != vis
+          output.puts indent + "  #{ vis ? "public" : "private" }"
+          prev_vis = vis
+        end
+        type, (method_name, hidden) = key
+        case type
+        when :attr
+          kind, ty = *arg
+          output.puts indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }"
+        when :rbs
+          sigs = arg.sort.join("\n" + indent + "#" + " " * (method_name.size + 5) + "| ")
+          output.puts indent + "# def #{ method_name }: #{ sigs }"
+        when :iseq
+          sigs = arg.sort.join("\n" + indent + " " * (method_name.size + 6) + "| ")
+          output.puts indent + "  def #{ method_name }: #{ sigs }"
+        when :alias
+          orig_name = arg
+          output.puts indent + "  alias #{ method_name } #{ orig_name }"
+        end
         first = false
       end
       show_class_hierarchy(depth + 1, class_data.inner_classes, output, first)
-      class_data.alias_methods.each do |method_name, orig_name|
-        output.puts indent + "  alias #{ method_name } #{ orig_name }"
-        first = false
-      end
       output.puts indent + "end"
     end
   end

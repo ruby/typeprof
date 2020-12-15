@@ -49,6 +49,7 @@ __END__
 # Classes
 class Object
   StringArray: Array[String]
+
   private
   def f1: { (*String) -> nil } -> (^(String, ?:opt | String, String) -> nil)
   def log1: (String a, :opt | String o, String c) -> nil

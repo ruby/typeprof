@@ -25,6 +25,7 @@ end
 
 class Foo
   @foo: Integer | String
+
   def foo=: (Integer | String x) -> (Integer | String)
   def foo: -> (Integer | String)
 end
