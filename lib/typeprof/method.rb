@@ -172,11 +172,11 @@ module TypeProf
   end
 
   class AttrMethodDef < MethodDef
-    def initialize(ivar, kind, absolute_path)
+    def initialize(ivar, kind, absolute_path, pub_meth)
       @ivar = ivar
       @kind = kind # :reader | :writer
       @absolute_path = absolute_path
-      @pub_meth = true # XXX
+      @pub_meth = pub_meth
     end
 
     attr_reader :ivar, :kind, :absolute_path
@@ -204,10 +204,10 @@ module TypeProf
   end
 
   class TypedMethodDef < MethodDef
-    def initialize(sig_rets, rbs_source) # sig_rets: Array<[MethodSignature, (return)Type]>
+    def initialize(sig_rets, rbs_source, pub_meth) # sig_rets: Array<[MethodSignature, (return)Type]>
       @sig_rets = sig_rets
       @rbs_source = rbs_source
-      @pub_meth = true # XXX
+      @pub_meth = pub_meth
     end
 
     attr_reader :rbs_source
@@ -306,9 +306,9 @@ module TypeProf
   end
 
   class CustomMethodDef < MethodDef
-    def initialize(impl)
+    def initialize(impl, pub_meth)
       @impl = impl
-      @pub_meth = true # XXX
+      @pub_meth = pub_meth
     end
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)

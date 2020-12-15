@@ -602,12 +602,12 @@ module TypeProf
       mdef
     end
 
-    def add_attr_method(klass, absolute_path, mid, ivar, kind)
+    def add_attr_method(klass, absolute_path, mid, ivar, kind, pub_meth)
       if kind == :reader || kind == :accessor
-        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader, absolute_path))
+        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader, absolute_path, pub_meth))
       end
       if kind == :writer || kind == :accessor
-        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer, absolute_path))
+        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer, absolute_path, pub_meth))
       end
     end
 
@@ -619,12 +619,12 @@ module TypeProf
       add_method(klass, mid, true, ISeqMethodDef.new(iseq, cref, outer_ep, pub_meth))
     end
 
-    def set_custom_method(klass, mid, impl)
-      set_method(klass, mid, false, CustomMethodDef.new(impl))
+    def set_custom_method(klass, mid, impl, pub_meth = true)
+      set_method(klass, mid, false, CustomMethodDef.new(impl, pub_meth))
     end
 
-    def set_singleton_custom_method(klass, mid, impl)
-      set_method(klass, mid, true, CustomMethodDef.new(impl))
+    def set_singleton_custom_method(klass, mid, impl, pub_meth = true)
+      set_method(klass, mid, true, CustomMethodDef.new(impl, pub_meth))
     end
 
     def alias_method(klass, singleton, alias_mid, orig_mid)
@@ -723,7 +723,7 @@ module TypeProf
         if ep
           if entry.rbs_declared
             unless Type.match?(ty, entry.type)
-              scratch.warn(ep, "inconsistent assignment to RBS-declared global variable")
+              scratch.warn(ep, "inconsistent assignment to RBS-declared variable")
               return
             end
           end

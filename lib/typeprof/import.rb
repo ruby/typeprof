@@ -123,6 +123,7 @@ module TypeProf
         ivars = {}
         cvars = {}
         rbs_sources = {}
+        visibility = true
 
         decls.each do |decl|
           decl = decl.decl
@@ -143,7 +144,7 @@ module TypeProf
                 end
               end
 
-              method_def = conv_method_def(method_types)
+              method_def = conv_method_def(method_types, visibility)
               rbs_source = [(member.kind == :singleton ? "self." : "") + member.name.to_s, member.types.map {|type| type.location.source }]
               if member.instance?
                 methods[[false, name]] = method_def
@@ -155,13 +156,13 @@ module TypeProf
               end
             when RBS::AST::Members::AttrReader
               ty = conv_type(member.type)
-              attr_methods[[false, member.name]] = attr_method_def(:reader, member.name, ty)
+              attr_methods[[false, member.name]] = attr_method_def(:reader, member.name, ty, visibility)
             when RBS::AST::Members::AttrWriter
               ty = conv_type(member.type)
-              attr_methods[[false, member.name]] = attr_method_def(:writer, member.name, ty)
+              attr_methods[[false, member.name]] = attr_method_def(:writer, member.name, ty, visibility)
             when RBS::AST::Members::AttrAccessor
               ty = conv_type(member.type)
-              attr_methods[[false, member.name]] = attr_method_def(:accessor, member.name, ty)
+              attr_methods[[false, member.name]] = attr_method_def(:accessor, member.name, ty, visibility)
             when RBS::AST::Members::Alias
               # XXX: an alias to attr methods?
               if member.instance?
@@ -198,7 +199,10 @@ module TypeProf
             when RBS::AST::Members::ClassVariable
               cvars[member.name] = conv_type(member.type)
 
-            when RBS::AST::Members::Public, RBS::AST::Members::Private # XXX
+            when RBS::AST::Members::Public
+              visibility = true
+            when RBS::AST::Members::Private
+              visibility = false
 
             # The following declarations are ignoreable because they are handled in other level
             when RBS::AST::Declarations::Constant
@@ -297,10 +301,14 @@ module TypeProf
       return RBS::BuiltinNames::Object.name, []
     end
 
-    def conv_method_def(rbs_method_types)
-      rbs_method_types.map do |method_type|
+    def conv_method_def(rbs_method_types, visibility)
+      sig_rets = rbs_method_types.map do |method_type|
         conv_func(method_type.type_params, method_type.type, method_type.block)
       end
+      {
+        sig_rets: sig_rets,
+        visibility: visibility,
+      }
     end
 
     def conv_func(type_params, func, block)
@@ -330,11 +338,12 @@ module TypeProf
       }
     end
 
-    def attr_method_def(kind, name, ty)
+    def attr_method_def(kind, name, ty, visibility)
       {
         kind: kind,
         ivar: name,
         ty: ty,
+        visibility: visibility,
       }
     end
 
@@ -530,7 +539,7 @@ module TypeProf
           kind = mdef[:kind]
           ivar = mdef[:ivar]
           ty = conv_type(mdef[:ty]).remove_type_vars
-          @scratch.add_attr_method(klass, nil, ivar, :"@#{ ivar }", kind)
+          @scratch.add_attr_method(klass, nil, ivar, :"@#{ ivar }", kind, mdef[:visibility])
           @scratch.add_ivar_write!(Type::Instance.new(klass), :"@#{ ivar }", ty, nil)
         end
 
@@ -560,11 +569,11 @@ module TypeProf
     end
 
     def conv_method_def(method_name, mdef, rbs_source)
-      sig_rets = mdef.flat_map do |sig_ret|
+      sig_rets = mdef[:sig_rets].flat_map do |sig_ret|
         conv_func(sig_ret)
       end
 
-      TypedMethodDef.new(sig_rets, rbs_source)
+      TypedMethodDef.new(sig_rets, rbs_source, mdef[:visibility])
     end
 
     def conv_func(sig_ret)

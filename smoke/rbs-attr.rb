@@ -15,8 +15,8 @@ end
 
 __END__
 # Errors
-smoke/rbs-attr.rb:11: [warning] inconsistent assignment to RBS-declared global variable
-smoke/rbs-attr.rb:13: [warning] inconsistent assignment to RBS-declared global variable
+smoke/rbs-attr.rb:11: [warning] inconsistent assignment to RBS-declared variable
+smoke/rbs-attr.rb:13: [warning] inconsistent assignment to RBS-declared variable
 
 # Classes
 class Object

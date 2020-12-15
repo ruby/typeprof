@@ -295,7 +295,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_accessor", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :accessor)
+        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :accessor, env.static_env.pub_meth)
       end
       ctn[Type.nil, ep, env]
     end
@@ -304,7 +304,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_reader", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :reader)
+        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :reader, env.static_env.pub_meth)
       end
       ctn[Type.nil, ep, env]
     end
@@ -313,7 +313,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_writer", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :writer)
+        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :writer, env.static_env.pub_meth)
       end
       ctn[Type.nil, ep, env]
     end
@@ -490,7 +490,7 @@ module TypeProf
       scratch.set_singleton_custom_method(struct_klass, :new, Builtin.method(:object_s_new))
       scratch.set_singleton_custom_method(struct_klass, :[], Builtin.method(:object_s_new))
       fields.each do |field|
-        scratch.add_attr_method(struct_klass, ep.ctx.iseq.absolute_path, field, field, :accessor)
+        scratch.add_attr_method(struct_klass, ep.ctx.iseq.absolute_path, field, field, :accessor, true)
       end
       fields = fields.map {|field| Type::Symbol.new(field, Type::Instance.new(Type::Builtin[:sym])) }
       base_ty = Type::Instance.new(Type::Builtin[:ary])
@@ -703,19 +703,19 @@ module TypeProf
       scratch.set_custom_method(klass_vmcore, :"core#raise", Builtin.method(:vmcore_raise))
       scratch.set_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
       scratch.set_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_s_new))
-      scratch.set_custom_method(klass_obj, :p, Builtin.method(:kernel_p))
+      scratch.set_custom_method(klass_obj, :p, Builtin.method(:kernel_p), false)
       scratch.set_custom_method(klass_obj, :is_a?, Builtin.method(:object_is_a?))
       scratch.set_custom_method(klass_obj, :respond_to?, Builtin.method(:object_respond_to?))
       scratch.set_custom_method(klass_obj, :class, Builtin.method(:object_class))
       scratch.set_custom_method(klass_obj, :send, Builtin.method(:object_send))
       scratch.set_custom_method(klass_obj, :instance_eval, Builtin.method(:object_instance_eval))
-      scratch.set_custom_method(klass_obj, :proc, Builtin.method(:lambda))
+      scratch.set_custom_method(klass_obj, :proc, Builtin.method(:lambda), false)
 
       scratch.set_custom_method(klass_module, :include, Builtin.method(:module_include))
       scratch.set_custom_method(klass_module, :extend, Builtin.method(:module_extend))
-      scratch.set_custom_method(klass_module, :module_function, Builtin.method(:module_module_function))
-      scratch.set_custom_method(klass_module, :public, Builtin.method(:module_public))
-      scratch.set_custom_method(klass_module, :private, Builtin.method(:module_private))
+      scratch.set_custom_method(klass_module, :module_function, Builtin.method(:module_module_function), false)
+      scratch.set_custom_method(klass_module, :public, Builtin.method(:module_public), false)
+      scratch.set_custom_method(klass_module, :private, Builtin.method(:module_private), false)
       scratch.set_custom_method(klass_module, :define_method, Builtin.method(:module_define_method))
       scratch.set_custom_method(klass_module, :"attr_accessor", Builtin.method(:module_attr_accessor))
       scratch.set_custom_method(klass_module, :"attr_reader", Builtin.method(:module_attr_reader))
@@ -734,10 +734,10 @@ module TypeProf
       scratch.set_custom_method(klass_struct, :initialize, Builtin.method(:struct_initialize))
       scratch.set_singleton_custom_method(klass_struct, :new, Builtin.method(:struct_s_new))
 
-      scratch.set_custom_method(klass_obj, :require, Builtin.method(:kernel_require))
-      scratch.set_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative))
-      scratch.set_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array))
-      scratch.set_custom_method(klass_obj, :autoload, Builtin.method(:kernel_autoload))
+      scratch.set_custom_method(klass_obj, :require, Builtin.method(:kernel_require), false)
+      scratch.set_custom_method(klass_obj, :require_relative, Builtin.method(:kernel_require_relative), false)
+      scratch.set_custom_method(klass_obj, :Array, Builtin.method(:kernel_Array), false)
+      scratch.set_custom_method(klass_obj, :autoload, Builtin.method(:kernel_autoload), false)
       scratch.set_custom_method(klass_module, :autoload, Builtin.method(:module_autoload))
 
       # remove BasicObject#method_missing
