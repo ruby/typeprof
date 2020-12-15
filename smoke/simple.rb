@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: (Integer) -> String
+  def foo: (Integer n) -> String
 end

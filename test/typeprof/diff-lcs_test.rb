@@ -18,7 +18,7 @@ module TypeProf
         # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)
 
         assert(actual =~ /^module Diff\n  module LCS\n(?:(?:    .*?\n|\n)*)^  end\n^end\n/)
-        assert_include($&, "def self.diff: (Array[T] | LCS, Array[T], ?nil) ?{ (Array[Change] | Change | ContextChange) -> nil } -> (Array[(Array[Change?] | Change | ContextChange)?])")
+        assert_include($&, "def self.diff: (Array[T] | LCS seq1, Array[T] seq2, ?nil callbacks) ?{ (Array[Change] | Change | ContextChange) -> nil } -> (Array[(Array[Change?] | Change | ContextChange)?])")
 
         assert(actual =~ /^    class Change\n(?:(?:      .*?\n|\n)*)^    end\n/)
         assert_equal(<<-END, $&)
@@ -29,13 +29,13 @@ module TypeProf
       attr_reader action: String
       attr_reader position: Integer
       attr_reader element: (Array[T] | T)?
-      def self.valid_action?: (String) -> bool
-      def initialize: (String, Integer, (Array[T] | T)?) -> nil
-      def inspect: (*untyped) -> String
+      def self.valid_action?: (String action) -> bool
+      def initialize: (String action, Integer position, (Array[T] | T)? element) -> nil
+      def inspect: (*untyped _args) -> String
       def to_a: -> ([String, Integer, (Array[T] | T)?])
-      def self.from_a: ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]]) -> (Change | ContextChange)
-      def ==: (untyped) -> bool
-      def <=>: (untyped) -> Integer?
+      def self.from_a: ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]] arr) -> (Change | ContextChange)
+      def ==: (untyped other) -> bool
+      def <=>: (untyped other) -> Integer?
       def adding?: -> bool
       def deleting?: -> bool
       def unchanged?: -> bool
@@ -54,12 +54,12 @@ module TypeProf
       attr_reader new_position: Integer
       attr_reader old_element: (Array[T] | T)?
       attr_reader new_element: (Array[T] | T)?
-      def initialize: (String, Integer, (Array[T] | T)?, Integer, (Array[T] | T)?) -> nil
+      def initialize: (String action, Integer old_position, (Array[T] | T)? old_element, Integer new_position, (Array[T] | T)? new_element) -> nil
       def to_a: -> ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]])
-      def self.from_a: ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]]) -> (Change | ContextChange)
-      def self.simplify: (ContextChange) -> (Change | ContextChange)
-      def ==: (untyped) -> bool
-      def <=>: (untyped) -> Integer?
+      def self.from_a: ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]] arr) -> (Change | ContextChange)
+      def self.simplify: (ContextChange event) -> (Change | ContextChange)
+      def ==: (untyped other) -> bool
+      def <=>: (untyped other) -> Integer?
       alias to_ary to_a
     end
         END

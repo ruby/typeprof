@@ -48,13 +48,13 @@ __END__
 class Object
   private
   def f1: { -> nil } -> ^(nil, *bot, nil) -> nil
-  def log1: (nil, Array[bot], nil) -> nil
+  def log1: (nil a, Array[bot] r, nil c) -> nil
   def f2: { (:a) -> nil } -> ^(:a, *bot, nil) -> nil
-  def log2: (:a, Array[bot], nil) -> nil
+  def log2: (:a a, Array[bot] r, nil c) -> nil
   def f3: { (:a, :b) -> nil } -> ^(:a, *bot, :b) -> nil
-  def log3: (:a, Array[bot], :b) -> nil
+  def log3: (:a a, Array[bot] r, :b c) -> nil
   def f4: { (:a, :b, :c) -> nil } -> ^(:a, *:b, :c) -> nil
-  def log4: (:a, [:b], :c) -> nil
+  def log4: (:a a, [:b] r, :c c) -> nil
   def f5: { (:a, :b, :c, :d) -> nil } -> (^(:a, *:b | :c, :d) -> nil)
-  def log5: (:a, [:b, :c], :d) -> nil
+  def log5: (:a a, [:b, :c] r, :d c) -> nil
 end

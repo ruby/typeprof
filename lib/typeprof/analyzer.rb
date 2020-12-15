@@ -1076,7 +1076,7 @@ module TypeProf
         lead_tys = env.locals[0, lead_num].map {|ty| globalize_type(ty, env, ep) }
         opt_tys = opt.size > 1 ? env.locals[lead_num, opt.size - 1].map {|ty| globalize_type(ty, env, ep) } : []
         if rest_start # XXX:squash
-          ty = globalize_type(env.locals[lead_num + opt.size - 1], env, ep)
+          ty = globalize_type(env.locals[rest_start], env, ep)
           rest_ty = Type.bot
           ty.each_child_global do |ty|
             if ty.is_a?(Type::Array)
@@ -2131,7 +2131,7 @@ module TypeProf
 
       bsig ||= BlockSignature.new([], [], nil, Type.nil)
 
-      bsig = bsig.screen_name(self)#, block: true)
+      bsig = bsig.screen_name(nil, self)#, block: true)
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 
@@ -2158,7 +2158,7 @@ module TypeProf
         end
       end
 
-      farg_tys = farg_tys ? farg_tys.screen_name(self) : "(unknown)"
+      farg_tys = farg_tys ? farg_tys.screen_name(nil, self) : "(unknown)"
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 
@@ -2170,7 +2170,7 @@ module TypeProf
       farg_tys = @method_signatures[ctx]
       ret_ty = @return_values[ctx] || Type.bot
 
-      farg_tys = farg_tys.screen_name(self)
+      farg_tys = farg_tys.screen_name(ctx.iseq, self)
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
       "#{ (farg_tys.empty? ? "" : "#{ farg_tys } ") }-> #{ ret_ty }"

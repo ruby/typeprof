@@ -23,6 +23,6 @@ Fib.new.fib_rec(42)
 __END__
 # Classes
 class Fib
-  def fib_loop: (Integer) -> Integer
-  def fib_rec: (Integer) -> Integer
+  def fib_loop: (Integer x) -> Integer
+  def fib_rec: (Integer x) -> Integer
 end

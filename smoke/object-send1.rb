@@ -17,7 +17,7 @@ __END__
 # Classes
 class Object
   private
-  def foo: (Integer) -> Integer
-  def bar: (Integer) -> Integer
-  def dispatch: (:bar | :foo) -> Integer
+  def foo: (Integer x) -> Integer
+  def bar: (Integer x) -> Integer
+  def dispatch: (:bar | :foo mid) -> Integer
 end

@@ -12,5 +12,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: (String, ?Integer | String, ?Integer | String, *String, String) -> ([String, Integer | String, Integer | String, Array[String], String])
+  def foo: (String a, ?Integer | String o1, ?Integer | String o2, *String r, String z) -> ([String, Integer | String, Integer | String, Array[String], String])
 end

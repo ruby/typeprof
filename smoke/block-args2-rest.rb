@@ -51,13 +51,13 @@ class Object
   StringArray: Array[String]
   private
   def f1: { (*String) -> nil } -> ^(String, *String, String) -> nil
-  def log1: (String, Array[String], String) -> nil
+  def log1: (String a, Array[String] r, String c) -> nil
   def f2: { (:a, *String) -> nil } -> ^(:a, *String, String) -> nil
-  def log2: (:a, Array[String], String) -> nil
+  def log2: (:a a, Array[String] r, String c) -> nil
   def f3: { (:a, :b, *String) -> nil } -> (^(:a, *:b | String, :b | String) -> nil)
-  def log3: (:a, Array[:b | String], :b | String) -> nil
+  def log3: (:a a, Array[:b | String] r, :b | String c) -> nil
   def f4: { (:a, :b, :c, *String) -> nil } -> (^(:a, *:b | :c | String, :c | String) -> nil)
-  def log4: (:a, Array[:b | :c | String], :c | String) -> nil
+  def log4: (:a a, Array[:b | :c | String] r, :c | String c) -> nil
   def f5: { (:a, :b, :c, :d, *String) -> nil } -> (^(:a, *:b | :c | :d | String, :d | String) -> nil)
-  def log5: (:a, Array[:b | :c | :d | String], :d | String) -> nil
+  def log5: (:a a, Array[:b | :c | :d | String] r, :d | String c) -> nil
 end

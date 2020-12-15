@@ -10,5 +10,5 @@ $foo: Integer | String
 # Classes
 class Object
   private
-  def log: (Integer | String) -> nil
+  def log: (Integer | String x) -> nil
 end

@@ -32,8 +32,8 @@ __END__
 # Classes
 class Object
   private
-  def log1: (Integer?) -> nil
-  def log2: (Integer?) -> nil
+  def log1: (Integer? x) -> nil
+  def log2: (Integer? x) -> nil
   def foo: -> Integer?
   def test_yield: { -> nil } -> nil
   def bar: -> Integer?

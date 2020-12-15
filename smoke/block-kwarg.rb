@@ -41,13 +41,13 @@ smoke/block-kwarg.rb:31: [error] no argument for required keywords
 class Object
   private
   def f1: { -> nil } -> nil
-  def log1: (Integer) -> nil
+  def log1: (Integer n) -> nil
   def f2: { -> nil } -> nil
-  def log2: (:opt | Integer) -> nil
+  def log2: (:opt | Integer n) -> nil
   def f3: { -> nil } -> nil
-  def log3: (Integer | String) -> nil
+  def log3: (Integer | String n) -> nil
   def f4: { -> nil } -> nil
-  def log4: ({k: Integer}) -> nil
+  def log4: ({k: Integer} kwrest) -> nil
   def f5: { -> nil } -> untyped
   def f6: { -> nil } -> untyped
 end

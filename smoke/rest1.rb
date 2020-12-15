@@ -21,6 +21,6 @@ __END__
 # Classes
 class Object
   private
-  def foo: (:a | Integer | String, *Integer | String, :z | Integer | String) -> (Array[Integer | String])
-  def bar: (String, ?Integer | String, *String, String) -> Array[String]
+  def foo: (:a | Integer | String a, *Integer | String r, :z | Integer | String z) -> (Array[Integer | String])
+  def bar: (String a, ?Integer | String o, *String r, String z) -> Array[String]
 end

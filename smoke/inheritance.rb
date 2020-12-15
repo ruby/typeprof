@@ -24,11 +24,11 @@ B.test("str")
 __END__
 # Classes
 class A
-  def foo: (Integer | String) -> nil
-  def bar: (Integer | String) -> nil
-  def self.test: (Integer | String) -> nil
+  def foo: (Integer | String x) -> nil
+  def bar: (Integer | String x) -> nil
+  def self.test: (Integer | String x) -> nil
 end
 
 class B < A
-  def bar: ((Integer | String)?) -> nil
+  def bar: ((Integer | String)? x) -> nil
 end

@@ -781,21 +781,32 @@ module TypeProf
   class Signature
     include Utils::StructuralEquality
 
-    def screen_name(scratch)
-      str = @lead_tys.map {|ty| ty.screen_name(scratch) }
+    def screen_name(iseq, scratch)
+      fargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
+      farg_names = []
+      farg_names += iseq.locals[0, @lead_tys.size] if iseq
       if @opt_tys
-        str += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
+        fargs += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
+        farg_names += iseq.locals[@lead_tys.size, @opt_tys.size] if iseq
       end
       if @rest_ty
-        str << ("*" + @rest_ty.screen_name(scratch))
+        fargs << ("*" + @rest_ty.screen_name(scratch))
+        if iseq
+          rest_index = iseq.fargs_format[:rest_start]
+          farg_names << (rest_index ? iseq.locals[rest_index] : nil)
+        end
       end
       if @post_tys
-        str += @post_tys.map {|ty| ty.screen_name(scratch) }
+        fargs += @post_tys.map {|ty| ty.screen_name(scratch) }
+        if iseq
+          post_start = iseq.fargs_format[:post_start]
+          farg_names += (post_start ? iseq.locals[post_start, @post_tys.size] : [nil] * @post_tys.size)
+        end
       end
       if @kw_tys
         @kw_tys.each do |req, sym, ty|
           opt = req ? "" : "?"
-          str << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
+          fargs << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
         end
       end
       if @kw_rest_ty
@@ -809,13 +820,17 @@ module TypeProf
           end
           all_val_ty = all_val_ty.union(val_ty)
         end
-        str << ("**" + all_val_ty.screen_name(scratch))
+        fargs << ("**" + all_val_ty.screen_name(scratch))
       end
-      str = str.empty? ? "" : "(#{ str.join(", ") })"
+      if Config.options[:show_parameter_names]
+        farg_names = farg_names.map {|name| name == :type ? :type_ : name } # XXX: workaround of RBS parser bug
+        fargs = fargs.zip(farg_names).map {|farg, name| name ? "#{ farg } #{ name }" : farg }
+      end
+      fargs = fargs.empty? ? "" : "(#{ fargs.join(", ") })"
 
       # Dirty Hack: Stop the iteration at most once!
       # I'll remove this hack if RBS removes the limitation of nesting blocks
-      return str if caller_locations.any? {|frame| frame.label == "show_block_signature" }
+      return fargs if caller_locations.any? {|frame| frame.label == "show_block_signature" }
 
       optional = false
       blks = []
@@ -828,12 +843,12 @@ module TypeProf
         end
       end
       if blks != []
-        str << " " if str != ""
-        str << "?" if optional
-        str << scratch.show_block_signature(blks)
+        fargs << " " if fargs != ""
+        fargs << "?" if optional
+        fargs << scratch.show_block_signature(blks)
       end
 
-      str
+      fargs
     end
   end
 

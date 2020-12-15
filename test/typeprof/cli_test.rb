@@ -29,8 +29,8 @@ module TypeProf
 # Classes
 class Object
   private
-  def foo: (Integer) -> String
-         | (Integer) -> String
+  def foo: (Integer n) -> String
+         | (Integer n) -> String
 end
       END
     end

@@ -31,6 +31,6 @@ __END__
 # Classes
 class Foo
   @ivar: Array[Array[String]]
-  def initialize: (Array[Array[String]]) -> Array[Array[String]]
-  def foo: (:a | :b) -> nil
+  def initialize: (Array[Array[String]] ivar) -> Array[Array[String]]
+  def foo: (:a | :b n) -> nil
 end

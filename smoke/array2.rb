@@ -23,6 +23,6 @@ __END__
 class Object
   private
   def foo: -> [[String]]
-  def bar: ([[Integer]]) -> [[String]]
-  def log: ([[Integer]]) -> nil
+  def bar: ([[Integer]] a) -> [[String]]
+  def log: ([[Integer]] a) -> nil
 end

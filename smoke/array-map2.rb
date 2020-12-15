@@ -7,5 +7,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: ([Integer, Integer, Integer]) -> (Array[Integer | String])
+  def foo: ([Integer, Integer, Integer] a) -> (Array[Integer | String])
 end

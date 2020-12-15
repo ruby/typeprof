@@ -16,12 +16,12 @@ __END__
 # Classes
 class Object
   private
-  def log: (A) -> nil
+  def log: (A x) -> nil
 end
 
 class A
   @int: Integer
   @str: String
   @val: (Integer | String)?
-  def initialize: ((Integer | String)?) -> ((Integer | String)?)
+  def initialize: ((Integer | String)? x) -> ((Integer | String)?)
 end

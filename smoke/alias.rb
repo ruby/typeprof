@@ -21,11 +21,11 @@ __END__
 # Classes
 class Object
   private
-  def foo: (Integer | String) -> (Integer | String)
+  def foo: (Integer | String x) -> (Integer | String)
   alias bar foo
 end
 
 class Test
-  def baz: (Integer | String) -> (Integer | String)
+  def baz: (Integer | String x) -> (Integer | String)
   alias qux baz
 end

@@ -12,6 +12,6 @@ smoke/arguments.rb:6: [error] wrong number of arguments (given 2, expected 1)
 # Classes
 class Object
   private
-  def foo: (untyped) -> nil
-  def bar: (untyped) -> nil
+  def foo: (untyped x) -> nil
+  def bar: (untyped x) -> nil
 end

@@ -11,5 +11,5 @@ __END__
 # Classes
 class Foo
 # def foo: () -> NilClass
-  def bar: (*untyped, **untyped) -> nil
+  def bar: (*untyped messages, **untyped) -> nil
 end

@@ -13,6 +13,6 @@ __END__
 # Classes
 class Object
   private
-  def bar: (Integer) -> nil
-  def foo: (Integer) -> Integer
+  def bar: (Integer x) -> nil
+  def foo: (Integer x) -> Integer
 end

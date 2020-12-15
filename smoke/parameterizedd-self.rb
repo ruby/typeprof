@@ -15,5 +15,5 @@ __END__
 class Object
   def foo: -> Array[bot]
   private
-  def bar: (Array[bot]) -> Array[bot]
+  def bar: (Array[bot] ary) -> Array[bot]
 end

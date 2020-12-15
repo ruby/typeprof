@@ -9,7 +9,7 @@ B.foo(Integer)
 __END__
 # Classes
 class A
-  def self.foo: (Integer | singleton(Integer)) -> String
+  def self.foo: (Integer | singleton(Integer) x) -> String
 end
 
 class B < A

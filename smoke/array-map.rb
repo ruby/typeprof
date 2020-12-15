@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: ([Integer, Integer, Integer]) -> Array[String]
+  def foo: ([Integer, Integer, Integer] a) -> Array[String]
 end

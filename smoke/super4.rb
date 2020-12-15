@@ -21,23 +21,23 @@ E.new.f(:top)
 __END__
 # Classes
 module M1
-  def f: (:D) -> nil
+  def f: (:D m) -> nil
 end
 
 module M2
-  def f: (:E) -> nil
+  def f: (:E m) -> nil
 end
 
 class C
-  def f: (:M1) -> nil
+  def f: (:M1 m) -> nil
 end
 
 class D < C
   include M1
-  def f: (:M2) -> nil
+  def f: (:M2 m) -> nil
 end
 
 class E < D
   include M2
-  def f: (:top) -> nil
+  def f: (:top m) -> nil
 end

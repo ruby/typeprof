@@ -21,8 +21,8 @@ __END__
 # Classes
 class Object
   private
-  def log1: (:a) -> nil
-  def log2: (:b) -> nil
-  def log3: (:c) -> nil
+  def log1: (:a x) -> nil
+  def log2: (:b x) -> nil
+  def log3: (:c x) -> nil
   def f: { -> :c } -> :d
 end

@@ -16,5 +16,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: (Integer | String) -> Integer
+  def foo: (Integer | String x) -> Integer
 end

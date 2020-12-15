@@ -13,5 +13,5 @@ __END__
 class Object
   private
   def no_argument: -> String
-  def one_argument: (Integer) -> nil
+  def one_argument: (Integer x) -> nil
 end

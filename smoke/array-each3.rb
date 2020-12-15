@@ -9,5 +9,5 @@ __END__
 # Classes
 class Object
   private
-  def log: (bot) -> nil
+  def log: (bot x) -> nil
 end

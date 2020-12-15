@@ -26,7 +26,7 @@ Bar.new.bar
 __END__
 # Classes
 class Common
-  def func: (:sym | String) { (Integer) -> (:sym2 | Integer) } -> (:sym2 | Integer)
+  def func: (:sym | String x) { (Integer) -> (:sym2 | Integer) } -> (:sym2 | Integer)
 end
 
 class Foo

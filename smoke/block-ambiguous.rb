@@ -27,11 +27,11 @@ __END__
 class Object
   private
   def f1: { (:a, :b, :c) -> nil } -> nil
-  def log1: (:a) -> nil
+  def log1: (:a x) -> nil
   def f2: { (:a, :b, :c) -> nil } -> nil
-  def log2: (:a) -> nil
+  def log2: (:a x) -> nil
   def f3: { ([:a, :b, :c]) -> nil } -> nil
-  def log3: ([:a, :b, :c]) -> nil
+  def log3: ([:a, :b, :c] x) -> nil
   def f4: { ([:a, :b, :c]) -> nil } -> nil
-  def log4: (:a) -> nil
+  def log4: (:a x) -> nil
 end

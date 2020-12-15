@@ -11,6 +11,6 @@ end
 __END__
 # Classes
 class Foo
-  def bar: (:FOO | untyped) -> :BAR
-  def foo: (untyped) -> :BAR
+  def bar: (:FOO | untyped n) -> :BAR
+  def foo: (untyped n) -> :BAR
 end

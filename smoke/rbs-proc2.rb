@@ -16,6 +16,6 @@ __END__
 # Classes
 class Object
   private
-  def log1: (untyped) -> untyped
+  def log1: (untyped n) -> untyped
   def log2: -> String
 end

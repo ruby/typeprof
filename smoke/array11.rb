@@ -10,5 +10,5 @@ __END__
 # Classes
 class Object
   private
-  def array: (Array[Integer] | Hash[Integer, Integer] | String) -> (Array[Hash[Integer, Integer] | Integer | String])
+  def array: (Array[Integer] | Hash[Integer, Integer] | String obj) -> (Array[Hash[Integer, Integer] | Integer | String])
 end

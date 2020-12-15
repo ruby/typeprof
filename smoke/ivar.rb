@@ -20,11 +20,11 @@ __END__
 # Classes
 class Object
   private
-  def log: (Integer | String) -> nil
+  def log: (Integer | String x) -> nil
 end
 
 class Foo
   @foo: Integer | String
-  def foo=: (Integer | String) -> (Integer | String)
+  def foo=: (Integer | String x) -> (Integer | String)
   def foo: -> (Integer | String)
 end

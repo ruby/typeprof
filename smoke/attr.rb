@@ -23,6 +23,6 @@ class Foo
   attr_reader a: :aaa
   attr_writer b: :bbb
   attr_accessor c: :ccc
-  def initialize: (:aaa) -> :aaa
+  def initialize: (:aaa a) -> :aaa
   def get_b: -> :bbb
 end

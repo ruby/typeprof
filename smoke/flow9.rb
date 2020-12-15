@@ -8,5 +8,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: (untyped) -> String?
+  def foo: (untyped obj) -> String?
 end

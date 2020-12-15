@@ -10,5 +10,5 @@ __END__
 # Classes
 class Object
   private
-  def log: (Foo[Integer]) -> Integer
+  def log: (Foo[Integer] foo) -> Integer
 end

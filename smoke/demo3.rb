@@ -13,5 +13,5 @@ __END__
 # Classes
 class Object
   private
-  def fib: (Integer) -> Integer
+  def fib: (Integer x) -> Integer
 end

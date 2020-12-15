@@ -18,5 +18,5 @@ end
 
 class Foo
   attr_reader foo: Integer | untyped
-  def initialize: (Integer | untyped) -> (Integer | untyped)
+  def initialize: (Integer | untyped foo) -> (Integer | untyped)
 end

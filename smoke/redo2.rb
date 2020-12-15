@@ -18,6 +18,6 @@ __END__
 # Classes
 class Object
   private
-  def bar: (Integer | String) -> (Integer | String)
+  def bar: (Integer | String x) -> (Integer | String)
   def foo: { (Integer) -> (Integer | String) } -> (Integer | String)
 end

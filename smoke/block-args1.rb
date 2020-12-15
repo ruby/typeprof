@@ -48,13 +48,13 @@ __END__
 class Object
   private
   def f1: { -> nil } -> ^(nil, ?:opt, nil) -> nil
-  def log1: (nil, :opt, nil) -> nil
+  def log1: (nil a, :opt o, nil c) -> nil
   def f2: { (:a) -> nil } -> ^(:a, ?:opt, nil) -> nil
-  def log2: (:a, :opt, nil) -> nil
+  def log2: (:a a, :opt o, nil c) -> nil
   def f3: { (:a, :b) -> nil } -> ^(:a, ?:opt, :b) -> nil
-  def log3: (:a, :opt, :b) -> nil
+  def log3: (:a a, :opt o, :b c) -> nil
   def f4: { (:a, :b, :c) -> nil } -> (^(:a, ?:b | :opt, :c) -> nil)
-  def log4: (:a, :b | :opt, :c) -> nil
+  def log4: (:a a, :b | :opt o, :c c) -> nil
   def f5: { (:a, :b, :c, :d) -> nil } -> (^(:a, ?:b | :opt, :c) -> nil)
-  def log5: (:a, :b | :opt, :c) -> nil
+  def log5: (:a a, :b | :opt o, :c c) -> nil
 end

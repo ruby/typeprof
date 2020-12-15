@@ -1,5 +1,5 @@
-def number?(type)
-  %w[integer float].include?(type).then { puts 1 }
+def number?(ty)
+  %w[integer float].include?(ty).then { puts 1 }
 end
 number?('string')
 
@@ -7,5 +7,5 @@ __END__
 # Classes
 class Object
   private
-  def number?: (String) -> nil
+  def number?: (String ty) -> nil
 end

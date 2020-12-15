@@ -9,5 +9,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: (Integer) -> Integer
+  def foo: (Integer x) -> Integer
 end

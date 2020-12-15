@@ -18,11 +18,11 @@ C.new(D.new).foo(:X, :Y, :Z)
 __END__
 # Classes
 class D
-  def foo: (:X, :Y, :Z) -> nil
+  def foo: (:X x, :Y y, :Z z) -> nil
 end
 
 class C
   @target: D
-  def initialize: (D) -> D
-  def method_missing: (:foo, *:X | :Y | :Z) -> nil
+  def initialize: (D x) -> D
+  def method_missing: (:foo m, *:X | :Y | :Z args) -> nil
 end
