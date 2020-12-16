@@ -105,14 +105,15 @@ module TypeProf
         consts[name] = ty.screen_name(@scratch)
       end
 
-      included_mods = class_def.modules[false].filter_map do |mod_def, _type_args, absolute_paths|
-        next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
-        Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
-      end
-
-      extended_mods = class_def.modules[true].filter_map do |mod_def, _type_args, absolute_paths|
-        next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
-        Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
+      modules = class_def.modules.to_h do |kind, mods|
+        mods = mods.to_h do |singleton, mods|
+          mods = mods.filter_map do |mod_def, _type_args, absolute_paths|
+            next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+            Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
+          end
+          [singleton, mods]
+        end
+        [kind, mods]
       end
 
       visibilities = {}
@@ -193,7 +194,7 @@ module TypeProf
 
       if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
         if methods.keys.all? {|type,| type == :rbs }
-          return nil if consts.empty? && included_mods.empty? && extended_mods.empty? && ivars.empty? && cvars.empty? && inner_classes.empty?
+          return nil if consts.empty? && modules[:before][true].empty? && modules[:before][false].empty? && modules[:after][true].empty? && modules[:after][false].empty? && ivars.empty? && cvars.empty? && inner_classes.empty?
         end
       end
 
@@ -204,8 +205,7 @@ module TypeProf
         name: class_def.name,
         superclass: superclass,
         consts: consts,
-        included_mods: included_mods,
-        extended_mods: extended_mods,
+        modules: modules,
         ivars: ivars,
         cvars: cvars,
         methods: methods,
@@ -214,7 +214,7 @@ module TypeProf
       )
     end
 
-    ClassData = Struct.new(:kind, :name, :superclass, :consts, :included_mods, :extended_mods, :ivars, :cvars, :methods, :visibilities, :inner_classes, keyword_init: true)
+    ClassData = Struct.new(:kind, :name, :superclass, :consts, :modules, :ivars, :cvars, :methods, :visibilities, :inner_classes, keyword_init: true)
 
     def show(stat_eps, output)
       # make the class hierarchy
@@ -285,13 +285,19 @@ module TypeProf
         output.puts indent + "  #{ name }: #{ ty }"
         first = false
       end
-      class_data.included_mods.sort.each do |mod|
-        output.puts indent + "  include #{ mod }"
-        first = false
-      end
-      class_data.extended_mods.sort.each do |mod|
-        output.puts indent + "  extend #{ mod }"
-        first = false
+      class_data.modules.each do |kind, mods|
+        mods.each do |singleton, mods|
+          case
+          when kind == :before &&  singleton then directive = nil
+          when kind == :before && !singleton then directive = "prepend"
+          when kind == :after  &&  singleton then directive = "extend"
+          when kind == :after  && !singleton then directive = "include"
+          end
+          mods.each do |mod|
+            output.puts indent + "  #{ directive } #{ mod }" if directive
+            first = false
+          end
+        end
       end
       class_data.ivars.each do |var, ty|
         output.puts indent + "  #{ var }: #{ ty }" unless var.start_with?("_")

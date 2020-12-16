@@ -12,6 +12,6 @@ smoke/module5.rb:8: [error] undefined method: singleton(Foo)#foo
 
 # Classes
 module Foo
-  include Foo
   extend Foo
+  include Foo
 end

@@ -178,7 +178,7 @@ module TypeProf
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
-          scratch.include_module(recv, arg, nil, false, ep)
+          scratch.mix_module(:after, recv, arg, nil, ep.ctx.cref.singleton, ep)
         end
       end
       ctn[recv, ep, env]
@@ -199,7 +199,29 @@ module TypeProf
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
-          scratch.include_module(recv, arg, nil, true, ep)
+          # if ep.ctx.cref.singleton is true, the meta-meta level is ignored. Should we warn?
+          scratch.mix_module(:after, recv, arg, nil, true, ep)
+        end
+      end
+      ctn[recv, ep, env]
+    end
+
+    def module_prepend(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size != 1
+        scratch.warn(ep, "Module#prepend without an argument is ignored")
+        ctn[Type.any, ep, env]
+        return
+      end
+
+      unless recv.is_a?(Type::Class)
+        # XXX: warn?
+        return ctn[Type.any, ep, env]
+      end
+
+      arg = aargs.lead_tys[0]
+      arg.each_child do |arg|
+        if arg.is_a?(Type::Class)
+          scratch.mix_module(:before, recv, arg, nil, ep.ctx.cref.singleton, ep)
         end
       end
       ctn[recv, ep, env]
@@ -713,6 +735,7 @@ module TypeProf
 
       scratch.set_custom_method(klass_module, :include, Builtin.method(:module_include))
       scratch.set_custom_method(klass_module, :extend, Builtin.method(:module_extend))
+      scratch.set_custom_method(klass_module, :prepend, Builtin.method(:module_prepend))
       scratch.set_custom_method(klass_module, :module_function, Builtin.method(:module_module_function), false)
       scratch.set_custom_method(klass_module, :public, Builtin.method(:module_public), false)
       scratch.set_custom_method(klass_module, :private, Builtin.method(:module_private), false)

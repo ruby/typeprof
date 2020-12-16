@@ -319,7 +319,10 @@ module TypeProf
       def initialize(kind, name, absolute_path)
         raise unless name.is_a?(Array)
         @kind = kind
-        @modules = { true => [], false => [] }
+        @modules = {
+          :before => { true => [], false => [] }, # before = include/extend
+          :after  => { true => [], false => [] }, # after = prepend
+        }
         @name = name
         @consts = {}
         @methods = {}
@@ -332,13 +335,13 @@ module TypeProf
       attr_reader :kind, :modules, :consts, :methods, :ivars, :cvars, :absolute_path
       attr_accessor :name, :klass_obj
 
-      def include_module(mod, type_args, singleton, absolute_path)
-        mod_, module_type_args, absolute_paths = @modules[singleton].find {|m,| m == mod }
+      def mix_module(kind, mod, type_args, singleton, absolute_path)
+        mod_, module_type_args, absolute_paths = @modules[kind][singleton].find {|m,| m == mod }
         if mod_
-          raise "inconsistent include/extend type args in RBS?" if module_type_args != type_args && type_args != [] && type_args != nil
+          raise "inconsistent #{ kind == :after ? "include/extend" : "prepend" } type args in RBS?" if module_type_args != type_args && type_args != [] && type_args != nil
         else
           absolute_paths = Utils::MutableSet.new
-          @modules[singleton].unshift([mod, type_args, absolute_paths])
+          @modules[kind][singleton].unshift([mod, type_args, absolute_paths])
         end
         absolute_paths << absolute_path
       end
@@ -355,10 +358,8 @@ module TypeProf
         @consts[name] = [ty, absolute_path]
       end
 
-      def adjust_substitution(singleton, mid, mthd, subst, direct, &blk)
-        mthds = @methods[[singleton, mid]]
-        yield subst, direct if mthds&.include?(mthd)
-        @modules[singleton].each do |mod_def, type_args,|
+      def adjust_substitution_for_module(mods, mid, mthd, subst, &blk)
+        mods.each do |mod_def, type_args,|
           if mod_def.klass_obj.type_params && type_args
             subst2 = {}
             mod_def.klass_obj.type_params.zip(type_args) do |(tyvar, *), tyarg|
@@ -370,13 +371,28 @@ module TypeProf
         end
       end
 
+      def adjust_substitution(singleton, mid, mthd, subst, direct, &blk)
+        adjust_substitution_for_module(@modules[:before][singleton], mid, mthd, subst, &blk)
+
+        mthds = @methods[[singleton, mid]]
+        yield subst, direct if mthds&.include?(mthd)
+
+        adjust_substitution_for_module(@modules[:after][singleton], mid, mthd, subst, &blk)
+      end
+
       def search_method(singleton, mid, visited, &blk)
         # Currently, circular inclusion of modules is allowed
         return if visited[self]
         visited[self] = true
+
+        @modules[:before][singleton].each do |mod_def,|
+          mod_def.search_method(false, mid, visited, &blk)
+        end
+
         mthds = @methods[[singleton, mid]]
         yield mthds, @klass_obj, singleton if mthds
-        @modules[singleton].each do |mod_def,|
+
+        @modules[:after][singleton].each do |mod_def,|
           mod_def.search_method(false, mid, visited, &blk)
         end
       end
@@ -405,17 +421,17 @@ module TypeProf
       end
     end
 
-    def include_module(including_mod, included_mod, type_args, singleton, caller_ep)
-      return if included_mod == Type.any
+    def mix_module(kind, mixing_mod, mixed_mod, type_args, singleton, caller_ep)
+      return if mixed_mod == Type.any
 
-      including_mod = @class_defs[including_mod.idx]
-      included_mod.each_child do |included_mod|
-        if included_mod.is_a?(Type::Class)
-          included_mod = @class_defs[included_mod.idx]
-          if included_mod && included_mod.kind == :module
-            including_mod.include_module(included_mod, type_args, singleton, caller_ep ? caller_ep.ctx.iseq.absolute_path : nil)
+      mixing_mod = @class_defs[mixing_mod.idx]
+      mixed_mod.each_child do |mixed_mod|
+        if mixed_mod.is_a?(Type::Class)
+          mixed_mod = @class_defs[mixed_mod.idx]
+          if mixed_mod && mixed_mod.kind == :module
+            mixing_mod.mix_module(kind, mixed_mod, type_args, singleton, caller_ep ? caller_ep.ctx.iseq.absolute_path : nil)
           else
-            warn(caller_ep, "including something that is not a module")
+            warn(caller_ep, "attempted to #{ kind == :after ? "include/extend" : "prepend" } non-module; ignored")
           end
         end
       end

@@ -24,6 +24,7 @@ GEM
 
 PLATFORMS
   ruby
+  x86_64-linux
 
 DEPENDENCIES
   coverage-helpers
@@ -35,4 +36,4 @@ DEPENDENCIES
   typeprof!
 
 BUNDLED WITH
-   2.2.0.rc.1
+   2.2.1

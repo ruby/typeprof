@@ -116,8 +116,7 @@ module TypeProf
         end
 
         type_params = nil
-        included_modules = []
-        extended_modules = []
+        modules = { include: [], extend: [], prepend: [] }
         methods = {}
         attr_methods = {}
         ivars = {}
@@ -179,7 +178,7 @@ module TypeProf
               if name.kind == :class
                 mod = conv_type_name(name)
                 type_args = member.args.map {|type| conv_type(type) }
-                included_modules << [mod, type_args]
+                modules[:include] << [mod, type_args]
               else
                 # including an interface is not supported yet
               end
@@ -189,7 +188,17 @@ module TypeProf
               if name.kind == :class
                 mod = conv_type_name(name)
                 type_args = member.args.map {|type| conv_type(type) }
-                extended_modules << [mod, type_args]
+                modules[:extend] << [mod, type_args]
+              else
+                # extending a module with an interface is not supported yet
+              end
+
+            when RBS::AST::Members::Prepend
+              name = member.name
+              if name.kind == :class
+                mod = conv_type_name(name)
+                type_args = member.args.map {|type| conv_type(type) }
+                modules[:prepend] << [mod, type_args]
               else
                 # extending a module with an interface is not supported yet
               end
@@ -220,8 +229,7 @@ module TypeProf
           type_params: type_params,
           superclass: superclass,
           members: {
-            included_modules: included_modules,
-            extended_modules: extended_modules,
+            modules: modules,
             methods: methods,
             attr_methods: attr_methods,
             ivars: ivars,
@@ -511,22 +519,25 @@ module TypeProf
 
       classes.each do |klass, superclass_type_args, members|
         @scratch.add_superclass_type_args!(klass, superclass_type_args&.map {|ty| conv_type(ty) })
-        included_modules = members[:included_modules]
-        extended_modules = members[:extended_modules]
+        modules = members[:modules]
         methods = members[:methods]
         attr_methods = members[:attr_methods]
         ivars = members[:ivars]
         cvars = members[:cvars]
         rbs_sources = members[:rbs_sources]
 
-        included_modules.each do |mod, type_args|
-          type_args = type_args&.map {|ty| conv_type(ty) }
-          @scratch.include_module(klass, path_to_klass(mod), type_args, false, nil)
-        end
-
-        extended_modules.each do |mod, type_args|
-          type_args = type_args&.map {|ty| conv_type(ty) }
-          @scratch.include_module(klass, path_to_klass(mod), type_args, true, nil)
+        modules.each do |kind, mods|
+          mods.each do |mod, type_args|
+            type_args = type_args&.map {|ty| conv_type(ty) }
+            case kind
+            when :include
+              @scratch.mix_module(:after, klass, path_to_klass(mod), type_args, false, nil)
+            when :extend
+              @scratch.mix_module(:after, klass, path_to_klass(mod), type_args, true, nil)
+            when :prepend
+              @scratch.mix_module(:before, klass, path_to_klass(mod), type_args, false, nil)
+            end
+          end
         end
 
         methods.each do |(singleton, method_name), mdef|

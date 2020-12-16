@@ -7,7 +7,7 @@ end
 
 __END__
 # Errors
-smoke/wrong-include2.rb:5: [warning] including something that is not a module
+smoke/wrong-include2.rb:5: [warning] attempted to include/extend non-module; ignored
 
 # Classes
 class Foo
