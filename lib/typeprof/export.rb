@@ -117,6 +117,7 @@ module TypeProf
       end
 
       visibilities = {}
+      source_locations = {}
       methods = {}
       ivars = class_def.ivars.dump
       cvars = class_def.cvars.dump
@@ -137,6 +138,7 @@ module TypeProf
 
               key = [:iseq, method_name]
               visibilities[key] ||= mdef.pub_meth
+              source_locations[key] ||= ctx.iseq.source_location(0)
               (methods[key] ||= []) << @scratch.show_method_signature(ctx)
             end
           when AliasMethodDef
@@ -147,15 +149,19 @@ module TypeProf
             end
             key = [:alias, alias_name]
             visibilities[key] ||= mdef.pub_meth
+            source_locations[key] ||= mdef.def_ep&.source_location
             methods[key] = orig_name
           when AttrMethodDef
-            next if !mdef.absolute_path || Config.check_dir_filter(mdef.absolute_path) == :exclude
+            next if !mdef.def_ep
+            absolute_path = mdef.def_ep.ctx.iseq.absolute_path
+            next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
             mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
             method_name = mid
             method_name = "self.#{ mid }" if singleton
             method_name = [method_name, :"@#{ mid }" != mdef.ivar]
             key = [:attr, method_name]
             visibilities[key] ||= mdef.pub_meth
+            source_locations[key] ||= mdef.def_ep.source_location
             if methods[key]
               if methods[key][0] != mdef.kind
                 methods[key][0] = :accessor
@@ -210,11 +216,12 @@ module TypeProf
         cvars: cvars,
         methods: methods,
         visibilities: visibilities,
+        source_locations: source_locations,
         inner_classes: inner_classes,
       )
     end
 
-    ClassData = Struct.new(:kind, :name, :superclass, :consts, :modules, :ivars, :cvars, :methods, :visibilities, :inner_classes, keyword_init: true)
+    ClassData = Struct.new(:kind, :name, :superclass, :consts, :modules, :ivars, :cvars, :methods, :visibilities, :source_locations, :inner_classes, keyword_init: true)
 
     def show(stat_eps, output)
       # make the class hierarchy
@@ -231,7 +238,16 @@ module TypeProf
 
       output.puts "# Classes" # and Modules
 
-      show_class_hierarchy(0, hierarchy, output, true)
+      prev_nil = true
+      show_class_hierarchy(0, hierarchy).each do |line|
+        if line == nil
+          output.puts line unless prev_nil
+          prev_nil = true
+        else
+          output.puts line
+          prev_nil = false
+        end
+      end
 
       if ENV["TP_STAT"]
         output.puts ""
@@ -259,13 +275,13 @@ module TypeProf
       end.compact
     end
 
-    def show_class_hierarchy(depth, hierarchy, output, first)
+    def show_class_hierarchy(depth, hierarchy)
+      lines = []
       hierarchy.each do |class_data|
-        output.puts unless first
-        first = false
-
-        show_class_data(depth, class_data, output)
+        lines << nil
+        lines.concat show_class_data(depth, class_data)
       end
+      lines
     end
 
     def show_const(namespace, path)
@@ -275,15 +291,14 @@ module TypeProf
       path[i..].join("::")
     end
 
-    def show_class_data(depth, class_data, output)
+    def show_class_data(depth, class_data)
       indent = "  " * depth
       name = class_data.name.last
       superclass = " < " + class_data.superclass if class_data.superclass
-      output.puts indent + "#{ class_data.kind } #{ name }#{ superclass }"
-      first = true
+      first_line = indent + "#{ class_data.kind } #{ name }#{ superclass }"
+      lines = []
       class_data.consts.each do |name, ty|
-        output.puts indent + "  #{ name }: #{ ty }"
-        first = false
+        lines << (indent + "  #{ name }: #{ ty }")
       end
       class_data.modules.each do |kind, mods|
         mods.each do |singleton, mods|
@@ -294,50 +309,51 @@ module TypeProf
           when kind == :after  && !singleton then directive = "include"
           end
           mods.each do |mod|
-            output.puts indent + "  #{ directive } #{ mod }" if directive
-            first = false
+            lines << (indent + "  #{ directive } #{ mod }") if directive
           end
         end
       end
       class_data.ivars.each do |var, ty|
-        output.puts indent + "  #{ var }: #{ ty }" unless var.start_with?("_")
-        first = false
+        lines << (indent + "  #{ var }: #{ ty }") unless var.start_with?("_")
       end
       class_data.cvars.each do |var, ty|
-        output.puts indent + "  #{ var }: #{ ty }"
-        first = false
+        lines << (indent + "  #{ var }: #{ ty }")
       end
-      need_newline = !first
+      lines << nil
       prev_vis = true
       class_data.methods.each do |key, arg|
-        if need_newline
-          output.puts
-          need_newline = false
-        end
         vis = class_data.visibilities[key]
         if prev_vis != vis
-          output.puts indent + "  #{ vis ? "public" : "private" }"
+          lines << nil
+          lines << (indent + "  #{ vis ? "public" : "private" }")
           prev_vis = vis
+        end
+        source_location = class_data.source_locations[key]
+        if Config.options[:show_source_locations] && source_location
+          lines << nil
+          lines << (indent + "  # #{ source_location }")
         end
         type, (method_name, hidden) = key
         case type
         when :attr
           kind, ty = *arg
-          output.puts indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }"
+          lines << (indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }")
         when :rbs
           sigs = arg.sort.join("\n" + indent + "#" + " " * (method_name.size + 5) + "| ")
-          output.puts indent + "# def #{ method_name }: #{ sigs }"
+          lines << (indent + "# def #{ method_name }: #{ sigs }")
         when :iseq
           sigs = arg.sort.join("\n" + indent + " " * (method_name.size + 6) + "| ")
-          output.puts indent + "  def #{ method_name }: #{ sigs }"
+          lines << (indent + "  def #{ method_name }: #{ sigs }")
         when :alias
           orig_name = arg
-          output.puts indent + "  alias #{ method_name } #{ orig_name }"
+          lines << (indent + "  alias #{ method_name } #{ orig_name }")
         end
-        first = false
       end
-      show_class_hierarchy(depth + 1, class_data.inner_classes, output, first)
-      output.puts indent + "end"
+      lines.concat show_class_hierarchy(depth + 1, class_data.inner_classes)
+      lines.shift until lines.empty? || lines.first
+      lines.pop until lines.empty? || lines.last
+      lines.unshift first_line
+      lines << (indent + "end")
     end
   end
 end

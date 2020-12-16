@@ -22,6 +22,7 @@ __END__
 class Object
 # def foo: (Integer) -> Integer
 #        | (String) -> String
+
   private
   def ret_int: -> Integer
   def ret_str: -> String

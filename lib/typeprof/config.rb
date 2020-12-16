@@ -26,6 +26,7 @@ module TypeProf
         show_untyped: false,
         show_errors: false,
         show_parameter_names: true,
+        show_source_locations: false,
         stub_execution: true,
         type_depth_limit: 5,
         stackprof: nil,

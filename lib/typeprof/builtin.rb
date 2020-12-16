@@ -19,7 +19,7 @@ module TypeProf
       klass, new_mid, old_mid = aargs.lead_tys
       new_sym = get_sym("alias", new_mid, ep, scratch) or return
       old_sym = get_sym("alias", old_mid, ep, scratch) or return
-      scratch.alias_method(klass, ep.ctx.cref.singleton, new_sym, old_sym)
+      scratch.alias_method(klass, ep.ctx.cref.singleton, new_sym, old_sym, ep)
       ctn[Type.nil, ep, env]
     end
 
@@ -317,7 +317,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_accessor", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :accessor, env.static_env.pub_meth)
+        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :accessor, env.static_env.pub_meth, ep)
       end
       ctn[Type.nil, ep, env]
     end
@@ -326,7 +326,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_reader", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :reader, env.static_env.pub_meth)
+        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :reader, env.static_env.pub_meth, ep)
       end
       ctn[Type.nil, ep, env]
     end
@@ -335,7 +335,7 @@ module TypeProf
       aargs.lead_tys.each do |aarg|
         sym = get_sym("attr_writer", aarg, ep, scratch) or next
         cref = ep.ctx.cref
-        scratch.add_attr_method(cref.klass, ep.ctx.iseq.absolute_path, sym, :"@#{ sym }", :writer, env.static_env.pub_meth)
+        scratch.add_attr_method(cref.klass, sym, :"@#{ sym }", :writer, env.static_env.pub_meth, ep)
       end
       ctn[Type.nil, ep, env]
     end
@@ -512,7 +512,7 @@ module TypeProf
       scratch.set_singleton_custom_method(struct_klass, :new, Builtin.method(:object_s_new))
       scratch.set_singleton_custom_method(struct_klass, :[], Builtin.method(:object_s_new))
       fields.each do |field|
-        scratch.add_attr_method(struct_klass, ep.ctx.iseq.absolute_path, field, field, :accessor, true)
+        scratch.add_attr_method(struct_klass, field, field, :accessor, true, ep)
       end
       fields = fields.map {|field| Type::Symbol.new(field, Type::Instance.new(Type::Builtin[:sym])) }
       base_ty = Type::Instance.new(Type::Builtin[:ary])

@@ -49,6 +49,7 @@ module TypeProf
       opt.on("--[no-]show-errors", "Display possible errors found during the analysis") {|v| options[:show_errors] = v }
       opt.on("--[no-]show-untyped", "Display \"Foo | untyped\" instead of \"Foo\"") {|v| options[:show_untyped] = v }
       opt.on("--[no-]show-parameter-names", "Display parameter names for methods") {|v| options[:show_parameter_names] = v }
+      opt.on("--[no-]show-source-locations", "Display definition source locations for methods") {|v| options[:show_source_locations] = v }
 
       opt.separator ""
       opt.separator "Analysis limit options:"

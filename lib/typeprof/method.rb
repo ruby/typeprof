@@ -154,13 +154,14 @@ module TypeProf
   end
 
   class AliasMethodDef < MethodDef
-    def initialize(orig_mid, mdef)
+    def initialize(orig_mid, mdef, def_ep)
       @orig_mid = orig_mid
       @mdef = mdef
       @pub_meth = mdef.pub_meth
+      @def_ep = def_ep
     end
 
-    attr_reader :orig_mid, :mdef
+    attr_reader :orig_mid, :mdef, :def_ep
 
     def do_send(recv, _mid, aargs, caller_ep, caller_env, scratch, &ctn)
       @mdef.do_send(recv, @orig_mid, aargs, caller_ep, caller_env, scratch, &ctn)
@@ -172,14 +173,14 @@ module TypeProf
   end
 
   class AttrMethodDef < MethodDef
-    def initialize(ivar, kind, absolute_path, pub_meth)
+    def initialize(ivar, kind, pub_meth, def_ep)
       @ivar = ivar
       @kind = kind # :reader | :writer
-      @absolute_path = absolute_path
       @pub_meth = pub_meth
+      @def_ep = def_ep
     end
 
-    attr_reader :ivar, :kind, :absolute_path
+    attr_reader :ivar, :kind, :def_ep
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       case @kind

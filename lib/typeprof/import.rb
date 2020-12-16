@@ -550,7 +550,7 @@ module TypeProf
           kind = mdef[:kind]
           ivar = mdef[:ivar]
           ty = conv_type(mdef[:ty]).remove_type_vars
-          @scratch.add_attr_method(klass, nil, ivar, :"@#{ ivar }", kind, mdef[:visibility])
+          @scratch.add_attr_method(klass, ivar, :"@#{ ivar }", kind, mdef[:visibility], nil)
           @scratch.add_ivar_write!(Type::Instance.new(klass), :"@#{ ivar }", ty, nil)
         end
 

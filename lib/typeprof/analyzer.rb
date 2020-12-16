@@ -618,12 +618,12 @@ module TypeProf
       mdef
     end
 
-    def add_attr_method(klass, absolute_path, mid, ivar, kind, pub_meth)
+    def add_attr_method(klass, mid, ivar, kind, pub_meth, ep)
       if kind == :reader || kind == :accessor
-        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader, absolute_path, pub_meth))
+        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader, pub_meth, ep))
       end
       if kind == :writer || kind == :accessor
-        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer, absolute_path, pub_meth))
+        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer, pub_meth, ep))
       end
     end
 
@@ -643,14 +643,14 @@ module TypeProf
       set_method(klass, mid, true, CustomMethodDef.new(impl, pub_meth))
     end
 
-    def alias_method(klass, singleton, alias_mid, orig_mid)
+    def alias_method(klass, singleton, alias_mid, orig_mid, ep)
       if klass == Type.any
         self
       else
         mdefs = get_method(klass, singleton, orig_mid)
         if mdefs
           mdefs.each do |mdef|
-            @class_defs[klass.idx].add_method(alias_mid, singleton, AliasMethodDef.new(orig_mid, mdef))
+            @class_defs[klass.idx].add_method(alias_mid, singleton, AliasMethodDef.new(orig_mid, mdef, ep))
           end
         end
       end

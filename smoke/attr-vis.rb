@@ -31,8 +31,10 @@ smoke/attr-vis.rb:20: [warning] inconsistent assignment to RBS-declared variable
 # Classes
 class Foo
   def initialize: -> Integer
+
   private
   attr_accessor foo: Integer | String
+
   public
   def get_foo: -> (Integer | String)
   def set_foo: (String arg) -> String
