@@ -684,7 +684,9 @@ module TypeProf
       klass = Type::Builtin[:obj]
       path.each do |name|
         klass = @scratch.get_constant(klass, name)
-        raise path.inspect if klass == Type.any
+        if klass == Type.any
+          raise TypeProfError.new("A constant `#{ path.join("::") }' is used but not defined in RBS")
+        end
       end
       klass
     end

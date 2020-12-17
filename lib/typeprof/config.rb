@@ -14,6 +14,13 @@ module TypeProf
     keyword_init: true
   )
 
+  class TypeProfError < StandardError
+    def report(output)
+      output.puts "# Analysis Error"
+      output.puts message
+    end
+  end
+
   class ConfigData
     def initialize(**opt)
       opt[:output] ||= $stdout
@@ -101,6 +108,9 @@ module TypeProf
         scratch.report(result, output)
       end
     end
+
+  rescue TypeProfError => exc
+    exc.report(Config.output)
 
   ensure
     if Config.options[:stackprof] && defined?(StackProf)
