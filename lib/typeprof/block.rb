@@ -137,4 +137,26 @@ module TypeProf
       end
     end
   end
+
+  class CustomBlock < Block
+    def initialize(&blk)
+      @blk = blk
+    end
+
+    def inspect
+      "#<CustomBlock: #{ @sym }>"
+    end
+
+    def consistent?(other)
+      true # XXX
+    end
+
+    def substitute(_subst, _depth)
+      self
+    end
+
+    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
+      @blk[aargs, caller_ep, caller_env, scratch, replace_recv_ty: replace_recv_ty, &ctn]
+    end
+  end
 end

@@ -163,6 +163,40 @@ module TypeProf
       end
     end
 
+    def object_enum_for(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size >= 1
+        mid_ty, = aargs.lead_tys
+        naargs = ActualArguments.new(aargs.lead_tys[1..], aargs.rest_ty, aargs.kw_tys, aargs.blk_ty)
+      elsif aargs.rest_ty
+        mid_ty = aargs.rest_ty
+        naargs = aargs
+      else
+        mid_ty = Type::Symbol.new(:each, Type::Instance.new(Type::Builtin[:sym]))
+        naargs = aargs
+      end
+
+      elem_ty = Type.bot
+      enum_for_blk = CustomBlock.new do |aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn|
+        if aargs.lead_tys.size >= 1
+          elem_ty = elem_ty.union(aargs.lead_tys[0])
+        else
+          elem_ty = elem_ty.union(Type.any)
+        end
+        ctn[Type.any, caller_ep, caller_env]
+      end
+      enum_for_blk_ty = Type::Proc.new(enum_for_blk, Type::Instance.new(Type::Builtin[:proc]))
+
+      naargs = ActualArguments.new(naargs.lead_tys, naargs.rest_ty, naargs.kw_tys, enum_for_blk_ty)
+      mid_ty.each_child do |mid|
+        if mid.is_a?(Type::Symbol)
+          mid = mid.sym
+          scratch.do_send(recv, mid, naargs, ep, env) do |_ret_ty, _ep|
+            ctn[Type::Cell.new(Type::Cell::Elements.new([elem_ty, Type.any]), Type::Instance.new(Type::Builtin[:enumerator])), ep, env]
+          end
+        end
+      end
+    end
+
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 1
         scratch.warn(ep, "Module#include without an argument is ignored")
@@ -692,25 +726,26 @@ module TypeProf
 
       Import.import_builtin(scratch)
 
-      Type::Builtin[:vmcore]    = scratch.new_class(klass_obj, :VMCore, [], klass_obj, nil)
-      Type::Builtin[:int]       = scratch.get_constant(klass_obj, :Integer)
-      Type::Builtin[:float]     = scratch.get_constant(klass_obj, :Float)
-      Type::Builtin[:rational]  = scratch.get_constant(klass_obj, :Rational)
-      Type::Builtin[:complex]   = scratch.get_constant(klass_obj, :Complex)
-      Type::Builtin[:sym]       = scratch.get_constant(klass_obj, :Symbol)
-      Type::Builtin[:str]       = scratch.get_constant(klass_obj, :String)
-      Type::Builtin[:struct]    = scratch.get_constant(klass_obj, :Struct)
-      Type::Builtin[:ary]       = scratch.get_constant(klass_obj, :Array)
-      Type::Builtin[:hash]      = scratch.get_constant(klass_obj, :Hash)
-      Type::Builtin[:io]        = scratch.get_constant(klass_obj, :IO)
-      Type::Builtin[:proc]      = scratch.get_constant(klass_obj, :Proc)
-      Type::Builtin[:range]     = scratch.get_constant(klass_obj, :Range)
-      Type::Builtin[:regexp]    = scratch.get_constant(klass_obj, :Regexp)
-      Type::Builtin[:matchdata] = scratch.get_constant(klass_obj, :MatchData)
-      Type::Builtin[:class]     = scratch.get_constant(klass_obj, :Class)
-      Type::Builtin[:module]    = scratch.get_constant(klass_obj, :Module)
-      Type::Builtin[:exc]       = scratch.get_constant(klass_obj, :Exception)
-      Type::Builtin[:encoding]  = scratch.get_constant(klass_obj, :Encoding)
+      Type::Builtin[:vmcore]     = scratch.new_class(klass_obj, :VMCore, [], klass_obj, nil)
+      Type::Builtin[:int]        = scratch.get_constant(klass_obj, :Integer)
+      Type::Builtin[:float]      = scratch.get_constant(klass_obj, :Float)
+      Type::Builtin[:rational]   = scratch.get_constant(klass_obj, :Rational)
+      Type::Builtin[:complex]    = scratch.get_constant(klass_obj, :Complex)
+      Type::Builtin[:sym]        = scratch.get_constant(klass_obj, :Symbol)
+      Type::Builtin[:str]        = scratch.get_constant(klass_obj, :String)
+      Type::Builtin[:struct]     = scratch.get_constant(klass_obj, :Struct)
+      Type::Builtin[:ary]        = scratch.get_constant(klass_obj, :Array)
+      Type::Builtin[:hash]       = scratch.get_constant(klass_obj, :Hash)
+      Type::Builtin[:io]         = scratch.get_constant(klass_obj, :IO)
+      Type::Builtin[:proc]       = scratch.get_constant(klass_obj, :Proc)
+      Type::Builtin[:range]      = scratch.get_constant(klass_obj, :Range)
+      Type::Builtin[:regexp]     = scratch.get_constant(klass_obj, :Regexp)
+      Type::Builtin[:matchdata]  = scratch.get_constant(klass_obj, :MatchData)
+      Type::Builtin[:class]      = scratch.get_constant(klass_obj, :Class)
+      Type::Builtin[:module]     = scratch.get_constant(klass_obj, :Module)
+      Type::Builtin[:exc]        = scratch.get_constant(klass_obj, :Exception)
+      Type::Builtin[:encoding]   = scratch.get_constant(klass_obj, :Encoding)
+      Type::Builtin[:enumerator] = scratch.get_constant(klass_obj, :Enumerator)
 
       klass_vmcore = Type::Builtin[:vmcore]
       klass_ary    = Type::Builtin[:ary]
@@ -732,6 +767,9 @@ module TypeProf
       scratch.set_custom_method(klass_obj, :send, Builtin.method(:object_send))
       scratch.set_custom_method(klass_obj, :instance_eval, Builtin.method(:object_instance_eval))
       scratch.set_custom_method(klass_obj, :proc, Builtin.method(:lambda), false)
+
+      scratch.set_custom_method(klass_obj, :enum_for, Builtin.method(:object_enum_for))
+      scratch.set_custom_method(klass_obj, :to_enum, Builtin.method(:object_enum_for))
 
       scratch.set_custom_method(klass_module, :include, Builtin.method(:module_include))
       scratch.set_custom_method(klass_module, :extend, Builtin.method(:module_extend))
