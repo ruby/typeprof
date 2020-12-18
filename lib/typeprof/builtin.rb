@@ -176,13 +176,14 @@ module TypeProf
       end
 
       elem_ty = Type.bot
-      enum_for_blk = CustomBlock.new do |aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn|
+      enum_for_blk = CustomBlock.new(ep, mid) do |aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &blk_ctn|
         if aargs.lead_tys.size >= 1
           elem_ty = elem_ty.union(aargs.lead_tys[0])
         else
           elem_ty = elem_ty.union(Type.any)
         end
-        ctn[Type.any, caller_ep, caller_env]
+        ctn[Type::Cell.new(Type::Cell::Elements.new([elem_ty, Type.any]), Type::Instance.new(Type::Builtin[:enumerator])), ep, env]
+        blk_ctn[Type.any, caller_ep, caller_env]
       end
       enum_for_blk_ty = Type::Proc.new(enum_for_blk, Type::Instance.new(Type::Builtin[:proc]))
 

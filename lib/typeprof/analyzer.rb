@@ -2147,7 +2147,7 @@ module TypeProf
 
       bsig ||= BlockSignature.new([], [], nil, Type.nil)
 
-      bsig = bsig.screen_name(nil, self)#, block: true)
+      bsig = bsig.screen_name(nil, self)
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 

@@ -139,12 +139,14 @@ module TypeProf
   end
 
   class CustomBlock < Block
-    def initialize(&blk)
+    def initialize(caller_ep, mid, &blk)
+      @caller_ep = caller_ep
+      @mid = mid
       @blk = blk
     end
 
     def inspect
-      "#<CustomBlock: #{ @sym }>"
+      "#<CustomBlock>"
     end
 
     def consistent?(other)
@@ -156,7 +158,17 @@ module TypeProf
     end
 
     def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
-      @blk[aargs, caller_ep, caller_env, scratch, replace_recv_ty: replace_recv_ty, &ctn]
+      aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
+
+      dummy_ctx = TypedContext.new(@caller_ep, @mid)
+
+      scratch.add_block_signature!(self, aargs.to_block_signature)
+      scratch.add_block_to_ctx!(self, dummy_ctx)
+
+      @blk.call(aargs, caller_ep, caller_env, scratch, replace_recv_ty: replace_recv_ty) do |ret_ty, ep, env|
+        scratch.add_return_value!(dummy_ctx, ret_ty)
+        ctn[ret_ty, ep, env]
+      end
     end
   end
 end
