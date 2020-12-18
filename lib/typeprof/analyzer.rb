@@ -117,30 +117,6 @@ module TypeProf
     end
   end
 
-  class TopStaticEnv
-    include Utils::StructuralEquality
-
-    def recv_ty
-      Type.bot
-    end
-
-    def blk_ty
-      Type.nil
-    end
-
-    def mod_func
-      false
-    end
-
-    def pub_meth
-      true
-    end
-
-    def merge(other)
-      raise unless other.is_a?(TopStaticEnv)
-    end
-  end
-
   class Env
     include Utils::StructuralEquality
 
@@ -243,6 +219,11 @@ module TypeProf
 
     def replace_recv_ty(ty)
       senv = StaticEnv.new(ty, @static_env.blk_ty, @static_env.mod_func, @static_env.pub_meth)
+      Env.new(senv, @locals, @stack, @type_params)
+    end
+
+    def replace_blk_ty(ty)
+      senv = StaticEnv.new(@static_env.recv_ty, ty, @static_env.mod_func, @static_env.pub_meth)
       Env.new(senv, @locals, @stack, @type_params)
     end
 
@@ -1307,7 +1288,7 @@ module TypeProf
           end
         end
         return
-      when :send_branch
+      when :getlocal_send_branch
         getlocal_operands, send_operands, branch_operands = operands
         env, recvs, mid, aargs = setup_actual_arguments(:method, send_operands, ep, env)
         recvs = Type.any if recvs == Type.bot
@@ -1328,6 +1309,31 @@ module TypeProf
               merge_env(branchtype == :if ? ep_else : ep_then, flow_env)
             when Type::Instance.new(Type::Builtin[:false])
               merge_env(branchtype == :if ? ep_then : ep_else, flow_env)
+            else
+              merge_env(ep_then, env)
+              merge_env(ep_else, env)
+            end
+          end
+        end
+        return
+      when :send_branch
+        send_operands, branch_operands = operands
+        env, recvs, mid, aargs = setup_actual_arguments(:method, send_operands, ep, env)
+        recvs = Type.any if recvs == Type.bot
+        recvs.each_child do |recv|
+          do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
+            env, ret_ty, = localize_type(ret_ty, env, ep)
+
+            branchtype, target, = branch_operands
+            # branchtype: :if or :unless or :nil
+            ep_then = ep.next
+            ep_else = ep.jump(target)
+
+            case ret_ty
+            when Type::Instance.new(Type::Builtin[:true])
+              merge_env(branchtype == :if ? ep_else : ep_then, env)
+            when Type::Instance.new(Type::Builtin[:false])
+              merge_env(branchtype == :if ? ep_then : ep_else, env)
             else
               merge_env(ep_then, env)
               merge_env(ep_else, env)

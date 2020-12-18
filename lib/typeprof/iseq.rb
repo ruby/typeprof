@@ -207,7 +207,7 @@ module TypeProf
       end
 
       # find a pattern: getlocal, ..., send (is_a?, respond_to?), branch
-      send_branch_list = []
+      getlocal_send_branch_list = []
       (@insns.size - 1).times do |i|
         insn, operands = @insns[i]
         if insn == :getlocal && operands[1] == 0
@@ -216,7 +216,7 @@ module TypeProf
           while @insns[j]
             sp = check_send_branch(sp, j)
             if sp == :match
-              send_branch_list << [i, j]
+              getlocal_send_branch_list << [i, j]
               break
             end
             break if !sp
@@ -224,13 +224,32 @@ module TypeProf
           end
         end
       end
-      send_branch_list.each do |i, j|
+      getlocal_send_branch_list.each do |i, j|
         next if (i + 1 .. j + 1).any? {|i| branch_targets[i] }
         _insn, getlocal_operands = @insns[i]
         _insn, send_operands = @insns[j]
         _insn, branch_operands = @insns[j + 1]
         @insns[j] = [:nop]
-        @insns[j + 1] = [:send_branch, [getlocal_operands, send_operands, branch_operands]]
+        @insns[j + 1] = [:getlocal_send_branch, [getlocal_operands, send_operands, branch_operands]]
+      end
+
+      # find a pattern: send (block_given?), branch
+      send_branch_list = []
+      (@insns.size - 1).times do |i|
+        insn, _operands = @insns[i]
+        if insn == :send
+          insn, _operands = @insns[i + 1]
+          if insn == :branch
+            send_branch_list << i
+          end
+        end
+      end
+      send_branch_list.each do |i|
+        next if branch_targets[i + 1]
+        _insn, send_operands = @insns[i]
+        _insn, branch_operands = @insns[i + 1]
+        @insns[i] = [:nop]
+        @insns[i + 1] = [:send_branch, [send_operands, branch_operands]]
       end
 
       # find a pattern: getlocal, dup, branch

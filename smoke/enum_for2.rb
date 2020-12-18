@@ -11,11 +11,6 @@ class Foo
 end
 
 __END__
-# Errors
-smoke/enum_for2.rb:5: [warning] non-proc is passed as a block
-smoke/enum_for2.rb:6: [warning] non-proc is passed as a block
-smoke/enum_for2.rb:7: [warning] non-proc is passed as a block
-
 # Classes
 class Foo
   def int_and_str_enum: ?{ (Integer) -> untyped } -> (Enumerator[Integer, untyped] | Float)
