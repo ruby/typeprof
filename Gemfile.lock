@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    typeprof (0.9.2)
+    typeprof (0.10.0)
       rbs (>= 0.20.1)
 
 GEM
