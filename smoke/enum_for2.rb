@@ -1,6 +1,6 @@
 class Foo
   def int_and_str_enum
-    return enum_for(:int_and_str_enum) unless block_given?
+    return enum_for(__method__) unless block_given?
 
     yield 1
     yield 2

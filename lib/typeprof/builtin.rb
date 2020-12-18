@@ -198,6 +198,10 @@ module TypeProf
       end
     end
 
+    def object_privitive_method(recv, mid, aargs, ep, env, scratch, &ctn)
+      ctn[Type::Symbol.new(ep.ctx.mid, Type::Instance.new(Type::Builtin[:sym])), ep, env]
+    end
+
     def module_include(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size != 1
         scratch.warn(ep, "Module#include without an argument is ignored")
@@ -768,6 +772,7 @@ module TypeProf
       scratch.set_custom_method(klass_obj, :send, Builtin.method(:object_send))
       scratch.set_custom_method(klass_obj, :instance_eval, Builtin.method(:object_instance_eval))
       scratch.set_custom_method(klass_obj, :proc, Builtin.method(:lambda), false)
+      scratch.set_custom_method(klass_obj, :__method__, Builtin.method(:object_privitive_method), false)
 
       scratch.set_custom_method(klass_obj, :enum_for, Builtin.method(:object_enum_for))
       scratch.set_custom_method(klass_obj, :to_enum, Builtin.method(:object_enum_for))
