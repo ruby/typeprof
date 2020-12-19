@@ -39,7 +39,7 @@ class Object
 end
 ```
 
-Yoy can [try this analysis online](https://mame.github.io/typeprof-playground/#rb=def+hello_message%28user%29%0A++%22The+name+is+%22+%2B+user.name%0Aend%0A%0Adef+type_error_demo%28user%29%0A++%22The+age+is+%22+%2B+user.age%0Aend%0A%0Auser+%3D+User.new%28name%3A+%22John%22%2C+age%3A+20%29%0A%0Ahello_message%28user%29%0Atype_error_demo%28user%29&rbs=class+User%0A++attr_reader+name%3A+String%0A++attr_reader+age%3A+Integer%0A%0A++def+initialize%3A+%28name%3A+String%2C+age%3A+Integer%29+-%3E+void%0Aend).
+You can [try this analysis online](https://mame.github.io/typeprof-playground/#rb=def+hello_message%28user%29%0A++%22The+name+is+%22+%2B+user.name%0Aend%0A%0Adef+type_error_demo%28user%29%0A++%22The+age+is+%22+%2B+user.age%0Aend%0A%0Auser+%3D+User.new%28name%3A+%22John%22%2C+age%3A+20%29%0A%0Ahello_message%28user%29%0Atype_error_demo%28user%29&rbs=class+User%0A++attr_reader+name%3A+String%0A++attr_reader+age%3A+Integer%0A%0A++def+initialize%3A+%28name%3A+String%2C+age%3A+Integer%29+-%3E+void%0Aend).
 
 ## A simple demo to generate the signature prototype of "User" class
 
