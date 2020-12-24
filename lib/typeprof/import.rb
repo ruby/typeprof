@@ -3,6 +3,10 @@ require "rbs"
 module TypeProf
   class RBSReader
     def initialize
+      @repo = RBS::Repository.new
+      Config.gem_repo_dirs.each do |dir|
+        @repo.add(Pathname(dir))
+      end
       @env, @builtin_env_json = RBSReader.get_builtin_env
     end
 
@@ -11,7 +15,7 @@ module TypeProf
       unless @builtin_env
         @builtin_env = RBS::Environment.new
 
-        loader = RBS::EnvironmentLoader.new
+        loader = RBS::EnvironmentLoader.new(repository: @repo)
         new_decls = loader.load(env: @builtin_env).map {|decl,| decl }
         @builtin_env_json = load_rbs(@builtin_env, new_decls)
       end
@@ -24,7 +28,7 @@ module TypeProf
     end
 
     def load_library(lib)
-      loader = RBS::EnvironmentLoader.new(core_root: nil)
+      loader = RBS::EnvironmentLoader.new(core_root: nil, repository: @repo)
       loader.add(library: lib)
 
       case lib
@@ -38,7 +42,7 @@ module TypeProf
     end
 
     def load_path(path)
-      loader = RBS::EnvironmentLoader.new(core_root: nil)
+      loader = RBS::EnvironmentLoader.new(core_root: nil, repository: @repo)
       loader.add(path: path)
       new_decls = loader.load(env: @env).map {|decl,| decl }
       RBSReader.load_rbs(@env, new_decls)

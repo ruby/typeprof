@@ -6,6 +6,7 @@ module TypeProf
     :rbs_files,
     :output,
     :gem_rbs_features,
+    :gem_repo_dirs,
     :verbose,
     :dir_filter,
     :max_iter,
@@ -25,6 +26,7 @@ module TypeProf
     def initialize(**opt)
       opt[:output] ||= $stdout
       opt[:gem_rbs_features] ||= []
+      opt[:gem_repo_dirs] ||= []
       opt[:dir_filter] ||= DEFAULT_DIR_FILTER
       opt[:verbose] ||= 0
       opt[:options] ||= {}
