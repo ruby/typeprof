@@ -190,7 +190,7 @@ p [:a, :b, :c] #=> [:a, :b, :c]
 # A Hash is a "type-to-type" map
 h = { "int" => 1, "float" => 1.0 }
 p h        #=> {String=>Float | Integer}
-p h["int"] #=> Float | Intger
+p h["int"] #=> Float | Integer
 
 # Symbol-key hashes (a.k.a. records) can have distinct types for each key as Symbols are concrete
 h = { int: 1, float: 1.0 }
