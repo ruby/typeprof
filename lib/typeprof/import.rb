@@ -32,9 +32,17 @@ module TypeProf
       loader.add(library: lib)
 
       case lib
+      when 'bigdecimal-math'
+        loader.add(library: 'bigdecimal')
       when "yaml"
         loader.add(library: "pstore")
         loader.add(library: "dbm")
+      when "logger"
+        loader.add(library: "monitor")
+      when "csv"
+        loader.add(library: "forwardable")
+      when "prime"
+        loader.add(library: "singleton")
       end
 
       new_decls = loader.load(env: @env).map {|decl,| decl }
