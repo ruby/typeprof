@@ -169,7 +169,7 @@ module TypeProf
             else
               entry = ivars[[singleton, mdef.ivar]]
               ty = entry ? entry.type : Type.any
-              methods[key] = [mdef.kind, ty.screen_name(@scratch)]
+              methods[key] = [mdef.kind, ty.screen_name(@scratch), ty.include_untyped?(@scratch)]
             end
           when TypedMethodDef
             if mdef.rbs_source
@@ -336,14 +336,22 @@ module TypeProf
         type, (method_name, hidden) = key
         case type
         when :attr
-          kind, ty = *arg
-          lines << (indent + "  attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }")
+          kind, ty, untyped = *arg
+          exclude = Config.options[:exclude_untyped] && untyped ? "#" : " " # XXX
+          lines << (indent + "#{ exclude } attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }")
         when :rbs
           sigs = arg.sort.join("\n" + indent + "#" + " " * (method_name.size + 5) + "| ")
           lines << (indent + "# def #{ method_name }: #{ sigs }")
         when :iseq
-          sigs = arg.sort.join("\n" + indent + " " * (method_name.size + 6) + "| ")
-          lines << (indent + "  def #{ method_name }: #{ sigs }")
+          sigs = []
+          untyped = false
+          arg.each do |sig, untyped0|
+            sigs << sig
+            untyped ||= untyped0
+          end
+          sigs = sigs.sort.join("\n" + indent + " " * (method_name.size + 6) + "| ")
+          exclude = Config.options[:exclude_untyped] && untyped ? "#" : " " # XXX
+          lines << (indent + "#{ exclude } def #{ method_name }: #{ sigs }")
         when :alias
           orig_name = arg
           lines << (indent + "  alias #{ method_name } #{ orig_name }")

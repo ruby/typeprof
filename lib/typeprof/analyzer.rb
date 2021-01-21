@@ -2192,10 +2192,13 @@ module TypeProf
       farg_tys = @method_signatures[ctx]
       ret_ty = @return_values[ctx] || Type.bot
 
+      untyped = farg_tys.include_untyped?(self) || ret_ty.include_untyped?(self)
+
       farg_tys = farg_tys.screen_name(ctx.iseq, self)
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
-      "#{ (farg_tys.empty? ? "" : "#{ farg_tys } ") }-> #{ ret_ty }"
+
+      ["#{ (farg_tys.empty? ? "" : "#{ farg_tys } ") }-> #{ ret_ty }", untyped]
     end
   end
 end

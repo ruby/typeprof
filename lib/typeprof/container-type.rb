@@ -45,6 +45,12 @@ module TypeProf
           Type::Cell.new(Type::Cell::Elements.new([Type.bot] * klass.type_params.size), base_type)
         end
       end
+
+      def include_untyped?(scratch)
+        return true if @base_type.include_untyped?(scratch)
+        return true if @elems.include_untyped?(scratch)
+        false
+      end
     end
 
     # The most basic container type for default type parameter class
@@ -195,6 +201,10 @@ module TypeProf
             elems << ty0.union(ty1)
           end
           Elements.new(elems)
+        end
+
+        def include_untyped?(scratch)
+          return @elems.any? {|ty| ty.include_untyped?(scratch) }
         end
       end
     end
@@ -531,6 +541,12 @@ module TypeProf
             return rest_ary_ty, following_tys
           end
         end
+
+        def include_untyped?(scratch)
+          return true if @lead_tys.any? {|ty| ty.include_untyped?(scratch) }
+          return true if @rest_ty.include_untyped?(scratch)
+          false
+        end
       end
     end
 
@@ -789,6 +805,14 @@ module TypeProf
             end
           end
           kw_tys
+        end
+
+        def include_untyped?(scratch)
+          @map_tys.each do |key, val|
+            return true if key.include_untyped?(scratch)
+            return true if val.include_untyped?(scratch)
+          end
+          false
         end
       end
     end

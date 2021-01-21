@@ -162,6 +162,10 @@ module TypeProf
       substitute(DummySubstitution, Config.options[:type_depth_limit])
     end
 
+    def include_untyped?(_scratch)
+      false
+    end
+
     class Any < Type
       def initialize
       end
@@ -184,6 +188,10 @@ module TypeProf
 
       def substitute(_subst, _depth)
         self
+      end
+
+      def include_untyped?(_scratch)
+        true
       end
     end
 
@@ -378,6 +386,17 @@ module TypeProf
           ty = ty.union(ty0)
         end
         ty
+      end
+
+      def include_untyped?(scratch)
+        @types.each do |ty|
+          return true if ty.include_untyped?(scratch)
+        end
+        @elems&.each do |(container_kind, base_type), elems|
+          return true if base_type.include_untyped?(scratch)
+          return true if elems.include_untyped?(scratch)
+        end
+        false
       end
     end
 
@@ -582,6 +601,10 @@ module TypeProf
 
       def screen_name(scratch)
         scratch.show_proc_signature([self])
+      end
+
+      def include_untyped?(scratch)
+        false # XXX: need to check the block signatures recursively
       end
     end
 
@@ -867,6 +890,17 @@ module TypeProf
         raise ty.inspect if ty != Type.any && !ty.is_a?(Type::Hash)
       end
       @blk_ty = blk_ty
+    end
+
+    def include_untyped?(scratch)
+      return true if @lead_tys.any? {|ty| ty.include_untyped?(scratch) }
+      return true if @opt_tys.any? {|ty| ty.include_untyped?(scratch) }
+      return true if @rest_ty&.include_untyped?(scratch)
+      return true if @post_tys.any? {|ty| ty.include_untyped?(scratch) }
+      return true if @kw_tys&.any? {|_, _, ty| ty.include_untyped?(scratch) }
+      return true if @kw_rest_ty&.include_untyped?(scratch)
+      return true if @blk_ty&.include_untyped?(scratch)
+      false
     end
 
     attr_reader :lead_tys, :opt_tys, :rest_ty, :post_tys, :kw_tys, :kw_rest_ty, :blk_ty

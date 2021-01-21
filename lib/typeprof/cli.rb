@@ -48,6 +48,7 @@ module TypeProf
         dir_filter ||= ConfigData::DEFAULT_DIR_FILTER
         dir_filter << [:exclude, File.expand_path(dir)]
       end
+      opt.on("--exclude-untyped", "Exclude (comment out) all entries including untyped") {|v| options[:exclude_untyped] = v }
       opt.on("--[no-]show-errors", "Display possible errors found during the analysis") {|v| options[:show_errors] = v }
       opt.on("--[no-]show-untyped", "Display \"Foo | untyped\" instead of \"Foo\"") {|v| options[:show_untyped] = v }
       opt.on("--[no-]show-parameter-names", "Display parameter names for methods") {|v| options[:show_parameter_names] = v }

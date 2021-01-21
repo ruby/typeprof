@@ -31,6 +31,7 @@ module TypeProf
       opt[:verbose] ||= 0
       opt[:options] ||= {}
       opt[:options] = {
+        exclude_untyped: false,
         show_indicator: true,
         show_untyped: false,
         show_errors: false,
