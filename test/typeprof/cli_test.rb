@@ -12,6 +12,7 @@ module TypeProf
       options[:show_untyped] = true
       options[:show_errors] = true
       options[:show_indicator] = false
+      options[:show_typeprof_version] = false
       config = TypeProf::ConfigData.new(
         rb_files: rb_files,
         rbs_files: rbs_files,
@@ -44,6 +45,7 @@ end
       options[:exclude_untyped] = true
       options[:show_untyped] = true
       options[:show_indicator] = false
+      options[:show_typeprof_version] = false
       config = TypeProf::ConfigData.new(
         rb_files: rb_files,
         rbs_files: rbs_files,
@@ -75,6 +77,7 @@ end
       options[:show_untyped] = true
       options[:show_errors] = true
       options[:show_indicator] = false
+      options[:show_typeprof_version] = false
       config = TypeProf::ConfigData.new(
         rb_files: rb_files,
         rbs_files: rbs_files,

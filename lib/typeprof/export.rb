@@ -26,6 +26,10 @@ module TypeProf
     end
 
     def show_message(terminated, output)
+      if Config.options[:show_typeprof_version]
+        output.puts "# TypeProf #{ VERSION }"
+        output.puts
+      end
       if terminated
         output.puts "# CAUTION: Type profiling was terminated prematurely because of the limitation"
         output.puts

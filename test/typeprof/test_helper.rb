@@ -28,6 +28,7 @@ module TypeProf
       options[:show_untyped] = true unless options.key?(:show_untyped)
       options[:show_errors] = true unless options.key?(:show_errors)
       options[:show_indicator] = false unless options.key?(:show_indicator)
+      options[:show_typeprof_version] = false unless options.key?(:show_typeprof_version)
       config = TypeProf::ConfigData.new(
         rb_files: rb_files,
         rbs_files: rbs_files,

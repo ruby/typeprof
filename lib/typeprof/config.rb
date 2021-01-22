@@ -32,6 +32,7 @@ module TypeProf
       opt[:options] ||= {}
       opt[:options] = {
         exclude_untyped: false,
+        show_typeprof_version: true,
         show_indicator: true,
         show_untyped: false,
         show_errors: false,
