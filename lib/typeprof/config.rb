@@ -95,12 +95,18 @@ module TypeProf
       scratch.add_callsite!(ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
     end
 
+    rbs_files = []
+    rbs_codes = []
     Config.rbs_files.each do |rbs|
       if rbs.is_a?(Array) # [String name, String content]
-        Import.import_rbs_code(scratch, *rbs)
+        rbs_codes << rbs
       else
-        Import.import_rbs_file(scratch, rbs)
+        rbs_files << rbs
       end
+    end
+    Import.import_rbs_files(scratch, rbs_files)
+    rbs_codes.each do |name, content|
+      Import.import_rbs_code(scratch, name, content)
     end
 
     result = scratch.type_profile

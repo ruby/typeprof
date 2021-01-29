@@ -49,9 +49,9 @@ module TypeProf
       RBSReader.load_rbs(@env, new_decls)
     end
 
-    def load_path(path)
+    def load_paths(paths)
       loader = RBS::EnvironmentLoader.new(core_root: nil, repository: @repo)
-      loader.add(path: path)
+      paths.each {|path| loader.add(path: path) }
       new_decls = loader.load(env: @env).map {|decl,| decl }
       RBSReader.load_rbs(@env, new_decls)
     end
@@ -484,9 +484,9 @@ module TypeProf
       Import.new(scratch, json).import
     end
 
-    def self.import_rbs_file(scratch, rbs_path)
-      rbs_path = Pathname(rbs_path) unless rbs_path.is_a?(Pathname)
-      Import.new(scratch, scratch.rbs_reader.load_path(rbs_path)).import(true)
+    def self.import_rbs_files(scratch, rbs_paths)
+      rbs_paths = rbs_paths.map {|rbs_path| Pathname(rbs_path) }
+      Import.new(scratch, scratch.rbs_reader.load_paths(rbs_paths)).import(true)
     end
 
     def self.import_rbs_code(scratch, rbs_name, rbs_code)
