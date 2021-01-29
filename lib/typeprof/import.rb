@@ -81,6 +81,7 @@ module TypeProf
   class RBS2JSON
     def initialize(all_env, cur_env)
       @all_env, @cur_env = all_env, cur_env
+      @alias_resolution_stack = {}
     end
 
     def dump_json
@@ -436,8 +437,17 @@ module TypeProf
           raise NotImplementedError
         end
       when RBS::Types::Alias
-        alias_decl = @all_env.alias_decls[ty.name]
-        alias_decl ? conv_type(alias_decl.decl.type) : [:any]
+        if @alias_resolution_stack[ty.name]
+          [:any]
+        else
+          begin
+            @alias_resolution_stack[ty.name] = true
+            alias_decl = @all_env.alias_decls[ty.name]
+            alias_decl ? conv_type(alias_decl.decl.type) : [:any]
+          ensure
+            @alias_resolution_stack.delete(ty.name)
+          end
+        end
       when RBS::Types::Union
         [:union, ty.types.map {|ty2| conv_type(ty2) }.compact]
       when RBS::Types::Optional
