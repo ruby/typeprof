@@ -7,7 +7,7 @@ App::FooBar.new(1, "str")
 __END__
 # Classes
 class App
-  class FooBar < Struct
+  class FooBar < Struct[untyped]
     attr_accessor foo(): Integer
     attr_accessor bar(): String
   end

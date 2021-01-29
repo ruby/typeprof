@@ -18,7 +18,7 @@ class Object
   def gen_foobar: -> FooBar
 end
 
-class FooBar < Struct
+class FooBar < Struct[untyped]
   attr_accessor foo(): Integer | String
   attr_accessor bar(): :sym?
   def my_foo: -> (Integer | String)

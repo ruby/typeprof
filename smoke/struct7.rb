@@ -12,6 +12,6 @@ end
 
 __END__
 # Classes
-class Foo < Struct
+class Foo < Struct[untyped]
   def initialize: -> Foo
 end

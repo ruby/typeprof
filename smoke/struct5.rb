@@ -10,7 +10,7 @@ Foo.new(42)
 
 __END__
 # Classes
-class Foo < Struct
+class Foo < Struct[untyped]
   attr_accessor foo(): String
   def initialize: (Integer foo) -> Foo
 end

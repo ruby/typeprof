@@ -98,6 +98,10 @@ module TypeProf
       if class_def.klass_obj.superclass != :__root__ && class_def.klass_obj.superclass
         omit = class_def.klass_obj.superclass == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
         superclass = omit ? nil : @scratch.get_class_name(class_def.klass_obj.superclass)
+        type_args = class_def.klass_obj.superclass_type_args
+        if type_args && !type_args.empty?
+          superclass += "[#{ type_args.map {|ty| ty.screen_name(@scratch) }.join(", ") }]"
+        end
       end
 
       @scratch.namespace = class_def.name

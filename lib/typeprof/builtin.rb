@@ -557,8 +557,6 @@ module TypeProf
     end
 
     def struct_s_new(recv, mid, aargs, ep, env, scratch, &ctn)
-      # TODO: keyword_init
-
       keyword_init = false
       if aargs.kw_tys && aargs.kw_tys[:keyword_init] # XXX: more canonical way to extract keyword...
         if aargs.kw_tys[:keyword_init] == Type::Instance.new(Type::Builtin[:true])
