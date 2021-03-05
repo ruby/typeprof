@@ -238,6 +238,8 @@ module TypeProf
     end
 
     def initialize
+      @entrypoints = []
+
       @worklist = Utils::WorkList.new
 
       @ep2env = {}
@@ -270,6 +272,10 @@ module TypeProf
       @terminated = false
 
       @anonymous_struct_gen_id = 0
+    end
+
+    def add_entrypoint(iseq)
+      @entrypoints << iseq
     end
 
     attr_reader :return_envs, :loaded_features, :rbs_reader
@@ -878,56 +884,68 @@ module TypeProf
       iter_counter = 0
       stat_eps = Utils::MutableSet.new
 
-      while true
-        until @worklist.empty?
-          ep = @worklist.deletemin
+      prologue_ctx = Context.new(nil, nil, nil)
+      prologue_ep = ExecutionPoint.new(prologue_ctx, -1, nil)
+      prologue_env = Env.new(StaticEnv.new(Type.bot, Type.nil, false, true), [], [], Utils::HashWrapper.new({}))
 
-          iter_counter += 1
-          if Config.options[:show_indicator]
-            tick2 = Time.now
-            if tick2 - tick >= 1
-              tick = tick2
-              $stderr << "\rType Profiling... (%d instructions @ %s)\e[K" % [iter_counter, ep.source_location]
-              $stderr.flush
+      until @entrypoints.empty?
+        iseq = @entrypoints.shift
+        ep, env = TypeProf.starting_state(iseq)
+        merge_env(ep, env)
+        add_callsite!(ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
+
+        while true
+          until @worklist.empty?
+            ep = @worklist.deletemin
+
+            iter_counter += 1
+            if Config.options[:show_indicator]
+              tick2 = Time.now
+              if tick2 - tick >= 1
+                tick = tick2
+                $stderr << "\rType Profiling... (%d instructions @ %s)\e[K" % [iter_counter, ep.source_location]
+                $stderr.flush
+              end
             end
+
+            if (Config.max_sec && Time.now - start_time >= Config.max_sec) || (Config.max_iter && Config.max_iter <= iter_counter)
+              @terminated = true
+              break
+            end
+
+            stat_eps << ep
+            step(ep)
           end
 
-          if (Config.max_sec && Time.now - start_time >= Config.max_sec) || (Config.max_iter && Config.max_iter <= iter_counter)
-            @terminated = true
-            break
-          end
+          break if @terminated
 
-          stat_eps << ep
-          step(ep)
-        end
+          break unless Config.options[:stub_execution]
 
-        break if @terminated
+          begin
+            iseq, (kind, dummy_continuation) = @pending_execution.first
+            break if !iseq
+            @pending_execution.delete(iseq)
+          end while @executed_iseqs.include?(iseq)
 
-        break unless Config.options[:stub_execution]
+          puts "DEBUG: trigger stub execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.verbose >= 2
 
-        begin
-          iseq, (kind, dummy_continuation) = @pending_execution.first
           break if !iseq
-          @pending_execution.delete(iseq)
-        end while @executed_iseqs.include?(iseq)
-
-        puts "DEBUG: trigger stub execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.verbose >= 2
-
-        break if !iseq
-        case kind
-        when :method
-          meth, ep, env = dummy_continuation
-          merge_env(ep, env)
-          add_iseq_method_call!(meth, ep.ctx)
-
-        when :block
-          blk, epenvs = dummy_continuation
-          epenvs.each do |ep, env|
+          case kind
+          when :method
+            meth, ep, env = dummy_continuation
             merge_env(ep, env)
-            add_block_to_ctx!(blk.block_body, ep.ctx)
+            add_iseq_method_call!(meth, ep.ctx)
+
+          when :block
+            blk, epenvs = dummy_continuation
+            epenvs.each do |ep, env|
+              merge_env(ep, env)
+              add_block_to_ctx!(blk.block_body, ep.ctx)
+            end
           end
         end
       end
+
       $stderr.print "\r\e[K" if Config.options[:show_indicator]
 
       stat_eps
