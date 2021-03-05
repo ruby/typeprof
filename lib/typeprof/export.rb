@@ -137,18 +137,17 @@ module TypeProf
             ctxs = @iseq_method_to_ctxs[mdef]
             next unless ctxs
 
-            ctxs.each do |ctx|
-              next if mid != ctx.mid
-              next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
+            ctx = ctxs.find {|ctx| ctx.mid == mid } || ctxs.first
 
-              method_name = ctx.mid
-              method_name = "self.#{ method_name }" if singleton
+            next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
 
-              key = [:iseq, method_name]
-              visibilities[key] ||= mdef.pub_meth
-              source_locations[key] ||= ctx.iseq.source_location(0)
-              (methods[key] ||= []) << @scratch.show_method_signature(ctx)
-            end
+            method_name = mid
+            method_name = "self.#{ method_name }" if singleton
+
+            key = [:iseq, method_name]
+            visibilities[key] ||= mdef.pub_meth
+            source_locations[key] ||= ctx.iseq.source_location(0)
+            (methods[key] ||= []) << @scratch.show_method_signature(ctx)
           when AliasMethodDef
             alias_name, orig_name = mid, mdef.orig_mid
             if singleton
