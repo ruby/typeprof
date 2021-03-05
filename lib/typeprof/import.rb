@@ -189,11 +189,15 @@ module TypeProf
             when RBS::AST::Members::Include
               name = member.name
               if name.kind == :class
+                # including a module
                 mod = conv_type_name(name)
                 type_args = member.args.map {|type| conv_type(type) }
                 modules[:include] << [mod, type_args]
               else
-                # including an interface is not supported yet
+                # including an interface
+                mod = conv_type_name(name)
+                type_args = member.args.map {|type| conv_type(type) }
+                modules[:include] << [mod, type_args]
               end
 
             when RBS::AST::Members::Extend
