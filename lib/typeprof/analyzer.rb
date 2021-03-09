@@ -42,6 +42,10 @@ module TypeProf
         "<builtin>"
       end
     end
+
+    def replace_cref(cref)
+      Context.new(@iseq, cref, @mid)
+    end
   end
 
   class TypedContext
@@ -60,6 +64,10 @@ module TypeProf
       else
         "<typed-context:#{ @mid }>"
       end
+    end
+
+    def replace_cref(cref)
+      # What to do?
     end
   end
 
@@ -84,6 +92,10 @@ module TypeProf
 
     def next
       ExecutionPoint.new(@ctx, @pc + 1, @outer)
+    end
+
+    def replace_cref(cref)
+      ExecutionPoint.new(@ctx.replace_cref(cref), @pc, @outer)
     end
 
     def source_location
@@ -2109,10 +2121,10 @@ module TypeProf
       end
     end
 
-    def do_invoke_block(blk, aargs, ep, env, replace_recv_ty: nil, &ctn)
+    def do_invoke_block(blk, aargs, ep, env, replace_recv_ty: nil, replace_cref: nil, &ctn)
       blk.each_child do |blk|
         if blk.is_a?(Type::Proc)
-          blk.block_body.do_call(aargs, ep, env, self, replace_recv_ty: replace_recv_ty, &ctn)
+          blk.block_body.do_call(aargs, ep, env, self, replace_recv_ty: replace_recv_ty, replace_cref: replace_cref, &ctn)
         else
           warn(ep, "non-proc is passed as a block")
           ctn[Type.any, ep, env]

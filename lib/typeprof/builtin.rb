@@ -163,6 +163,21 @@ module TypeProf
       end
     end
 
+    def object_module_eval(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size >= 1
+        scratch.warn(ep, "class_eval with arguments is ignored")
+        ctn[Type.any, ep, env]
+        return
+      end
+      naargs = ActualArguments.new([recv], nil, {}, Type.nil)
+      nrecv = recv
+      nrecv = nrecv.base_type if nrecv.is_a?(Type::ContainerType)
+      ncref = ep.ctx.cref.extend(nrecv, true)
+      scratch.do_invoke_block(aargs.blk_ty, naargs, ep, env, replace_recv_ty: nrecv, replace_cref: ncref) do |_ret_ty, ep|
+        ctn[recv, ep, env]
+      end
+    end
+
     def object_enum_for(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size >= 1
         mid_ty, = aargs.lead_tys
@@ -809,9 +824,11 @@ module TypeProf
       scratch.set_custom_method(klass_module, :public, Builtin.method(:module_public), false)
       scratch.set_custom_method(klass_module, :private, Builtin.method(:module_private), false)
       scratch.set_custom_method(klass_module, :define_method, Builtin.method(:module_define_method))
-      scratch.set_custom_method(klass_module, :"attr_accessor", Builtin.method(:module_attr_accessor))
-      scratch.set_custom_method(klass_module, :"attr_reader", Builtin.method(:module_attr_reader))
-      scratch.set_custom_method(klass_module, :"attr_writer", Builtin.method(:module_attr_writer))
+      scratch.set_custom_method(klass_module, :attr_accessor, Builtin.method(:module_attr_accessor))
+      scratch.set_custom_method(klass_module, :attr_reader, Builtin.method(:module_attr_reader))
+      scratch.set_custom_method(klass_module, :attr_writer, Builtin.method(:module_attr_writer))
+      scratch.set_custom_method(klass_module, :class_eval, Builtin.method(:object_module_eval))
+      scratch.set_custom_method(klass_module, :module_eval, Builtin.method(:object_module_eval))
 
       scratch.set_custom_method(klass_proc, :[], Builtin.method(:proc_call))
       scratch.set_custom_method(klass_proc, :call, Builtin.method(:proc_call))

@@ -27,7 +27,7 @@ module TypeProf
       self
     end
 
-    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
+    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, replace_cref:, &ctn)
       blk_env = scratch.return_envs[@outer_ep]
       if replace_recv_ty
         replace_recv_ty = scratch.globalize_type(replace_recv_ty, caller_env, caller_ep)
@@ -46,7 +46,8 @@ module TypeProf
         return
       end
 
-      nctx = Context.new(@iseq, @outer_ep.ctx.cref, nil)
+      cref = replace_cref || @outer_ep.ctx.cref
+      nctx = Context.new(@iseq, cref, nil)
       callee_ep = ExecutionPoint.new(nctx, 0, @outer_ep)
       nenv = Env.new(blk_env.static_env, locals, [], nil)
       alloc_site = AllocationSite.new(callee_ep)
@@ -87,7 +88,7 @@ module TypeProf
       TypedBlock.new(msig, ret_ty)
     end
 
-    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
+    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, replace_cref:, &ctn)
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
       subst = aargs.consistent_with_method_signature?(@msig)
       unless subst
@@ -119,7 +120,7 @@ module TypeProf
       self
     end
 
-    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
+    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, replace_cref:, &ctn)
       if aargs.lead_tys.size >= 1
         recv = aargs.lead_tys[0]
         recv = Type.any if recv == Type.bot
@@ -157,7 +158,7 @@ module TypeProf
       self
     end
 
-    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &ctn)
+    def do_call(aargs, caller_ep, caller_env, scratch, replace_recv_ty:, replace_cref:, &ctn)
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
 
       dummy_ctx = TypedContext.new(@caller_ep, @mid)
@@ -165,7 +166,7 @@ module TypeProf
       scratch.add_block_signature!(self, aargs.to_block_signature)
       scratch.add_block_to_ctx!(self, dummy_ctx)
 
-      @blk.call(aargs, caller_ep, caller_env, scratch, replace_recv_ty: replace_recv_ty) do |ret_ty, ep, env|
+      @blk.call(aargs, caller_ep, caller_env, scratch, replace_recv_ty: replace_recv_ty, replace_cref: replace_cref) do |ret_ty, ep, env|
         scratch.add_return_value!(dummy_ctx, ret_ty)
         ctn[ret_ty, ep, env]
       end
