@@ -235,9 +235,12 @@ module TypeProf
         return ctn[Type.any, ep, env]
       end
 
+      # support multiple arguments: include M1, M2
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
+          aargs = ActualArguments.new([recv], nil, {}, Type.nil)
+          scratch.do_send(arg, :included, aargs, ep, env) {|_ret_ty, _ep| }
           scratch.mix_module(:after, recv, arg, nil, ep.ctx.cref.singleton, ep)
         end
       end
@@ -259,6 +262,8 @@ module TypeProf
       arg = aargs.lead_tys[0]
       arg.each_child do |arg|
         if arg.is_a?(Type::Class)
+          aargs = ActualArguments.new([recv], nil, {}, Type.nil)
+          scratch.do_send(arg, :extended, aargs, ep, env) {|_ret_ty, _ep| }
           # if ep.ctx.cref.singleton is true, the meta-meta level is ignored. Should we warn?
           scratch.mix_module(:after, recv, arg, nil, true, ep)
         end
