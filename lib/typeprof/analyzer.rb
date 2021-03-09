@@ -1275,7 +1275,13 @@ module TypeProf
             end
             if cbase.is_a?(Type::Class)
               klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
-              add_superclass_type_args!(klass, superclass.type_params.map { Type.any }) if superclass
+              if superclass
+                add_superclass_type_args!(klass, superclass.type_params.map { Type.any })
+
+                # inherited hook
+                aargs = ActualArguments.new([klass], nil, {}, Type.nil)
+                do_send(superclass, :inherited, aargs, ep, env) {|_ret_ty, _ep| }
+              end
             else
               klass = Type.any
             end

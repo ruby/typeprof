@@ -191,7 +191,7 @@ module TypeProf
       end
 
       elem_ty = Type.bot
-      enum_for_blk = CustomBlock.new(ep, mid) do |aargs, caller_ep, caller_env, scratch, replace_recv_ty:, &blk_ctn|
+      enum_for_blk = CustomBlock.new(ep, mid) do |aargs, caller_ep, caller_env, scratch, replace_recv_ty:, replace_cref:, &blk_ctn|
         if aargs.lead_tys.size >= 1
           elem_ty = elem_ty.union(aargs.lead_tys[0])
         else
