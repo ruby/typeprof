@@ -1814,8 +1814,10 @@ module TypeProf
       when :nop
       when :setn
         idx, = operands
-        env, (ty,) = env.pop(1)
-        env = env.setn(idx, ty).push(ty)
+        if idx >= 1
+          env, (ty,) = env.pop(1)
+          env = env.setn(idx, ty).push(ty)
+        end
       when :topn
         idx, = operands
         env = env.topn(idx)
