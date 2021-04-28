@@ -1016,6 +1016,10 @@ module TypeProf
       RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show(stat_eps, output)
     end
 
+    def report_lsp
+      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show_lsp
+    end
+
     def globalize_type(ty, env, ep)
       if ep.outer
         tmp_ep = ep

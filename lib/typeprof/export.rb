@@ -229,7 +229,178 @@ module TypeProf
       )
     end
 
+    def conv_class_lsp(namespace, class_def)
+      @scratch.namespace = namespace
+
+      if class_def.klass_obj.superclass != :__root__ && class_def.klass_obj.superclass
+        omit = class_def.klass_obj.superclass == Type::Builtin[:obj] || class_def.klass_obj == Type::Builtin[:obj]
+        superclass = omit ? nil : @scratch.get_class_name(class_def.klass_obj.superclass)
+        type_args = class_def.klass_obj.superclass_type_args
+        if type_args && !type_args.empty?
+          superclass += "[#{ type_args.map {|ty| ty.screen_name(@scratch) }.join(", ") }]"
+        end
+      end
+
+      @scratch.namespace = class_def.name
+
+      consts = {}
+      class_def.consts.each do |name, (ty, absolute_path)|
+        next if ty.is_a?(Type::Class)
+        next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
+        consts[name] = ty.screen_name(@scratch)
+      end
+
+      modules = class_def.modules.to_h do |kind, mods|
+        mods = mods.to_h do |singleton, mods|
+          mods = mods.filter_map do |mod_def, _type_args, absolute_paths|
+            next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+            Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
+          end
+          [singleton, mods]
+        end
+        [kind, mods]
+      end
+
+      visibilities = {}
+      source_locations = {}
+      methods = {}
+      ivars = class_def.ivars.dump
+      cvars = class_def.cvars.dump
+
+      class_def.methods.each do |(singleton, mid), mdefs|
+        mdefs.each do |mdef|
+          case mdef
+          when ISeqMethodDef
+            ctxs = @iseq_method_to_ctxs[mdef]
+            next unless ctxs
+
+            ctx = ctxs.find {|ctx| ctx.mid == mid } || ctxs.first
+
+            next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
+
+            method_name = mid
+            method_name = "self.#{ method_name }" if singleton
+
+            key = [:iseq, method_name]
+            visibilities[key] ||= mdef.pub_meth
+            source_locations[key] ||= ctx.iseq.source_location(0)
+            (methods[key] ||= []) << @scratch.show_method_signature(ctx)
+          when AliasMethodDef
+            alias_name, orig_name = mid, mdef.orig_mid
+            if singleton
+              alias_name = "self.#{ alias_name }"
+              orig_name = "self.#{ orig_name }"
+            end
+            key = [:alias, alias_name]
+            visibilities[key] ||= mdef.pub_meth
+            source_locations[key] ||= mdef.def_ep&.source_location
+            methods[key] = orig_name
+          when AttrMethodDef
+            next if !mdef.def_ep
+            absolute_path = mdef.def_ep.ctx.iseq.absolute_path
+            next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
+            mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
+            method_name = mid
+            method_name = "self.#{ mid }" if singleton
+            method_name = [method_name, :"@#{ mid }" != mdef.ivar]
+            key = [:attr, method_name]
+            visibilities[key] ||= mdef.pub_meth
+            source_locations[key] ||= mdef.def_ep.source_location
+            if methods[key]
+              if methods[key][0] != mdef.kind
+                methods[key][0] = :accessor
+              end
+            else
+              entry = ivars[[singleton, mdef.ivar]]
+              ty = entry ? entry.type : Type.any
+              methods[key] = [mdef.kind, ty.screen_name(@scratch), ty.include_untyped?(@scratch)]
+            end
+          when TypedMethodDef
+            if mdef.rbs_source
+              method_name, sigs = mdef.rbs_source
+              key = [:rbs, method_name]
+              methods[key] = sigs
+              visibilities[key] ||= mdef.pub_meth
+            end
+          end
+        end
+      end
+
+      ivars = ivars.map do |(singleton, var), entry|
+        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        ty = entry.type
+        next unless var.to_s.start_with?("@")
+        var = "self.#{ var }" if singleton
+        next if methods[[:attr, [singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]]
+        next if entry.rbs_declared
+        [var, ty.screen_name(@scratch)]
+      end.compact
+
+      cvars = cvars.map do |var, entry|
+        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        next if entry.rbs_declared
+        [var, entry.type.screen_name(@scratch)]
+      end.compact
+
+      if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
+        if methods.keys.all? {|type,| type == :rbs }
+          return nil if consts.empty? && modules[:before][true].empty? && modules[:before][false].empty? && modules[:after][true].empty? && modules[:after][false].empty? && ivars.empty? && cvars.empty?
+        end
+      end
+
+      @scratch.namespace = nil
+
+      ClassData.new(
+        kind: class_def.kind,
+        name: class_def.name,
+        superclass: superclass,
+        consts: consts,
+        modules: modules,
+        ivars: ivars,
+        cvars: cvars,
+        methods: methods,
+        visibilities: visibilities,
+        source_locations: source_locations,
+      )
+    end
+
     ClassData = Struct.new(:kind, :name, :superclass, :consts, :modules, :ivars, :cvars, :methods, :visibilities, :source_locations, :inner_classes, keyword_init: true)
+
+    def show_lsp
+      res = []
+      @class_defs.each_value do |class_def|
+        class_data = conv_class_lsp([], class_def)
+        next unless class_data
+        class_data.methods.each do |key, arg|
+          #vis = class_data.visibilities[key]
+          source_location = class_data.source_locations[key]
+          type, (method_name, hidden) = key
+          case type
+          when :attr
+            kind, ty, untyped = *arg
+            line = "attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }"
+          when :rbs
+            line = "# def #{ method_name }: #{ sigs }"
+          when :iseq
+            sigs = []
+            untyped = false
+            arg.each do |sig, untyped0|
+              sigs << sig
+              untyped ||= untyped0
+            end
+            sigs = sigs.sort.join(" | ")
+            line = "def #{ method_name }: #{ sigs }"
+          when :alias
+            orig_name = arg
+            line = "alias #{ method_name } #{ orig_name }"
+          end
+          if source_location =~ /:(\d+)$/
+            res << [$`, $1.to_i, line]
+          end
+        end
+      end
+      res
+    end
 
     def show(stat_eps, output)
       # make the class hierarchy

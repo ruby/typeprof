@@ -12,6 +12,7 @@ module TypeProf
     :max_iter,
     :max_sec,
     :options,
+    :lsp,
     keyword_init: true
   )
 
@@ -105,6 +106,8 @@ module TypeProf
     end
 
     result = scratch.type_profile
+
+    return scratch.report_lsp if Config.options[:lsp]
 
     if Config.output.respond_to?(:write)
       scratch.report(result, Config.output)
