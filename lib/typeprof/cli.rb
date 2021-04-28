@@ -38,6 +38,7 @@ module TypeProf
       opt.on("--repo DIR", "Add DIR to the RBS repository") {|v| gem_repo_dirs << v }
       opt.on("--collection PATH", "File path of collection configuration") { |v| collection_path = v }
       opt.on("--no-collection", "Ignore collection configuration") { collection_path = nil }
+      opt.on("--lsp", "LSP mode") {|v| options[:lsp] = true }
 
       opt.separator ""
       opt.separator "Analysis output options:"
@@ -89,7 +90,7 @@ module TypeProf
       end
 
       puts "typeprof #{ VERSION }" if show_version
-      if rb_files.empty?
+      if rb_files.empty? && !options[:lsp]
         exit if show_version
         raise OptionParser::InvalidOption.new("no input files")
       end

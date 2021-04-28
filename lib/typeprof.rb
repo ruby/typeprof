@@ -20,3 +20,5 @@ require_relative "typeprof/import"
 require_relative "typeprof/export"
 require_relative "typeprof/builtin"
 require_relative "typeprof/cli"
+
+require_relative "typeprof/lsp" if RUBY_VERSION >= "3"
