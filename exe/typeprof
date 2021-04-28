@@ -3,4 +3,8 @@
 require_relative "../lib/typeprof"
 
 config = TypeProf::CLI.parse(ARGV)
-TypeProf.analyze(config)
+if config.options[:lsp]
+  TypeProf.start_lsp_server(config)
+else
+  TypeProf.analyze(config)
+end
