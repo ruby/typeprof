@@ -1488,7 +1488,7 @@ module TypeProf
             end
             _type, _iseq, cont, stack_depth = tmp_ep.ctx.iseq.catch_table[tmp_ep.pc]&.find {|type,| type == :break }
             if cont
-              nenv = @return_envs[tmp_ep]
+              nenv = @return_envs[tmp_ep] || env
               nenv, = nenv.pop(nenv.stack.size - stack_depth)
               nenv = nenv.push(ty)
               tmp_ep = tmp_ep.jump(cont)
