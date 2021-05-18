@@ -1,5 +1,8 @@
 module TypeProf
   class ISeq
+    # https://github.com/ruby/ruby/pull/4468
+    CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
+
     include Utils::StructuralEquality
 
     def self.compile(file)
@@ -210,7 +213,7 @@ module TypeProf
       # find a pattern: getlocal, (dup, putobject(true), getconstant(class name), checkmatch, branch)* for ..Ruby 3.0
       # find a pattern: getlocal, (putobject(true), getconstant(class name), top(1), send(===), branch)* for Ruby 3.1..
       case_branch_list = []
-      if (RUBY_VERSION.split(".") <=> %w(3 1 0)) < 0
+      if CASE_WHEN_CHECKMATCH
         (@insns.size - 1).times do |i|
           insn0, getlocal_operands = @insns[i]
           next unless [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0

@@ -51,17 +51,19 @@ module TypeProf
         END
 
         assert(actual =~ /^module Goodcheck\n.*(^  class Trigger\n(?:(?:    .*?\n|\n)*)^  end\n).*^end\n/m)
-        assert_equal(<<-END, $1)
+        actual = $1
+        exp = TypeProf::ISeq::CASE_WHEN_CHECKMATCH ? "untyped" : "Array\\[bot\\]"
+        assert_match(Regexp.compile(Regexp.quote(<<-END).gsub("HOLE", exp)), actual)
   class Trigger
     @by_pattern: bool
     @skips_fail_examples: bool
 
     attr_reader patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?]
     attr_reader globs: Array[Glob?]
-    attr_reader passes: Array[Array[bot]]
-    attr_reader fails: Array[Array[bot]]
+    attr_reader passes: Array[HOLE]
+    attr_reader fails: Array[HOLE]
     attr_reader negated: bool
-    def initialize: (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[Array[bot]], fails: Array[Array[bot]], negated: bool) -> false
+    def initialize: (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[HOLE], fails: Array[HOLE], negated: bool) -> false
     def by_pattern!: -> Trigger
     def by_pattern?: -> bool
     def skips_fail_examples!: (?bool flag) -> Trigger
