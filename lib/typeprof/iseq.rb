@@ -206,8 +206,76 @@ module TypeProf
         end
       end
 
-      # find a pattern: getlocal, ..., send (is_a?, respond_to?), branch
-      getlocal_send_branch_list = []
+      # flow-sensitive analysis for `case var; when A; when B; when C; end`
+      # find a pattern: getlocal, (dup, putobject(true), getconstant(class name), checkmatch, branch)* for ..Ruby 3.0
+      # find a pattern: getlocal, (putobject(true), getconstant(class name), top(1), send(===), branch)* for Ruby 3.1..
+      case_branch_list = []
+      if (RUBY_VERSION.split(".") <=> %w(3 1 0)) < 0
+        (@insns.size - 1).times do |i|
+          insn0, getlocal_operands = @insns[i]
+          next unless [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0
+          nops = [i]
+          new_insns = []
+          j = i + 1
+          while true
+            case @insns[j]
+            when [:dup, []]
+              break unless @insns[j + 1] == [:putnil, []]
+              break unless @insns[j + 2] == [:putobject, [true]]
+              break unless @insns[j + 3][0] == :getconstant # TODO: support A::B::C
+              break unless @insns[j + 4] == [:checkmatch, [2]]
+              break unless @insns[j + 5][0] == :branch
+              target_pc = @insns[j + 5][1][1]
+              break unless @insns[target_pc] == [:pop, []]
+              nops << j << (j + 4) << target_pc
+              new_insns << [j + 5, [:getlocal_checkmatch_branch, [getlocal_operands, @insns[j + 5][1]]]]
+              j += 6
+            when [:pop, []]
+              nops << j
+              case_branch_list << [nops, new_insns]
+              break
+            else
+              break
+            end
+          end
+        end
+      else
+        (@insns.size - 1).times do |i|
+          insn0, getlocal_operands = @insns[i]
+          next unless [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0
+          nops = []
+          new_insns = []
+          j = i + 1
+          while true
+            case @insns[j]
+            when [:putnil, []]
+              break unless @insns[j + 1] == [:putobject, [true]]
+              break unless @insns[j + 2][0] == :getconstant # TODO: support A::B::C
+              break unless @insns[j + 3] == [:topn, [1]]
+              break unless @insns[j + 4] == [:send, [{:mid=>:===, :flag=>20, :orig_argc=>1}, nil]]
+              break unless @insns[j + 5][0] == :branch
+              target_pc = @insns[j + 5][1][1]
+              break unless @insns[target_pc] == [:pop, []]
+              nops << (j + 4) #<< target_pc
+              new_insns << [j + 5, [:arg_getlocal_send_branch, [getlocal_operands, @insns[j + 4][1], @insns[j + 5][1]]]]
+              j += 6
+            when [:pop, []]
+              #nops << j
+              case_branch_list << [nops, new_insns]
+              break
+            else
+              break
+            end
+          end
+        end
+      end
+      case_branch_list.each do |nops, new_insns|
+        nops.each {|i| @insns[i] = [:nop, []] }
+        new_insns.each {|i, insn| @insns[i] = insn }
+      end
+
+      # find a pattern: getlocal(recv), ..., send (is_a?, respond_to?), branch
+      recv_getlocal_send_branch_list = []
       (@insns.size - 1).times do |i|
         insn, operands = @insns[i]
         if insn == :getlocal && operands[1] == 0
@@ -216,7 +284,7 @@ module TypeProf
           while @insns[j]
             sp = check_send_branch(sp, j)
             if sp == :match
-              getlocal_send_branch_list << [i, j]
+              recv_getlocal_send_branch_list << [i, j]
               break
             end
             break if !sp
@@ -224,13 +292,35 @@ module TypeProf
           end
         end
       end
-      getlocal_send_branch_list.each do |i, j|
+      recv_getlocal_send_branch_list.each do |i, j|
         next if (i + 1 .. j + 1).any? {|i| branch_targets[i] }
         _insn, getlocal_operands = @insns[i]
         _insn, send_operands = @insns[j]
         _insn, branch_operands = @insns[j + 1]
         @insns[j] = [:nop]
-        @insns[j + 1] = [:getlocal_send_branch, [getlocal_operands, send_operands, branch_operands]]
+        @insns[j + 1] = [:recv_getlocal_send_branch, [getlocal_operands, send_operands, branch_operands]]
+      end
+
+      # find a pattern: getlocal, send (===), branch
+      arg_getlocal_send_branch_list = []
+      (@insns.size - 1).times do |i|
+        insn1, operands1 = @insns[i]
+        next unless insn1 == :getlocal && operands1[1] == 0
+        insn2, operands2 = @insns[i + 1]
+        next unless insn2 == :send
+        send_opt = operands2[0]
+        next unless send_opt[:flag] == 16 && send_opt[:orig_argc] == 1
+        insn3, _operands3 = @insns[i + 2]
+        next unless insn3 == :branch
+        arg_getlocal_send_branch_list << i
+      end
+      arg_getlocal_send_branch_list.each do |i|
+        next if (i .. i + 2).any? {|i| branch_targets[i] }
+        _insn, getlocal_operands = @insns[i]
+        _insn, send_operands = @insns[i + 1]
+        _insn, branch_operands = @insns[i + 2]
+        @insns[i + 1] = [:nop]
+        @insns[i + 2] = [:arg_getlocal_send_branch, [getlocal_operands, send_operands, branch_operands]]
       end
 
       # find a pattern: send (block_given?), branch
@@ -286,42 +376,6 @@ module TypeProf
           @insns[i + 1] = [:getlocal_branch, [getlocal_operands, branch_operands]]
         end
       end
-
-      # flow-sensitive analysis for `case var; when A; when B; when C; end`
-      # find a pattern: getlocal, (dup, putobject(true), getconstant(class name), checkmatch, branch)*
-      case_branch_list = []
-      (@insns.size - 1).times do |i|
-        insn0, getlocal_operands = @insns[i]
-        next unless [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0
-        nops = [i]
-        new_insns = []
-        j = i + 1
-        while true
-          case @insns[j]
-          when [:dup, []]
-            break unless @insns[j + 1] == [:putnil, []]
-            break unless @insns[j + 2] == [:putobject, [true]]
-            break unless @insns[j + 3][0] == :getconstant # TODO: support A::B::C
-            break unless @insns[j + 4] == [:checkmatch, [2]]
-            break unless @insns[j + 5][0] == :branch
-            target_pc = @insns[j + 5][1][1]
-            break unless @insns[target_pc] == [:pop, []]
-            nops << j << (j + 4) << target_pc
-            new_insns << [j + 5, [:getlocal_checkmatch_branch, [getlocal_operands, @insns[j + 5][1]]]]
-            j += 6
-          when [:pop, []]
-            nops << j
-            case_branch_list << [nops, new_insns]
-            break
-          else
-            break
-          end
-        end
-      end
-      case_branch_list.each do |nops, new_insns|
-        nops.each {|i| @insns[i] = [:nop, []] }
-        new_insns.each {|i, insn| @insns[i] = insn }
-      end
     end
 
     def check_send_branch(sp, j)
@@ -367,6 +421,8 @@ module TypeProf
         sp -= argc
         return :match if insn == :send && sp == 0 && @insns[j + 1][0] == :branch
         sp += 1
+      when :arg_getlocal_send_branch
+        return # not implemented
       when :invokeblock
         opt, = operands
         sp -= opt[:orig_argc]

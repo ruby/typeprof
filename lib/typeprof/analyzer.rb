@@ -1324,7 +1324,7 @@ module TypeProf
           end
         end
         return
-      when :getlocal_send_branch
+      when :recv_getlocal_send_branch
         getlocal_operands, send_operands, branch_operands = operands
         env, recvs, mid, aargs = setup_actual_arguments(:method, send_operands, ep, env)
         recvs = Type.any if recvs == Type.bot
@@ -1348,6 +1348,39 @@ module TypeProf
             else
               merge_env(ep_then, env)
               merge_env(ep_else, env)
+            end
+          end
+        end
+        return
+      when :arg_getlocal_send_branch
+        getlocal_operands, send_operands, branch_operands = operands
+        env, recvs, mid, aargs = setup_actual_arguments(:method, send_operands, ep, env)
+        raise if aargs.lead_tys.size != 1
+        aarg = aargs.lead_tys[0]
+        aarg = Type.any if aarg == Type.bot
+        recvs.each_child do |recv|
+          aarg.each_child do |aarg|
+            aargs_tmp = ActualArguments.new([aarg], nil, {}, aargs.blk_ty)
+            do_send(recv, mid, aargs_tmp, ep, env) do |ret_ty, ep, env|
+              env, ret_ty, = localize_type(ret_ty, env, ep)
+
+              branchtype, target, = branch_operands
+              # branchtype: :if or :unless or :nil
+              ep_then = ep.next
+              ep_else = ep.jump(target)
+
+              var_idx, _scope_idx, _escaped = getlocal_operands
+              flow_env = env.local_update(-var_idx+2, aarg)
+
+              case ret_ty
+              when Type::Instance.new(Type::Builtin[:true])
+                merge_env(branchtype == :if ? ep_else : ep_then, flow_env)
+              when Type::Instance.new(Type::Builtin[:false])
+                merge_env(branchtype == :if ? ep_then : ep_else, flow_env)
+              else
+                merge_env(ep_then, env)
+                merge_env(ep_else, env)
+              end
             end
           end
         end

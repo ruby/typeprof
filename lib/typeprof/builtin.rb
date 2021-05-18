@@ -163,6 +163,27 @@ module TypeProf
       end
     end
 
+    def module_eqq(recv, mid, aargs, ep, env, scratch, &ctn)
+      if aargs.lead_tys.size == 1
+        aargs.lead_tys[0].each_child do |aarg|
+          aarg = aarg.base_type if aarg.is_a?(Type::Symbol) # XXX
+          if aarg.is_a?(Type::Instance)
+            if aarg.klass == recv # XXX: inheritance
+              true_val = Type::Instance.new(Type::Builtin[:true])
+              ctn[true_val, ep, env]
+            else
+              false_val = Type::Instance.new(Type::Builtin[:false])
+              ctn[false_val, ep, env]
+            end
+          else
+            ctn[Type.bool, ep, env]
+          end
+        end
+      else
+        ctn[Type.bool, ep, env]
+      end
+    end
+
     def object_module_eval(recv, mid, aargs, ep, env, scratch, &ctn)
       if aargs.lead_tys.size >= 1
         scratch.warn(ep, "class_eval with arguments is ignored")
@@ -829,6 +850,7 @@ module TypeProf
       scratch.set_custom_method(klass_module, :attr_writer, Builtin.method(:module_attr_writer))
       scratch.set_custom_method(klass_module, :class_eval, Builtin.method(:object_module_eval))
       scratch.set_custom_method(klass_module, :module_eval, Builtin.method(:object_module_eval))
+      scratch.set_custom_method(klass_module, :===, Builtin.method(:module_eqq))
 
       scratch.set_custom_method(klass_proc, :[], Builtin.method(:proc_call))
       scratch.set_custom_method(klass_proc, :call, Builtin.method(:proc_call))
