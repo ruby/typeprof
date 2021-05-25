@@ -42,7 +42,7 @@ module TypeProf
     def initialize(iseq)
       @id = (ISEQ_FRESH_ID[0] += 1)
 
-      _magic, _major_version, _minor_version, _format_type, _misc,
+      _magic, _major_version, _minor_version, _format_type, misc,
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
