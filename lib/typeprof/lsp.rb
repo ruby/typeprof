@@ -14,7 +14,7 @@ module TypeProf
       $stdout.flush
 
       # tmp
-      $stdout = $stderr = File.open("/tmp/typeprof-lsp-server-log", "w")
+      $stdout = File.open("/tmp/typeprof-lsp-server-log", "w")
       $stdout.sync = true
       Socket.accept_loop(servs) do |sock|
         begin
@@ -35,7 +35,7 @@ module TypeProf
         @text = text
         @version = version
 
-        @server.on_text_changed(uri)
+        @server.on_text_changed(uri, version)
       end
 
       attr_reader :text, :version
@@ -79,7 +79,7 @@ module TypeProf
         @text = text.join
         @version = version
 
-        @server.on_text_changed(@uri)
+        @server.on_text_changed(@uri, version)
       end
     end
 
@@ -174,26 +174,6 @@ module TypeProf
       def run
         @params => { textDocument: { uri:, version:, text: } }
         @server.open_texts[uri] = Text.new(@server, uri, text, version)
-
-        # diagnostics example
-        #@server.send_notification(
-        #  "textDocument/publishDiagnostics",
-        #  {
-        #    uri: uri,
-        #    version: version,
-        #    diagnostics: [
-        #      { # tmp
-        #        range: {
-        #          start: { line: 10, character: 12 },
-        #          end: { line: 10, character: 20 },
-        #        },
-        #        severity: 3,
-        #        source: "TypeProf",
-        #        message: "Wrong type?",
-        #      },
-        #    ],
-        #  }
-        #)
       end
     end
 
@@ -344,7 +324,7 @@ module TypeProf
         @writer.write(id: id, method: method, params: params)
       end
 
-      def on_text_changed(uri)
+      def on_text_changed(uri, version)
         # XXX hard-coded for experiment
         if uri.end_with?("/sandbox/test.rb") && @open_texts[uri]
           rb = @open_texts[uri]
@@ -364,8 +344,10 @@ module TypeProf
             }
           )
 
+          res = TypeProf.analyze(config)
+
           sigs = {}
-          TypeProf.analyze(config).each do |file, lineno, sig|
+          res[:sigs].each do |file, lineno, sig|
             uri = "file://" + file
             sigs[uri] ||= []
             sigs[uri] << {
@@ -379,8 +361,34 @@ module TypeProf
             }
           end
           @sigs = sigs
+
+          diagnostics = {}
+          res[:errors].each do |(file, fl, fc, ll, lc), msg|
+            next unless file
+            uri = "file://" + file
+            diagnostics[uri] ||= []
+            diagnostics[uri] << {
+              range: {
+                start: { line: fl - 1, character: fc },
+                end: { line: ll - 1, character: lc },
+              },
+              severity: 1,
+              source: "TypeProf",
+              message: msg,
+            }
+          end
+          @diagnostics = diagnostics
         
           send_request("workspace/codeLens/refresh")
+
+          send_notification(
+            "textDocument/publishDiagnostics",
+            {
+              uri: uri,
+              version: version,
+              diagnostics: diagnostics[uri] || [],
+            }
+          )
         end
       rescue SyntaxError
       end
