@@ -12,7 +12,7 @@ module TypeProf
       opt[:specialized_instruction] = false
       opt[:operands_unification] = false
       opt[:coverage_enabled] = false
-      new(RubyVM::InstructionSequence.compile_file(file, **opt).to_a)
+      new(build_ast_node_id_table(RubyVM::AbstractSyntaxTree.parse_file(file)), RubyVM::InstructionSequence.compile_file(file, **opt).to_a)
     end
 
     def self.compile_str(str, path = nil)
@@ -22,18 +22,28 @@ module TypeProf
       opt[:specialized_instruction] = false
       opt[:operands_unification] = false
       opt[:coverage_enabled] = false
-      new(RubyVM::InstructionSequence.compile(str, path, **opt).to_a)
+      new(build_ast_node_id_table(RubyVM::AbstractSyntaxTree.parse(str)), RubyVM::InstructionSequence.compile(str, path, **opt).to_a)
     end
 
     FRESH_ID = [0]
 
-    def initialize(iseq)
+    def self.build_ast_node_id_table(node, tbl = {})
+      tbl[node.node_id] = [node.first_lineno, node.first_column, node.last_lineno, node.last_column]
+      node.children.each do |child|
+        build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
+      end
+      tbl
+    end
+
+    def initialize(node_table, iseq)
       @id = FRESH_ID[0]
       FRESH_ID[0] += 1
 
-      _magic, _major_version, _minor_version, _format_type, _misc,
+      _magic, _major_version, _minor_version, _format_type, misc,
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
+
+      node_ids = misc[:node_ids_for_each_insn]
 
       case @type
       when :method, :block
@@ -50,6 +60,7 @@ module TypeProf
           i = insns.index(label) + 1
         end
         insns[i, 0] = [[:_iseq_body_start]]
+        node_ids.unshift(-1)
       end
 
       # rescue/ensure clauses need to have a dedicated return addresses
@@ -62,15 +73,16 @@ module TypeProf
 
       @insns = []
       @linenos = []
+      @code_locations = []
 
-      labels = setup_iseq(insns, special_labels)
+      labels = setup_iseq(insns, special_labels, node_ids, node_table)
 
       # checkmatch->branch
       # send->branch
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        iseq = iseq ? ISeq.new(iseq) : nil
+        iseq = iseq ? ISeq.new(node_table, iseq) : nil
         target = labels[special_labels[cont] ? :"#{ cont }_special" : cont]
         entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
@@ -88,21 +100,26 @@ module TypeProf
       @id <=> other.id
     end
 
-    def setup_iseq(insns, special_labels)
+    def setup_iseq(insns, special_labels, node_ids, node_table)
       i = 0
       labels = {}
       ninsns = []
+      code_locations = []
       insns.each do |e|
         if e.is_a?(Symbol) && e.to_s.start_with?("label")
           if special_labels[e]
             labels[:"#{ e }_special"] = i
             ninsns << [:nop]
+            code_locations << nil
             i += 1
           end
           labels[e] = i
         else
-          i += 1 if e.is_a?(Array)
           ninsns << e
+          if e.is_a?(Array)
+            i += 1
+            code_locations << node_table[node_ids.shift]
+          end
         end
       end
 
@@ -118,7 +135,7 @@ module TypeProf
           operands = (INSN_TABLE[insn] || []).zip(operands).map do |type, operand|
             case type
             when "ISEQ"
-              operand && ISeq.new(operand)
+              operand && ISeq.new(node_table, operand)
             when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
               operand
             when "OFFSET"
@@ -133,6 +150,7 @@ module TypeProf
 
           @insns << [insn, operands]
           @linenos << lineno
+          @code_locations << code_locations.shift
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -161,8 +179,16 @@ module TypeProf
       "#{ @path }:#{ @linenos[pc] }"
     end
 
+    def detailed_source_location(pc)
+      if @code_locations[pc]
+        [@path] + @code_locations[pc]
+      else
+        nil
+      end
+    end
+
     attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns, :linenos
-    attr_reader :id
+    attr_reader :id, :code_locations
 
     def pretty_print(q)
       q.text "ISeq["

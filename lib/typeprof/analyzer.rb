@@ -43,6 +43,14 @@ module TypeProf
       end
     end
 
+    def detailed_source_location(pc)
+      if @iseq
+        @iseq.detailed_source_location(pc)
+      else
+        nil
+      end
+    end
+
     def replace_cref(cref)
       Context.new(@iseq, cref, @mid)
     end
@@ -63,6 +71,14 @@ module TypeProf
         @caller_ep.source_location
       else
         "<typed-context:#{ @mid }>"
+      end
+    end
+
+    def detailed_source_location(_pc)
+      if @caller_ep
+        @caller_ep.source_location
+      else
+        nil
       end
     end
 
@@ -100,6 +116,10 @@ module TypeProf
 
     def source_location
       @ctx.source_location(@pc)
+    end
+
+    def detailed_source_location
+      @ctx.detailed_source_location(@pc)
     end
   end
 
@@ -1017,7 +1037,16 @@ module TypeProf
     end
 
     def report_lsp
-      RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show_lsp
+      errs = @errors.map do |ep, msg|
+        [ep&.detailed_source_location, msg]
+      end
+
+      pp errs
+      res = RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show_lsp
+      {
+        sigs: res,
+        errors: errs,
+      }
     end
 
     def globalize_type(ty, env, ep)

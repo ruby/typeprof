@@ -8,41 +8,51 @@ import {
 } from "vscode-languageclient/node";
 import * as net from "net";
 import * as child_process from "child_process";
-import { PRIORITY_BELOW_NORMAL } from "node:constants";
+import { existsSync } from "fs";
 
 export function makeLanguageClient(): LanguageClient {
   let client: LanguageClient;
 
+  const invokeTypeProf = (): child_process.ChildProcessWithoutNullStreams => {
+    const workspace = vscode.workspace.workspaceFolders;
+    const cwd = workspace && workspace[0] ? workspace[0].uri.fsPath : undefined;
+    const opts = cwd ? { cwd } : {};
+    client.info(`path: ${opts["cwd"]}`);
+
+    let cmd: string;
+    let cmd_args: string[];
+    if (existsSync(`${cwd}/typeprof-lsp`)) {
+      cmd = "./typeprof-lsp";
+      cmd_args = [];
+    } else {
+      cmd = "bundle";
+      cmd_args = ["exec", "typeprof", "--lsp"];
+    }
+    const typeprof = child_process.spawn(cmd, cmd_args, opts);
+    client.info(`Invoking ${cmd} ${cmd_args.join(" ")}`);
+    return typeprof;
+  };
+
   const serverOptions: ServerOptions = async () => {
-    const ruby = new Promise<
+    const typeprof = new Promise<
       [
         child_process.ChildProcessWithoutNullStreams,
         { host: string; port: number; pid: number }
       ]
     >((resolve, reject) => {
-      const workspace = vscode.workspace.workspaceFolders;
-      const opts =
-        workspace && workspace[0] ? { cwd: workspace[0].uri.fsPath } : {};
-      client.info(`path: ${opts["cwd"]}`);
-
-      const ruby = child_process.spawn(
-        "bundle",
-        ["exec", "exe/typeprof", "--lsp"],
-        opts
-      );
-      client.info("Invoking bundle exec exe/typeprof --lsp");
+      const typeprof = invokeTypeProf();
 
       let buffer = "";
-      ruby.stdout.on("data", (data) => {
+      typeprof.stdout.on("data", (data) => {
         buffer += data;
         try {
           const json = JSON.parse(data);
-          resolve([ruby, json]);
+          resolve([typeprof, json]);
         } catch (err) {}
       });
 
       let err = "";
-      ruby.stderr.on("data", (data) => {
+      typeprof.stderr.on("data", (data) => {
         err += data;
         while (true) {
           const i = err.indexOf("\n");
@@ -52,10 +62,10 @@ export function makeLanguageClient(): LanguageClient {
         }
       });
 
-      ruby.on("exit", (code) => reject(`error code ${code}`));
+      typeprof.on("exit", (code) => reject(`error code ${code}`));
     });
 
-    const [child, { host, port }] = await ruby;
+    const [child, { host, port }] = await typeprof;
     const socket: net.Socket = net.createConnection(port, host);
     socket.on("close", (_had_error) => child.kill("SIGINT"));
 
@@ -71,9 +81,8 @@ export function makeLanguageClient(): LanguageClient {
       { scheme: "file", language: "rbs" },
     ],
     synchronize: {
-      fileEvents: vscode.workspace.createFileSystemWatcher(
-        "{**/*.rb,**/*.rbs}"
-      ),
+      fileEvents:
+        vscode.workspace.createFileSystemWatcher("{**/*.rb,**/*.rbs}"),
     },
   };
 
