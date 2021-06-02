@@ -329,9 +329,10 @@ module TypeProf
         @cvars = VarTable.new
         @absolute_path = absolute_path
         @namespace = nil
+        @subclasses = []
       end
 
-      attr_reader :kind, :modules, :consts, :methods, :ivars, :cvars, :absolute_path
+      attr_reader :kind, :modules, :consts, :methods, :ivars, :cvars, :absolute_path, :subclasses
       attr_accessor :name, :klass_obj
 
       def mix_module(kind, mod, type_args, singleton, absolute_path)
@@ -445,6 +446,7 @@ module TypeProf
       idx = @class_defs.size
       if superclass
         @class_defs[idx] = ClassDef.new(:class, show_name, absolute_path)
+        @class_defs[superclass.idx].subclasses << idx unless superclass == :__root__
         klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
@@ -471,6 +473,7 @@ module TypeProf
       superclass = Type::Builtin[:struct]
       name = "AnonymousStruct_generated_#{ @anonymous_struct_gen_id += 1 }"
       @class_defs[idx] = ClassDef.new(:class, [name], ep.ctx.iseq.absolute_path)
+      #@class_defs[superclass.idx].subclasses << idx # needed?
       klass = Type::Class.new(:class, idx, [], superclass, name)
       add_superclass_type_args!(klass, [Type.any])
       @class_defs[idx].klass_obj = klass
@@ -526,6 +529,13 @@ module TypeProf
       end
     end
 
+    def traverse_subclasses(klass, &blk)
+      @class_defs[klass.idx].subclasses.each do |subclass|
+        yield @class_defs[subclass]
+        traverse_subclasses(@class_defs[subclass].klass_obj, &blk)
+      end
+    end
+
     def search_method(klass, singleton, mid, &blk)
       # XXX: support method alias correctly
       klass_orig = klass
@@ -545,7 +555,18 @@ module TypeProf
       end
     end
 
-    def get_method(klass, singleton, mid)
+    def get_method(klass, singleton, include_subclasses, mid)
+      if include_subclasses
+        subclasses_mthds = []
+        traverse_subclasses(klass) do |subclass|
+          subclass.search_method(singleton, mid, {}) do |mthds,|
+            subclasses_mthds.concat(mthds.to_a)
+          end
+        end
+        search_method(klass, singleton, mid) {|mthds,| return subclasses_mthds + mthds.to_a }
+        return subclasses_mthds
+      end
+
       search_method(klass, singleton, mid) {|mthds,| return mthds }
     end
 
@@ -646,7 +667,7 @@ module TypeProf
       if klass == Type.any
         self
       else
-        mdefs = get_method(klass, singleton, orig_mid)
+        mdefs = get_method(klass, singleton, false, orig_mid) # XXX: include_subclass == false??
         if mdefs
           mdefs.each do |mdef|
             @class_defs[klass.idx].add_method(alias_mid, singleton, AliasMethodDef.new(orig_mid, mdef, ep))
@@ -1316,12 +1337,10 @@ module TypeProf
       when :send
         env, recvs, mid, aargs = setup_actual_arguments(:method, operands, ep, env)
         recvs = Type.any if recvs == Type.bot
-        recvs.each_child do |recv|
-          do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
-            nenv, ret_ty, = localize_type(ret_ty, env, ep)
-            nenv = nenv.push(ret_ty)
-            merge_env(ep.next, nenv)
-          end
+        do_send(recvs, mid, aargs, ep, env) do |ret_ty, ep, env|
+          nenv, ret_ty, = localize_type(ret_ty, env, ep)
+          nenv = nenv.push(ret_ty)
+          merge_env(ep.next, nenv)
         end
         return
       when :recv_getlocal_send_branch
@@ -1389,24 +1408,22 @@ module TypeProf
         send_operands, branch_operands = operands
         env, recvs, mid, aargs = setup_actual_arguments(:method, send_operands, ep, env)
         recvs = Type.any if recvs == Type.bot
-        recvs.each_child do |recv|
-          do_send(recv, mid, aargs, ep, env) do |ret_ty, ep, env|
-            env, ret_ty, = localize_type(ret_ty, env, ep)
+        do_send(recvs, mid, aargs, ep, env) do |ret_ty, ep, env|
+          env, ret_ty, = localize_type(ret_ty, env, ep)
 
-            branchtype, target, = branch_operands
-            # branchtype: :if or :unless or :nil
-            ep_then = ep.next
-            ep_else = ep.jump(target)
+          branchtype, target, = branch_operands
+          # branchtype: :if or :unless or :nil
+          ep_then = ep.next
+          ep_else = ep.jump(target)
 
-            case ret_ty
-            when Type::Instance.new(Type::Builtin[:true])
-              merge_env(branchtype == :if ? ep_else : ep_then, env)
-            when Type::Instance.new(Type::Builtin[:false])
-              merge_env(branchtype == :if ? ep_then : ep_else, env)
-            else
-              merge_env(ep_then, env)
-              merge_env(ep_else, env)
-            end
+          case ret_ty
+          when Type::Instance.new(Type::Builtin[:true])
+            merge_env(branchtype == :if ? ep_else : ep_then, env)
+          when Type::Instance.new(Type::Builtin[:false])
+            merge_env(branchtype == :if ? ep_then : ep_else, env)
+          else
+            merge_env(ep_then, env)
+            merge_env(ep_else, env)
           end
         end
         return
@@ -1440,12 +1457,10 @@ module TypeProf
               # XXX: this decomposition is really needed??
               # It calls `Object.new` with union receiver which causes an error, but
               # it may be a fault of builtin Object.new implementation.
-              recv.each_child do |recv|
-                meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
-                  nenv, ret_ty, = localize_type(ret_ty, env, ep)
-                  nenv = nenv.push(ret_ty)
-                  merge_env(ep.next, nenv)
-                end
+              meth.do_send(recv, mid, aargs, ep, env, self) do |ret_ty, ep, env|
+                nenv, ret_ty, = localize_type(ret_ty, env, ep)
+                nenv = nenv.push(ret_ty)
+                merge_env(ep.next, nenv)
               end
             end
           end
@@ -2133,30 +2148,32 @@ module TypeProf
       return env, recv, mid, aargs
     end
 
-    def do_send(recv, mid, aargs, ep, env, &ctn)
-      case recv
-      when Type::Void
-        error(ep, "void's method is called: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
-        ctn[Type.any, ep, env]
-      when Type::Any
-        ctn[Type.any, ep, env]
-      else
-        klass, singleton = recv.method_dispatch_info
-        meths = get_method(klass, singleton, mid) if klass
-        if meths
-          meths.each do |meth|
-            meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
-          end
+    def do_send(recvs, mid, aargs, ep, env, &ctn)
+      recvs.each_child do |recv|
+        case recv
+        when Type::Void
+          error(ep, "void's method is called: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
+          ctn[Type.any, ep, env]
+        when Type::Any
+          ctn[Type.any, ep, env]
         else
-          meths = get_method(klass, singleton, :method_missing) if klass
+          klass, singleton, include_subclasses = recv.method_dispatch_info
+          meths = get_method(klass, singleton, include_subclasses, mid) if klass
           if meths
-            aargs = aargs.for_method_missing(Type::Symbol.new(mid, Type::Instance.new(Type::Builtin[:sym])))
             meths.each do |meth|
-              meth.do_send(recv, :method_missing, aargs, ep, env, self, &ctn)
+              meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
             end
           else
-            error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
-            ctn[Type.any, ep, env]
+            meths = get_method(klass, singleton, include_subclasses, :method_missing) if klass
+            if meths
+              aargs = aargs.for_method_missing(Type::Symbol.new(mid, Type::Instance.new(Type::Builtin[:sym])))
+              meths.each do |meth|
+                meth.do_send(recv, :method_missing, aargs, ep, env, self, &ctn)
+              end
+            else
+              error(ep, "undefined method: #{ globalize_type(recv, env, ep).screen_name(self) }##{ mid }")
+              ctn[Type.any, ep, env]
+            end
           end
         end
       end

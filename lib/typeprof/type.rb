@@ -255,7 +255,22 @@ module TypeProf
             self
           end
         else
-          self
+          class_instances = []
+          non_class_instances = []
+          degenerated = false
+          @types.each do |ty|
+            if ty != Type::Instance.new(Type::Builtin[:nil]) && ty.is_a?(Type::Instance) && ty.klass.kind == :class
+              class_instances << ty
+              degenerated = true if ty.include_subclasses
+            else
+              non_class_instances << ty
+            end
+          end
+          if (Config.options[:union_width_limit] >= 2 && class_instances.size >= Config.options[:union_width_limit]) || (degenerated && class_instances.size >= 2)
+            Union.new(Utils::Set[Instance.new_degenerate(class_instances), *non_class_instances], @elems).normalize
+          else
+            self
+          end
         end
       end
 
@@ -484,7 +499,7 @@ module TypeProf
       end
 
       def method_dispatch_info
-        [self, true]
+        [self, true, false]
       end
 
       def consistent?(other)
@@ -513,15 +528,40 @@ module TypeProf
     end
 
     class Instance < Type
-      def initialize(klass)
+      def initialize(klass, include_subclasses=false)
         raise unless klass
         raise if klass == Type.any
         raise if klass.is_a?(Type::Instance)
         raise if klass.is_a?(Type::Union)
         @klass = klass
+        @include_subclasses = include_subclasses
       end
 
-      attr_reader :klass
+      def self.new_degenerate(instances)
+        klass = instances.first.klass
+        ancestors = []
+        ancestor_idxs = {}
+        while klass != :__root__
+          ancestor_idxs[klass] = ancestors.size
+          ancestors << klass
+          klass = klass.superclass
+        end
+        common_superclass = nil
+        instances[1..].each do |instance|
+          klass = instance.klass
+          while !ancestor_idxs[klass]
+            klass = klass.superclass
+          end
+          common_superclass = klass
+          ancestor_idxs[klass].times do |i|
+            ancestor_idxs.delete(ancestors[i])
+            ancestors[i] = nil
+          end
+        end
+        new(common_superclass, true)
+      end
+
+      attr_reader :klass, :include_subclasses
 
       def inspect
         "I[#{ @klass.inspect }]"
@@ -533,12 +573,12 @@ module TypeProf
         when Type::Builtin[:true] then "true"
         when Type::Builtin[:false] then "false"
         else
-          scratch.get_class_name(@klass)
+          scratch.get_class_name(@klass) + (@include_subclasses ? "" : "")
         end
       end
 
       def method_dispatch_info
-        [@klass, false]
+        [@klass, false, @include_subclasses]
       end
 
       def consistent?(other)

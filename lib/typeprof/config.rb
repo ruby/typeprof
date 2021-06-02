@@ -40,6 +40,7 @@ module TypeProf
         show_source_locations: false,
         stub_execution: true,
         type_depth_limit: 5,
+        union_width_limit: 10,
         stackprof: nil,
       }.merge(opt[:options])
       super(**opt)

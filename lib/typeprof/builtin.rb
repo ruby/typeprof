@@ -73,7 +73,7 @@ module TypeProf
       else
         ty = Type::Instance.new(recv)
       end
-      meths = scratch.get_method(recv, false, :initialize)
+      meths = scratch.get_method(recv, false, false, :initialize)
       meths.flat_map do |meth|
         meth.do_send(ty, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
           ctn[ty, ep, env]
@@ -104,7 +104,7 @@ module TypeProf
         sym = get_sym("respond_to?", aargs.lead_tys[0], ep, scratch)
         if sym
           klass, singleton = recv.method_dispatch_info
-          if scratch.get_method(klass, singleton, sym)
+          if scratch.get_method(klass, singleton, false, sym)
             true_val = Type::Instance.new(Type::Builtin[:true])
             ctn[true_val, ep, env]
           else
@@ -334,7 +334,7 @@ module TypeProf
       else
         aargs.lead_tys.each do |aarg|
           sym = get_sym("module_function", aarg, ep, scratch) or next
-          meths = scratch.get_method(recv, false, sym)
+          meths = scratch.get_method(recv, false, false, sym)
           meths.each do |mdef|
             scratch.add_method(recv, sym, true, mdef)
           end
@@ -350,7 +350,7 @@ module TypeProf
         if recv.is_a?(Type::Class)
           aargs.lead_tys.each do |aarg|
             sym = get_sym("public", aarg, ep, scratch) or next
-            meths = scratch.get_method(recv, false, sym)
+            meths = scratch.get_method(recv, false, false, sym)
             next unless meths
             meths.each do |mdef|
               mdef.pub_meth = true if mdef.respond_to?(:pub_meth=)
@@ -370,7 +370,7 @@ module TypeProf
         if recv.is_a?(Type::Class)
           aargs.lead_tys.each do |aarg|
             sym = get_sym("private", aarg, ep, scratch) or next
-            meths = scratch.get_method(recv, false, sym)
+            meths = scratch.get_method(recv, false, false, sym)
             next unless meths
             meths.each do |mdef|
               mdef.pub_meth = false if mdef.respond_to?(:pub_meth=)

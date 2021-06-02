@@ -64,6 +64,7 @@ module TypeProf
       opt.separator "Advanced options:"
       opt.on("--[no-]stub-execution", "Force to call all unreachable methods with \"untyped\" arguments") {|v| options[:stub_execution] = v }
       opt.on("--type-depth-limit DEPTH", Integer, "Limit the maximum depth of nested types") {|v| options[:type_depth_limit] = v }
+      opt.on("--union-width-limit WIDTH", Integer, "Limit the maximum count of class instances in one union type") {|v| options[:union_width_limit] = v }
       opt.on("--debug", "Display analysis log (for debugging purpose)") { verbose = 2 }
       opt.on("--[no-]stackprof MODE", /\Acpu|wall|object\z/, "Enable stackprof (for debugging purpose)") {|v| options[:stackprof] = v.to_sym }
 
