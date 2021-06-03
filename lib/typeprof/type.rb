@@ -102,34 +102,43 @@ module TypeProf
 
       ty1, ty2 = self, other
 
-      ty1 = container_to_union(ty1)
-      ty2 = container_to_union(ty2)
+      case
+      when ty1.is_a?(Union)
+        ty1_types = ty1.types
+        ty1_elems = ty1.elems
+      when ty1.is_a?(Array) || ty1.is_a?(Hash)
+        ty1_types = Utils::Set[]
+        ty1_elems = {[ty1.class, ty1.base_type] => ty1.elems}
+      else
+        ty1_types = ty1_elems = nil
+      end
 
-      if ty1.is_a?(Union) && ty2.is_a?(Union)
-        ty = ty1.types.sum(ty2.types)
-        all_elems = ty1.elems.dup || {}
-        ty2.elems&.each do |key, elems|
+      case
+      when ty2.is_a?(Union)
+        ty2_types = ty2.types
+        ty2_elems = ty2.elems
+      when ty2.is_a?(Array) || ty2.is_a?(Hash)
+        ty2_types = Utils::Set[]
+        ty2_elems = {[ty2.class, ty2.base_type] => ty2.elems}
+      else
+        ty2_types = ty2_elems = nil
+      end
+
+      if ty1_types && ty2_types
+        ty = ty1_types.sum(ty2_types)
+        all_elems = ty1_elems.dup || {}
+        ty2_elems&.each do |key, elems|
           all_elems[key] = union_elems(all_elems[key], elems)
         end
         all_elems = nil if all_elems.empty?
 
-        Type::Union.new(ty, all_elems).normalize
+        Type::Union.create(ty, all_elems)
+      elsif ty1_types
+        Type::Union.create(ty1_types.add(ty2), ty1_elems)
+      elsif ty2_types
+        Type::Union.create(ty2_types.add(ty1), ty2_elems)
       else
-        ty1, ty2 = ty2, ty1 if ty2.is_a?(Union)
-        if ty1.is_a?(Union)
-          Type::Union.new(ty1.types.add(ty2), ty1.elems).normalize
-        else
-          Type::Union.new(Utils::Set[ty1, ty2], nil).normalize
-        end
-      end
-    end
-
-    private def container_to_union(ty)
-      case ty
-      when Type::Array, Type::Hash
-        Type::Union.new(Utils::Set[], { [ty.class, ty.base_type] => ty.elems })
-      else
-        ty
+        Type::Union.create(Utils::Set[ty1, ty2], nil)
       end
     end
 
@@ -207,6 +216,37 @@ module TypeProf
 
 
     class Union < Type
+      def self.create(tys, elems)
+        if tys.size == 1 && !elems
+          tys.each {|ty| return ty }
+        elsif tys.size == 0
+          if elems && elems.size == 1
+            (container_kind, base_type), nelems = elems.first
+            # container_kind = Type::Array or Type::Hash
+            container_kind.new(nelems, base_type)
+          else
+            new(tys, elems)
+          end
+        else
+          class_instances = []
+          non_class_instances = []
+          degenerated = false
+          tys.each do |ty|
+            if ty != Type::Instance.new(Type::Builtin[:nil]) && ty.is_a?(Type::Instance) && ty.klass.kind == :class
+              class_instances << ty
+              degenerated = true if ty.include_subclasses
+            else
+              non_class_instances << ty
+            end
+          end
+          if (Config.options[:union_width_limit] >= 2 && class_instances.size >= Config.options[:union_width_limit]) || (degenerated && class_instances.size >= 2)
+            create(Utils::Set[Instance.new_degenerate(class_instances), *non_class_instances], elems)
+          else
+            new(tys, elems)
+          end
+        end
+      end
+
       def initialize(tys, elems)
         raise unless tys.is_a?(Utils::Set)
         @types = tys # Set
@@ -242,37 +282,6 @@ module TypeProf
       end
 
       attr_reader :types, :elems
-
-      def normalize
-        if @types.size == 1 && !@elems
-          @types.each {|ty| return ty }
-        elsif @types.size == 0
-          if @elems && @elems.size == 1
-            (container_kind, base_type), elems = @elems.first
-            # container_kind = Type::Array or Type::Hash
-            container_kind.new(elems, base_type)
-          else
-            self
-          end
-        else
-          class_instances = []
-          non_class_instances = []
-          degenerated = false
-          @types.each do |ty|
-            if ty != Type::Instance.new(Type::Builtin[:nil]) && ty.is_a?(Type::Instance) && ty.klass.kind == :class
-              class_instances << ty
-              degenerated = true if ty.include_subclasses
-            else
-              non_class_instances << ty
-            end
-          end
-          if (Config.options[:union_width_limit] >= 2 && class_instances.size >= Config.options[:union_width_limit]) || (degenerated && class_instances.size >= 2)
-            Union.new(Utils::Set[Instance.new_degenerate(class_instances), *non_class_instances], @elems).normalize
-          else
-            self
-          end
-        end
-      end
 
       def each_child(&blk) # local
         @types.each(&blk)
@@ -358,7 +367,7 @@ module TypeProf
         end
         elems = nil if elems.empty?
 
-        Type::Union.new(tys, elems).normalize
+        Type::Union.create(tys, elems)
       end
 
       def localize(env, alloc_site, depth)
@@ -372,7 +381,7 @@ module TypeProf
           env, ty = ty.localize(env, alloc_site, depth - 1)
           tys = tys.add(ty)
         end
-        ty = Union.new(tys, nil).normalize
+        ty = Union.create(tys, nil)
         return env, ty
       end
 
@@ -396,7 +405,7 @@ module TypeProf
         elems = @elems&.to_h do |(container_kind, base_type), elems|
           [[container_kind, base_type], elems.substitute(subst, depth - 1)]
         end
-        ty = Union.new(tys, elems).normalize
+        ty = Union.create(tys, elems)
         unions.each do |ty0|
           ty = ty.union(ty0)
         end

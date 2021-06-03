@@ -694,7 +694,7 @@ module TypeProf
         end
       when :union
         tys = ty[1]
-        Type::Union.new(Utils::Set[*tys.map {|ty2| conv_type(ty2) }], nil).normalize # XXX: Array and Hash support
+        Type::Union.create(Utils::Set[*tys.map {|ty2| conv_type(ty2) }], nil) # XXX: Array and Hash support
       when :var
         Type::Var.new(ty[1])
       when :proc
