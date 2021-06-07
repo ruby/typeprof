@@ -635,9 +635,6 @@ module TypeProf
     end
 
     def self.file_require(feature, scratch)
-      return :done, :false if scratch.loaded_features[feature]
-      scratch.loaded_features[feature] = true
-
       # XXX: dynamic RBS load is really needed??  Another idea:
       #
       # * RBS should be loaded in advance of analysis
@@ -653,7 +650,11 @@ module TypeProf
 
       begin
         filetype, path = $LOAD_PATH.resolve_feature_path(feature)
+
         if filetype == :rb
+          return :done, :false if scratch.loaded_files[path]
+          scratch.loaded_files[path] = true
+
           return :do, path if File.readable?(path)
 
           return :error, "failed to load: #{ path }"
@@ -714,13 +715,14 @@ module TypeProf
           return ctn[Type.any, ep, env]
         end
 
-        if scratch.loaded_features[feature]
+        path = File.join(File.dirname(ep.ctx.iseq.absolute_path), feature) + ".rb" # XXX
+
+        if scratch.loaded_files[path]
           result = Type::Instance.new(Type::Builtin[:false])
           return ctn[result, ep, env]
         end
-        scratch.loaded_features[feature] = true
+        scratch.loaded_files[path] = true
 
-        path = File.join(File.dirname(ep.ctx.iseq.path), feature) + ".rb" # XXX
         return Builtin.file_load(path, ep, env, scratch, &ctn) if File.readable?(path)
 
         scratch.warn(ep, "failed to load: #{ path }")

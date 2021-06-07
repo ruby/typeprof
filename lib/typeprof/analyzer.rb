@@ -277,7 +277,7 @@ module TypeProf
       @pending_execution = {}
       @executed_iseqs = Utils::MutableSet.new
 
-      @loaded_features = {}
+      @loaded_files = {}
 
       @rbs_reader = RBSReader.new
 
@@ -290,7 +290,7 @@ module TypeProf
       @entrypoints << iseq
     end
 
-    attr_reader :return_envs, :loaded_features, :rbs_reader
+    attr_reader :return_envs, :loaded_files, :rbs_reader
 
     def get_env(ep)
       @ep2env[ep]
@@ -923,6 +923,7 @@ module TypeProf
 
       until @entrypoints.empty?
         iseq = @entrypoints.shift
+        @loaded_files[iseq.absolute_path] = true
         ep, env = TypeProf.starting_state(iseq)
         merge_env(ep, env)
         add_callsite!(ep.ctx, prologue_ep, prologue_env) {|ty, ep| }
