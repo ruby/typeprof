@@ -30,10 +30,11 @@ module TypeProf
         ENV.delete("RUBYOPT")
         system("bundle", "install", "--quiet", chdir: testbed_dir) || raise("failed to bundle install in goodcheck")
         ENV["BUNDLE_GEMFILE"] = File.join(testbed_dir, "Gemfile")
+        #open(File.join(testbed_dir, "Gemfile"), "a") {|f| f.puts "gem 'stackprof'" }
         Bundler.setup
 
         name = "testbed/goodcheck/exe/goodcheck"
-        actual = TestRun.run(name, show_errors: false, show_untyped: false, gem_rbs_features: ["pstore", "dbm"])
+        actual = TestRun.run(name, show_errors: false, show_untyped: false, gem_rbs_features: ["pstore", "dbm"])#, stackprof: :cpu)
 
         # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)
 
