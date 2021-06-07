@@ -149,6 +149,7 @@ module TypeProf
             source_locations[key] ||= ctx.iseq.source_location(0)
             (methods[key] ||= []) << @scratch.show_method_signature(ctx)
           when AliasMethodDef
+            next if mdef.def_ep && Config.check_dir_filter(mdef.def_ep.source_location) == :exclude
             alias_name, orig_name = mid, mdef.orig_mid
             if singleton
               alias_name = "self.#{ alias_name }"
