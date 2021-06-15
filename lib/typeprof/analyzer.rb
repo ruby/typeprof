@@ -669,7 +669,8 @@ module TypeProf
       else
         mdefs = get_method(klass, singleton, false, orig_mid) # XXX: include_subclass == false??
         if mdefs
-          mdefs.each do |mdef|
+          # dup is needed for `alias foo foo` (otherwise, "can't add a new key into hash during iteration" error occurs)
+          mdefs.dup.each do |mdef|
             @class_defs[klass.idx].add_method(alias_mid, singleton, AliasMethodDef.new(orig_mid, mdef, ep))
           end
         end
