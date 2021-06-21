@@ -43,7 +43,7 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
-      node_ids = misc[:node_ids_for_each_insn]
+      node_ids = misc[:node_ids]
 
       case @type
       when :method, :block
