@@ -16,5 +16,5 @@ class Foo
   @a: Integer
 
   def self.new: (Integer a) -> Foo
-  def initialize: (Integer a) -> Integer
+  def initialize: (Integer a) -> void
 end

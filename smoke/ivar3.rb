@@ -13,5 +13,5 @@ smoke/ivar3.rb:3: [warning] inconsistent assignment to RBS-declared variable
 class Foo
   @bar: String
 
-  def initialize: -> String
+  def initialize: -> void
 end

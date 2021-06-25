@@ -11,5 +11,5 @@ class AnonymousStruct_generated_1 < Struct[untyped]
 end
 
 class Foo < AnonymousStruct_generated_1
-  def initialize: (untyped foo) -> Foo
+  def initialize: (untyped foo) -> void
 end

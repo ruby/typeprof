@@ -12,5 +12,5 @@ __END__
 # Classes
 class Foo < Struct[untyped]
   attr_accessor foo(): String
-  def initialize: (Integer foo) -> Foo
+  def initialize: (Integer foo) -> void
 end

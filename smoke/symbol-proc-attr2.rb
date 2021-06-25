@@ -11,5 +11,5 @@ __END__
 # Classes
 class Foo
   attr_reader foo: [Integer]
-  def initialize: -> [Integer]
+  def initialize: -> void
 end

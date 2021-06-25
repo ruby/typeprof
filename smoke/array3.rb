@@ -20,7 +20,7 @@ __END__
 class Foo
   @ary: [Integer, String?, :sym]
 
-  def initialize: -> [Integer, String, :sym]
+  def initialize: -> void
   def foo: -> String?
   def bar: -> nil
 end

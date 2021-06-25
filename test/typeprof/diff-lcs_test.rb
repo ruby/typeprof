@@ -31,7 +31,7 @@ module TypeProf
       attr_reader action: String
       attr_reader position: Integer
       attr_reader element: (Array[T] | T)?
-      def initialize: (String action, Integer position, (Array[T] | T)? element) -> nil
+      def initialize: (String action, Integer position, (Array[T] | T)? element) -> void
       def inspect: (*untyped _args) -> String
       def to_a: -> ([String, Integer, (Array[T] | T)?])
       alias to_ary to_a
@@ -56,7 +56,7 @@ module TypeProf
       attr_reader new_position: Integer
       attr_reader old_element: (Array[T] | T)?
       attr_reader new_element: (Array[T] | T)?
-      def initialize: (String action, Integer old_position, (Array[T] | T)? old_element, Integer new_position, (Array[T] | T)? new_element) -> nil
+      def initialize: (String action, Integer old_position, (Array[T] | T)? old_element, Integer new_position, (Array[T] | T)? new_element) -> void
       def to_a: -> ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]])
       alias to_ary to_a
       def self.from_a: ([String, [Integer, (Array[T] | T)?], [Integer, (Array[T] | T)?]] arr) -> (Change | ContextChange)

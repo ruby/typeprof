@@ -75,7 +75,7 @@ module TypeProf
       end
       meths = scratch.get_method(recv, false, false, :initialize)
       meths.flat_map do |meth|
-        meth.do_send(ty, :initialize, aargs, ep, env, scratch) do |ret_ty, ep, env|
+        meth.do_send(ty, :initialize, aargs, ep, env, scratch) do |_ret_ty, ep, env|
           ctn[ty, ep, env]
         end
       end

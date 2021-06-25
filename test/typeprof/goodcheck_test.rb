@@ -44,7 +44,7 @@ module TypeProf
     attr_reader rule: untyped
     attr_reader trigger: untyped
     attr_reader buffer: Buffer
-    def initialize: (rule: untyped, trigger: untyped, buffer: Buffer) -> Buffer
+    def initialize: (rule: untyped, trigger: untyped, buffer: Buffer) -> void
     def scan: ?{ (Issue) -> Array[bot]? } -> ((Array[Issue] | Enumerator[Issue, untyped] | Enumerator[bot, untyped])?)
     def scan_simple: (Regexp regexp) ?{ (Issue) -> Array[bot]? } -> Array[Issue]?
     def scan_var: (untyped pat) ?{ (Issue) -> untyped } -> nil
@@ -64,7 +64,7 @@ module TypeProf
     attr_reader passes: Array[HOLE]
     attr_reader fails: Array[HOLE]
     attr_reader negated: bool
-    def initialize: (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[HOLE], fails: Array[HOLE], negated: bool) -> false
+    def initialize: (patterns: Array[(Pattern::Literal | Pattern::Regexp | Pattern::Token)?], globs: Array[Glob?], passes: Array[HOLE], fails: Array[HOLE], negated: bool) -> void
     def by_pattern!: -> Trigger
     def by_pattern?: -> bool
     def skips_fail_examples!: (?bool flag) -> Trigger

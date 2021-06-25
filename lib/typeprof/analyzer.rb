@@ -2280,7 +2280,7 @@ module TypeProf
 
     def show_method_signature(ctx)
       farg_tys = @method_signatures[ctx]
-      ret_ty = @return_values[ctx] || Type.bot
+      ret_ty = ctx.mid == :initialize ? Type::Void.new : @return_values[ctx] || Type.bot
 
       untyped = farg_tys.include_untyped?(self) || ret_ty.include_untyped?(self)
 

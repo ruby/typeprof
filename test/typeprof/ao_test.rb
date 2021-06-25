@@ -23,7 +23,7 @@ class Object
 end
 
 class Vec
-  def initialize: (Float x, Float y, Float z) -> Float
+  def initialize: (Float x, Float y, Float z) -> void
   attr_accessor x: Float
   attr_accessor y: Float
   attr_accessor z: Float
@@ -36,7 +36,7 @@ class Vec
 end
 
 class Sphere
-  def initialize: (Vec center, Float radius) -> Float
+  def initialize: (Vec center, Float radius) -> void
   attr_reader center: Vec
   attr_reader radius: Float
   def intersect: (Ray ray, Isect isect) -> Vec?
@@ -46,18 +46,18 @@ class Plane
   @p: Vec
   @n: Vec
 
-  def initialize: (Vec p, Vec n) -> Vec
+  def initialize: (Vec p, Vec n) -> void
   def intersect: (Ray ray, Isect isect) -> Vec?
 end
 
 class Ray
-  def initialize: (Vec org, Vec dir) -> Vec
+  def initialize: (Vec org, Vec dir) -> void
   attr_accessor org: Vec
   attr_accessor dir: Vec
 end
 
 class Isect
-  def initialize: -> Vec
+  def initialize: -> void
   attr_accessor t: Float
   attr_accessor hit: bool
   attr_accessor pl: Vec
@@ -68,7 +68,7 @@ class Scene
   @spheres: [Sphere, Sphere, Sphere]
   @plane: Plane
 
-  def initialize: -> Plane
+  def initialize: -> void
   def ambient_occlusion: (Isect isect) -> Vec
   def render: (Integer w, Integer h, Integer nsubsamples) -> Integer
 end

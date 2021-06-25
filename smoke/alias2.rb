@@ -17,5 +17,5 @@ class Foo
   @c: :z
 
   alias self.[] self.new
-  def initialize: (:x a, :y b, :z c) -> [:x, :y, :z]
+  def initialize: (:x a, :y b, :z c) -> void
 end

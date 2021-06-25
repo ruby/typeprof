@@ -23,7 +23,7 @@ Foo.new.set
 __END__
 # Classes
 class Foo
-  def initialize: -> Hash[bot, bot]
+  def initialize: -> void
   def set: -> :sym
   attr_reader array: Array[:sym | Integer | String]
   attr_reader hash: {a: Integer, b: String, c: :sym}
