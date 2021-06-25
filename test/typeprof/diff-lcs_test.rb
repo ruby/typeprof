@@ -50,8 +50,6 @@ module TypeProf
         assert(actual =~ /^    class ContextChange.*\n(?:(?:      .*?\n|\n)*)^    end\n/)
         assert_equal(<<-END, $&)
     class ContextChange < Change
-      @action: String
-
       attr_reader old_position: Integer
       attr_reader new_position: Integer
       attr_reader old_element: (Array[T] | T)?

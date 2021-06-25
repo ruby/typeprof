@@ -777,24 +777,32 @@ module TypeProf
       end
     end
 
-    def get_ivar(recv)
+    def identify_class_for_ivar(recv, var)
+      klass, singleton = recv.method_dispatch_info
+      return nil unless klass
+      search_method(klass, singleton, var) do |mthds, klass0, singleton0|
+        if mthds.any? {|mthd| mthd.is_a?(AttrMethodDef) }
+          return klass0, singleton
+        end
+      end
+      return klass, singleton
+    end
+
+    def get_ivar(recv, var)
       recv = recv.base_type while recv.respond_to?(:base_type)
-      case recv
-      when Type::Class
-        [@class_defs[recv.idx], true]
-      when Type::Instance
-        [@class_defs[recv.klass.idx], false]
-      when Type::Any
-        return
+
+      klass, singleton = identify_class_for_ivar(recv, var.to_s[1..].to_sym) # search attr_reader
+
+      if klass
+        return @class_defs[klass.idx], singleton
       else
-        warn "???"
-        return
+        return nil
       end
     end
 
     def add_ivar_read!(recv, var, ep, &ctn)
       recv.each_child do |recv|
-        class_def, singleton = get_ivar(recv)
+        class_def, singleton = get_ivar(recv, var)
         next unless class_def
         class_def.ivars.add_read!([singleton, var], ep, &ctn)
       end
@@ -802,7 +810,7 @@ module TypeProf
 
     def add_ivar_write!(recv, var, ty, ep)
       recv.each_child do |recv|
-        class_def, singleton = get_ivar(recv)
+        class_def, singleton = get_ivar(recv, var)
         next unless class_def
         class_def.ivars.add_write!([singleton, var], ty, ep, self)
       end
