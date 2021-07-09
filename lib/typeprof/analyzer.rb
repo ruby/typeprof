@@ -284,6 +284,8 @@ module TypeProf
       @terminated = false
 
       @anonymous_struct_gen_id = 0
+
+      @types_being_shown = []
     end
 
     def add_entrypoint(iseq)
@@ -2278,12 +2280,19 @@ module TypeProf
         end
       end
 
-      farg_tys = farg_tys ? farg_tys.screen_name(nil, self) : "(unknown)"
-      ret_ty = ret_ty.screen_name(self)
-      ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
+      return Type.any.screen_name(self) if @types_being_shown.include?(farg_tys) || @types_being_shown.include?(ret_ty)
 
-      farg_tys = farg_tys + " " if farg_tys != ""
-      "^#{ farg_tys }-> #{ ret_ty }"
+      begin
+        @types_being_shown << farg_tys << ret_ty
+        farg_tys = farg_tys ? farg_tys.screen_name(nil, self) : "(unknown)"
+        ret_ty = ret_ty.screen_name(self)
+        ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
+
+        farg_tys = farg_tys + " " if farg_tys != ""
+        "^#{ farg_tys }-> #{ ret_ty }"
+      ensure
+        @types_being_shown.pop(2)
+      end
     end
 
     def show_method_signature(ctx)
