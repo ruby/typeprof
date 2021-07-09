@@ -2270,7 +2270,11 @@ module TypeProf
           next unless @block_to_ctx[blk.block_body] # this occurs when screen_name is called before type-profiling finished (e.g., error message)
           @block_to_ctx[blk.block_body].each do |blk_ctx|
             if farg_tys
-              farg_tys = farg_tys.merge_as_block_arguments(@method_signatures[blk_ctx])
+              if @method_signatures[blk_ctx]
+                farg_tys = farg_tys.merge_as_block_arguments(@method_signatures[blk_ctx])
+              else
+                # this occurs when screen_name is called before type-profiling finished (e.g., error message)
+              end
             else
               farg_tys = @method_signatures[blk_ctx]
             end
