@@ -10,7 +10,7 @@
             "stopOnEntry": false,
             "sourceMaps": true,
             "outFiles": [ "${workspaceRoot}/out/src/**/*.js" ],
-            "preLaunchTask": "npm"
+            "preLaunchTask": "npm: vscode:prepublish"
         }
     ]
 }

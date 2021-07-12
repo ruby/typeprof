@@ -321,6 +321,9 @@ module TypeProf
           end
 
           "*[#{ squash.screen_name(scratch) }]"
+        rescue SystemStackError
+          p squash
+          exit!
         end
 
         def pretty_print(q)

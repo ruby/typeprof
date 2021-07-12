@@ -28,6 +28,28 @@ module TypeProf
 
         return new(iseq.to_a)
       end
+
+      private def build_ast_node_id_table(node, tbl = {})
+        tbl[node.node_id] = [node.first_lineno, node.first_column, node.last_lineno, node.last_column]
+        node.children.each do |child|
+          build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
+        end
+      end
+    end
+
+    def find_definitions(row, col)
+      @location_db.each do |(fl, fc, ll, lc), called_iseqs|
+        next if row < fl
+        next if row == fl && col < fc
+        next if row > ll
+        next if row == ll && col > lc
+        return called_iseqs.map {|iseq| [iseq.path, iseq.whole_code_location] }
+      end
+      return nil
+    end
+
+    def add_called_iseq(pc, callee_iseq)
+      #@location_db[@code_locations[pc]] << callee_iseq if callee_iseq && @code_locations[pc]
     end
 
     Insn = Struct.new(:insn, :operands, :lineno)
@@ -37,10 +59,11 @@ module TypeProf
       end
     end
 
-    ISEQ_FRESH_ID = [0]
+    FRESH_ID = [0]
 
     def initialize(iseq)
-      @id = (ISEQ_FRESH_ID[0] += 1)
+      @id = FRESH_ID[0]
+      FRESH_ID[0] += 1
 
       _magic, _major_version, _minor_version, _format_type, misc,
         @name, @path, @absolute_path, @start_lineno, @type,
