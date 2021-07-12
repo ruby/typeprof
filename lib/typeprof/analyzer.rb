@@ -713,7 +713,12 @@ module TypeProf
     end
 
     def add_callsite!(callee_ctx, caller_ep, caller_env, &ctn)
-      @executed_iseqs << callee_ctx.iseq if callee_ctx.is_a?(Context)
+      if callee_ctx.is_a?(Context)
+        @executed_iseqs << callee_ctx.iseq
+        if caller_ep.ctx.is_a?(Context)
+          caller_ep.ctx.iseq&.add_called_iseq(caller_ep.pc, callee_ctx.iseq)
+        end
+      end
 
       @callsites[callee_ctx] ||= {}
       @callsites[callee_ctx][caller_ep] = ctn

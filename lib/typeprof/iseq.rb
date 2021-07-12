@@ -12,7 +12,7 @@ module TypeProf
       opt[:specialized_instruction] = false
       opt[:operands_unification] = false
       opt[:coverage_enabled] = false
-      new(build_ast_node_id_table(RubyVM::AbstractSyntaxTree.parse_file(file)), RubyVM::InstructionSequence.compile_file(file, **opt).to_a)
+      new(RubyVM::AbstractSyntaxTree.parse_file(file), RubyVM::InstructionSequence.compile_file(file, **opt).to_a)
     end
 
     def self.compile_str(str, path = nil)
@@ -22,12 +22,12 @@ module TypeProf
       opt[:specialized_instruction] = false
       opt[:operands_unification] = false
       opt[:coverage_enabled] = false
-      new(build_ast_node_id_table(RubyVM::AbstractSyntaxTree.parse(str)), RubyVM::InstructionSequence.compile(str, path, **opt).to_a)
+      new(RubyVM::AbstractSyntaxTree.parse(str), RubyVM::InstructionSequence.compile(str, path, **opt).to_a)
     end
 
     FRESH_ID = [0]
 
-    def self.build_ast_node_id_table(node, tbl = {})
+    private def build_ast_node_id_table(node, tbl = {})
       tbl[node.node_id] = [node.first_lineno, node.first_column, node.last_lineno, node.last_column]
       node.children.each do |child|
         build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
@@ -35,7 +35,22 @@ module TypeProf
       tbl
     end
 
-    def initialize(node_table, iseq)
+    def find_definitions(row, col)
+      @location_db.each do |(fl, fc, ll, lc), called_iseqs|
+        next if row < fl
+        next if row == fl && col < fc
+        next if row > ll
+        next if row == ll && col > lc
+        return called_iseqs.map {|iseq| [iseq.path, iseq.whole_code_location] }
+      end
+      return nil
+    end
+
+    def add_called_iseq(pc, callee_iseq)
+      @location_db[@code_locations[pc]] << callee_iseq if callee_iseq && @code_locations[pc]
+    end
+
+    def initialize(node, iseq, node_table = build_ast_node_id_table(node), location_db = {})
       @id = FRESH_ID[0]
       FRESH_ID[0] += 1
 
@@ -43,7 +58,12 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
+      @node = node
+
+      @location_db = location_db
+
       node_ids = misc[:node_ids]
+      @whole_code_location = misc[:code_location]
 
       case @type
       when :method, :block
@@ -82,7 +102,7 @@ module TypeProf
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        iseq = iseq ? ISeq.new(node_table, iseq) : nil
+        iseq = iseq ? ISeq.new(node, iseq, node_table, location_db) : nil
         target = labels[special_labels[cont] ? :"#{ cont }_special" : cont]
         entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
@@ -135,7 +155,7 @@ module TypeProf
           operands = (INSN_TABLE[insn] || []).zip(operands).map do |type, operand|
             case type
             when "ISEQ"
-              operand && ISeq.new(node_table, operand)
+              operand && ISeq.new(@node, operand, node_table, @location_db)
             when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
               operand
             when "OFFSET"
@@ -150,7 +170,9 @@ module TypeProf
 
           @insns << [insn, operands]
           @linenos << lineno
-          @code_locations << code_locations.shift
+          code_loc = code_locations.shift
+          @location_db[code_loc] = Utils::MutableSet.new if code_loc
+          @code_locations << code_loc
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -188,7 +210,7 @@ module TypeProf
     end
 
     attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns, :linenos
-    attr_reader :id, :code_locations
+    attr_reader :id, :code_locations, :whole_code_location
 
     def pretty_print(q)
       q.text "ISeq["
