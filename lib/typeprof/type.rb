@@ -896,6 +896,7 @@ module TypeProf
       end
       if Config.options[:show_parameter_names]
         farg_names = farg_names.map {|name| name == :type ? :type_ : name } # XXX: workaround of RBS parser bug
+        farg_names = farg_names.map {|name| name.is_a?(Integer) ? "_#{ name }" : name }
         fargs = fargs.zip(farg_names).map {|farg, name| name ? "#{ farg } #{ name }" : farg }
       end
       fargs = fargs.empty? ? "" : "(#{ fargs.join(", ") })"
