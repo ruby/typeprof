@@ -100,9 +100,10 @@ module TypeProf
       Import.import_rbs_code(scratch, name, content)
     end
 
+    lsp_iseq = nil
     Config.rb_files.each do |rb|
       if rb.is_a?(Array) # [String name, String content]
-        iseq = ISeq.compile_str(*rb.reverse)
+        lsp_iseq = iseq = ISeq.compile_str(*rb.reverse)
       else
         iseq = rb
       end
@@ -111,7 +112,7 @@ module TypeProf
 
     result = scratch.type_profile
 
-    return scratch.report_lsp if Config.options[:lsp]
+    return lsp_iseq, scratch.report_lsp if Config.options[:lsp]
 
     if Config.output.respond_to?(:write)
       scratch.report(result, Config.output)

@@ -39,18 +39,20 @@ module TypeProf
       end
 
       attr_reader :text, :version
+      attr_accessor :iseq
 
       def lines
         @text.lines
       end
 
       def apply_changes(changes, version)
+        @iseq = nil
         text = @text.empty? ? [] : @text.lines
         changes.each do |change|
           change => {
             range: {
-                start: { line: start_row, character: start_col},
-                end:   { line: end_row  , character: end_col  }
+                start: { line: start_row, character: start_col },
+                end:   { line: end_row  , character: end_col   }
             },
             text: change_text,
           }
@@ -79,6 +81,8 @@ module TypeProf
         @text = text.join
         @version = version
 
+        p changes
+        p @text
         @server.on_text_changed(@uri, version)
       end
     end
@@ -196,13 +200,28 @@ module TypeProf
     class Message::TextDocument::Definition < Message
       METHOD = "textDocument/definition"
       def run
-        respond(
-          uri: @params[:textDocument][:uri],
-          range: {
-            start: { line: 5, character: 4 },
-            end: { line: 7, character: 7 },
-          },
-        )
+        @params => {
+          textDocument: { uri:, },
+          position: { line: row, character: col },
+        }
+
+        iseq = @server.open_texts[uri].iseq
+        code_locations = iseq&.find_definitions(row + 1, col)
+        if code_locations
+          respond(
+            code_locations.map do |path, (fl, fc, ll, lc)|
+              {
+                uri: "file://" + path,
+                range: {
+                  start: { line: fl - 1, character: fc },
+                  end: { line: ll - 1, character: lc },
+                }
+              }
+            end
+          )
+        else
+          respond(nil)
+        end
       end
     end
 
@@ -344,7 +363,9 @@ module TypeProf
             }
           )
 
-          res = TypeProf.analyze(config)
+          iseq, res = TypeProf.analyze(config)
+
+          @open_texts[uri].iseq = iseq
 
           sigs = {}
           res[:sigs].each do |file, lineno, sig|

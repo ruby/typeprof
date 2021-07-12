@@ -339,9 +339,6 @@ module TypeProf
             types.join (" | ")
           end
         end
-      rescue SystemStackError
-        p self
-        raise
       end
 
       def globalize(env, visited, depth)
