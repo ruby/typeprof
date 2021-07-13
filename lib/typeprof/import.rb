@@ -630,7 +630,13 @@ module TypeProf
       kw_tys = []
       req_kw_tys.each {|key, ty| kw_tys << [true, key, conv_type(ty)] }
       opt_kw_tys.each {|key, ty| kw_tys << [false, key, conv_type(ty)] }
-      kw_rest_ty = conv_type(rest_kw_ty) if rest_kw_ty
+      if rest_kw_ty
+        ty = conv_type(rest_kw_ty)
+        kw_rest_ty = Type.gen_hash do |h|
+          k_ty = Type::Instance.new(Type::Builtin[:sym])
+          h[k_ty] = ty
+        end
+      end
 
       blks = conv_block(blk)
 
