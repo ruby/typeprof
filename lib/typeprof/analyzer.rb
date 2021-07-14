@@ -1046,7 +1046,6 @@ module TypeProf
         [ep&.detailed_source_location, msg]
       end
 
-      pp errs
       res = RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show_lsp
       {
         sigs: res,

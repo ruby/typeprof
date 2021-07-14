@@ -3,7 +3,7 @@ require "json"
 require "uri"
 
 module TypeProf
-  def self.start_lsp_server(_config)
+  def self.start_lsp_server(config)
     Socket.tcp_server_sockets("localhost", 0) do |servs|
       serv = servs[0].local_address
       $stdout << JSON.generate({
@@ -13,12 +13,11 @@ module TypeProf
       })
       $stdout.flush
 
-      # tmp
-      $stdout = File.open("/tmp/typeprof-lsp-server-log", "w")
-      $stdout.sync = true
+      $stdout = $stderr
+
       Socket.accept_loop(servs) do |sock|
         begin
-          TypeProf::LSP::Server.new(sock).run
+          TypeProf::LSP::Server.new(config, sock).run
         ensure
           sock.close
         end
@@ -34,8 +33,6 @@ module TypeProf
         @uri = uri
         @text = text
         @version = version
-
-        @server.on_text_changed(uri, version)
       end
 
       attr_reader :text, :version
@@ -49,13 +46,17 @@ module TypeProf
         @iseq = nil
         text = @text.empty? ? [] : @text.lines
         changes.each do |change|
-          change => {
+          case change
+          in {
             range: {
                 start: { line: start_row, character: start_col },
                 end:   { line: end_row  , character: end_col   }
             },
             text: change_text,
           }
+          else
+            raise
+          end
           text << "" if start_row == text.size
           text << "" if end_row == text.size
           if start_row == end_row
@@ -81,8 +82,6 @@ module TypeProf
         @text = text.join
         @version = version
 
-        p changes
-        p @text
         @server.on_text_changed(@uri, version)
       end
     end
@@ -165,8 +164,8 @@ module TypeProf
     class Message::Workspace::DidChangeWatchedFiles < Message
       METHOD = "workspace/didChangeWatchedFiles"
       def run
-        p "workspace/didChangeWatchedFiles"
-        pp @params
+        #p "workspace/didChangeWatchedFiles"
+        #pp @params
       end
     end
 
@@ -176,15 +175,24 @@ module TypeProf
     class Message::TextDocument::DidOpen < Message
       METHOD = "textDocument/didOpen"
       def run
-        @params => { textDocument: { uri:, version:, text: } }
+        case @params
+        in { textDocument: { uri:, version:, text: } }
+        else
+          raise
+        end
         @server.open_texts[uri] = Text.new(@server, uri, text, version)
+        @server.on_text_changed(uri, version)
       end
     end
 
     class Message::TextDocument::DidChange < Message
       METHOD = "textDocument/didChange"
       def run
-        @params => { textDocument: { uri:, version: }, contentChanges: changes }
+        case @params
+        in { textDocument: { uri:, version: }, contentChanges: changes }
+        else
+          raise
+        end
         @server.open_texts[uri].apply_changes(changes, version)
       end
     end
@@ -192,7 +200,11 @@ module TypeProf
     class Message::TextDocument::DidClose < Message
       METHOD = "textDocument/didClose"
       def run
-        @params => { textDocument: { uri: } }
+        case @params
+          in { textDocument: { uri: } }
+        else
+          raise
+        end
         @server.open_texts.delete(uri)
       end
     end
@@ -200,10 +212,14 @@ module TypeProf
     class Message::TextDocument::Definition < Message
       METHOD = "textDocument/definition"
       def run
-        @params => {
+        case @params
+        in {
           textDocument: { uri:, },
           position: { line: row, character: col },
         }
+        else
+          raise
+        end
 
         iseq = @server.open_texts[uri].iseq
         code_locations = iseq&.find_definitions(row + 1, col)
@@ -305,7 +321,8 @@ module TypeProf
 
       include Helpers
 
-      def initialize(read_io, write_io = read_io)
+      def initialize(config, read_io, write_io = read_io)
+        @config = config
         @reader = Reader.new(read_io)
         @writer = Writer.new(write_io)
         @request_id = 0
@@ -344,26 +361,17 @@ module TypeProf
       end
 
       def on_text_changed(uri, version)
-        # XXX hard-coded for experiment
-        if uri.end_with?("/sandbox/test.rb") && @open_texts[uri]
+        if @open_texts[uri]
           rb = @open_texts[uri]
-          config = TypeProf::ConfigData.new(
-            rb_files: [[URI(uri).path, rb.text]],
-            rbs_files: [],
-            output: "/tmp/tmp.rbs",
-            #gem_rbs_features: gem_rbs_features,
-            #gem_repo_dirs: gem_repo_dirs,
-            verbose: false,
-            #dir_filter: dir_filter,
-            max_sec: 1,
-            #max_iter: max_iter,
-            options: {
-              show_errors: true,
-              lsp: true,
-            }
-          )
+          @config.rb_files = [[URI(uri).path, rb.text]]
+          @config.rbs_files = [] # XXX
+          @config.verbose = 0
+          @config.max_sec = 1
+          @config.options[:show_errors] = true
+          @config.options[:show_indicator] = false
+          @config.options[:lsp] = true
 
-          iseq, res = TypeProf.analyze(config)
+          iseq, res = TypeProf.analyze(@config)
 
           @open_texts[uri].iseq = iseq
 

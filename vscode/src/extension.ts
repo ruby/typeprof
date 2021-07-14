@@ -17,7 +17,7 @@ export function makeLanguageClient(): LanguageClient {
     const workspace = vscode.workspace.workspaceFolders;
     const cwd = workspace && workspace[0] ? workspace[0].uri.fsPath : undefined;
     const opts = cwd ? { cwd } : {};
-    client.info(`path: ${opts["cwd"]}`);
+    client.info(`Workspace path: ${opts["cwd"]}`);
 
     let cmd: string;
     let cmd_args: string[];
@@ -57,7 +57,7 @@ export function makeLanguageClient(): LanguageClient {
         while (true) {
           const i = err.indexOf("\n");
           if (i < 0) break;
-          client.info("bundle stderr: " + err.slice(0, i));
+          client.info(err.slice(0, i));
           err = err.slice(i + 1);
         }
       });
