@@ -99,7 +99,7 @@ module TypeProf
       if rb.is_a?(Array) # [String name, String content]
         iseq = ISeq.compile_str(*rb.reverse)
       else
-        iseq = ISeq.compile(rb)
+        iseq = rb
       end
       scratch.add_entrypoint(iseq)
     end

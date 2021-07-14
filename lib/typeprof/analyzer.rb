@@ -933,7 +933,15 @@ module TypeProf
       prologue_env = Env.new(StaticEnv.new(Type.bot, Type.nil, false, true), [], [], Utils::HashWrapper.new({}))
 
       until @entrypoints.empty?
-        iseq = @entrypoints.shift
+        entrypoint = @entrypoints.shift
+        if entrypoint.is_a?(String)
+          file = entrypoint
+          next if @loaded_files[File.expand_path(file)]
+          iseq = ISeq.compile(file)
+        else
+          iseq = entrypoint
+        end
+
         @loaded_files[iseq.absolute_path] = true
         ep, env = TypeProf.starting_state(iseq)
         merge_env(ep, env)

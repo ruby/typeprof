@@ -31,7 +31,6 @@ module TypeProf
 class Object
   private
   def foo: (Integer n) -> String
-         | (Integer n) -> String
 end
       END
     end
