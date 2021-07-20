@@ -3,54 +3,65 @@ module TypeProf
     # https://github.com/ruby/ruby/pull/4468
     CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
 
-    include Utils::StructuralEquality
+    FileInfo = Struct.new(
+      :node_id2code_range,
+      :definition_table,
+    )
 
-    def self.compile(file)
-      opt = RubyVM::InstructionSequence.compile_option
-      opt[:inline_const_cache] = false
-      opt[:peephole_optimization] = false
-      opt[:specialized_instruction] = false
-      opt[:operands_unification] = false
-      opt[:coverage_enabled] = false
-      new(RubyVM::AbstractSyntaxTree.parse_file(file), RubyVM::InstructionSequence.compile_file(file, **opt).to_a)
+    class << self
+      def compile(file)
+        compile_core(nil, file)
+      end
+
+      def compile_str(str, path = nil)
+        compile_core(str, path)
+      end
+
+      private def compile_core(str, path)
+        opt = RubyVM::InstructionSequence.compile_option
+        opt[:inline_const_cache] = false
+        opt[:peephole_optimization] = false
+        opt[:specialized_instruction] = false
+        opt[:operands_unification] = false
+        opt[:coverage_enabled] = false
+
+        if str
+          node = RubyVM::AbstractSyntaxTree.parse(str)
+          iseq = RubyVM::InstructionSequence.compile(str, path, **opt)
+        else
+          node = RubyVM::AbstractSyntaxTree.parse_file(path)
+          iseq = RubyVM::InstructionSequence.compile_file(path, **opt)
+        end
+
+        node_id2code_range = {}
+        build_ast_node_id_table(node, node_id2code_range)
+
+        file_info = FileInfo.new(node_id2code_range, CodeRangeTable.new)
+
+        return new(iseq.to_a, file_info), file_info.definition_table
+      end
+
+      private def build_ast_node_id_table(node, tbl = {})
+        tbl[node.node_id] = CodeRange.new(
+          CodeLocation.new(node.first_lineno, node.first_column),
+          CodeLocation.new(node.last_lineno, node.last_column),
+        )
+        node.children.each do |child|
+          build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
+        end
+        tbl
+      end
     end
 
-    def self.compile_str(str, path = nil)
-      opt = RubyVM::InstructionSequence.compile_option
-      opt[:inline_const_cache] = false
-      opt[:peephole_optimization] = false
-      opt[:specialized_instruction] = false
-      opt[:operands_unification] = false
-      opt[:coverage_enabled] = false
-      new(RubyVM::AbstractSyntaxTree.parse(str), RubyVM::InstructionSequence.compile(str, path, **opt).to_a)
+    def add_called_iseq(pc, callee_iseq)
+      if callee_iseq && @definitions[pc]
+        @definitions[pc] << [callee_iseq.path, callee_iseq.iseq_code_range]
+      end
     end
 
     FRESH_ID = [0]
 
-    private def build_ast_node_id_table(node, tbl = {})
-      tbl[node.node_id] = [node.first_lineno, node.first_column, node.last_lineno, node.last_column]
-      node.children.each do |child|
-        build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
-      end
-      tbl
-    end
-
-    def find_definitions(row, col)
-      @location_db.each do |(fl, fc, ll, lc), called_iseqs|
-        next if row < fl
-        next if row == fl && col < fc
-        next if row > ll
-        next if row == ll && col > lc
-        return called_iseqs.map {|iseq| [iseq.path, iseq.whole_code_location] }
-      end
-      return nil
-    end
-
-    def add_called_iseq(pc, callee_iseq)
-      @location_db[@code_locations[pc]] << callee_iseq if callee_iseq && @code_locations[pc]
-    end
-
-    def initialize(node, iseq, node_table = build_ast_node_id_table(node), location_db = {})
+    def initialize(iseq, file_info)
       @id = FRESH_ID[0]
       FRESH_ID[0] += 1
 
@@ -58,12 +69,11 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
-      @node = node
-
-      @location_db = location_db
-
       node_ids = misc[:node_ids]
-      @whole_code_location = misc[:code_location]
+      raw_code_ranges = node_ids.map {|node_id| file_info.node_id2code_range[node_id] }
+
+      fl, fc, ll, lc = misc[:code_location]
+      @iseq_code_range = CodeRange.new(CodeLocation.new(fl, fc), CodeLocation.new(ll, lc))
 
       case @type
       when :method, :block
@@ -80,7 +90,7 @@ module TypeProf
           i = insns.index(label) + 1
         end
         insns[i, 0] = [[:_iseq_body_start]]
-        node_ids.unshift(-1)
+        raw_code_ranges.unshift(nil)
       end
 
       # rescue/ensure clauses need to have a dedicated return addresses
@@ -93,16 +103,17 @@ module TypeProf
 
       @insns = []
       @linenos = []
-      @code_locations = []
+      @code_ranges = []
+      @definitions = []
 
-      labels = setup_iseq(insns, special_labels, node_ids, node_table)
+      labels = setup_iseq(insns, special_labels, raw_code_ranges, file_info)
 
       # checkmatch->branch
       # send->branch
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        iseq = iseq ? ISeq.new(node, iseq, node_table, location_db) : nil
+        iseq = iseq ? ISeq.new(iseq, file_info) : nil
         target = labels[special_labels[cont] ? :"#{ cont }_special" : cont]
         entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
@@ -120,17 +131,17 @@ module TypeProf
       @id <=> other.id
     end
 
-    def setup_iseq(insns, special_labels, node_ids, node_table)
+    def setup_iseq(insns, special_labels, raw_code_ranges, file_info)
       i = 0
       labels = {}
       ninsns = []
-      code_locations = []
+      code_ranges = []
       insns.each do |e|
         if e.is_a?(Symbol) && e.to_s.start_with?("label")
           if special_labels[e]
             labels[:"#{ e }_special"] = i
             ninsns << [:nop]
-            code_locations << nil
+            code_ranges << nil
             i += 1
           end
           labels[e] = i
@@ -138,7 +149,7 @@ module TypeProf
           ninsns << e
           if e.is_a?(Array)
             i += 1
-            code_locations << node_table[node_ids.shift]
+            code_ranges << raw_code_ranges.shift
           end
         end
       end
@@ -155,7 +166,7 @@ module TypeProf
           operands = (INSN_TABLE[insn] || []).zip(operands).map do |type, operand|
             case type
             when "ISEQ"
-              operand && ISeq.new(@node, operand, node_table, @location_db)
+              operand && ISeq.new(operand, file_info)
             when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
               operand
             when "OFFSET"
@@ -167,12 +178,17 @@ module TypeProf
               raise "unknown operand type: #{ type }"
             end
           end
+          code_range = code_ranges.shift
+
+          if code_range && insn == :send
+            definition = Utils::MutableSet.new
+            file_info.definition_table[code_range] = definition
+          end
 
           @insns << [insn, operands]
           @linenos << lineno
-          code_loc = code_locations.shift
-          @location_db[code_loc] = Utils::MutableSet.new if code_loc
-          @code_locations << code_loc
+          @code_ranges << code_range
+          @definitions << definition
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -202,15 +218,15 @@ module TypeProf
     end
 
     def detailed_source_location(pc)
-      if @code_locations[pc]
-        [@path] + @code_locations[pc]
+      if @code_ranges[pc]
+        [@path, @code_ranges[pc]]
       else
         nil
       end
     end
 
     attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns, :linenos
-    attr_reader :id, :code_locations, :whole_code_location
+    attr_reader :id, :code_ranges, :iseq_code_range
 
     def pretty_print(q)
       q.text "ISeq["
