@@ -53,68 +53,43 @@ module TypeProf
       end
     end
 
-    def add_called_iseq(pc, callee_iseq)
-      if callee_iseq && @definitions[pc]
-        @definitions[pc] << [callee_iseq.path, callee_iseq.iseq_code_range]
+    Insn = Struct.new(:insn, :operands, :lineno, :code_range, :definitions)
+    class Insn
+      def check?(insn_cmp, operands_cmp = nil)
+        return insn == insn_cmp && (!operands_cmp || operands == operands_cmp)
       end
     end
 
-    FRESH_ID = [0]
+    ISEQ_FRESH_ID = [0]
 
     def initialize(iseq, file_info)
-      @id = FRESH_ID[0]
-      FRESH_ID[0] += 1
+      @id = (ISEQ_FRESH_ID[0] += 1)
 
       _magic, _major_version, _minor_version, _format_type, misc,
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
-      node_ids = misc[:node_ids]
-      raw_code_ranges = node_ids.map {|node_id| file_info.node_id2code_range[node_id] }
+      raw_code_ranges = misc[:node_ids].map {|node_id| file_info.node_id2code_range[node_id] }
 
       fl, fc, ll, lc = misc[:code_location]
       @iseq_code_range = CodeRange.new(CodeLocation.new(fl, fc), CodeLocation.new(ll, lc))
 
-      case @type
-      when :method, :block
-        if @fargs_format[:opt]
-          label = @fargs_format[:opt].last
-          i = insns.index(label) + 1
-        else
-          i = insns.find_index {|insn| insn.is_a?(Array) }
-        end
-        # skip keyword initialization
-        while insns[i][0] == :checkkeyword
-          raise if insns[i + 1][0] != :branchif
-          label = insns[i + 1][1]
-          i = insns.index(label) + 1
-        end
-        insns[i, 0] = [[:_iseq_body_start]]
-        raw_code_ranges.unshift(nil)
-      end
+      convert_insns(insns, raw_code_ranges)
 
-      # rescue/ensure clauses need to have a dedicated return addresses
-      # because they requires to be virtually called.
-      # So, this preprocess adds "nop" to make a new insn for their return addresses
-      special_labels = {}
-      catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        special_labels[cont] = true if type == :rescue || type == :ensure
-      end
+      add_body_start_marker(insns)
 
-      @insns = []
-      @linenos = []
-      @code_ranges = []
-      @definitions = []
+      add_exception_cont_marker(insns, catch_table)
 
-      labels = setup_iseq(insns, special_labels, raw_code_ranges, file_info)
+      labels = create_label_table(insns)
 
-      # checkmatch->branch
-      # send->branch
+      @insns = setup_insns(insns, labels, file_info)
+
+      @fargs_format[:opt] = @fargs_format[:opt].map {|l| labels[l] } if @fargs_format[:opt]
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
         iseq = iseq ? ISeq.new(iseq, file_info) : nil
-        target = labels[special_labels[cont] ? :"#{ cont }_special" : cont]
+        target = labels[cont]
         entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
           @catch_table[i] ||= []
@@ -122,111 +97,32 @@ module TypeProf
         end
       end
 
-      merge_branches
+      rename_insn_types
 
-      analyze_stack
-    end
-
-    def <=>(other)
-      @id <=> other.id
-    end
-
-    def setup_iseq(insns, special_labels, raw_code_ranges, file_info)
-      i = 0
-      labels = {}
-      ninsns = []
-      code_ranges = []
-      insns.each do |e|
-        if e.is_a?(Symbol) && e.to_s.start_with?("label")
-          if special_labels[e]
-            labels[:"#{ e }_special"] = i
-            ninsns << [:nop]
-            code_ranges << nil
-            i += 1
-          end
-          labels[e] = i
-        else
-          ninsns << e
-          if e.is_a?(Array)
-            i += 1
-            code_ranges << raw_code_ranges.shift
-          end
-        end
-      end
-
-      lineno = 0
-      ninsns.each do |e|
-        case e
-        when Integer # lineno
-          lineno = e
-        when Symbol # label or trace
-          nil
-        when Array
-          insn, *operands = e
-          operands = (INSN_TABLE[insn] || []).zip(operands).map do |type, operand|
-            case type
-            when "ISEQ"
-              operand && ISeq.new(operand, file_info)
-            when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
-              operand
-            when "OFFSET"
-              labels[operand] || raise("unknown label: #{ operand }")
-            when "IVC", "ISE"
-              raise unless operand.is_a?(Integer)
-              :_cache_operand
-            else
-              raise "unknown operand type: #{ type }"
-            end
-          end
-          code_range = code_ranges.shift
-
-          if code_range && insn == :send
-            definition = Utils::MutableSet.new
-            file_info.definition_table[code_range] = definition
-          end
-
-          @insns << [insn, operands]
-          @linenos << lineno
-          @code_ranges << code_range
-          @definitions << definition
-        else
-          raise "unknown iseq entry: #{ e }"
-        end
-      end
-
-      @fargs_format[:opt] = @fargs_format[:opt].map {|l| labels[l] } if @fargs_format[:opt]
-
-      labels
-    end
-
-    def merge_branches
-      @insns.size.times do |i|
-        insn, operands = @insns[i]
-        case insn
-        when :branchif
-          @insns[i] = [:branch, [:if] + operands]
-        when :branchunless
-          @insns[i] = [:branch, [:unless] + operands]
-        when :branchnil
-          @insns[i] = [:branch, [:nil] + operands]
-        end
-      end
+      unify_instructions
     end
 
     def source_location(pc)
-      "#{ @path }:#{ @linenos[pc] }"
+      "#{ @path }:#{ @insns[pc].lineno }"
     end
 
     def detailed_source_location(pc)
-      if @code_ranges[pc]
-        [@path, @code_ranges[pc]]
+      code_range = @insns[pc].code_range
+      if code_range
+        [@path, code_range]
       else
         nil
       end
     end
 
-    attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns, :linenos
-    attr_reader :id, :code_ranges, :iseq_code_range
+    def add_called_iseq(pc, callee_iseq)
+      if callee_iseq && @insns[pc].definitions
+        @insns[pc].definitions << [callee_iseq.path, callee_iseq.iseq_code_range]
+      end
+    end
+
+    attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns
+    attr_reader :id, :iseq_code_range
 
     def pretty_print(q)
       q.text "ISeq["
@@ -260,16 +156,177 @@ module TypeProf
       q.text "]"
     end
 
-    def analyze_stack
+    def <=>(other)
+      @id <=> other.id
+    end
+
+    # Remove lineno entry and convert instructions to Insn instances
+    def convert_insns(insns, raw_code_ranges)
+      ninsns = []
+      lineno = 0
+      insns.each do |e|
+        case e
+        when Integer # lineno
+          lineno = e
+        when Symbol # label or trace
+          ninsns << e
+        when Array
+          insn, *operands = e
+          ninsns << Insn.new(insn, operands, lineno, raw_code_ranges.shift)
+        else
+          raise "unknown iseq entry: #{ e }"
+        end
+      end
+      insns.replace(ninsns)
+    end
+
+    # Insert a dummy instruction "_iseq_body_start"
+    def add_body_start_marker(insns)
+      case @type
+      when :method, :block
+        # skip initialization code of optional arguments
+        if @fargs_format[:opt]
+          label = @fargs_format[:opt].last
+          i = insns.index(label) + 1
+        else
+          i = insns.find_index {|insn| insn.is_a?(Insn) }
+        end
+
+        # skip initialization code of keyword arguments
+        while insns[i][0] == :checkkeyword
+          raise if insns[i + 1].insn != :branchif
+          label = insns[i + 1].operands[0]
+          i = insns.index(label) + 1
+        end
+
+        insns.insert(i, Insn.new(:_iseq_body_start, [], nil))
+      end
+    end
+
+    # Insert "nop" instruction to continuation point of exception handlers
+    def add_exception_cont_marker(insns, catch_table)
+      # rescue/ensure clauses need to have a dedicated return addresses
+      # because they requires to be virtually called.
+      # So, this preprocess adds "nop" to make a new insn for their return addresses
+      exception_cont_labels = {}
+      catch_table.map! do |type, iseq, first, last, cont, stack_depth|
+        if type == :rescue || type == :ensure
+          exception_cont_labels[cont] = true
+          cont = :"#{ cont }_exception_cont"
+        end
+        [type, iseq, first, last, cont, stack_depth]
+      end
+
+      i = 0
+      while i < insns.size
+        e = insns[i]
+        if exception_cont_labels[e]
+          insns.insert(i, :"#{ e }_exception_cont", Insn.new(:nop, [], nil))
+          i += 2
+        end
+        i += 1
+      end
+    end
+
+    def create_label_table(insns)
+      pc = 0
+      labels = {}
+      insns.each do |e|
+        if e.is_a?(Symbol)
+          labels[e] = pc
+        else
+          pc += 1
+        end
+      end
+      labels
+    end
+
+    def setup_insns(insns, labels, file_info)
+      ninsns = []
+      insns.each do |e|
+        case e
+        when Symbol # label or trace
+          nil
+        when Insn
+          operands = (INSN_TABLE[e.insn] || []).zip(e.operands).map do |type, operand|
+            case type
+            when "ISEQ"
+              operand && ISeq.new(operand, file_info)
+            when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
+              operand
+            when "OFFSET"
+              labels[operand] || raise("unknown label: #{ operand }")
+            when "IVC", "ISE"
+              raise unless operand.is_a?(Integer)
+              :_cache_operand
+            else
+              raise "unknown operand type: #{ type }"
+            end
+          end
+
+          if e.code_range && e.insn == :send
+            definition = Utils::MutableSet.new
+            file_info.definition_table[e.code_range] = definition
+          end
+
+          ninsns << Insn.new(e.insn, operands, e.lineno, e.code_range, definition)
+        else
+          raise "unknown iseq entry: #{ e }"
+        end
+      end
+      ninsns
+    end
+
+    def rename_insn_types
+      @insns.each do |insn|
+        case insn.insn
+        when :branchif
+          insn.insn, insn.operands = :branch, [:if] + insn.operands
+        when :branchunless
+          insn.insn, insn.operands = :branch, [:unless] + insn.operands
+        when :branchnil
+          insn.insn, insn.operands = :branch, [:nil] + insn.operands
+        when :getblockparam, :getblockparamproxy
+          insn.insn = :getlocal
+        end
+      end
+    end
+
+    # Unify some instructions for flow-sensitive analysis
+    def unify_instructions
+      # This method rewrites instructions to enable flow-sensitive analysis.
+      #
+      # Consider `if x; ...; else; ... end`.
+      # When the variable `x` is of type "Integer | nil",
+      # we want to make sure that `x` is "Integer" in then clause.
+      # So, we need to split the environment to two ones:
+      # one is that `x` is of type "Integer", and the other is that
+      # `x` is type "nil".
+      #
+      # However, `if x` is compiled to "getlocal; branch".
+      # TypeProf evaluates them as follows:
+      #
+      # * "getlocal" pushes the value of `x` to the stack, amd
+      # * "branch" checks the value on the top of the stack
+      #
+      # TypeProf does not keep where the value comes from, so
+      # it is difficult to split the environment when evaluating "branch".
+      # 
+      # This method rewrites "getlocal; branch" to "nop; getlocal_branch".
+      # The two instructions are unified to "getlocal_branch" instruction,
+      # so TypeProf can split the environment.
+      #
+      # This is a very fragile appoach because it highly depends on the compiler of Ruby.
+
       # gather branch targets
       # TODO: catch_table should be also considered
       branch_targets = {}
-      @insns.each do |insn, operands|
-        case insn
+      @insns.each do |insn|
+        case insn.insn
         when :branch
-          branch_targets[operands[1]] = true
+          branch_targets[insn.operands[1]] = true
         when :jump
-          branch_targets[operands[0]] = true
+          branch_targets[insn.operands[0]] = true
         end
       end
 
@@ -279,23 +336,25 @@ module TypeProf
       case_branch_list = []
       if CASE_WHEN_CHECKMATCH
         (@insns.size - 1).times do |i|
-          insn0, getlocal_operands = @insns[i]
-          next unless [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0
+          insn = @insns[i]
+          next unless insn.insn == :getlocal && insn.operands[1] == 0
+          getlocal_operands = insn.operands
           nops = [i]
           new_insns = []
           j = i + 1
           while true
             case @insns[j]
             when [:dup, []]
-              break unless @insns[j + 1] == [:putnil, []]
-              break unless @insns[j + 2] == [:putobject, [true]]
-              break unless @insns[j + 3][0] == :getconstant # TODO: support A::B::C
-              break unless @insns[j + 4] == [:checkmatch, [2]]
-              break unless @insns[j + 5][0] == :branch
-              target_pc = @insns[j + 5][1][1]
-              break unless @insns[target_pc] == [:pop, []]
+              break unless @insns[j + 1].check?(:putnil, [])
+              break unless @insns[j + 2].check?(:putobject, [true])
+              break unless @insns[j + 3].check?(:getconstant) # TODO: support A::B::C
+              break unless @insns[j + 4].check?(:checkmatch, [2])
+              break unless @insns[j + 5].check?(:branch)
+              target_pc = @insns[j + 5].operands[1]
+              break unless @insns[target_pc].check?(:pop, [])
               nops << j << (j + 4) << target_pc
-              new_insns << [j + 5, [:getlocal_checkmatch_branch, [getlocal_operands, @insns[j + 5][1]]]]
+              branch_operands = @insns[j + 5][1]
+              new_insns << [j + 5, Insn.new(:getlocal_checkmatch_branch, [getlocal_operands, branch_operands])]
               j += 6
             when [:pop, []]
               nops << j
@@ -308,25 +367,28 @@ module TypeProf
         end
       else
         (@insns.size - 1).times do |i|
-          insn0, getlocal_operands = @insns[i]
-          next unless [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0
+          insn = @insns[i]
+          next unless insn.insn == :getlocal && insn.operands[1] == 0
+          getlocal_operands = insn.operands
           nops = []
           new_insns = []
           j = i + 1
           while true
-            case @insns[j]
-            when [:putnil, []]
-              break unless @insns[j + 1] == [:putobject, [true]]
-              break unless @insns[j + 2][0] == :getconstant # TODO: support A::B::C
-              break unless @insns[j + 3] == [:topn, [1]]
-              break unless @insns[j + 4] == [:send, [{:mid=>:===, :flag=>20, :orig_argc=>1}, nil]]
-              break unless @insns[j + 5][0] == :branch
-              target_pc = @insns[j + 5][1][1]
-              break unless @insns[target_pc] == [:pop, []]
+            insn = @insns[j]
+            if insn.check?(:putnil, [])
+              break unless @insns[j + 1].check?(:putobject, [true])
+              break unless @insns[j + 2].check?(:getconstant) # TODO: support A::B::C
+              break unless @insns[j + 3].check?(:topn, [1])
+              break unless @insns[j + 4].check?(:send, [{:mid=>:===, :flag=>20, :orig_argc=>1}, nil])
+              break unless @insns[j + 5].check?(:branch)
+              target_pc = @insns[j + 5].operands[1]
+              break unless @insns[target_pc].check?(:pop, [])
               nops << (j + 4) #<< target_pc
-              new_insns << [j + 5, [:arg_getlocal_send_branch, [getlocal_operands, @insns[j + 4][1], @insns[j + 5][1]]]]
+              send_operands = @insns[j + 4][1]
+              branch_operands = @insns[j + 5][1]
+              new_insns << [j + 5, Insn.new(:arg_getlocal_send_branch, [getlocal_operands, send_operands, branch_operands])]
               j += 6
-            when [:pop, []]
+            elsif insn.check?(:pop, [])
               #nops << j
               case_branch_list << [nops, new_insns]
               break
@@ -337,15 +399,15 @@ module TypeProf
         end
       end
       case_branch_list.each do |nops, new_insns|
-        nops.each {|i| @insns[i] = [:nop, []] }
+        nops.each {|i| @insns[i] = Insn.new(:nop, []) }
         new_insns.each {|i, insn| @insns[i] = insn }
       end
 
       # find a pattern: getlocal(recv), ..., send (is_a?, respond_to?), branch
       recv_getlocal_send_branch_list = []
       (@insns.size - 1).times do |i|
-        insn, operands = @insns[i]
-        if insn == :getlocal && operands[1] == 0
+        insn = @insns[i]
+        if insn.insn == :getlocal && insn.operands[1] == 0
           j = i + 1
           sp = 1
           while @insns[j]
@@ -361,94 +423,102 @@ module TypeProf
       end
       recv_getlocal_send_branch_list.each do |i, j|
         next if (i + 1 .. j + 1).any? {|i| branch_targets[i] }
-        _insn, getlocal_operands = @insns[i]
-        _insn, send_operands = @insns[j]
-        _insn, branch_operands = @insns[j + 1]
-        @insns[j] = [:nop]
-        @insns[j + 1] = [:recv_getlocal_send_branch, [getlocal_operands, send_operands, branch_operands]]
+        getlocal_operands = @insns[i].operands
+        send_operands = @insns[j].operands
+        branch_operands = @insns[j + 1].operands
+        @insns[j] = Insn.new(:nop, [])
+        @insns[j + 1] = Insn.new(:recv_getlocal_send_branch, [getlocal_operands, send_operands, branch_operands])
       end
 
       # find a pattern: getlocal, send (===), branch
       arg_getlocal_send_branch_list = []
       (@insns.size - 1).times do |i|
-        insn1, operands1 = @insns[i]
-        next unless insn1 == :getlocal && operands1[1] == 0
-        insn2, operands2 = @insns[i + 1]
-        next unless insn2 == :send
-        send_opt = operands2[0]
-        next unless send_opt[:flag] == 16 && send_opt[:orig_argc] == 1
-        insn3, _operands3 = @insns[i + 2]
-        next unless insn3 == :branch
+        insn1 = @insns[i]
+        next unless insn1.insn == :getlocal && insn1.operands[1] == 0
+        insn2 = @insns[i + 1]
+        next unless insn2.insn == :send
+        send_operands = insn2.operands[0]
+        next unless send_operands[:flag] == 16 && send_operands[:orig_argc] == 1
+        insn3 = @insns[i + 2]
+        next unless insn3.insn == :branch
         arg_getlocal_send_branch_list << i
       end
       arg_getlocal_send_branch_list.each do |i|
         next if (i .. i + 2).any? {|i| branch_targets[i] }
-        _insn, getlocal_operands = @insns[i]
-        _insn, send_operands = @insns[i + 1]
-        _insn, branch_operands = @insns[i + 2]
-        @insns[i + 1] = [:nop]
-        @insns[i + 2] = [:arg_getlocal_send_branch, [getlocal_operands, send_operands, branch_operands]]
+        getlocal_operands = @insns[i].operands
+        send_operands = @insns[i + 1].operands
+        branch_operands = @insns[i + 2].operands
+        @insns[i + 1] = Insn.new(:nop, [])
+        @insns[i + 2] = Insn.new(:arg_getlocal_send_branch, [getlocal_operands, send_operands, branch_operands])
       end
 
       # find a pattern: send (block_given?), branch
       send_branch_list = []
       (@insns.size - 1).times do |i|
-        insn, _operands = @insns[i]
-        if insn == :send
-          insn, _operands = @insns[i + 1]
-          if insn == :branch
+        insn = @insns[i]
+        if insn.insn == :send
+          insn = @insns[i + 1]
+          if insn.insn == :branch
             send_branch_list << i
           end
         end
       end
       send_branch_list.each do |i|
         next if branch_targets[i + 1]
-        _insn, send_operands = @insns[i]
-        _insn, branch_operands = @insns[i + 1]
-        @insns[i] = [:nop]
-        @insns[i + 1] = [:send_branch, [send_operands, branch_operands]]
+        send_operands = @insns[i].operands
+        branch_operands = @insns[i + 1].operands
+        @insns[i] = Insn.new(:nop, [])
+        @insns[i + 1] = Insn.new(:send_branch, [send_operands, branch_operands])
       end
 
       # find a pattern: getlocal, dup, branch
       (@insns.size - 2).times do |i|
         next if branch_targets[i + 1] || branch_targets[i + 2]
-        insn0, getlocal_operands = @insns[i]
-        insn1, dup_operands = @insns[i + 1]
-        insn2, branch_operands = @insns[i + 2]
-        if insn0 == :getlocal && insn1 == :dup && insn2 == :branch && getlocal_operands[1] == 0
-          @insns[i    ] = [:nop]
-          @insns[i + 1] = [:nop]
-          @insns[i + 2] = [:getlocal_dup_branch, [getlocal_operands, dup_operands, branch_operands]]
+        insn0 = @insns[i]
+        insn1 = @insns[i + 1]
+        insn2 = @insns[i + 2]
+        if insn0.insn == :getlocal && insn1.insn == :dup && insn2.insn == :branch && insn0.operands[1] == 0
+          getlocal_operands = insn0.operands
+          dup_operands      = insn1.operands
+          branch_operands   = insn2.operands
+          @insns[i    ] = Insn.new(:nop, [])
+          @insns[i + 1] = Insn.new(:nop, [])
+          @insns[i + 2] = Insn.new(:getlocal_dup_branch, [getlocal_operands, dup_operands, branch_operands])
         end
       end
 
       # find a pattern: dup, branch
       (@insns.size - 1).times do |i|
         next if branch_targets[i + 1]
-        insn0, dup_operands = @insns[i]
-        insn1, branch_operands = @insns[i + 1]
-        if insn0 == :dup && insn1 == :branch
-          @insns[i    ] = [:nop]
-          @insns[i + 1] = [:dup_branch, [dup_operands, branch_operands]]
+        insn0 = @insns[i]
+        insn1 = @insns[i + 1]
+        if insn0.insn == :dup && insn1.insn == :branch
+          dup_operands    = insn0.operands
+          branch_operands = insn1.operands
+          @insns[i    ] = Insn.new(:nop, [])
+          @insns[i + 1] = Insn.new(:dup_branch, [dup_operands, branch_operands])
         end
       end
 
       # find a pattern: getlocal, branch
       (@insns.size - 1).times do |i|
         next if branch_targets[i + 1]
-        insn0, getlocal_operands = @insns[i]
-        insn1, branch_operands = @insns[i + 1]
-        if [:getlocal, :getblockparam, :getblockparamproxy].include?(insn0) && getlocal_operands[1] == 0 && insn1 == :branch
-          @insns[i    ] = [:nop]
-          @insns[i + 1] = [:getlocal_branch, [getlocal_operands, branch_operands]]
+        insn0 = @insns[i]
+        insn1 = @insns[i + 1]
+        if insn0.insn == :getlocal && insn0.operands[1] == 0 && insn1.insn == :branch
+          getlocal_operands = insn0.operands
+          branch_operands   = insn1.operands
+          @insns[i    ] = Insn.new(:nop, [])
+          @insns[i + 1] = Insn.new(:getlocal_branch, [getlocal_operands, branch_operands])
         end
       end
     end
 
     def check_send_branch(sp, j)
-      insn, operands = @insns[j]
+      insn = @insns[j]
+      operands = insn.operands
 
-      case insn
+      case insn.insn
       when :putspecialobject, :putnil, :putobject, :duparray, :putstring,
            :putself
         sp += 1
@@ -486,7 +556,7 @@ module TypeProf
         argc += 1 # receiver
         argc += kw_arg.size if kw_arg
         sp -= argc
-        return :match if insn == :send && sp == 0 && @insns[j + 1][0] == :branch
+        return :match if insn.insn == :send && sp == 0 && @insns[j + 1][0] == :branch
         sp += 1
       when :arg_getlocal_send_branch
         return # not implemented

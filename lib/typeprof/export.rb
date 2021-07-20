@@ -438,7 +438,7 @@ module TypeProf
         coverage = {}
         stat_eps.each do |ep|
           path = ep.ctx.iseq.path
-          lineno = ep.ctx.iseq.linenos[ep.pc] - 1
+          lineno = ep.ctx.iseq.insns[ep.pc].lineno - 1
           (coverage[path] ||= [])[lineno] ||= 0
           (coverage[path] ||= [])[lineno] += 1
         end
