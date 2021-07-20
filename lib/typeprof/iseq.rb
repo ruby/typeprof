@@ -53,33 +53,28 @@ module TypeProf
       end
     end
 
-    def add_called_iseq(pc, callee_iseq)
-      #if callee_iseq && @definitions[pc]
-      #  @definitions[pc] << [callee_iseq.path, callee_iseq.iseq_code_range]
-      #end
-    end
-
-    Insn = Struct.new(:insn, :operands, :lineno)
+    Insn = Struct.new(:insn, :operands, :lineno, :code_range, :definitions)
     class Insn
       def check?(insn_cmp, operands_cmp = nil)
         return insn == insn_cmp && (!operands_cmp || operands == operands_cmp)
       end
     end
 
-    FRESH_ID = [0]
+    ISEQ_FRESH_ID = [0]
 
     def initialize(iseq, file_info)
-      @id = FRESH_ID[0]
-      FRESH_ID[0] += 1
+      @id = (ISEQ_FRESH_ID[0] += 1)
 
       _magic, _major_version, _minor_version, _format_type, misc,
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
+      raw_code_ranges = misc[:node_ids].map {|node_id| file_info.node_id2code_range[node_id] }
+
       fl, fc, ll, lc = misc[:code_location]
       @iseq_code_range = CodeRange.new(CodeLocation.new(fl, fc), CodeLocation.new(ll, lc))
 
-      convert_insns(insns)
+      convert_insns(insns, raw_code_ranges)
 
       add_body_start_marker(insns)
 
@@ -111,8 +106,23 @@ module TypeProf
       "#{ @path }:#{ @insns[pc].lineno }"
     end
 
+    def detailed_source_location(pc)
+      code_range = @insns[pc].code_range
+      if code_range
+        [@path, code_range]
+      else
+        nil
+      end
+    end
+
+    def add_called_iseq(pc, callee_iseq)
+      if callee_iseq && @insns[pc].definitions
+        @insns[pc].definitions << [callee_iseq.path, callee_iseq.iseq_code_range]
+      end
+    end
+
     attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns
-    attr_reader :id
+    attr_reader :id, :iseq_code_range
 
     def pretty_print(q)
       q.text "ISeq["
@@ -151,7 +161,7 @@ module TypeProf
     end
 
     # Remove lineno entry and convert instructions to Insn instances
-    def convert_insns(insns)
+    def convert_insns(insns, raw_code_ranges)
       ninsns = []
       lineno = 0
       insns.each do |e|
@@ -162,7 +172,7 @@ module TypeProf
           ninsns << e
         when Array
           insn, *operands = e
-          ninsns << Insn.new(insn, operands, lineno)
+          ninsns << Insn.new(insn, operands, lineno, raw_code_ranges.shift)
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -189,7 +199,7 @@ module TypeProf
           i = insns.index(label) + 1
         end
 
-        insns.insert(i, Insn.new(:_iseq_body_start, [], @start_lineno))
+        insns.insert(i, Insn.new(:_iseq_body_start, [], nil))
       end
     end
 
@@ -253,14 +263,13 @@ module TypeProf
               raise "unknown operand type: #{ type }"
             end
           end
-          #code_range = code_ranges.shift
 
-          #if code_range && insn == :send
-          #  definition = Utils::MutableSet.new
-          #  file_info.definition_table[code_range] = definition
-          #end
+          if e.code_range && e.insn == :send
+            definition = Utils::MutableSet.new
+            file_info.definition_table[e.code_range] = definition
+          end
 
-          ninsns << Insn.new(e.insn, operands, e.lineno)
+          ninsns << Insn.new(e.insn, operands, e.lineno, e.code_range, definition)
         else
           raise "unknown iseq entry: #{ e }"
         end
