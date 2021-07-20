@@ -963,7 +963,7 @@ module TypeProf
         if entrypoint.is_a?(String)
           file = entrypoint
           next if @loaded_files[File.expand_path(file)]
-          iseq = ISeq.compile(file)
+          iseq, = ISeq.compile(file)
         else
           iseq = entrypoint
         end

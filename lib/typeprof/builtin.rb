@@ -624,7 +624,7 @@ module TypeProf
     end
 
     def self.file_load(path, ep, env, scratch, &ctn)
-      iseq = ISeq.compile(path)
+      iseq, = ISeq.compile(path)
       callee_ep, callee_env = TypeProf.starting_state(iseq)
       scratch.merge_env(callee_ep, callee_env)
 

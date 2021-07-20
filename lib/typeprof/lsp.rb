@@ -36,14 +36,14 @@ module TypeProf
       end
 
       attr_reader :text, :version
-      attr_accessor :iseq
+      attr_accessor :definition_table
 
       def lines
         @text.lines
       end
 
       def apply_changes(changes, version)
-        @iseq = nil
+        @definition_table = nil
         text = @text.empty? ? [] : @text.lines
         changes.each do |change|
           case change
@@ -215,23 +215,20 @@ module TypeProf
         case @params
         in {
           textDocument: { uri:, },
-          position: { line: row, character: col },
+          position: loc,
         }
         else
           raise
         end
 
-        iseq = @server.open_texts[uri].iseq
-        code_locations = iseq&.find_definitions(row + 1, col)
+        definition_table = @server.open_texts[uri].definition_table
+        code_locations = definition_table[CodeLocation.from_lsp(loc)] if definition_table
         if code_locations
           respond(
-            code_locations.map do |path, (fl, fc, ll, lc)|
+            code_locations.map do |path, code_range|
               {
                 uri: "file://" + path,
-                range: {
-                  start: { line: fl - 1, character: fc },
-                  end: { line: ll - 1, character: lc },
-                }
+                range: code_range.to_lsp,
               }
             end
           )
@@ -371,9 +368,9 @@ module TypeProf
           @config.options[:show_indicator] = false
           @config.options[:lsp] = true
 
-          iseq, res = TypeProf.analyze(@config)
+          definition_table, res = TypeProf.analyze(@config)
 
-          @open_texts[uri].iseq = iseq
+          @open_texts[uri].definition_table = definition_table
 
           sigs = {}
           res[:sigs].each do |file, lineno, sig|
@@ -392,15 +389,12 @@ module TypeProf
           @sigs = sigs
 
           diagnostics = {}
-          res[:errors].each do |(file, fl, fc, ll, lc), msg|
+          res[:errors].each do |(file, code_range), msg|
             next unless file
             uri = "file://" + file
             diagnostics[uri] ||= []
             diagnostics[uri] << {
-              range: {
-                start: { line: fl - 1, character: fc },
-                end: { line: ll - 1, character: lc },
-              },
+              range: code_range.to_lsp,
               severity: 1,
               source: "TypeProf",
               message: msg,

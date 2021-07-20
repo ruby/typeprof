@@ -3,6 +3,11 @@ module TypeProf
     # https://github.com/ruby/ruby/pull/4468
     CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
 
+    FileInfo = Struct.new(
+      :node_id2code_range,
+      :definition_table,
+    )
+
     class << self
       def compile(file)
         compile_core(nil, file)
@@ -21,35 +26,37 @@ module TypeProf
         opt[:coverage_enabled] = false
 
         if str
+          node = RubyVM::AbstractSyntaxTree.parse(str)
           iseq = RubyVM::InstructionSequence.compile(str, path, **opt)
         else
+          node = RubyVM::AbstractSyntaxTree.parse_file(path)
           iseq = RubyVM::InstructionSequence.compile_file(path, **opt)
         end
 
-        return new(iseq.to_a)
+        node_id2code_range = {}
+        build_ast_node_id_table(node, node_id2code_range)
+
+        file_info = FileInfo.new(node_id2code_range, CodeRangeTable.new)
+
+        return new(iseq.to_a, file_info), file_info.definition_table
       end
 
       private def build_ast_node_id_table(node, tbl = {})
-        tbl[node.node_id] = [node.first_lineno, node.first_column, node.last_lineno, node.last_column]
+        tbl[node.node_id] = CodeRange.new(
+          CodeLocation.new(node.first_lineno, node.first_column),
+          CodeLocation.new(node.last_lineno, node.last_column),
+        )
         node.children.each do |child|
           build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
         end
+        tbl
       end
-    end
-
-    def find_definitions(row, col)
-      @location_db.each do |(fl, fc, ll, lc), called_iseqs|
-        next if row < fl
-        next if row == fl && col < fc
-        next if row > ll
-        next if row == ll && col > lc
-        return called_iseqs.map {|iseq| [iseq.path, iseq.whole_code_location] }
-      end
-      return nil
     end
 
     def add_called_iseq(pc, callee_iseq)
-      #@location_db[@code_locations[pc]] << callee_iseq if callee_iseq && @code_locations[pc]
+      #if callee_iseq && @definitions[pc]
+      #  @definitions[pc] << [callee_iseq.path, callee_iseq.iseq_code_range]
+      #end
     end
 
     Insn = Struct.new(:insn, :operands, :lineno)
@@ -61,13 +68,16 @@ module TypeProf
 
     FRESH_ID = [0]
 
-    def initialize(iseq)
+    def initialize(iseq, file_info)
       @id = FRESH_ID[0]
       FRESH_ID[0] += 1
 
       _magic, _major_version, _minor_version, _format_type, misc,
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
+
+      fl, fc, ll, lc = misc[:code_location]
+      @iseq_code_range = CodeRange.new(CodeLocation.new(fl, fc), CodeLocation.new(ll, lc))
 
       convert_insns(insns)
 
@@ -77,13 +87,13 @@ module TypeProf
 
       labels = create_label_table(insns)
 
-      @insns = setup_insns(insns, labels)
+      @insns = setup_insns(insns, labels, file_info)
 
       @fargs_format[:opt] = @fargs_format[:opt].map {|l| labels[l] } if @fargs_format[:opt]
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        iseq = iseq ? ISeq.new(iseq) : nil
+        iseq = iseq ? ISeq.new(iseq, file_info) : nil
         target = labels[cont]
         entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
@@ -221,7 +231,7 @@ module TypeProf
       labels
     end
 
-    def setup_insns(insns, labels)
+    def setup_insns(insns, labels, file_info)
       ninsns = []
       insns.each do |e|
         case e
@@ -231,7 +241,7 @@ module TypeProf
           operands = (INSN_TABLE[e.insn] || []).zip(e.operands).map do |type, operand|
             case type
             when "ISEQ"
-              operand && ISeq.new(operand)
+              operand && ISeq.new(operand, file_info)
             when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
               operand
             when "OFFSET"
@@ -243,6 +253,12 @@ module TypeProf
               raise "unknown operand type: #{ type }"
             end
           end
+          #code_range = code_ranges.shift
+
+          #if code_range && insn == :send
+          #  definition = Utils::MutableSet.new
+          #  file_info.definition_table[code_range] = definition
+          #end
 
           ninsns << Insn.new(e.insn, operands, e.lineno)
         else
