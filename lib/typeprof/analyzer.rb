@@ -286,6 +286,7 @@ module TypeProf
       @anonymous_struct_gen_id = 0
 
       @types_being_shown = []
+      @namespace = nil
     end
 
     def add_entrypoint(iseq)
