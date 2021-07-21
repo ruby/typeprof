@@ -373,25 +373,30 @@ module TypeProf
     end
 
     def conv_block(rbs_block)
-      type = rbs_block.type
+      blk = rbs_block.type
 
-      # XXX
-      raise NotImplementedError unless type.optional_keywords.empty?
-      raise NotImplementedError unless type.required_keywords.empty?
-      raise NotImplementedError if type.rest_keywords
+      lead_tys = blk.required_positionals.map {|type| conv_type(type.type) }
+      opt_tys = blk.optional_positionals.map {|type| conv_type(type.type) }
+      rest_ty = blk.rest_positionals
+      rest_ty = conv_type(rest_ty.type) if rest_ty
+      opt_kw_tys = blk.optional_keywords.to_h {|key, type| [key, conv_type(type.type)] }
+      req_kw_tys = blk.required_keywords.to_h {|key, type| [key, conv_type(type.type)] }
+      rest_kw_ty = blk.rest_keywords
+      rest_kw_ty = conv_type(rest_kw_ty.type) if rest_kw_ty
 
-      req = rbs_block.required
+      ret_ty = conv_type(blk.return_type)
 
-      lead_tys = type.required_positionals.map do |type|
-        conv_type(type.type)
-      end
-      opt_tys = type.optional_positionals.map do |type|
-        conv_type(type.type)
-      end
-
-      ret_ty = conv_type(type.return_type)
-
-      [req, lead_tys, opt_tys, ret_ty]
+      {
+        required_block: rbs_block.required,
+        lead_tys: lead_tys,
+        opt_tys: opt_tys,
+        rest_ty: rest_ty,
+        req_kw_tys: req_kw_tys,
+        opt_kw_tys: opt_kw_tys,
+        rest_kw_ty: rest_kw_ty,
+        blk: blk,
+        ret_ty: ret_ty,
+      }
     end
 
     def conv_type(ty)
@@ -649,13 +654,36 @@ module TypeProf
 
     def conv_block(blk)
       return [Type.nil] unless blk
-      req, lead_tys, opt_tys, ret_ty = blk
+
+      required_block = blk[:required_block]
+      lead_tys = blk[:lead_tys]
+      opt_tys = blk[:opt_tys]
+      rest_ty = blk[:rest_ty]
+      req_kw_tys = blk[:req_kw_tys]
+      opt_kw_tys = blk[:opt_kw_tys]
+      rest_kw_ty = blk[:rest_kw_ty]
+      ret_ty = blk[:ret_ty]
+
       lead_tys = lead_tys.map {|ty| conv_type(ty) }
       opt_tys = opt_tys.map {|ty| conv_type(ty) }
-      msig = MethodSignature.new(lead_tys, opt_tys, nil, [], {}, nil, Type.nil)
+      rest_ty = conv_type(rest_ty) if rest_ty
+      kw_tys = []
+      req_kw_tys.each {|key, ty| kw_tys << [true, key, conv_type(ty)] }
+      opt_kw_tys.each {|key, ty| kw_tys << [false, key, conv_type(ty)] }
+      if rest_kw_ty
+        ty = conv_type(rest_kw_ty)
+        kw_rest_ty = Type.gen_hash do |h|
+          k_ty = Type::Instance.new(Type::Builtin[:sym])
+          h[k_ty] = ty
+        end
+      end
+
+      msig = MethodSignature.new(lead_tys, opt_tys, rest_ty, [], kw_tys, kw_rest_ty, Type.nil)
+
       ret_ty = conv_type(ret_ty)
+
       ret = [Type::Proc.new(TypedBlock.new(msig, ret_ty), Type::Builtin[:proc])]
-      ret << Type.nil unless req
+      ret << Type.nil unless required_block
       ret
     end
 
