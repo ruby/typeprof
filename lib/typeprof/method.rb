@@ -14,6 +14,8 @@ module TypeProf
       @pub_meth = pub_meth
     end
 
+    attr_reader :iseq
+
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = recv.base_type while recv.respond_to?(:base_type)
       recv = scratch.globalize_type(recv, caller_env, caller_ep)
@@ -209,9 +211,10 @@ module TypeProf
       @sig_rets = sig_rets
       @rbs_source = rbs_source
       @pub_meth = pub_meth
+      @iseq = nil
     end
 
-    attr_reader :rbs_source
+    attr_reader :rbs_source, :iseq
 
     def do_send(recv_orig, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       recv = scratch.globalize_type(recv_orig, caller_env, caller_ep)
@@ -303,6 +306,7 @@ module TypeProf
       @sig_rets.each do |msig, _ret_ty|
         iseq_mdef.do_check_send(msig, recv, mid, ep, scratch)
       end
+      @iseq ||= iseq_mdef.iseq
     end
   end
 
