@@ -46,6 +46,13 @@ module TypeProf
       CodeRange.new(CodeLocation.from_lsp(lsp[:start]), CodeLocation.from_lsp(lsp[:end]))
     end
 
+    def self.from_rbs(rbs_loc)
+      CodeRange.new(
+        CodeLocation.new(rbs_loc.start_line, rbs_loc.start_column),
+        CodeLocation.new(rbs_loc.end_line, rbs_loc.end_column),
+      )
+    end
+
     def to_lsp
       { start: @first.to_lsp, end: @last.to_lsp }
     end

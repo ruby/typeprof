@@ -134,6 +134,9 @@ module TypeProf
             codeLensProvider: {
               resolveProvider: true,
             },
+            #executeCommandProvider: {
+            #  commands: ["jump_to_rbs"],
+            #},
             definitionProvider: true,
             typeDefinitionProvider: true,
           },
@@ -361,29 +364,32 @@ module TypeProf
         if @open_texts[uri]
           rb = @open_texts[uri]
           @config.rb_files = [[URI(uri).path, rb.text]]
-          @config.rbs_files = [] # XXX
+          @config.rbs_files = ["typeprof.rbs"] # XXX
           @config.verbose = 0
           @config.max_sec = 1
           @config.options[:show_errors] = true
           @config.options[:show_indicator] = false
           @config.options[:lsp] = true
 
-          definition_table, res = TypeProf.analyze(@config)
+          res, definition_table = TypeProf.analyze(@config)
 
           @open_texts[uri].definition_table = definition_table
 
           sigs = {}
-          res[:sigs].each do |file, lineno, sig|
+          res[:sigs].each do |file, lineno, sig, rbs_code_range|
             uri = "file://" + file
             sigs[uri] ||= []
+            command = { title: sig }
+            if rbs_code_range
+              command[:command] = "jump_to_rbs"
+              command[:arguments] = [uri, { line: lineno - 1, character: 0 }, "file:///home/mame/work/rbswiki/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
+            end
             sigs[uri] << {
               range: {
-                start: { line: lineno - 2, character: 0 },
-                end: { line: lineno - 2, character: 1 },
+                start: { line: lineno - 1, character: 0 },
+                end: { line: lineno - 1, character: 1 },
               },
-              command: {
-                title: sig,
-              }
+              command: command,
             }
           end
           @sigs = sigs
