@@ -108,6 +108,17 @@ export function makeLanguageClient(): LanguageClient {
 let client: LanguageClient;
 
 export function activate(context: vscode.ExtensionContext) {
+  vscode.commands.registerCommand("jump_to_rbs", (arg0: any, arg1: any, arg2: any, arg3: any) => {
+    vscode.window.showInformationMessage(`hello ${ arg0 } ${ arg1 } ${ arg2 } ${ arg3 }`);
+    const uri0 = vscode.Uri.parse(arg0);
+    const pos0 = new vscode.Position(arg1.line, arg1.character);
+    const uri1 = vscode.Uri.parse(arg2);
+    const pos1 = new vscode.Position(arg3.start.line, arg3.start.character);
+    const pos2 = new vscode.Position(arg3.end.line, arg3.end.character);
+    const range = new vscode.Range(pos1, pos2);
+    const loc = new vscode.Location(uri1, range);
+    vscode.commands.executeCommand("editor.action.peekLocations", uri0, pos0, [loc], "peek");
+  });
   client = makeLanguageClient();
   client.start();
 }

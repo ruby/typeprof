@@ -199,7 +199,7 @@ module TypeProf
           i = insns.index(label) + 1
         end
 
-        insns.insert(i, Insn.new(:_iseq_body_start, [], nil))
+        insns.insert(i, Insn.new(:_iseq_body_start, [], @start_lineno, nil, nil))
       end
     end
 

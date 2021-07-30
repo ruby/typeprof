@@ -113,7 +113,9 @@ module TypeProf
 
     result = scratch.type_profile
 
-    return code_range_table, scratch.report_lsp if Config.options[:lsp]
+    if Config.options[:lsp]
+      return scratch.report_lsp, code_range_table
+    end
 
     if Config.output.respond_to?(:write)
       scratch.report(result, Config.output)
@@ -126,6 +128,7 @@ module TypeProf
   rescue TypeProfError => exc
     exc.report(Config.output)
 
+    return nil
   ensure
     if Config.options[:stackprof] && defined?(StackProf)
       StackProf.stop

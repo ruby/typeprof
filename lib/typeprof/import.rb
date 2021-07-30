@@ -165,7 +165,11 @@ module TypeProf
               end
 
               method_def = conv_method_def(method_types, visibility)
-              rbs_source = [(member.kind == :singleton ? "self." : "") + member.name.to_s, member.types.map {|type| type.location.source }]
+              rbs_source = [
+                (member.kind == :singleton ? "self." : "") + member.name.to_s,
+                member.types.map {|type| type.location.source },
+                [member.location.name, CodeRange.from_rbs(member.location)],
+              ]
               if member.instance?
                 methods[[false, name]] = method_def
                 rbs_sources[[false, name]] = rbs_source

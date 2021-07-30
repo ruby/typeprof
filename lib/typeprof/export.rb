@@ -188,6 +188,7 @@ module TypeProf
               key = [:rbs, method_name]
               methods[key] = sigs
               visibilities[key] ||= mdef.pub_meth
+              source_locations[key] ||= mdef.iseq&.source_location(0)
             end
           end
         end
@@ -286,7 +287,7 @@ module TypeProf
 
             key = [:iseq, method_name]
             visibilities[key] ||= mdef.pub_meth
-            source_locations[key] ||= ctx.iseq.source_location(0)
+            source_locations[key] ||= [ctx.iseq.source_location(0)]
             (methods[key] ||= []) << @scratch.show_method_signature(ctx)
           when AliasMethodDef
             alias_name, orig_name = mid, mdef.orig_mid
@@ -296,7 +297,7 @@ module TypeProf
             end
             key = [:alias, alias_name]
             visibilities[key] ||= mdef.pub_meth
-            source_locations[key] ||= mdef.def_ep&.source_location
+            source_locations[key] ||= [mdef.def_ep&.source_location]
             methods[key] = orig_name
           when AttrMethodDef
             next if !mdef.def_ep
@@ -308,7 +309,7 @@ module TypeProf
             method_name = [method_name, :"@#{ mid }" != mdef.ivar]
             key = [:attr, method_name]
             visibilities[key] ||= mdef.pub_meth
-            source_locations[key] ||= mdef.def_ep.source_location
+            source_locations[key] ||= [mdef.def_ep.source_location]
             if methods[key]
               if methods[key][0] != mdef.kind
                 methods[key][0] = :accessor
@@ -320,10 +321,11 @@ module TypeProf
             end
           when TypedMethodDef
             if mdef.rbs_source
-              method_name, sigs = mdef.rbs_source
+              method_name, sigs, rbs_code_range = mdef.rbs_source
               key = [:rbs, method_name]
               methods[key] = sigs
               visibilities[key] ||= mdef.pub_meth
+              source_locations[key] ||= [mdef.iseq&.source_location(0), rbs_code_range]
             end
           end
         end
@@ -376,14 +378,16 @@ module TypeProf
         next unless class_data
         class_data.methods.each do |key, arg|
           #vis = class_data.visibilities[key]
-          source_location = class_data.source_locations[key]
+          source_location, rbs_code_range = class_data.source_locations[key]
           type, (method_name, hidden) = key
           case type
           when :attr
             kind, ty, untyped = *arg
             line = "attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }"
           when :rbs
+            sigs = arg.sort.join(" | ")
             line = "# def #{ method_name }: #{ sigs }"
+            p [line, source_location, rbs_code_range]
           when :iseq
             sigs = []
             untyped = false
@@ -398,7 +402,7 @@ module TypeProf
             line = "alias #{ method_name } #{ orig_name }"
           end
           if source_location =~ /:(\d+)$/
-            res << [$`, $1.to_i, line]
+            res << [$`, $1.to_i, line, rbs_code_range]
           end
         end
       end
