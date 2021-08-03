@@ -2224,7 +2224,7 @@ module TypeProf
         if blk.is_a?(Type::Proc)
           blk.block_body.do_call(aargs, ep, env, self, replace_recv_ty: replace_recv_ty, replace_cref: replace_cref, &ctn)
         else
-          warn(ep, "non-proc is passed as a block")
+          warn(ep, "non-proc is passed as a block") if blk != Type.any
           ctn[Type.any, ep, env]
         end
       end
