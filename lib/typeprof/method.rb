@@ -283,12 +283,12 @@ module TypeProf
             # XXX: a block is passed to a method that does not accept block.
             # Should we call the passed block with any arguments?
             ret_ty = ret_ty.remove_type_vars
-            ctn[ret_ty, caller_ep, ncaller_env]
+            ctn[ret_ty, caller_ep, ncaller_env] if ret_ty != Type.bot
           end
         else
           ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
           ret_ty = ret_ty.remove_type_vars
-          ctn[ret_ty, caller_ep, ncaller_env]
+          ctn[ret_ty, caller_ep, ncaller_env] if ret_ty != Type.bot
         end
       end
 
