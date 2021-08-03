@@ -48,7 +48,7 @@ module TypeProf
       }.merge(opt[:options])
       opt[:lsp_options] = {
         port: 0,
-      }.merge(opt[:lsp_options])
+      }.merge(opt[:lsp_options] || {})
       super(**opt)
     end
 
