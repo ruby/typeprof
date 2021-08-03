@@ -377,14 +377,14 @@ module TypeProf
 
           sigs = {}
           res[:sigs].each do |file, lineno, sig, rbs_code_range|
-            uri = "file://" + file
-            sigs[uri] ||= []
+            uri0 = "file://" + file
+            sigs[uri0] ||= []
             command = { title: sig }
             if rbs_code_range
               command[:command] = "jump_to_rbs"
-              command[:arguments] = [uri, { line: lineno - 1, character: 0 }, "file:///home/mame/work/rbswiki/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
+              command[:arguments] = [uri0, { line: lineno - 1, character: 0 }, "file:///home/mame/work/rbswiki/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
             end
-            sigs[uri] << {
+            sigs[uri0] << {
               range: {
                 start: { line: lineno - 1, character: 0 },
                 end: { line: lineno - 1, character: 1 },
@@ -397,16 +397,15 @@ module TypeProf
           diagnostics = {}
           res[:errors].each do |(file, code_range), msg|
             next unless file
-            uri = "file://" + file
-            diagnostics[uri] ||= []
-            diagnostics[uri] << {
+            uri0 = "file://" + file
+            diagnostics[uri0] ||= []
+            diagnostics[uri0] << {
               range: code_range.to_lsp,
               severity: 1,
               source: "TypeProf",
               message: msg,
             }
           end
-          @diagnostics = diagnostics
         
           send_request("workspace/codeLens/refresh")
 
