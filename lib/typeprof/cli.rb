@@ -18,6 +18,7 @@ module TypeProf
       verbose = 1
 
       options = {}
+      lsp_options = {}
       dir_filter = nil
       gem_rbs_features = []
       gem_repo_dirs = []
@@ -74,6 +75,10 @@ module TypeProf
       opt.on("--debug", "Display analysis log (for debugging purpose)") { verbose = 2 }
       opt.on("--[no-]stackprof MODE", /\Acpu|wall|object\z/, "Enable stackprof (for debugging purpose)") {|v| options[:stackprof] = v.to_sym }
 
+      opt.separator ""
+      opt.separator "LSP options:"
+      opt.on("--port PORT", Integer, "Specify a port number to listen for requests on") {|v| lsp_options[:port] = v }
+
       opt.parse!(argv)
 
       $LOAD_PATH.unshift(*load_path_ext)
@@ -95,6 +100,11 @@ module TypeProf
         raise OptionParser::InvalidOption.new("no input files")
       end
 
+      if !options[:lsp] && !lsp_options.empty?
+        exit if show_version
+        raise OptionParser::InvalidOption.new("lsp options with non-lsp mode")
+      end
+
       ConfigData.new(
         rb_files: rb_files,
         rbs_files: rbs_files,
@@ -107,6 +117,7 @@ module TypeProf
         max_sec: max_sec,
         max_iter: max_iter,
         options: options,
+        lsp_options: lsp_options,
       )
 
     rescue OptionParser::InvalidOption
