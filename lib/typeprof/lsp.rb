@@ -4,7 +4,7 @@ require "uri"
 
 module TypeProf
   def self.start_lsp_server(config)
-    Socket.tcp_server_sockets("localhost", 0) do |servs|
+    Socket.tcp_server_sockets("localhost", config.lsp_options[:port]) do |servs|
       serv = servs[0].local_address
       $stdout << JSON.generate({
         host: serv.ip_address,
