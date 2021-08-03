@@ -490,13 +490,16 @@ module TypeProf
       # find a pattern: dup, setlocal, branch
       (@insns.size - 2).times do |i|
         next if branch_targets[i + 1] || branch_targets[i + 2]
-        insn0, dup_operands = @insns[i]
-        insn1, setlocal_operands = @insns[i + 1]
-        insn2, branch_operands = @insns[i + 2]
-        if insn0 == :dup && insn1 == :setlocal && insn2 == :branch && setlocal_operands[1] == 0
-          @insns[i    ] = [:nop]
-          @insns[i + 1] = [:nop]
-          @insns[i + 2] = [:dup_setlocal_branch, [dup_operands, setlocal_operands, branch_operands]]
+        insn0 = @insns[i]
+        insn1 = @insns[i + 1]
+        insn2 = @insns[i + 2]
+        if insn0.insn == :dup && insn1.insn == :setlocal && insn2.insn == :branch && insn1.operands[1] == 0
+          dup_operands      = insn0.operands
+          setlocal_operands = insn1.operands
+          branch_operands   = insn2.operands
+          @insns[i    ] = Insn.new(:nop, [])
+          @insns[i + 1] = Insn.new(:nop, [])
+          @insns[i + 2] = Insn.new(:dup_setlocal_branch, [dup_operands, setlocal_operands, branch_operands])
         end
       end
 
