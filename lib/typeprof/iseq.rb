@@ -37,6 +37,7 @@ module TypeProf
         build_ast_node_id_table(node, node_id2code_range)
 
         file_info = FileInfo.new(node_id2code_range, CodeRangeTable.new)
+        build_variables_range_table(node, {}, file_info.definition_table, node_id2code_range, path)
 
         return new(iseq.to_a, file_info), file_info.definition_table
       end
@@ -50,6 +51,23 @@ module TypeProf
           build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
         end
         tbl
+      end
+
+      def build_variables_range_table(node, defs_by_name, defs_by_use, node_id2code_range, path)
+        case node.type
+        when :LASGN
+          name = node.children[0]
+          defs_by_name[name] ||= Utils::MutableSet.new
+          defs_by_name[name] << [path, node_id2code_range[node.node_id]]
+        when :LVAR
+          name = node.children[0]
+          defs_by_use[node_id2code_range[node.node_id]] = defs_by_name[name]
+        end
+        node.children.each do |child|
+          if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
+            build_variables_range_table(child, defs_by_name, defs_by_use, node_id2code_range, path)
+          end
+        end
       end
     end
 
