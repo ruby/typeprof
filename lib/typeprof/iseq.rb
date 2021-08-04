@@ -300,16 +300,19 @@ module TypeProf
     def collect_local_variable_info(file_info, absolute_level = 0, parent_variable_tables = {})
       # e.g.
       # variable_tables[abs_level][idx] = [[path, code_range]]
-      variable_tables = {}
+      currnet_variables = []
+      variable_tables = parent_variable_tables.merge({
+        absolute_level => currnet_variables
+      })
+
       dummy_def_range = CodeRange.new(
         CodeLocation.new(@start_lineno, 0),
         CodeLocation.new(@start_lineno, 1),
       )
+      local_var_base_idx = 3
       (@fargs_format[:lead_num] || 0).times do |offset|
-        local_var_base_idx = 3
-        variable_tables[absolute_level] ||= []
-        variable_tables[absolute_level][local_var_base_idx + offset] ||= Utils::MutableSet.new
-        variable_tables[absolute_level][local_var_base_idx + offset] << [@path, dummy_def_range]
+        currnet_variables[local_var_base_idx + offset] ||= Utils::MutableSet.new
+        currnet_variables[local_var_base_idx + offset] << [@path, dummy_def_range]
       end
       @insns.each do |insn|
         next unless insn.insn == :getlocal || insn.insn == :setlocal
@@ -318,19 +321,14 @@ module TypeProf
         # note: level is relative value to the current level
         level = insn.operands[1]
         target_abs_level = absolute_level - level
-
         variable_tables[target_abs_level] ||= {}
 
         case insn.insn
         when :setlocal
           variable_tables[target_abs_level][idx] ||= Utils::MutableSet.new
           variable_tables[target_abs_level][idx] << [path, insn.code_range]
-          puts "debug: Set (#{target_abs_level}, #{idx})"
         when :getlocal
-          # FIXME
-          merged_table = variable_tables.merge(parent_variable_tables)
-          file_info.definition_table[insn.code_range] = merged_table[target_abs_level][idx]
-          puts "debug: Get (#{target_abs_level}, #{idx})"
+          file_info.definition_table[insn.code_range] = variable_tables[target_abs_level][idx]
         end
       end
 
@@ -339,7 +337,7 @@ module TypeProf
           next unless operand.is_a?(ISeq)
           operand.collect_local_variable_info(
             file_info, absolute_level + 1,
-            parent_variable_tables.merge(variable_tables)
+            variable_tables
           )
         end
       end
