@@ -295,8 +295,8 @@ module TypeProf
           new_insns = []
           j = i + 1
           while true
-            case @insns[j]
-            when [:dup, []]
+            case @insns[j].insn
+            when :dup
               break unless @insns[j + 1].check?(:putnil, [])
               break unless @insns[j + 2].check?(:putobject, [true])
               break unless @insns[j + 3].check?(:getconstant) # TODO: support A::B::C
@@ -308,7 +308,7 @@ module TypeProf
               branch_operands = @insns[j + 5][1]
               new_insns << [j + 5, Insn.new(:getlocal_checkmatch_branch, [getlocal_operands, branch_operands])]
               j += 6
-            when [:pop, []]
+            when :pop
               nops << j
               case_branch_list << [nops, new_insns]
               break
