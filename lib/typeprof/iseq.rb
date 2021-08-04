@@ -285,9 +285,9 @@ module TypeProf
     def collect_local_variable_info(file_info, absolute_level = 0, parent_variable_tables = {})
       # e.g.
       # variable_tables[abs_level][idx] = [[path, code_range]]
-      currnet_variables = []
+      current_variables = []
       variable_tables = parent_variable_tables.merge({
-        absolute_level => currnet_variables
+        absolute_level => current_variables
       })
 
       dummy_def_range = CodeRange.new(
@@ -296,8 +296,8 @@ module TypeProf
       )
       # Fill head elements with parameters
       (@fargs_format[:lead_num] || 0).times do |offset|
-        currnet_variables[VM_ENV_DATA_SIZE + offset] ||= Utils::MutableSet.new
-        currnet_variables[VM_ENV_DATA_SIZE + offset] << [@path, dummy_def_range]
+        current_variables[VM_ENV_DATA_SIZE + offset] ||= Utils::MutableSet.new
+        current_variables[VM_ENV_DATA_SIZE + offset] << [@path, dummy_def_range]
       end
 
       @insns.each do |insn|
