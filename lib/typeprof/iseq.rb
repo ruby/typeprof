@@ -2,6 +2,8 @@ module TypeProf
   class ISeq
     # https://github.com/ruby/ruby/pull/4468
     CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
+    # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
+    VM_ENV_DATA_SIZE = 3
 
     FileInfo = Struct.new(
       :node_id2code_range,
@@ -279,6 +281,7 @@ module TypeProf
       ninsns
     end
 
+    # Collect local variable use and definition info recursively
     def collect_local_variable_info(file_info, absolute_level = 0, parent_variable_tables = {})
       # e.g.
       # variable_tables[abs_level][idx] = [[path, code_range]]
@@ -291,11 +294,12 @@ module TypeProf
         CodeLocation.new(@start_lineno, 0),
         CodeLocation.new(@start_lineno, 1),
       )
-      local_var_base_idx = 3
+      # Fill head elements with parameters
       (@fargs_format[:lead_num] || 0).times do |offset|
-        currnet_variables[local_var_base_idx + offset] ||= Utils::MutableSet.new
-        currnet_variables[local_var_base_idx + offset] << [@path, dummy_def_range]
+        currnet_variables[VM_ENV_DATA_SIZE + offset] ||= Utils::MutableSet.new
+        currnet_variables[VM_ENV_DATA_SIZE + offset] << [@path, dummy_def_range]
       end
+
       @insns.each do |insn|
         next unless insn.insn == :getlocal || insn.insn == :setlocal
 
