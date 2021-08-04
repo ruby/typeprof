@@ -37,9 +37,11 @@ module TypeProf
         build_ast_node_id_table(node, node_id2code_range)
 
         file_info = FileInfo.new(node_id2code_range, CodeRangeTable.new)
-        build_variables_range_table(node, {}, file_info.definition_table, node_id2code_range, path)
+        # build_variables_range_table(node, {}, file_info.definition_table, node_id2code_range, path)
+        iseq_rb  = new(iseq.to_a, file_info)
+        iseq_rb.collect_local_variable_info(file_info)
 
-        return new(iseq.to_a, file_info), file_info.definition_table
+        return iseq_rb, file_info.definition_table
       end
 
       private def build_ast_node_id_table(node, tbl = {})
@@ -293,6 +295,54 @@ module TypeProf
         end
       end
       ninsns
+    end
+
+    def collect_local_variable_info(file_info, absolute_level = 0, parent_variable_tables = {})
+      # e.g.
+      # variable_tables[abs_level][idx] = [[path, code_range]]
+      variable_tables = {}
+      dummy_def_range = CodeRange.new(
+        CodeLocation.new(@start_lineno, 0),
+        CodeLocation.new(@start_lineno, 1),
+      )
+      (@fargs_format[:lead_num] || 0).times do |offset|
+        local_var_base_idx = 3
+        variable_tables[absolute_level] ||= []
+        variable_tables[absolute_level][local_var_base_idx + offset] ||= Utils::MutableSet.new
+        variable_tables[absolute_level][local_var_base_idx + offset] << [@path, dummy_def_range]
+      end
+      @insns.each do |insn|
+        next unless insn.insn == :getlocal || insn.insn == :setlocal
+
+        idx = insn.operands[0]
+        # note: level is relative value to the current level
+        level = insn.operands[1]
+        target_abs_level = absolute_level - level
+
+        variable_tables[target_abs_level] ||= {}
+
+        case insn.insn
+        when :setlocal
+          variable_tables[target_abs_level][idx] ||= Utils::MutableSet.new
+          variable_tables[target_abs_level][idx] << [path, insn.code_range]
+          puts "debug: Set (#{target_abs_level}, #{idx})"
+        when :getlocal
+          # FIXME
+          merged_table = variable_tables.merge(parent_variable_tables)
+          file_info.definition_table[insn.code_range] = merged_table[target_abs_level][idx]
+          puts "debug: Get (#{target_abs_level}, #{idx})"
+        end
+      end
+
+      @insns.each do |insn|
+        insn.operands.each do |operand|
+          next unless operand.is_a?(ISeq)
+          operand.collect_local_variable_info(
+            file_info, absolute_level + 1,
+            parent_variable_tables.merge(variable_tables)
+          )
+        end
+      end
     end
 
     def rename_insn_types
