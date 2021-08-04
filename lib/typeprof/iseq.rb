@@ -308,10 +308,10 @@ module TypeProf
         level = insn.operands[1]
         target_abs_level = absolute_level - level
         variable_tables[target_abs_level] ||= {}
+        variable_tables[target_abs_level][idx] ||= Utils::MutableSet.new
 
         case insn.insn
         when :setlocal
-          variable_tables[target_abs_level][idx] ||= Utils::MutableSet.new
           variable_tables[target_abs_level][idx] << [path, insn.code_range]
         when :getlocal
           file_info.definition_table[insn.code_range] = variable_tables[target_abs_level][idx]
