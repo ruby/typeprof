@@ -291,7 +291,7 @@ end
 
 top
 
-if _dummy = false
+if $0 == __FILE__
   v = Vec.new(0.0, 0.0, 0.0)
   v.vadd(v)
 end

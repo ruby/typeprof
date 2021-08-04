@@ -306,6 +306,7 @@ module TypeProf
       @anonymous_struct_gen_id = 0
 
       @types_being_shown = []
+      @namespace = nil
     end
 
     def add_entrypoint(iseq)
@@ -1720,20 +1721,39 @@ module TypeProf
         getlocal_operands, _dup_operands, branch_operands = operands
         var_idx, _scope_idx, _escaped = getlocal_operands
         ret_ty = env.get_local(-var_idx+2)
-        unless ret_ty
-          p env.locals
-          raise
-        end
 
         branchtype, target, = branch_operands
         # branchtype: :if or :unless or :nil
         ep_then = ep.next
         ep_else = ep.jump(target)
 
-        var_idx, _scope_idx, _escaped = getlocal_operands
-
         ret_ty.each_child do |ret_ty|
           flow_env = env.local_update(-var_idx+2, ret_ty).push(ret_ty)
+          case ret_ty
+          when Type.any
+            merge_env(ep_then, flow_env)
+            merge_env(ep_else, flow_env)
+          when Type::Instance.new(Type::Builtin[:false]), Type.nil
+            merge_env(branchtype == :if ? ep_then : ep_else, flow_env)
+          else
+            merge_env(branchtype == :if ? ep_else : ep_then, flow_env)
+          end
+        end
+        return
+      when :dup_setlocal_branch
+        _dup_operands, setlocal_operands, branch_operands = operands
+
+        env, (ret_ty,) = env.pop(1)
+
+        var_idx, _scope_idx, _escaped = setlocal_operands
+
+        branchtype, target, = branch_operands
+        # branchtype: :if or :unless or :nil
+        ep_then = ep.next
+        ep_else = ep.jump(target)
+
+        ret_ty.each_child do |ret_ty|
+          flow_env = env.local_update(-var_idx+2, ret_ty)
           case ret_ty
           when Type.any
             merge_env(ep_then, flow_env)
@@ -2242,7 +2262,7 @@ module TypeProf
         if blk.is_a?(Type::Proc)
           blk.block_body.do_call(aargs, ep, env, self, replace_recv_ty: replace_recv_ty, replace_cref: replace_cref, &ctn)
         else
-          warn(ep, "non-proc is passed as a block")
+          warn(ep, "non-proc is passed as a block") if blk != Type.any
           ctn[Type.any, ep, env]
         end
       end
