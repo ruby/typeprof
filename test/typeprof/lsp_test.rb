@@ -4,7 +4,7 @@ require_relative "../../lib/typeprof"
 module TypeProf
   class LSPTest < Test::Unit::TestCase
     test "analyze local variable definition" do
-      iseq, definition_table = TypeProf::ISeq::compile_str(<<~EOS, "path/to/file")
+      _, definition_table = TypeProf::ISeq::compile_str(<<~EOS, "path/to/file")
       message = "Hello"
       puts(message) # `message = "Hello"`
 
