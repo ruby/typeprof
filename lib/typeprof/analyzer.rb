@@ -1119,15 +1119,16 @@ module TypeProf
       env = @ep2env[ep]
       raise "nil env" unless env
 
-      insn, operands = ep.ctx.iseq.insns[ep.pc]
+      insn = ep.ctx.iseq.insns[ep.pc]
+      operands = insn.operands
 
       if Config.verbose >= 2
         # XXX: more dedicated output
         puts "DEBUG: stack=%p" % [env.stack]
-        puts "DEBUG: %s (%s) PC=%d insn=%s sp=%d" % [ep.source_location, ep.ctx.iseq.name, ep.pc, insn, env.stack.size]
+        puts "DEBUG: %s (%s) PC=%d insn=%s sp=%d" % [ep.source_location, ep.ctx.iseq.name, ep.pc, insn.insn, env.stack.size]
       end
 
-      case insn
+      case insn.insn
       when :_iseq_body_start
         # XXX: reconstruct and record the method signature
         iseq = ep.ctx.iseq
@@ -1642,7 +1643,7 @@ module TypeProf
           return
         end
 
-      when :getlocal, :getblockparam, :getblockparamproxy
+      when :getlocal
         var_idx, scope_idx, _escaped = operands
         if scope_idx == 0
           ty = env.get_local(-var_idx+2)
@@ -1990,7 +1991,7 @@ module TypeProf
         end
         env = env.push(ty)
       else
-        raise "Unknown insn: #{ insn }"
+        raise "Unknown insn: #{ insn.insn }"
       end
 
       add_edge(ep, ep)
