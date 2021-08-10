@@ -8,6 +8,7 @@ module TypeProf
     FileInfo = Struct.new(
       :node_id2code_range,
       :definition_table,
+      :created_iseqs,
     )
 
     class << self
@@ -38,9 +39,12 @@ module TypeProf
         node_id2code_range = {}
         build_ast_node_id_table(node, node_id2code_range)
 
-        file_info = FileInfo.new(node_id2code_range, CodeRangeTable.new)
+        file_info = FileInfo.new(node_id2code_range, CodeRangeTable.new, [])
         iseq_rb  = new(iseq.to_a, file_info)
         iseq_rb.collect_local_variable_info(file_info)
+        file_info.created_iseqs.each do |iseq|
+          iseq.unify_instructions
+        end
 
         return iseq_rb, file_info.definition_table
       end
@@ -67,6 +71,8 @@ module TypeProf
     ISEQ_FRESH_ID = [0]
 
     def initialize(iseq, file_info)
+      file_info.created_iseqs << self
+
       @id = (ISEQ_FRESH_ID[0] += 1)
 
       _magic, _major_version, _minor_version, _format_type, misc,
@@ -102,8 +108,6 @@ module TypeProf
       end
 
       rename_insn_types
-
-      unify_instructions
     end
 
     def source_location(pc)
