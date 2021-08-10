@@ -33,9 +33,12 @@ module TypeProf
         @uri = uri
         @text = text
         @version = version
+        @sigs = nil
+
+        on_text_changed
       end
 
-      attr_reader :text, :version
+      attr_reader :text, :version, :sigs
       attr_accessor :definition_table
 
       def lines
@@ -82,7 +85,69 @@ module TypeProf
         @text = text.join
         @version = version
 
-        @server.on_text_changed(@uri, version)
+        on_text_changed
+      end
+
+      def analyze(uri, text)
+        config = @server.typeprof_config
+        config.rb_files = [[URI(uri).path, text]]
+        config.rbs_files = ["typeprof.rbs"] # XXX
+        config.verbose = 0
+        config.max_sec = 1
+        config.options[:show_errors] = true
+        config.options[:show_indicator] = false
+        config.options[:lsp] = true
+
+        TypeProf.analyze(config)
+      rescue SyntaxError
+      end
+
+      def on_text_changed
+        res, @definition_table = analyze(@uri, @text)
+        return unless res
+
+        @sigs = []
+        res[:sigs].each do |file, lineno, sig, rbs_code_range|
+          uri0 = "file://" + file
+          if @uri == uri0
+            command = { title: sig }
+            if rbs_code_range
+              command[:command] = "jump_to_rbs"
+              command[:arguments] = [uri0, { line: lineno - 1, character: 0 }, "file:///home/mame/work/rbswiki/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
+            end
+            @sigs << {
+              range: {
+                start: { line: lineno - 1, character: 0 },
+                end: { line: lineno - 1, character: 1 },
+              },
+              command: command,
+            }
+          end
+        end
+
+        diagnostics = {}
+        res[:errors].each do |(file, code_range), msg|
+          next unless file
+          uri0 = "file://" + file
+          diagnostics[uri0] ||= []
+          diagnostics[uri0] << {
+            range: code_range.to_lsp,
+            severity: 1,
+            source: "TypeProf",
+            message: msg,
+          }
+        end
+
+        @server.send_request("workspace/codeLens/refresh")
+
+        @server.send_notification(
+          "textDocument/publishDiagnostics",
+          {
+            uri: @uri,
+            version: version,
+            diagnostics: diagnostics[@uri] || [],
+          }
+        )
       end
     end
 
@@ -184,7 +249,6 @@ module TypeProf
           raise
         end
         @server.open_texts[uri] = Text.new(@server, uri, text, version)
-        @server.on_text_changed(uri, version)
       end
     end
 
@@ -259,7 +323,18 @@ module TypeProf
     class Message::TextDocument::CodeLens < Message
       METHOD = "textDocument/codeLens"
       def run
-        respond(@server.sigs[@params[:textDocument][:uri]] || [])
+        case @params
+          in { textDocument: { uri: } }
+        else
+          raise
+        end
+
+        text = @server.open_texts[uri]
+        if text
+          respond(text.sigs)
+        else
+          respond(nil)
+        end
       end
     end
 
@@ -322,7 +397,7 @@ module TypeProf
       include Helpers
 
       def initialize(config, read_io, write_io = read_io)
-        @config = config
+        @typeprof_config = config
         @reader = Reader.new(read_io)
         @writer = Writer.new(write_io)
         @request_id = 0
@@ -331,7 +406,7 @@ module TypeProf
         @sigs = {} # tmp
       end
 
-      attr_reader :open_texts, :sigs
+      attr_reader :typeprof_config, :open_texts, :sigs
 
       def run
         @reader.read do |json|
@@ -358,67 +433,6 @@ module TypeProf
         id = @request_id += 1
         @current_requests[id] = blk
         @writer.write(id: id, method: method, params: params)
-      end
-
-      def on_text_changed(uri, version)
-        if @open_texts[uri]
-          rb = @open_texts[uri]
-          @config.rb_files = [[URI(uri).path, rb.text]]
-          @config.rbs_files = ["typeprof.rbs"] # XXX
-          @config.verbose = 0
-          @config.max_sec = 1
-          @config.options[:show_errors] = true
-          @config.options[:show_indicator] = false
-          @config.options[:lsp] = true
-
-          res, definition_table = TypeProf.analyze(@config)
-
-          @open_texts[uri].definition_table = definition_table
-
-          sigs = {}
-          res[:sigs].each do |file, lineno, sig, rbs_code_range|
-            uri0 = "file://" + file
-            sigs[uri0] ||= []
-            command = { title: sig }
-            if rbs_code_range
-              command[:command] = "jump_to_rbs"
-              command[:arguments] = [uri0, { line: lineno - 1, character: 0 }, "file:///home/mame/work/rbswiki/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
-            end
-            sigs[uri0] << {
-              range: {
-                start: { line: lineno - 1, character: 0 },
-                end: { line: lineno - 1, character: 1 },
-              },
-              command: command,
-            }
-          end
-          @sigs = sigs
-
-          diagnostics = {}
-          res[:errors].each do |(file, code_range), msg|
-            next unless file
-            uri0 = "file://" + file
-            diagnostics[uri0] ||= []
-            diagnostics[uri0] << {
-              range: code_range.to_lsp,
-              severity: 1,
-              source: "TypeProf",
-              message: msg,
-            }
-          end
-        
-          send_request("workspace/codeLens/refresh")
-
-          send_notification(
-            "textDocument/publishDiagnostics",
-            {
-              uri: uri,
-              version: version,
-              diagnostics: diagnostics[uri] || [],
-            }
-          )
-        end
-      rescue SyntaxError
       end
     end
   end
