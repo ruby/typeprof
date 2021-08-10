@@ -129,6 +129,12 @@ module TypeProf
       end
     end
 
+    def add_ivar_def(pc, def_insn, def_iseq)
+      if @insns[pc].definitions
+        @insns[pc].definitions << [def_iseq.path, def_insn.code_range]
+      end
+    end
+
     attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns
     attr_reader :id, :iseq_code_range
 
@@ -272,7 +278,7 @@ module TypeProf
             end
           end
 
-          if e.code_range && e.insn == :send
+          if e.code_range && (e.insn == :send || e.insn == :getinstancevariable)
             definition = Utils::MutableSet.new
             file_info.definition_table[e.code_range] = definition
           end
