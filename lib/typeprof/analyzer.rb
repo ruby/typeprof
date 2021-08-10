@@ -621,6 +621,30 @@ module TypeProf
       nil
     end
 
+    def get_all_methods(klass, singleton, _include_subclasses)
+      names = {}
+
+      if klass.kind == :class
+        while klass != :__root__
+          # TODO: module
+          @class_defs[klass.idx].methods.each_key do |singleton0, name|
+            if singleton == singleton0
+              names[name] = true
+            end
+          end
+          klass = klass.superclass
+        end
+      else
+        @class_defs[klass.idx].methods.each_key do |singleton0, name|
+          if singleton == singleton0
+            names[name] = true
+          end
+        end
+      end
+
+      names
+    end
+
     def get_constant(klass, name)
       if klass == Type.any
         Type.any
@@ -1059,9 +1083,11 @@ module TypeProf
       end
 
       res = RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show_lsp
+
       {
         sigs: res,
         errors: errs,
+        completion: @lsp_completion,
       }
     end
 
@@ -2238,6 +2264,20 @@ module TypeProf
     end
 
     def do_send(recvs, mid, aargs, ep, env, &ctn)
+      if mid == :__typeprof_lsp_completion
+        names = {}
+        recvs.each_child do |recv|
+          case recv
+          when Type::Void, Type::Any
+          else
+            klass, singleton, include_subclasses = recv.method_dispatch_info
+            names.merge!(get_all_methods(klass, singleton, include_subclasses)) if klass
+          end
+        end
+        @lsp_completion = names
+        return ctn[Type.any, ep, env]
+      end
+
       recvs.each_child do |recv|
         case recv
         when Type::Void
