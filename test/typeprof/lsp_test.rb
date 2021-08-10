@@ -18,6 +18,13 @@ module TypeProf
       def foo(message)
         puts(message)
       end
+
+      # getlocal before setlocal
+      def scope0
+        while (message = gets)
+          puts(message)
+        end
+      end
       EOS
       # same level use
       defs = definition_table[CodeLocation.new(2, 5)].to_a
@@ -33,6 +40,10 @@ module TypeProf
       # method parameter use
       defs = definition_table[CodeLocation.new(12, 7)].to_a
       assert_equal(defs[0][1].inspect, "(11,0)-(11,1)")
+
+      # getlocal before setlocal
+      defs = definition_table[CodeLocation.new(18, 9)].to_a
+      assert_equal(defs[0][1].inspect, "(17,9)-(17,23)")
     end
   end
 end
