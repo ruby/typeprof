@@ -800,6 +800,12 @@ module TypeProf
         end
       end
 
+      def get_read_ep_list(site)
+        entry = @tbl[site]
+        return [] if entry.nil?
+        entry.read_continuations.keys
+      end
+
       def dump
         @tbl
       end
@@ -840,7 +846,12 @@ module TypeProf
       recv.each_child do |recv|
         class_def, singleton = get_ivar(recv, var)
         next unless class_def
-        class_def.ivars.add_write!([singleton, var], ty, ep, self)
+        site = [singleton, var]
+        class_def.ivars.add_write!(site, ty, ep, self)
+        class_def.ivars.get_read_ep_list(site).each do |use_ep|
+          def_insn = ep.ctx.iseq.insns[ep.pc]
+          use_ep.ctx.iseq.add_ivar_def(use_ep.pc, def_insn, ep.ctx.iseq)
+        end
       end
     end
 
