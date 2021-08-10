@@ -88,6 +88,31 @@ module TypeProf
         on_text_changed
       end
 
+      def code_complete(loc)
+        lines = @text.lines
+        case loc
+        in { line: row, character: col }
+        end
+
+        if col >= 1 && lines[row][0, col] =~ /\.\w*$/
+          lines[row][$~.begin(0), $&.size] = ".__typeprof_lsp_completion"
+          tmp_text = lines.join
+          res, = analyze(@uri, tmp_text)
+          if res[:completion]
+            res[:completion].keys.map do |name|
+              {
+                label: name,
+                kind: 2, # Method
+              }
+            end
+          else
+            nil
+          end
+        else
+          nil
+        end
+      end
+
       def analyze(uri, text)
         config = @server.typeprof_config
         config.rb_files = [[URI(uri).path, text]]
@@ -191,6 +216,9 @@ module TypeProf
             textDocumentSync: {
               openClose: true,
               change: 2, # Incremental
+            },
+            completionProvider: {
+              triggerCharacters: ["."],
             },
             #codeActionProvider: {
             #  codeActionKinds: ["quickfix", "refactor"],
@@ -317,6 +345,36 @@ module TypeProf
         #    end: { line: 1, character: 7 },
         #  },
         #)
+      end
+    end
+
+    class Message::TextDocument::Completion < Message
+      METHOD = "textDocument/completion"
+      def run
+        case @params
+        in {
+          textDocument: { uri:, },
+          position: loc,
+          context: {
+            triggerKind:
+          },
+        }
+        else
+          raise
+        end
+
+        items = @server.open_texts[uri]&.code_complete(loc)
+
+        if items
+          respond(
+            {
+              isIncomplete: true,
+              items: items
+            }
+          )
+        else
+          respond(nil)
+        end
       end
     end
 
