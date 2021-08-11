@@ -984,7 +984,8 @@ module TypeProf
       end
     end
 
-    def type_profile(cancel_token = Utils::TimerCancelToken.new(Config.max_sec))
+    def type_profile(cancel_token = nil)
+      cancel_token ||= Utils::TimerCancelToken.new(Config.max_sec)
       tick = Time.now
       iter_counter = 0
       stat_eps = Utils::MutableSet.new

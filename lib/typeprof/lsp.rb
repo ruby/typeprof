@@ -35,12 +35,38 @@ module TypeProf
     end
 
     class Text
+      class AnalysisToken < Utils::CancelToken
+        def initialize
+          @timer = Utils::TimerCancelToken.new(1)
+          @cancelled = false
+        end
+
+        def cancel
+          @cancelled = true
+        end
+
+        def cancelled?
+          @timer.cancelled? || @cancelled
+        end
+      end
+
       def initialize(server, uri, text, version)
         @server = server
         @uri = uri
         @text = text
         @version = version
         @sigs = nil
+
+        @analysis_queue = Queue.new
+        @last_analysis_cancel_token = nil
+        @analysis_thread = Thread.new do
+          loop do
+            uri, text, cb = @analysis_queue.pop
+            @last_analysis_cancel_token = AnalysisToken.new
+            res, def_table = self.analyze(uri, text, @last_analysis_cancel_token)
+            cb[res, def_table]
+          end
+        end
 
         on_text_changed
       end
@@ -135,7 +161,7 @@ module TypeProf
         end
       end
 
-      def analyze(uri, text)
+      def analyze(uri, text, cancel_token = nil)
         config = @server.typeprof_config
         config.rb_files = [[URI(uri).path, text]]
         config.rbs_files = ["typeprof.rbs"] # XXX
@@ -145,12 +171,19 @@ module TypeProf
         config.options[:show_indicator] = false
         config.options[:lsp] = true
 
-        TypeProf.analyze(config)
+        TypeProf.analyze(config, cancel_token)
       rescue SyntaxError
       end
 
       def on_text_changed
-        res, @definition_table = analyze(@uri, @text)
+        @last_analysis_cancel_token&.cancel
+        @analysis_queue.push([@uri, @text, Proc.new { |res, def_table|
+          on_text_changed_analysis(res, def_table)
+        }])
+      end
+
+      def on_text_changed_analysis(res, definition_table)
+        @definition_table = definition_table
         return unless res
 
         @sigs = []

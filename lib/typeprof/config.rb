@@ -67,7 +67,7 @@ module TypeProf
     ]
   end
 
-  def self.analyze(config)
+  def self.analyze(config, cancel_token = nil)
     # Deploy the config to the TypeProf::Config (Note: This is thread unsafe)
     if TypeProf.const_defined?(:Config)
       TypeProf.send(:remove_const, :Config)
@@ -115,7 +115,7 @@ module TypeProf
       scratch.add_entrypoint(iseq)
     end
 
-    result = scratch.type_profile
+    result = scratch.type_profile(cancel_token)
 
     if Config.options[:lsp]
       return scratch.report_lsp, code_range_table
