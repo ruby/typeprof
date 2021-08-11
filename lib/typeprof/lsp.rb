@@ -27,6 +27,13 @@ module TypeProf
   end
 
   module LSP
+    CompletionSession = Struct.new(:results, :row, :start_col_offset)
+    class CompletionSession
+      def reusable?(other_row, other_start_col_offset)
+        other_row == self.row && other_start_col_offset == self.start_col_offset
+      end
+    end
+
     class Text
       def initialize(server, uri, text, version)
         @server = server
@@ -88,28 +95,43 @@ module TypeProf
         on_text_changed
       end
 
-      def code_complete(loc)
+      def new_code_completion_session(row, start_offset, end_offset)
         lines = @text.lines
+        lines[row][start_offset, end_offset] = ".__typeprof_lsp_completion"
+        tmp_text = lines.join
+        res, = analyze(@uri, tmp_text)
+        if res[:completion]
+          results = res[:completion].keys.map do |name|
+            {
+              label: name,
+              kind: 2, # Method
+            }
+          end
+          return CompletionSession.new(results, row, start_offset)
+        else
+          nil
+        end
+      end
+
+      def code_complete(loc, trigger_kind)
         case loc
         in { line: row, character: col }
         end
+        unless row < @text.lines.length && col >= 1 && @text.lines[row][0, col] =~ /\.\w*$/
+          return nil
+        end
+        start_offset = $~.begin(0)
+        end_offset = $&.size
 
-        if col >= 1 && lines[row][0, col] =~ /\.\w*$/
-          lines[row][$~.begin(0), $&.size] = ".__typeprof_lsp_completion"
-          tmp_text = lines.join
-          res, = analyze(@uri, tmp_text)
-          if res[:completion]
-            res[:completion].keys.map do |name|
-              {
-                label: name,
-                kind: 2, # Method
-              }
-            end
-          else
-            nil
+        case trigger_kind
+        when LSP::CompletionTriggerKind::TRIGGER_FOR_INCOMPLETE_COMPLETIONS
+          unless @current_completion_session&.reusable?(row, start_offset)
+            return nil
           end
+          return @current_completion_session.results
         else
-          nil
+          @current_completion_session = new_code_completion_session(row, start_offset, end_offset)
+          return @current_completion_session&.results
         end
       end
 
@@ -348,6 +370,13 @@ module TypeProf
       end
     end
 
+
+    module CompletionTriggerKind
+      INVOKED = 1
+      TRIGGER_CHARACTER = 2
+      TRIGGER_FOR_INCOMPLETE_COMPLETIONS = 3
+    end
+
     class Message::TextDocument::Completion < Message
       METHOD = "textDocument/completion"
       def run
@@ -356,14 +385,14 @@ module TypeProf
           textDocument: { uri:, },
           position: loc,
           context: {
-            triggerKind:
+            triggerKind: trigger_kind
           },
         }
         else
           raise
         end
 
-        items = @server.open_texts[uri]&.code_complete(loc)
+        items = @server.open_texts[uri]&.code_complete(loc, trigger_kind)
 
         if items
           respond(
