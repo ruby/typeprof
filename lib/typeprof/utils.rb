@@ -191,5 +191,22 @@ module TypeProf
         "#<#{ self.class }:#{ @heap.map {|_key, val| val }.inspect }>"
       end
     end
+
+    class CancelToken
+      def cancelled?
+        return false
+      end
+    end
+
+    class TimerCancelToken < CancelToken
+      def initialize(max_sec)
+        @max_sec = max_sec
+        @start_time = Time.now
+      end
+
+      def cancelled?
+        @max_sec && Time.now - @start_time >= @max_sec
+      end
+    end
   end
 end
