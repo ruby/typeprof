@@ -1,4 +1,5 @@
 # RUBY_VERSION >= 3.0
+# NO_SHOW_ERRORS
 
 def foo
   case [:a, :b, :c]
@@ -11,12 +12,6 @@ end
 foo
 
 __END__
-# Errors
-smoke/pattern-match1.rb:5: [error] undefined method: nil#length
-smoke/pattern-match1.rb:5: [error] undefined method: nil#[]
-smoke/pattern-match1.rb:5: [error] undefined method: nil#[]
-smoke/pattern-match1.rb:5: [error] undefined method: nil#[]
-
 # Classes
 class Object
   private

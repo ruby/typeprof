@@ -813,6 +813,7 @@ module TypeProf
       Type::Builtin[:exc]        = scratch.get_constant(klass_obj, :Exception)
       Type::Builtin[:encoding]   = scratch.get_constant(klass_obj, :Encoding)
       Type::Builtin[:enumerator] = scratch.get_constant(klass_obj, :Enumerator)
+      Type::Builtin[:kernel]     = scratch.get_constant(klass_obj, :Kernel)
 
       klass_vmcore = Type::Builtin[:vmcore]
       klass_ary    = Type::Builtin[:ary]
@@ -825,6 +826,7 @@ module TypeProf
       scratch.set_custom_method(klass_vmcore, :"core#undef_method", Builtin.method(:vmcore_undef_method))
       scratch.set_custom_method(klass_vmcore, :"core#hash_merge_kwd", Builtin.method(:vmcore_hash_merge_kwd))
       scratch.set_custom_method(klass_vmcore, :"core#raise", Builtin.method(:vmcore_raise))
+
       scratch.set_custom_method(klass_vmcore, :lambda, Builtin.method(:lambda))
       scratch.set_singleton_custom_method(klass_obj, :"new", Builtin.method(:object_s_new))
       scratch.set_custom_method(klass_obj, :p, Builtin.method(:kernel_p), false)
@@ -880,6 +882,12 @@ module TypeProf
       str_ty = Type::Instance.new(Type::Builtin[:str])
       env_ty = Type.gen_hash {|h| h[str_ty] = Type.optional(str_ty) }
       scratch.add_constant(klass_obj, :ENV, env_ty, false)
+
+      scratch.search_method(Type::Builtin[:kernel], false, :sprintf) do |mdefs,|
+        mdefs.each do |mdef|
+          scratch.add_method(klass_vmcore, :"core#sprintf", false, mdef)
+        end
+      end
     end
   end
 end

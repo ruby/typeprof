@@ -892,7 +892,7 @@ module TypeProf
         fargs << ("**" + all_val_ty.screen_name(scratch))
       end
       if Config.options[:show_parameter_names]
-        farg_names = farg_names.map {|name| name == :type ? :type_ : name } # XXX: workaround of RBS parser bug
+        farg_names = farg_names.map {|name| RBS::Parser::KEYWORDS.key?(name.to_s) ? "`#{name}`" : name }
         farg_names = farg_names.map {|name| name.is_a?(Integer) ? "noname_#{ name }" : name }
         fargs = fargs.zip(farg_names).map {|farg, name| name ? "#{ farg } #{ name }" : farg }
       end
