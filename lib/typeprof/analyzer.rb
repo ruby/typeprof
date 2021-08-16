@@ -387,7 +387,7 @@ module TypeProf
             subst2 = {}
             mod_def.klass_obj.type_params.zip(type_args) do |(tyvar, *), tyarg|
               tyvar = Type::Var.new(tyvar)
-              subst2[tyvar] = tyarg.substitute(subst, Config.options[:type_depth_limit])
+              subst2[tyvar] = tyarg.substitute(subst, Config.current.options[:type_depth_limit])
             end
             mod_def.adjust_substitution(false, mid, mthd, subst2, false, &blk)
           end
@@ -539,7 +539,7 @@ module TypeProf
             subst2 = {}
             klass.superclass.type_params.zip(klass.superclass_type_args) do |(tyvar, *), tyarg|
               tyvar = Type::Var.new(tyvar)
-              subst2[tyvar] = tyarg.substitute(subst, Config.options[:type_depth_limit])
+              subst2[tyvar] = tyarg.substitute(subst, Config.current.options[:type_depth_limit])
             end
             subst = subst2
           end
@@ -906,18 +906,18 @@ module TypeProf
     end
 
     def error(ep, msg)
-      p [ep.source_location, "[error] " + msg] if Config.verbose >= 2
+      p [ep.source_location, "[error] " + msg] if Config.current.verbose >= 2
       @errors << [ep, "[error] " + msg]
     end
 
     def warn(ep, msg)
-      p [ep.source_location, "[warning] " + msg] if Config.verbose >= 2
+      p [ep.source_location, "[warning] " + msg] if Config.current.verbose >= 2
       @errors << [ep, "[warning] " + msg]
     end
 
     def reveal_type(ep, ty)
       key = ep.source_location
-      puts "reveal:#{ ep.source_location }:#{ ty.screen_name(self) }" if Config.verbose >= 2
+      puts "reveal:#{ ep.source_location }:#{ ty.screen_name(self) }" if Config.current.verbose >= 2
       if @reveal_types[key]
         @reveal_types[key] = @reveal_types[key].union(ty)
       else
@@ -985,7 +985,7 @@ module TypeProf
     end
 
     def type_profile(cancel_token = nil)
-      cancel_token ||= Utils::TimerCancelToken.new(Config.max_sec)
+      cancel_token ||= Utils::TimerCancelToken.new(Config.current.max_sec)
       tick = Time.now
       iter_counter = 0
       stat_eps = Utils::MutableSet.new
@@ -1014,7 +1014,7 @@ module TypeProf
             ep = @worklist.deletemin
 
             iter_counter += 1
-            if Config.options[:show_indicator]
+            if Config.current.options[:show_indicator]
               tick2 = Time.now
               if tick2 - tick >= 1
                 tick = tick2
@@ -1023,7 +1023,7 @@ module TypeProf
               end
             end
 
-            if (Config.max_iter && Config.max_iter <= iter_counter) || cancel_token.cancelled?
+            if (Config.current.max_iter && Config.current.max_iter <= iter_counter) || cancel_token.cancelled?
               @terminated = true
               break
             end
@@ -1034,7 +1034,7 @@ module TypeProf
 
           break if @terminated
 
-          break unless Config.options[:stub_execution]
+          break unless Config.current.options[:stub_execution]
 
           begin
             iseq, (kind, dummy_continuation) = @pending_execution.first
@@ -1042,7 +1042,7 @@ module TypeProf
             @pending_execution.delete(iseq)
           end while @executed_iseqs.include?(iseq)
 
-          puts "DEBUG: trigger stub execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.verbose >= 2
+          puts "DEBUG: trigger stub execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.current.verbose >= 2
 
           break if !iseq
           case kind
@@ -1061,7 +1061,7 @@ module TypeProf
         end
       end
 
-      $stderr.print "\r\e[K" if Config.options[:show_indicator]
+      $stderr.print "\r\e[K" if Config.current.options[:show_indicator]
 
       stat_eps
     end
@@ -1098,7 +1098,7 @@ module TypeProf
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         env = @return_envs[tmp_ep]
       end
-      ty.globalize(env, {}, Config.options[:type_depth_limit])
+      ty.globalize(env, {}, Config.current.options[:type_depth_limit])
     end
 
     def localize_type(ty, env, ep, alloc_site = AllocationSite.new(ep))
@@ -1106,13 +1106,13 @@ module TypeProf
         tmp_ep = ep
         tmp_ep = tmp_ep.outer while tmp_ep.outer
         target_env = @return_envs[tmp_ep]
-        target_env, ty = ty.localize(target_env, alloc_site, Config.options[:type_depth_limit])
+        target_env, ty = ty.localize(target_env, alloc_site, Config.current.options[:type_depth_limit])
         merge_return_env(tmp_ep) do |env|
           env ? env.merge(target_env) : target_env
         end
         return env, ty
       else
-        return ty.localize(env, alloc_site, Config.options[:type_depth_limit])
+        return ty.localize(env, alloc_site, Config.current.options[:type_depth_limit])
       end
     end
 
@@ -1197,7 +1197,7 @@ module TypeProf
       insn = ep.ctx.iseq.insns[ep.pc]
       operands = insn.operands
 
-      if Config.verbose >= 2
+      if Config.current.verbose >= 2
         # XXX: more dedicated output
         puts "DEBUG: stack=%p" % [env.stack]
         puts "DEBUG: %s (%s) PC=%d insn=%s sp=%d" % [ep.source_location, ep.ctx.iseq.name, ep.pc, insn.insn, env.stack.size]

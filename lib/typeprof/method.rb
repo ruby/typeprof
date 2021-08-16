@@ -37,7 +37,7 @@ module TypeProf
       locals.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(i)
         # nenv is top-level, so it is okay to call Type#localize directly
-        nenv, ty = ty.localize(nenv, alloc_site2, Config.options[:type_depth_limit])
+        nenv, ty = ty.localize(nenv, alloc_site2, Config.current.options[:type_depth_limit])
         nenv = nenv.local_update(i, ty)
       end
 
@@ -97,14 +97,14 @@ module TypeProf
       idx = 0
       msig.lead_tys.each_with_index do |ty, i|
         alloc_site2 = alloc_site.add_id(idx += 1)
-        ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
+        ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
         nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(i, ty)
       end
       if msig.opt_tys
         msig.opt_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
-          ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
+          ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
           nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
           nenv = nenv.local_update(lead_num + i, ty)
         end
@@ -112,14 +112,14 @@ module TypeProf
       if msig.rest_ty
         alloc_site2 = alloc_site.add_id(idx += 1)
         ty = Type::Array.new(Type::Array::Elements.new([], msig.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
-        ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
+        ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
         nenv, rest_ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(rest_start, rest_ty)
       end
       if msig.post_tys
         msig.post_tys.each_with_index do |ty, i|
           alloc_site2 = alloc_site.add_id(idx += 1)
-          ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
+          ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
           nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
           nenv = nenv.local_update(post_start + i, ty)
         end
@@ -132,7 +132,7 @@ module TypeProf
             next
           end
           alloc_site2 = alloc_site.add_id(key)
-          ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
+          ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
           nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
           nenv = nenv.local_update(kw_start + i, ty)
         end
@@ -140,7 +140,7 @@ module TypeProf
       if msig.kw_rest_ty
         ty = msig.kw_rest_ty
         alloc_site2 = alloc_site.add_id(:**)
-        ty = ty.substitute(cur_subst, Config.options[:type_depth_limit]).remove_type_vars
+        ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
         nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(kw_rest, ty)
       end
@@ -257,7 +257,7 @@ module TypeProf
             bsig = msig.blk_ty.block_body.msig
             alloc_site = AllocationSite.new(caller_ep).add_id(self)
             nlead_tys = (bsig.lead_tys + bsig.opt_tys).map.with_index do |ty, i|
-              ty = ty.substitute(subst, Config.options[:type_depth_limit]).remove_type_vars
+              ty = ty.substitute(subst, Config.current.options[:type_depth_limit]).remove_type_vars
               dummy_env, ty = scratch.localize_type(ty, dummy_env, dummy_ep, alloc_site.add_id(i))
               ty
             end
@@ -271,7 +271,7 @@ module TypeProf
                     ncaller_env = recv_orig.update_container_elem_type(subst2, ncaller_env, caller_ep, scratch)
                     scratch.merge_return_env(caller_ep) {|env| env ? env.merge(ncaller_env) : ncaller_env }
                   end
-                  ret_ty2 = ret_ty.substitute(subst2, Config.options[:type_depth_limit]).remove_type_vars
+                  ret_ty2 = ret_ty.substitute(subst2, Config.current.options[:type_depth_limit]).remove_type_vars
                 else
                   ret_ty2 = Type.any
                 end
@@ -289,7 +289,7 @@ module TypeProf
             ctn[ret_ty, caller_ep, ncaller_env] if ret_ty != Type.bot
           end
         else
-          ret_ty = ret_ty.substitute(subst, Config.options[:type_depth_limit])
+          ret_ty = ret_ty.substitute(subst, Config.current.options[:type_depth_limit])
           ret_ty = ret_ty.remove_type_vars
           ctn[ret_ty, caller_ep, ncaller_env] if ret_ty != Type.bot
         end

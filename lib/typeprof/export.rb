@@ -26,7 +26,7 @@ module TypeProf
     end
 
     def show_message(terminated, output)
-      if Config.options[:show_typeprof_version]
+      if Config.current.options[:show_typeprof_version]
         output.puts "# TypeProf #{ VERSION }"
         output.puts
       end
@@ -38,7 +38,7 @@ module TypeProf
 
     def show_error(errors, backward_edge, output)
       return if errors.empty?
-      return unless Config.options[:show_errors]
+      return unless Config.current.options[:show_errors]
 
       output.puts "# Errors"
       errors.each do |ep, msg|
@@ -112,14 +112,14 @@ module TypeProf
       consts = {}
       class_def.consts.each do |name, (ty, absolute_path)|
         next if ty.is_a?(Type::Class)
-        next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
+        next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
         consts[name] = ty.screen_name(@scratch)
       end
 
       modules = class_def.modules.to_h do |kind, mods|
         mods = mods.to_h do |singleton, mods|
           mods = mods.filter_map do |mod_def, _type_args, absolute_paths|
-            next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+            next if absolute_paths.all? {|path| !path || Config.current.check_dir_filter(path) == :exclude }
             Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
           end
           [singleton, mods]
@@ -142,7 +142,7 @@ module TypeProf
 
             ctx = ctxs.find {|ctx| ctx.mid == mid } || ctxs.first
 
-            next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
+            next if Config.current.check_dir_filter(ctx.iseq.absolute_path) == :exclude
 
             method_name = mid
             method_name = "self.#{ method_name }" if singleton
@@ -152,7 +152,7 @@ module TypeProf
             source_locations[key] ||= ctx.iseq.source_location(0)
             (methods[key] ||= []) << @scratch.show_method_signature(ctx)
           when AliasMethodDef
-            next if mdef.def_ep && Config.check_dir_filter(mdef.def_ep.source_location) == :exclude
+            next if mdef.def_ep && Config.current.check_dir_filter(mdef.def_ep.source_location) == :exclude
             alias_name, orig_name = mid, mdef.orig_mid
             if singleton
               alias_name = "self.#{ alias_name }"
@@ -165,7 +165,7 @@ module TypeProf
           when AttrMethodDef
             next if !mdef.def_ep
             absolute_path = mdef.def_ep.ctx.iseq.absolute_path
-            next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
+            next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
             mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
             method_name = mid
             method_name = "self.#{ mid }" if singleton
@@ -195,7 +195,7 @@ module TypeProf
       end
 
       ivars = ivars.map do |(singleton, var), entry|
-        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        next if entry.absolute_paths.all? {|path| Config.current.check_dir_filter(path) == :exclude }
         ty = entry.type
         next unless var.to_s.start_with?("@")
         var = "self.#{ var }" if singleton
@@ -205,12 +205,12 @@ module TypeProf
       end.compact
 
       cvars = cvars.map do |var, entry|
-        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        next if entry.absolute_paths.all? {|path| Config.current.check_dir_filter(path) == :exclude }
         next if entry.rbs_declared
         [var, entry.type.screen_name(@scratch)]
       end.compact
 
-      if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
+      if !class_def.absolute_path || Config.current.check_dir_filter(class_def.absolute_path) == :exclude
         if methods.keys.all? {|type,| type == :rbs }
           return nil if consts.empty? && modules[:before][true].empty? && modules[:before][false].empty? && modules[:after][true].empty? && modules[:after][false].empty? && ivars.empty? && cvars.empty? && inner_classes.empty?
         end
@@ -250,14 +250,14 @@ module TypeProf
       consts = {}
       class_def.consts.each do |name, (ty, absolute_path)|
         next if ty.is_a?(Type::Class)
-        next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
+        next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
         consts[name] = ty.screen_name(@scratch)
       end
 
       modules = class_def.modules.to_h do |kind, mods|
         mods = mods.to_h do |singleton, mods|
           mods = mods.filter_map do |mod_def, _type_args, absolute_paths|
-            next if absolute_paths.all? {|path| !path || Config.check_dir_filter(path) == :exclude }
+            next if absolute_paths.all? {|path| !path || Config.current.check_dir_filter(path) == :exclude }
             Type::Instance.new(mod_def.klass_obj).screen_name(@scratch)
           end
           [singleton, mods]
@@ -280,7 +280,7 @@ module TypeProf
 
             ctx = ctxs.find {|ctx| ctx.mid == mid } || ctxs.first
 
-            next if Config.check_dir_filter(ctx.iseq.absolute_path) == :exclude
+            next if Config.current.check_dir_filter(ctx.iseq.absolute_path) == :exclude
 
             method_name = mid
             method_name = "self.#{ method_name }" if singleton
@@ -302,7 +302,7 @@ module TypeProf
           when AttrMethodDef
             next if !mdef.def_ep
             absolute_path = mdef.def_ep.ctx.iseq.absolute_path
-            next if !absolute_path || Config.check_dir_filter(absolute_path) == :exclude
+            next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
             mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
             method_name = mid
             method_name = "self.#{ mid }" if singleton
@@ -332,7 +332,7 @@ module TypeProf
       end
 
       ivars = ivars.map do |(singleton, var), entry|
-        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        next if entry.absolute_paths.all? {|path| Config.current.check_dir_filter(path) == :exclude }
         ty = entry.type
         next unless var.to_s.start_with?("@")
         var = "self.#{ var }" if singleton
@@ -342,12 +342,12 @@ module TypeProf
       end.compact
 
       cvars = cvars.map do |var, entry|
-        next if entry.absolute_paths.all? {|path| Config.check_dir_filter(path) == :exclude }
+        next if entry.absolute_paths.all? {|path| Config.current.check_dir_filter(path) == :exclude }
         next if entry.rbs_declared
         [var, entry.type.screen_name(@scratch)]
       end.compact
 
-      if !class_def.absolute_path || Config.check_dir_filter(class_def.absolute_path) == :exclude
+      if !class_def.absolute_path || Config.current.check_dir_filter(class_def.absolute_path) == :exclude
         if methods.keys.all? {|type,| type == :rbs }
           return nil if consts.empty? && modules[:before][true].empty? && modules[:before][false].empty? && modules[:after][true].empty? && modules[:after][false].empty? && ivars.empty? && cvars.empty?
         end
@@ -515,7 +515,7 @@ module TypeProf
           prev_vis = vis
         end
         source_location = class_data.source_locations[key]
-        if Config.options[:show_source_locations] && source_location
+        if Config.current.options[:show_source_locations] && source_location
           lines << nil
           lines << (indent + "  # #{ source_location }")
         end
@@ -523,7 +523,7 @@ module TypeProf
         case type
         when :attr
           kind, ty, untyped = *arg
-          exclude = Config.options[:exclude_untyped] && untyped ? "#" : " " # XXX
+          exclude = Config.current.options[:exclude_untyped] && untyped ? "#" : " " # XXX
           lines << (indent + "#{ exclude } attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }")
         when :rbs
           sigs = arg.sort.join("\n" + indent + "#" + " " * (method_name.size + 5) + "| ")
@@ -536,7 +536,7 @@ module TypeProf
             untyped ||= untyped0
           end
           sigs = sigs.sort.join("\n" + indent + " " * (method_name.size + 6) + "| ")
-          exclude = Config.options[:exclude_untyped] && untyped ? "#" : " " # XXX
+          exclude = Config.current.options[:exclude_untyped] && untyped ? "#" : " " # XXX
           lines << (indent + "#{ exclude } def #{ method_name }: #{ sigs }")
         when :alias
           orig_name = arg
