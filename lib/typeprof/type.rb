@@ -168,7 +168,7 @@ module TypeProf
     end
 
     def remove_type_vars
-      substitute(DummySubstitution, Config.options[:type_depth_limit])
+      substitute(DummySubstitution, Config.current.options[:type_depth_limit])
     end
 
     def include_untyped?(_scratch)
@@ -239,7 +239,7 @@ module TypeProf
               non_class_instances << ty
             end
           end
-          if (Config.options[:union_width_limit] >= 2 && class_instances.size >= Config.options[:union_width_limit]) || (degenerated && class_instances.size >= 2)
+          if (Config.current.options[:union_width_limit] >= 2 && class_instances.size >= Config.current.options[:union_width_limit]) || (degenerated && class_instances.size >= 2)
             create(Utils::Set[Instance.new_degenerate(class_instances), *non_class_instances], elems)
           else
             new(tys, elems)
@@ -322,7 +322,7 @@ module TypeProf
             types.delete(Type::Instance.new(Type::Builtin[:true]))
             bool = true
           end
-          types.delete(Type.any) unless Config.options[:show_untyped]
+          types.delete(Type.any) unless Config.current.options[:show_untyped]
           proc_tys, types = types.partition {|ty| ty.is_a?(Proc) }
           types = types.map {|ty| ty.screen_name(scratch) }
           types << scratch.show_proc_signature(proc_tys) unless proc_tys.empty?
@@ -783,7 +783,7 @@ module TypeProf
       when ::Hash
         Type.gen_hash do |h|
           obj.each do |k, v|
-            k_ty = guess_literal_type(k).globalize(nil, {}, Config.options[:type_depth_limit])
+            k_ty = guess_literal_type(k).globalize(nil, {}, Config.current.options[:type_depth_limit])
             v_ty = guess_literal_type(v)
             h[k_ty] = v_ty
           end
@@ -891,7 +891,7 @@ module TypeProf
         end
         fargs << ("**" + all_val_ty.screen_name(scratch))
       end
-      if Config.options[:show_parameter_names]
+      if Config.current.options[:show_parameter_names]
         farg_names = farg_names.map {|name| RBS::Parser::KEYWORDS.key?(name.to_s) ? "`#{name}`" : name }
         farg_names = farg_names.map {|name| name.is_a?(Integer) ? "noname_#{ name }" : name }
         fargs = fargs.zip(farg_names).map {|farg, name| name ? "#{ farg } #{ name }" : farg }
