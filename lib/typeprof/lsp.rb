@@ -57,14 +57,12 @@ module TypeProf
         @version = version
         @sigs = nil
 
-        @analysis_queue = Queue.new
         @last_analysis_cancel_token = nil
+        @analysis_queue = Queue.new
         @analysis_thread = Thread.new do
           loop do
-            uri, text, cb = @analysis_queue.pop
-            @last_analysis_cancel_token = AnalysisToken.new
-            res, def_table = self.analyze(uri, text, @last_analysis_cancel_token)
-            cb[res, def_table]
+            work = @analysis_queue.pop
+            work.call
           end
         end
 
@@ -128,8 +126,7 @@ module TypeProf
         lines[row][start_offset, end_offset] = ".__typeprof_lsp_completion"
         tmp_text = lines.join
         res, def_table = analyze(@uri, tmp_text)
-        return if res.nil?
-        if res[:completion]
+        if res && res[:completion]
           results = res[:completion].keys.map do |name|
             {
               label: name,
@@ -155,7 +152,8 @@ module TypeProf
         case trigger_kind
         when LSP::CompletionTriggerKind::TRIGGER_FOR_INCOMPLETE_COMPLETIONS
           unless @current_completion_session&.reusable?(row, start_offset)
-            return nil
+            puts "no reusable completion session but got TRIGGER_FOR_INCOMPLETE_COMPLETIONS"
+            @current_completion_session = new_code_completion_session(row, start_offset, end_offset)
           end
           return @current_completion_session.results
         else
@@ -165,7 +163,7 @@ module TypeProf
       end
 
       def analyze(uri, text, cancel_token = nil)
-        config = @server.typeprof_config
+        config = @server.typeprof_config.dup
         config.rb_files = [[URI(uri).path, text]]
         config.rbs_files = ["typeprof.rbs"] # XXX
         config.verbose = 0
@@ -178,11 +176,26 @@ module TypeProf
       rescue SyntaxError
       end
 
+      def push_analysis_queue(&work)
+        @analysis_queue.push(work)
+      end
+
       def on_text_changed
+        cancel_token = AnalysisToken.new
         @last_analysis_cancel_token&.cancel
-        @analysis_queue.push([@uri, @text, Proc.new { |res, def_table|
-          on_text_changed_analysis(res, def_table)
-        }])
+        @last_analysis_cancel_token = cancel_token
+
+        uri = @uri
+        text = @text
+        self.push_analysis_queue do
+          if cancel_token.cancelled?
+            next
+          end
+          res, def_table = self.analyze(uri, text, cancel_token)
+          unless cancel_token.cancelled?
+            on_text_changed_analysis(res, def_table)
+          end
+        end
       end
 
       def on_text_changed_analysis(res, definition_table)
@@ -454,7 +467,10 @@ module TypeProf
 
         text = @server.open_texts[uri]
         if text
-          respond(text.sigs)
+          # enqueue in the analysis queue because codeLens is order sensitive
+          text.push_analysis_queue do
+            respond(text.sigs)
+          end
         else
           respond(nil)
         end
