@@ -68,7 +68,9 @@ module TypeProf
           end
         end
 
-        on_text_changed
+        # analyze synchronously to respond the first codeLens request
+        res, def_table = self.analyze(uri, text)
+        on_text_changed_analysis(res, def_table)
       end
 
       attr_reader :text, :version, :sigs
@@ -125,7 +127,8 @@ module TypeProf
         lines = @text.lines
         lines[row][start_offset, end_offset] = ".__typeprof_lsp_completion"
         tmp_text = lines.join
-        res, = analyze(@uri, tmp_text)
+        res, def_table = analyze(@uri, tmp_text)
+        return if res.nil?
         if res[:completion]
           results = res[:completion].keys.map do |name|
             {
