@@ -66,29 +66,36 @@ module TypeProf
     ]
   end
 
-  def self.analyze(config, cancel_token = nil)
-    # Deploy the config to the TypeProf::Config (Note: This is thread unsafe)
-    if TypeProf.const_defined?(:Config)
-      TypeProf.send(:remove_const, :Config)
+  module Config
+    def self.current
+      Thread.current[:typeprof_config]
     end
-    TypeProf.const_set(:Config, config)
 
-    if Config.options[:stackprof]
+    def self.set_current(config)
+      Thread.current[:typeprof_config] = config
+    end
+  end
+
+  def self.analyze(config, cancel_token = nil)
+    # Deploy the config to the TypeProf::Config (Note: This is thread local)
+    Config.set_current(config)
+
+    if Config.current.options[:stackprof]
       require "stackprof"
-      out = "typeprof-stackprof-#{ Config.options[:stackprof] }.dump"
-      StackProf.start(mode: Config.options[:stackprof], out: out, raw: true)
+      out = "typeprof-stackprof-#{ Config.current.options[:stackprof] }.dump"
+      StackProf.start(mode: Config.current.options[:stackprof], out: out, raw: true)
     end
 
     scratch = Scratch.new
     Builtin.setup_initial_global_env(scratch)
 
-    Config.gem_rbs_features.each do |feature|
+    Config.current.gem_rbs_features.each do |feature|
       Import.import_library(scratch, feature)
     end
 
     rbs_files = []
     rbs_codes = []
-    Config.rbs_files.each do |rbs|
+    Config.current.rbs_files.each do |rbs|
       if rbs.is_a?(Array) # [String name, String content]
         rbs_codes << rbs
       else
@@ -101,7 +108,7 @@ module TypeProf
     end
 
     code_range_table = nil
-    Config.rb_files.each do |rb|
+    Config.current.rb_files.each do |rb|
       if rb.is_a?(Array) # [String name, String content]
         iseq, tbl = ISeq.compile_str(*rb.reverse)
         code_range_table ||= tbl
@@ -113,24 +120,24 @@ module TypeProf
 
     result = scratch.type_profile(cancel_token)
 
-    if Config.options[:lsp]
+    if Config.current.options[:lsp]
       return scratch.report_lsp, code_range_table
     end
 
-    if Config.output.respond_to?(:write)
-      scratch.report(result, Config.output)
+    if Config.current.output.respond_to?(:write)
+      scratch.report(result, Config.current.output)
     else
-      open(Config.output, "w") do |output|
+      open(Config.current.output, "w") do |output|
         scratch.report(result, output)
       end
     end
 
   rescue TypeProfError => exc
-    exc.report(Config.output)
+    exc.report(Config.current.output)
 
     return nil
   ensure
-    if Config.options[:stackprof] && defined?(StackProf)
+    if Config.current.options[:stackprof] && defined?(StackProf)
       StackProf.stop
       StackProf.results
     end

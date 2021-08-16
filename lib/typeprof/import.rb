@@ -4,7 +4,7 @@ module TypeProf
   class RBSReader
     def initialize
       @repo = RBS::Repository.new
-      Config.gem_repo_dirs.each do |dir|
+      Config.current.gem_repo_dirs.each do |dir|
         @repo.add(Pathname(dir))
       end
       @env, @builtin_env_json = RBSReader.get_builtin_env
