@@ -34,6 +34,21 @@ module TypeProf
           puts(message)
         end
       end
+
+      def scope1(param0)
+        var0 = 1
+        puts var0
+      end
+
+      def scope1(param0, param1, param2)
+        var0 = 1
+        var1 = 1
+        puts var0
+        puts var1
+        puts param0
+        puts param1
+        puts param2
+      end
       EOS
       # same level use
       defs = definition_table[CodeLocation.new(2, 5)].to_a
@@ -53,6 +68,17 @@ module TypeProf
       # getlocal before setlocal
       defs = definition_table[CodeLocation.new(18, 9)].to_a
       assert_equal(defs[0][1].inspect, "(17,9)-(17,23)")
+
+      # param with local var
+      defs = definition_table[CodeLocation.new(24, 7)].to_a
+      assert_equal(defs[0][1].inspect, "(23,2)-(23,10)")
+
+      defs = definition_table[CodeLocation.new(30, 7)].to_a
+      assert_equal(defs[0][1].inspect, "(28,2)-(28,10)")
+      defs = definition_table[CodeLocation.new(30, 7)].to_a
+      assert_equal(defs[0][1].inspect, "(28,2)-(28,10)")
+      defs = definition_table[CodeLocation.new(31, 7)].to_a
+      assert_equal(defs[0][1].inspect, "(29,2)-(29,10)")
     end
 
     test "analyze instance variable definition" do
