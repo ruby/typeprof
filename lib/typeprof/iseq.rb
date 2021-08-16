@@ -304,10 +304,10 @@ module TypeProf
         CodeLocation.new(@start_lineno, 0),
         CodeLocation.new(@start_lineno, 1),
       )
-      # Fill head elements with parameters
+      # Fill tail elements with parameters
       (@fargs_format[:lead_num] || 0).times do |offset|
-        current_variables[VM_ENV_DATA_SIZE + offset] ||= Utils::MutableSet.new
-        current_variables[VM_ENV_DATA_SIZE + offset] << [@path, dummy_def_range]
+        current_variables[VM_ENV_DATA_SIZE + @locals.length - offset - 1] ||= Utils::MutableSet.new
+        current_variables[VM_ENV_DATA_SIZE + @locals.length - offset - 1] << [@path, dummy_def_range]
       end
 
       @insns.each do |insn|
