@@ -17,7 +17,9 @@ module TypeProf
 
       Socket.accept_loop(servs) do |sock|
         begin
-          TypeProf::LSP::Server.new(config, sock).run
+          reader = LSP::Reader.new(sock)
+          writer = LSP::Writer.new(sock)
+          TypeProf::LSP::Server.new(config, reader, writer).run
         ensure
           sock.close
         end
@@ -535,10 +537,10 @@ module TypeProf
 
       include Helpers
 
-      def initialize(config, read_io, write_io = read_io)
+      def initialize(config, reader, writer)
         @typeprof_config = config
-        @reader = Reader.new(read_io)
-        @writer = Writer.new(write_io)
+        @reader = reader
+        @writer = writer
         @request_id = 0
         @current_requests = {}
         @open_texts = {}
