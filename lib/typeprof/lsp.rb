@@ -541,6 +541,7 @@ module TypeProf
         @typeprof_config = config
         @reader = reader
         @writer = writer
+        @tx_mutex = Mutex.new
         @request_id = 0
         @current_requests = {}
         @open_texts = {}
@@ -563,17 +564,23 @@ module TypeProf
       end
 
       def send_response(**msg)
-        @writer.write(**msg)
+        exclusive_write(**msg)
       end
 
       def send_notification(method, params = nil)
-        @writer.write(method: method, params: params)
+        exclusive_write(method: method, params: params)
       end
 
       def send_request(method, params = nil, &blk)
         id = @request_id += 1
         @current_requests[id] = blk
-        @writer.write(id: id, method: method, params: params)
+        exclusive_write(id: id, method: method, params: params)
+      end
+
+      def exclusive_write(**json)
+        @tx_mutex.synchronize do
+          @writer.write(**json)
+        end
       end
     end
   end
