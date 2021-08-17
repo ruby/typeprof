@@ -9,7 +9,7 @@ module TypeProf
       def self.included(klass)
         klass.instance_eval do
           def new(*args)
-            (@table ||= {})[[self] + args] ||= super
+            (Thread.current[:table] ||= {})[[self] + args] ||= super
           end
         end
       end
