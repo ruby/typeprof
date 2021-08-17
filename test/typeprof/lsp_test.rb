@@ -112,5 +112,111 @@ module TypeProf
         # defs = definition_table[CodeLocation.new(15, 4)].to_a
         # assert_equal(defs[0][1].inspect, "(6,4)-(6,12)")
     end
+
+    test "ensure threads write responses exclusively" do
+      class Verifier
+        def initialize(ctx)
+          @rx = Thread::Queue.new
+          @ctx = ctx
+        end
+
+        def read
+          yield ({ id: 0, method: "initialize" })
+          yield ({ method: "initialized" })
+          yield ({
+            method: "textDocument/didOpen",
+            params: {
+              textDocument: {
+                uri: "file:///path/to/file.rb",
+                languageId: "ruby",
+                version: 1,
+                text: <<~EOS
+                  class Foo
+                    def foo(a, b, c)
+                      bar(a)
+                    end
+                    def bar(a)
+                      1
+                    end
+                  end
+                  if $0 == __FILE__
+                    obj = Foo.new
+                    obj.foo(1, "str", obj)
+                    obj.bar(1)
+                  end
+                EOS
+              }
+            }
+          })
+          @ctx.assert_equal(@rx.pop[:id], 0)
+
+          yield ({
+            method: "textDocument/didChange",
+            params: {
+              textDocument: {
+                uri: "file:///path/to/file.rb",
+                version: 4
+              },
+              contentChanges: [
+                {
+                  range: {
+                    start: { line: 6, character: 5 },
+                    end:   { line: 6, character: 5 }
+                  },
+                  rangeLength: 0,
+                  text: "."
+                }
+              ]
+            }
+          })
+
+          @ctx.assert_equal(@rx.pop[:method], "workspace/codeLens/refresh")
+          @ctx.assert_equal(@rx.pop[:method], "textDocument/publishDiagnostics")
+
+          # id=1,2 are proceed in parallel
+          yield ({
+            id: 1,
+            method: "textDocument/codeLens",
+            params: {
+              textDocument: { uri: "file:///path/to/file.rb" },
+            }
+          })
+
+          yield ({
+            id: 2,
+            method: "textDocument/completion",
+            params: {
+              textDocument: { uri: "file:///path/to/file.rb" },
+              position: { line: 6, character: 6 },
+              context: { triggerKind: 2, triggerCharacter: "." }
+            }
+          })
+          # receive id=1,2
+          res1, res2 = @rx.pop, @rx.pop
+          res = {
+            res1[:id] => res1,
+            res2[:id] => res2
+          }
+          @ctx.assert_not_empty(res[1][:result])
+          @ctx.assert_not_empty(res[2][:result])
+        end
+
+        def write(**json)
+          if @writing
+            @ctx.assert(false, "non exclusive call")
+          end
+          @writing = true
+          @rx << json
+          @writing = false
+        end
+      end
+
+      config = ConfigData.new(options: {
+        lsp: true
+      })
+      verifier = Verifier.new(self)
+      server = TypeProf::LSP::Server.new(config, verifier, verifier)
+      server.run
+    end
   end
 end
