@@ -180,6 +180,19 @@ module TypeProf
           self.callee7
         end
       end
+
+      class D
+        def self.callee8
+        end
+        def self   .   callee9
+        end
+        class << self
+          def caller8
+            callee8
+            callee9
+          end
+        end
+      end
       EOS
 
       # single caller from the same class method
@@ -215,6 +228,12 @@ module TypeProf
       # call to a method defined by define_method
       callers = caller_table[CodeLocation.new(60, 17)].to_a
       assert_equal(callers[0][1].inspect, "(63,4)-(63,16)")
+
+      # call to a class method
+      callers = caller_table[CodeLocation.new(68, 12)].to_a
+      assert_equal(callers[0][1].inspect, "(74,6)-(74,13)")
+      callers = caller_table[CodeLocation.new(70, 18)].to_a
+      assert_equal(callers[0][1].inspect, "(75,6)-(75,13)")
     end
 
     test "ensure threads write responses exclusively" do
