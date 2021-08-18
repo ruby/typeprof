@@ -69,11 +69,11 @@ module TypeProf
         end
 
         # analyze synchronously to respond the first codeLens request
-        res, def_table = self.analyze(uri, text)
-        on_text_changed_analysis(res, def_table)
+        res, def_table, caller_table = self.analyze(uri, text)
+        on_text_changed_analysis(res, def_table, caller_table)
       end
 
-      attr_reader :text, :version, :sigs
+      attr_reader :text, :version, :sigs, :caller_table
       attr_accessor :definition_table
 
       def lines
@@ -127,7 +127,7 @@ module TypeProf
         lines = @text.lines
         lines[row][start_offset, end_offset] = ".__typeprof_lsp_completion"
         tmp_text = lines.join
-        res, def_table = analyze(@uri, tmp_text)
+        res, = analyze(@uri, tmp_text)
         if res && res[:completion]
           results = res[:completion].keys.map do |name|
             {
@@ -193,15 +193,16 @@ module TypeProf
           if cancel_token.cancelled?
             next
           end
-          res, def_table = self.analyze(uri, text, cancel_token)
+          res, def_table, caller_table = self.analyze(uri, text, cancel_token)
           unless cancel_token.cancelled?
-            on_text_changed_analysis(res, def_table)
+            on_text_changed_analysis(res, def_table, caller_table)
           end
         end
       end
 
-      def on_text_changed_analysis(res, definition_table)
+      def on_text_changed_analysis(res, definition_table, caller_table)
         @definition_table = definition_table
+        @caller_table = caller_table
         return unless res
 
         @sigs = []
@@ -305,6 +306,7 @@ module TypeProf
             #},
             definitionProvider: true,
             typeDefinitionProvider: true,
+            referencesProvider: true,
           },
           serverInfo: {
             name: "typeprof",
@@ -421,6 +423,34 @@ module TypeProf
       end
     end
 
+    class Message::TextDocument::References < Message
+      METHOD = "textDocument/references"
+      def run
+        case @params
+        in {
+          textDocument: { uri:, },
+          position: loc,
+        }
+        else
+          raise
+        end
+
+        caller_table = @server.open_texts[uri].caller_table
+        code_locations = caller_table[CodeLocation.from_lsp(loc)] if caller_table
+        if code_locations
+          respond(
+            code_locations.map do |path, code_range|
+              {
+                uri: "file://" + path,
+                range: code_range.to_lsp,
+              }
+            end
+          )
+        else
+          respond(nil)
+        end
+      end
+    end
 
     module CompletionTriggerKind
       INVOKED = 1
