@@ -77,19 +77,10 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
-      raw_code_ranges = misc[:node_ids].map {|node_id|
-        node = file_info.node_id2node[node_id]
-        next nil unless node
-        CodeRange.new(
-          CodeLocation.new(node.first_lineno, node.first_column),
-          CodeLocation.new(node.last_lineno, node.last_column),
-        )
-      }
-
       fl, fc, ll, lc = misc[:code_location]
       @iseq_code_range = CodeRange.new(CodeLocation.new(fl, fc), CodeLocation.new(ll, lc))
 
-      convert_insns(insns, raw_code_ranges, misc[:node_ids])
+      convert_insns(insns, misc[:node_ids], file_info)
 
       add_body_start_marker(insns)
 
@@ -219,7 +210,7 @@ module TypeProf
     end
 
     # Remove lineno entry and convert instructions to Insn instances
-    def convert_insns(insns, raw_code_ranges, node_ids)
+    def convert_insns(insns, node_ids, file_info)
       ninsns = []
       lineno = 0
       insns.each do |e|
@@ -230,7 +221,13 @@ module TypeProf
           ninsns << e
         when Array
           insn, *operands = e
-          ninsns << Insn.new(insn, operands, lineno, raw_code_ranges.shift, nil, node_ids.shift)
+          node_id = node_ids.shift
+          node = file_info.node_id2node[node_id]
+          code_range = node ? CodeRange.new(
+            CodeLocation.new(node.first_lineno, node.first_column),
+            CodeLocation.new(node.last_lineno, node.last_column),
+          ) : nil
+          ninsns << Insn.new(insn, operands, lineno, code_range, nil, node_id)
         else
           raise "unknown iseq entry: #{ e }"
         end
