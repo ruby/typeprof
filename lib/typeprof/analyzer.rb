@@ -740,7 +740,8 @@ module TypeProf
     def add_callsite!(callee_ctx, caller_ep, caller_env, &ctn)
       if callee_ctx.is_a?(Context)
         @executed_iseqs << callee_ctx.iseq
-        if caller_ep.ctx.is_a?(Context)
+        callee_type = callee_ctx.iseq.type
+        if caller_ep.ctx.is_a?(Context) && (callee_type == :method || callee_type == :block)
           caller_ep.ctx.iseq&.add_called_iseq(caller_ep.pc, callee_ctx.iseq)
         end
       end

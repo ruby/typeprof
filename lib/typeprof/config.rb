@@ -111,11 +111,13 @@ module TypeProf
       Import.import_rbs_code(scratch, name, content)
     end
 
-    code_range_table = nil
+    def_code_range_table = nil
+    caller_code_range_table = nil
     Config.current.rb_files.each do |rb|
       if rb.is_a?(Array) # [String name, String content]
-        iseq, tbl = ISeq.compile_str(*rb.reverse)
-        code_range_table ||= tbl
+        iseq, def_tbl, caller_tbl = ISeq.compile_str(*rb.reverse)
+        def_code_range_table ||= def_tbl
+        caller_code_range_table ||= caller_tbl
       else
         iseq = rb
       end
@@ -125,7 +127,7 @@ module TypeProf
     result = scratch.type_profile(cancel_token)
 
     if Config.current.options[:lsp]
-      return scratch.report_lsp, code_range_table
+      return scratch.report_lsp, def_code_range_table, caller_code_range_table
     end
 
     if Config.current.output.respond_to?(:write)
