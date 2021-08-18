@@ -118,7 +118,12 @@ module TypeProf
     def extract_method_name_token_range(node)
       case @type
       when :method
-        return nil unless node.source =~ /^def\s+(\w+)/
+        regex = if node.type == :DEFS
+           /^def\s+(?:\w+)\s*\.\s*(\w+)/
+        else
+          /^def\s+(\w+)/
+        end
+        return nil unless node.source =~ regex
         zero_loc = CodeLocation.new(1, 0)
         name_start = $~.begin(1)
         name_length = $~.end(1) - name_start
