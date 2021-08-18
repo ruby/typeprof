@@ -6,8 +6,9 @@ module TypeProf
     VM_ENV_DATA_SIZE = 3
 
     FileInfo = Struct.new(
-      :node_id2code_range,
+      :node_id2node,
       :definition_table,
+      :caller_table,
       :created_iseqs,
     )
 
@@ -29,31 +30,28 @@ module TypeProf
         opt[:coverage_enabled] = false
 
         if str
-          node = RubyVM::AbstractSyntaxTree.parse(str)
+          node = RubyVM::AbstractSyntaxTree.parse(str, save_script_lines: true)
           iseq = RubyVM::InstructionSequence.compile(str, path, **opt)
         else
-          node = RubyVM::AbstractSyntaxTree.parse_file(path)
+          node = RubyVM::AbstractSyntaxTree.parse_file(path, save_script_lines: true)
           iseq = RubyVM::InstructionSequence.compile_file(path, **opt)
         end
 
-        node_id2code_range = {}
-        build_ast_node_id_table(node, node_id2code_range)
+        node_id2node = {}
+        build_ast_node_id_table(node, node_id2node)
 
-        file_info = FileInfo.new(node_id2code_range, CodeRangeTable.new, [])
-        iseq_rb  = new(iseq.to_a, file_info)
+        file_info = FileInfo.new(node_id2node, CodeRangeTable.new, CodeRangeTable.new, [])
+        iseq_rb  = new(iseq.to_a, nil, file_info)
         iseq_rb.collect_local_variable_info(file_info)
         file_info.created_iseqs.each do |iseq|
           iseq.unify_instructions
         end
 
-        return iseq_rb, file_info.definition_table
+        return iseq_rb, file_info.definition_table, file_info.caller_table
       end
 
       private def build_ast_node_id_table(node, tbl = {})
-        tbl[node.node_id] = CodeRange.new(
-          CodeLocation.new(node.first_lineno, node.first_column),
-          CodeLocation.new(node.last_lineno, node.last_column),
-        )
+        tbl[node.node_id] = node
         node.children.each do |child|
           build_ast_node_id_table(child, tbl) if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
         end
@@ -61,7 +59,7 @@ module TypeProf
       end
     end
 
-    Insn = Struct.new(:insn, :operands, :lineno, :code_range, :definitions)
+    Insn = Struct.new(:insn, :operands, :lineno, :code_range, :definitions, :node_id)
     class Insn
       def check?(insn_cmp, operands_cmp = nil)
         return insn == insn_cmp && (!operands_cmp || operands == operands_cmp)
@@ -70,7 +68,7 @@ module TypeProf
 
     ISEQ_FRESH_ID = [0]
 
-    def initialize(iseq, file_info)
+    def initialize(iseq, def_node_id, file_info)
       file_info.created_iseqs << self
 
       @id = (ISEQ_FRESH_ID[0] += 1)
@@ -79,12 +77,19 @@ module TypeProf
         @name, @path, @absolute_path, @start_lineno, @type,
         @locals, @fargs_format, catch_table, insns = *iseq
 
-      raw_code_ranges = misc[:node_ids].map {|node_id| file_info.node_id2code_range[node_id] }
+      raw_code_ranges = misc[:node_ids].map {|node_id|
+        node = file_info.node_id2node[node_id]
+        next nil unless node
+        CodeRange.new(
+          CodeLocation.new(node.first_lineno, node.first_column),
+          CodeLocation.new(node.last_lineno, node.last_column),
+        )
+      }
 
       fl, fc, ll, lc = misc[:code_location]
       @iseq_code_range = CodeRange.new(CodeLocation.new(fl, fc), CodeLocation.new(ll, lc))
 
-      convert_insns(insns, raw_code_ranges)
+      convert_insns(insns, raw_code_ranges, misc[:node_ids])
 
       add_body_start_marker(insns)
 
@@ -98,7 +103,7 @@ module TypeProf
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        iseq = iseq ? ISeq.new(iseq, file_info) : nil
+        iseq = iseq ? ISeq.new(iseq, nil, file_info) : nil
         target = labels[cont]
         entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
@@ -107,7 +112,43 @@ module TypeProf
         end
       end
 
+      if def_node_id && file_info.node_id2node[def_node_id] && (@type == :method || @type == :block)
+        def_node = file_info.node_id2node[def_node_id]
+        method_name_token_range = extract_method_name_token_range(def_node)
+        if method_name_token_range
+          @callers = Utils::MutableSet.new
+          file_info.caller_table[method_name_token_range] = @callers
+        end
+      end
+
       rename_insn_types
+    end
+
+    def extract_method_name_token_range(node)
+      case @type
+      when :method
+        return nil unless node.source =~ /^def\s+(\w+)/
+        zero_loc = CodeLocation.new(1, 0)
+        name_start = $~.begin(1)
+        name_length = $~.end(1) - name_start
+        name_head_loc = zero_loc.advance_cursor(name_start, node.source)
+        name_tail_loc = name_head_loc.advance_cursor(name_length, node.source)
+        return CodeRange.new(
+          CodeLocation.new(
+            node.first_lineno + (name_head_loc.lineno - 1),
+            name_head_loc.lineno == 1 ? node.first_column + name_head_loc.column : name_head_loc.column
+          ),
+          CodeLocation.new(
+            node.first_lineno + (name_tail_loc.lineno - 1),
+            name_tail_loc.lineno == 1 ? node.first_column + name_tail_loc.column : name_tail_loc.column
+          ),
+        )
+      when :block
+        return CodeRange.new(
+          CodeLocation.new(node.first_lineno, node.first_column),
+          CodeLocation.new(node.last_lineno, node.last_column),
+        )
+      end
     end
 
     def source_location(pc)
@@ -127,6 +168,9 @@ module TypeProf
       if callee_iseq && @insns[pc].definitions
         @insns[pc].definitions << [callee_iseq.path, callee_iseq.iseq_code_range]
       end
+      if callee_iseq.callers
+        callee_iseq.callers << [@path, @insns[pc].code_range]
+      end
     end
 
     def add_ivar_def(pc, def_insn, def_iseq)
@@ -136,7 +180,7 @@ module TypeProf
     end
 
     attr_reader :name, :path, :absolute_path, :start_lineno, :type, :locals, :fargs_format, :catch_table, :insns
-    attr_reader :id, :iseq_code_range
+    attr_reader :id, :iseq_code_range, :callers
 
     def pretty_print(q)
       q.text "ISeq["
@@ -175,7 +219,7 @@ module TypeProf
     end
 
     # Remove lineno entry and convert instructions to Insn instances
-    def convert_insns(insns, raw_code_ranges)
+    def convert_insns(insns, raw_code_ranges, node_ids)
       ninsns = []
       lineno = 0
       insns.each do |e|
@@ -186,7 +230,7 @@ module TypeProf
           ninsns << e
         when Array
           insn, *operands = e
-          ninsns << Insn.new(insn, operands, lineno, raw_code_ranges.shift)
+          ninsns << Insn.new(insn, operands, lineno, raw_code_ranges.shift, nil, node_ids.shift)
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -265,7 +309,7 @@ module TypeProf
           operands = (INSN_TABLE[e.insn] || []).zip(e.operands).map do |type, operand|
             case type
             when "ISEQ"
-              operand && ISeq.new(operand, file_info)
+              operand && ISeq.new(operand, e.node_id, file_info)
             when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
               operand
             when "OFFSET"

@@ -21,6 +21,24 @@ module TypeProf
       { line: @lineno - 1, character: @column }
     end
 
+    def advance_cursor(offset, source_text)
+      new_lineno = @lineno
+      new_column = @column
+      while offset > 0
+        line_text = source_text.lines[new_lineno - 1]
+        if new_column + offset >= line_text.length
+          advanced = line_text.length - new_column
+          offset -= advanced
+          new_lineno += 1
+          new_column = 0
+        else
+          new_column += offset
+          break
+        end
+      end
+      CodeLocation.new(new_lineno, new_column)
+    end
+
     def <=>(other)
       ret = @lineno <=> other.lineno
       return ret if ret != 0
@@ -143,4 +161,17 @@ if $0 == __FILE__
     end
     raise if values != ["A", "A", "B", "B", "AB", nil, "C", "C", "CD", "D", "D", nil]
   end
+
+  source = <<~EOS
+  AB
+  CDE
+  F
+  EOS
+  a_loc = CodeLocation.new(1, 0)
+  b_loc = a_loc.advance_cursor(1, source)
+  raise unless b_loc.inspect == "(1,1)"
+  c_loc = a_loc.advance_cursor(3, source)
+  raise unless c_loc.inspect == "(2,0)"
+  f_loc = c_loc.advance_cursor(4, source)
+  raise unless f_loc.inspect == "(3,0)"
 end

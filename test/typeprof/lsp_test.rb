@@ -82,7 +82,7 @@ module TypeProf
     end
 
     test "analyze instance variable definition" do
-        iseq, definition_table = analyze(<<~EOS)
+        _, definition_table = analyze(<<~EOS)
         class A
           def get_foo
             @foo
@@ -111,6 +111,110 @@ module TypeProf
         # TODO: analyze ivar definition based on inheritance hierarchy
         # defs = definition_table[CodeLocation.new(15, 4)].to_a
         # assert_equal(defs[0][1].inspect, "(6,4)-(6,12)")
+    end
+
+    test "analyze method callers" do
+      _, _, caller_table = analyze(<<~EOS)
+      class A
+        def callee0
+        end
+
+        def callee1
+        end
+
+        def callee3
+        end
+
+        def callee4
+        end
+
+        def callee5
+        end
+
+        def caller0
+          self.callee0
+        end
+
+        def caller5_0
+          self.callee5
+        end
+
+        def caller5_1
+          self.callee5
+        end
+      end
+
+      class B < A
+        def callee1
+        end
+
+        def caller1
+          self.callee1
+        end
+
+        def callee4
+        end
+      end
+
+      def caller3
+        a = A.new
+        a.callee3
+      end
+
+      def has_some_candidates(a)
+        a.callee4
+      end
+      has_some_candidates(A.new)
+      has_some_candidates(B.new)
+
+      class C
+        def callee6
+        end
+        define_method :caller6 do
+          self.callee6
+        end
+
+        define_method :callee7 do
+        end
+        def caller7
+          self.callee7
+        end
+      end
+      EOS
+
+      # single caller from the same class method
+      callers = caller_table[CodeLocation.new(2, 7)].to_a
+      assert_equal(callers[0][1].inspect, "(18,4)-(18,16)")
+      # calee range should include only method name
+      assert_empty(caller_table[CodeLocation.new(3, 4)].to_a)
+
+      # no direct call because it's overridden in the caller class
+      callers = caller_table[CodeLocation.new(5, 7)].to_a
+      assert_empty(callers)
+
+      # direct call from an outer method
+      callers = caller_table[CodeLocation.new(8, 7)].to_a
+      assert_equal(callers[0][1].inspect, "(44,2)-(44,11)")
+
+      # indirect call due to some candidates
+      callers = caller_table[CodeLocation.new(11, 7)].to_a
+      assert_equal(callers[0][1].inspect, "(48,2)-(48,11)")
+      callers = caller_table[CodeLocation.new(38, 7)].to_a
+      assert_equal(callers[0][1].inspect, "(48,2)-(48,11)")
+
+      # multiple callers
+      callers = caller_table[CodeLocation.new(14, 7)].to_a
+      assert_equal(callers.length, 2)
+      assert_equal(callers[0][1].inspect, "(22,4)-(22,16)")
+      assert_equal(callers[1][1].inspect, "(26,4)-(26,16)")
+
+      # call from a method defined by define_method
+      callers = caller_table[CodeLocation.new(54, 7)].to_a
+      assert_equal(callers[0][1].inspect, "(57,4)-(57,16)")
+
+      # call to a method defined by define_method
+      callers = caller_table[CodeLocation.new(60, 17)].to_a
+      assert_equal(callers[0][1].inspect, "(63,4)-(63,16)")
     end
 
     test "ensure threads write responses exclusively" do
