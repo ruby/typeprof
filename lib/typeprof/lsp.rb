@@ -64,7 +64,13 @@ module TypeProf
         @analysis_thread = Thread.new do
           loop do
             work = @analysis_queue.pop
-            work.call
+            begin
+              work.call
+            rescue Exception
+              puts "Rescued exception:"
+              puts $!.full_message
+              puts
+            end
           end
         end
 
