@@ -515,6 +515,15 @@ module TypeProf
       end
     end
 
+    class Message::CancelRequest < Message
+      METHOD = "$/cancelRequest"
+      def run
+        req = @server.running_requests_from_client[@params[:id]]
+        #p [:cancel, @params[:id]]
+        req.cancel if req.respond_to?(:cancel)
+      end
+    end
+
     Message.build_table
 
     class Reader
@@ -579,20 +588,23 @@ module TypeProf
         @writer = writer
         @tx_mutex = Mutex.new
         @request_id = 0
-        @current_requests = {}
+        @running_requests_from_client = {}
+        @running_requests_from_server = {}
         @open_texts = {}
         @sigs = {} # tmp
       end
 
-      attr_reader :typeprof_config, :open_texts, :sigs
+      attr_reader :typeprof_config, :open_texts, :sigs, :running_requests_from_client
 
       def run
         @reader.read do |json|
           if json[:method]
             # request or notification
-            Message.find(json[:method]).new(self, json).run
+            msg = Message.find(json[:method]).new(self, json)
+            @running_requests_from_client[json[:id]] = msg if json[:id]
+            msg.run
           else
-            callback = @current_requests.delete(json[:id])
+            callback = @running_requests_from_server.delete(json[:id])
             callback&.call(json[:params])
           end
         end
@@ -600,6 +612,7 @@ module TypeProf
       end
 
       def send_response(**msg)
+        @running_requests_from_client.delete(msg[:id])
         exclusive_write(**msg)
       end
 
@@ -609,7 +622,7 @@ module TypeProf
 
       def send_request(method, params = nil, &blk)
         id = @request_id += 1
-        @current_requests[id] = blk
+        @running_requests_from_server[id] = blk
         exclusive_write(id: id, method: method, params: params)
       end
 
