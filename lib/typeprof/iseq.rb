@@ -41,7 +41,7 @@ module TypeProf
         build_ast_node_id_table(node, node_id2node)
 
         file_info = FileInfo.new(node_id2node, CodeRangeTable.new, CodeRangeTable.new, [])
-        iseq_rb  = new(iseq.to_a, nil, file_info)
+        iseq_rb = new(iseq.to_a, file_info)
         iseq_rb.collect_local_variable_info(file_info)
         file_info.created_iseqs.each do |iseq|
           iseq.unify_instructions
@@ -59,7 +59,7 @@ module TypeProf
       end
     end
 
-    Insn = Struct.new(:insn, :operands, :lineno, :code_range, :definitions, :node_id)
+    Insn = Struct.new(:insn, :operands, :lineno, :code_range, :definitions)
     class Insn
       def check?(insn_cmp, operands_cmp = nil)
         return insn == insn_cmp && (!operands_cmp || operands == operands_cmp)
@@ -68,7 +68,7 @@ module TypeProf
 
     ISEQ_FRESH_ID = [0]
 
-    def initialize(iseq, def_node_id, file_info)
+    def initialize(iseq, file_info)
       file_info.created_iseqs << self
 
       @id = (ISEQ_FRESH_ID[0] += 1)
@@ -94,7 +94,7 @@ module TypeProf
 
       @catch_table = []
       catch_table.map do |type, iseq, first, last, cont, stack_depth|
-        iseq = iseq ? ISeq.new(iseq, nil, file_info) : nil
+        iseq = iseq ? ISeq.new(iseq, file_info) : nil
         target = labels[cont]
         entry = [type, iseq, target, stack_depth]
         labels[first].upto(labels[last]) do |i|
@@ -103,6 +103,7 @@ module TypeProf
         end
       end
 
+      def_node_id = misc[:def_node_id]
       if def_node_id && file_info.node_id2node[def_node_id] && (@type == :method || @type == :block)
         def_node = file_info.node_id2node[def_node_id]
         method_name_token_range = extract_method_name_token_range(def_node)
@@ -228,11 +229,26 @@ module TypeProf
           insn, *operands = e
           node_id = node_ids.shift
           node = file_info.node_id2node[node_id]
-          code_range = node ? CodeRange.new(
-            CodeLocation.new(node.first_lineno, node.first_column),
-            CodeLocation.new(node.last_lineno, node.last_column),
-          ) : nil
-          ninsns << Insn.new(insn, operands, lineno, code_range, nil, node_id)
+          if node
+            code_range = CodeRange.new(
+              CodeLocation.new(node.first_lineno, node.first_column),
+              CodeLocation.new(node.last_lineno, node.last_column),
+            )
+            case insn
+            when :send, :invokesuper
+              opt, blk_iseq = operands
+              opt[:node_id] = node_id
+              if blk_iseq
+                misc = blk_iseq[4] # iseq's "misc" field
+                misc[:def_node_id] = node_id
+              end
+            when :definemethod, :definesmethod
+              iseq = operands[1]
+              misc = iseq[4] # iseq's "misc" field
+              misc[:def_node_id] = node_id
+            end
+          end
+          ninsns << Insn.new(insn, operands, lineno, code_range, nil)
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -311,7 +327,7 @@ module TypeProf
           operands = (INSN_TABLE[e.insn] || []).zip(e.operands).map do |type, operand|
             case type
             when "ISEQ"
-              operand && ISeq.new(operand, e.node_id, file_info)
+              operand && ISeq.new(operand, file_info)
             when "lindex_t", "rb_num_t", "VALUE", "ID", "GENTRY", "CALL_DATA"
               operand
             when "OFFSET"
@@ -487,7 +503,7 @@ module TypeProf
               break unless @insns[j + 1].check?(:putobject, [true])
               break unless @insns[j + 2].check?(:getconstant) # TODO: support A::B::C
               break unless @insns[j + 3].check?(:topn, [1])
-              break unless @insns[j + 4].check?(:send, [{:mid=>:===, :flag=>20, :orig_argc=>1}, nil])
+              break unless @insns[j + 4].check?(:send) && @insns[j + 4].operands[0].slice(:mid, :flag, :orig_argc) == {:mid=>:===, :flag=>20, :orig_argc=>1}
               break unless @insns[j + 5].check?(:branch)
               target_pc = @insns[j + 5].operands[1]
               break unless @insns[target_pc].check?(:pop, [])
