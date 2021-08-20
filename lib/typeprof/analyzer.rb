@@ -311,6 +311,9 @@ module TypeProf
 
       @types_being_shown = []
       @namespace = nil
+
+      @lsp_completion = nil
+      @lsp_signature_help = CodeRangeTable.new
     end
 
     def add_entrypoint(iseq)
@@ -1100,10 +1103,49 @@ module TypeProf
 
       res = RubySignatureExporter.new(self, @class_defs, @iseq_method_to_ctxs).show_lsp
 
+      path, loc = Config.current.options[:signature_help_loc]
+      if path
+        sig_help_res = []
+        sig_help = @lsp_signature_help[loc]
+        if sig_help
+          sig_help => { recv:, mid:, singleton:, mdefs:, node_id: }
+          mdefs.each do |mdef|
+            case mdef
+            when ISeqMethodDef
+              ctxs = @iseq_method_to_ctxs[mdef]
+              next unless ctxs
+
+              ctx = ctxs.find {|ctx| ctx.mid == mid } || ctxs.first
+
+              method_name = mid
+              method_name = "self.#{ method_name }" if singleton
+
+              str = recv.screen_name(self)
+              str += singleton ? "." : "#"
+              str += method_name.to_s
+              str += ": "
+              sig, _, sig_ranges = show_method_signature(ctx)
+              offset = str.size
+              sig_ranges = sig_ranges.map {|r| (r.begin + offset ... r.end + offset) }
+              str += sig
+              sig_help_res << [str, sig_ranges, node_id]
+            when AliasMethodDef
+              # TODO
+            when TypedMethodDef
+              mdef.rbs_source[1].each do |rbs|
+                # TODO: sig_ranges
+                sig_help_res << [rbs, [], node_id]
+              end
+            end
+          end
+        end
+      end
+
       {
         sigs: res,
         errors: errs,
         completion: @lsp_completion,
+        signature_help: sig_help_res,
       }
     end
 
@@ -2284,6 +2326,8 @@ module TypeProf
         merge_return_env(ep) {|tenv| tenv ? tenv.merge(env) : env }
       end
 
+      aargs.node_id = opt[:node_id]
+
       return env, recv, mid, aargs
     end
 
@@ -2313,6 +2357,19 @@ module TypeProf
           klass, singleton, include_subclasses = recv.method_dispatch_info
           meths = get_method(klass, singleton, include_subclasses, mid) if klass
           if meths
+            path, loc = Config.current.options[:signature_help_loc]
+            if path && path == ep.ctx.iseq.path && mid != :inherited # XXX: too ad-hoc!!!
+              path, code_range = ep&.detailed_source_location
+              if path && code_range.contain_loc?(loc)
+                @lsp_signature_help[code_range] = {
+                  recv: recv,
+                  mid: mid,
+                  singleton: singleton,
+                  mdefs: meths,
+                  node_id: aargs.node_id,
+                }
+              end
+            end
             meths.each do |meth|
               meth.do_send(recv, mid, aargs, ep, env, self, &ctn)
             end
@@ -2394,7 +2451,7 @@ module TypeProf
 
       bsig ||= BlockSignature.new([], [], nil, Type.nil)
 
-      bsig = bsig.screen_name(nil, self)
+      bsig, = bsig.screen_name(nil, self)
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 
@@ -2429,7 +2486,7 @@ module TypeProf
 
       begin
         @types_being_shown << farg_tys << ret_ty
-        farg_tys = farg_tys ? farg_tys.screen_name(nil, self) : "(unknown)"
+        farg_tys, = farg_tys ? farg_tys.screen_name(nil, self) : ["(unknown)"]
         ret_ty = ret_ty.screen_name(self)
         ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 
@@ -2447,11 +2504,11 @@ module TypeProf
 
       untyped = farg_tys.include_untyped?(self) || ret_ty.include_untyped?(self)
 
-      farg_tys = farg_tys.screen_name(ctx.iseq, self)
+      farg_tys, ranges = farg_tys.screen_name(ctx.iseq, self)
       ret_ty = ret_ty.screen_name(self)
       ret_ty = (ret_ty.include?("|") ? "(#{ ret_ty })" : ret_ty) # XXX?
 
-      ["#{ (farg_tys.empty? ? "" : "#{ farg_tys } ") }-> #{ ret_ty }", untyped]
+      return "#{ (farg_tys.empty? ? "" : "#{ farg_tys } ") }-> #{ ret_ty }", untyped, ranges
     end
   end
 end

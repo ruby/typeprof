@@ -171,15 +171,101 @@ module TypeProf
         end
       end
 
-      def analyze(uri, text, cancel_token = nil)
+      class RubyVM::AbstractSyntaxTree::Node
+        def code_range
+          @code_range ||= CodeRange.new(
+            CodeLocation.new(first_lineno, first_column),
+            CodeLocation.new(last_lineno, last_column),
+          )
+        end
+
+        def find_id(id)
+          return self if id == node_id
+
+          children.each do |child|
+            if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
+              ret = child.find_id(id)
+              return ret if ret
+            end
+          end
+
+          nil
+        end
+      end
+
+      def signature_help(loc, trigger_kind)
+        loc = CodeLocation.from_lsp(loc)
+
+        res, = analyze(@uri, @text, signature_help_loc: loc)
+
+        if res
+          res[:signature_help].filter_map do |sig, sig_ranges, node_id|
+            idx = 0
+
+            node = RubyVM::AbstractSyntaxTree.parse(@text).find_id(node_id)
+            p node
+            if node
+              p [node.code_range, loc]
+            end
+            if node && node.code_range.contain_loc?(loc)
+              case node.type
+              when :FCALL
+                _mid, args = node.children
+              when :CALL
+                _recv, _mid, args = node.children
+              end
+              if args
+                code_ranges = args.children.compact.map {|n| n.code_range }
+                if code_ranges.size >= 1 && code_ranges.last.last < loc
+                  idx = code_ranges.size - 1
+                  prev_cr = code_ranges.last
+                  if prev_cr.last.lineno == loc.lineno
+                    line = @text.lines[prev_cr.last.lineno - 1]
+                    idx += 1 if line[prev_cr.last.column..loc.column].include?(",")
+                  end
+                else
+                  prev_cr = nil
+                  (code_ranges).each_with_index do |cr, i|
+                    idx = i
+                    if loc < cr.first
+                      break if !prev_cr || prev_cr.last.lineno != loc.lineno
+                      line = @text.lines[prev_cr.last.lineno - 1]
+                      idx -= 1 unless line[prev_cr.last.column..loc.column].include?(",")
+                      break
+                    end
+                    break if loc <= cr.last
+                    prev_cr = cr
+                  end
+                end
+              end
+
+              {
+                label: sig,
+                parameters: sig_ranges.map do |r|
+                  {
+                    label: [r.begin, r.end],
+                  }
+                end,
+                activeParameter: idx,
+              }
+            end
+          end
+        else
+          nil
+        end
+      end
+
+      def analyze(uri, text, cancel_token: nil, signature_help_loc: nil)
         config = @server.typeprof_config.dup
-        config.rb_files = [[URI(uri).path, text]]
+        path = URI(uri).path
+        config.rb_files = [[path, text]]
         config.rbs_files = ["typeprof.rbs"] # XXX
         config.verbose = 0
         config.max_sec = 1
         config.options[:show_errors] = true
         config.options[:show_indicator] = false
         config.options[:lsp] = true
+        config.options[:signature_help_loc] = [path, signature_help_loc] if signature_help_loc
 
         TypeProf.analyze(config, cancel_token)
       rescue SyntaxError
@@ -200,7 +286,7 @@ module TypeProf
           if cancel_token.cancelled?
             next
           end
-          res, def_table, caller_table = self.analyze(uri, text, cancel_token)
+          res, def_table, caller_table = self.analyze(uri, text, cancel_token: cancel_token)
           unless cancel_token.cancelled?
             on_text_changed_analysis(res, def_table, caller_table)
           end
@@ -301,6 +387,9 @@ module TypeProf
             completionProvider: {
               triggerCharacters: ["."],
             },
+            signatureHelpProvider: {
+              triggerCharacters: ["(", ","],
+            },
             #codeActionProvider: {
             #  codeActionKinds: ["quickfix", "refactor"],
             #  resolveProvider: false,
@@ -371,6 +460,10 @@ module TypeProf
           raise
         end
         @server.open_texts[uri].apply_changes(changes, version)
+      end
+
+      def cancel
+        puts "cancel"
       end
     end
 
@@ -489,6 +582,33 @@ module TypeProf
               items: items
             }
           )
+        else
+          respond(nil)
+        end
+      end
+    end
+
+    class Message::TextDocument::SignatureHelp < Message
+      METHOD = "textDocument/signatureHelp"
+      def run
+        case @params
+        in {
+          textDocument: { uri:, },
+          position: loc,
+          context: {
+            triggerKind: trigger_kind
+          },
+        }
+        else
+          raise
+        end
+
+        items = @server.open_texts[uri]&.signature_help(loc, trigger_kind)
+
+        if items
+          respond({
+            signatures: items
+          })
         else
           respond(nil)
         end
