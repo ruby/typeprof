@@ -16,6 +16,7 @@ module TypeProf
     end
 
     attr_reader :lead_tys, :rest_ty, :kw_tys, :blk_ty
+    attr_accessor :node_id
 
     def globalize(caller_env, visited, depth)
       lead_tys = @lead_tys.map {|ty| ty.globalize(caller_env, visited, depth) }

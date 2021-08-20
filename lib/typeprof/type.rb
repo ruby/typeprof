@@ -896,11 +896,25 @@ module TypeProf
         farg_names = farg_names.map {|name| name.is_a?(Integer) ? "noname_#{ name }" : name }
         fargs = fargs.zip(farg_names).map {|farg, name| name ? "#{ farg } #{ name }" : farg }
       end
-      fargs = fargs.empty? ? "" : "(#{ fargs.join(", ") })"
+
+      if fargs.empty?
+        ranges = []
+        fargs = ""
+      else
+        ranges = []
+        str = "("
+        fargs.each do |farg|
+          i = str.size
+          str << farg
+          ranges << (i...str.size)
+          str << ", "
+        end
+        fargs = str[0..-3] + ")"
+      end
 
       # Dirty Hack: Stop the iteration at most once!
       # I'll remove this hack if RBS removes the limitation of nesting blocks
-      return fargs if caller_locations.any? {|frame| frame.label == "show_block_signature" }
+      return fargs, ranges if caller_locations.any? {|frame| frame.label == "show_block_signature" }
 
       optional = false
       blks = []
@@ -918,7 +932,7 @@ module TypeProf
         fargs << scratch.show_block_signature(blks)
       end
 
-      fargs
+      return fargs, ranges
     end
   end
 
