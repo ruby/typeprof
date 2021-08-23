@@ -100,6 +100,13 @@ module TypeProf
             @foo
           end
         end
+
+        class C
+          def read_write
+            _ = @bar
+            @bar = 1
+          end
+        end
         EOS
 
         # use in a class that defines the ivar
@@ -111,6 +118,10 @@ module TypeProf
         # TODO: analyze ivar definition based on inheritance hierarchy
         # defs = definition_table[CodeLocation.new(15, 4)].to_a
         # assert_equal(defs[0][1].inspect, "(6,4)-(6,12)")
+
+        # use before def
+        defs = definition_table[CodeLocation.new(21, 9)].to_a
+        assert_equal(defs[0][1].inspect, "(22,4)-(22,12)")
     end
 
     test "analyze const definition" do
