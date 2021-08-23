@@ -131,6 +131,21 @@ module TypeProf
       def get_undef
         Undef
       end
+
+      FOO = 1
+      def get_foo
+        FOO
+      end
+      class D
+        BAR = 2
+        class E
+          BAR
+          BAR = 3
+          def get_bar
+            BAR
+          end
+        end
+      end
       EOS
 
       # get a single const def
@@ -146,6 +161,16 @@ module TypeProf
       # get undefined const
       defs = definition_table[CodeLocation.new(15, 2)].to_a
       assert_empty(defs)
+
+      # get non-class const
+      defs = definition_table[CodeLocation.new(20, 2)].to_a
+      assert_equal(defs[0][1].inspect, "(18,0)-(18,7)")
+
+      # cref chain resolution
+      defs = definition_table[CodeLocation.new(25, 4)].to_a
+      assert_equal(defs[0][1].inspect, "(23,2)-(23,9)")
+      defs = definition_table[CodeLocation.new(28, 6)].to_a
+      assert_equal(defs[0][1].inspect, "(26,4)-(26,11)")
     end
 
     test "analyze method callers" do
