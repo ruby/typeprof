@@ -107,9 +107,9 @@ module TypeProf
       @scratch.namespace = class_def.name
 
       consts = {}
-      class_def.consts.each do |name, (ty, absolute_path)|
+      class_def.consts.each do |name, (ty, def_ep)|
         next if ty.is_a?(Type::Class)
-        next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
+        next if !def_ep&.absolute_path || Config.current.check_dir_filter(def_ep&.absolute_path) == :exclude
         consts[name] = ty.screen_name(@scratch)
       end
 
@@ -245,9 +245,9 @@ module TypeProf
       @scratch.namespace = class_def.name
 
       consts = {}
-      class_def.consts.each do |name, (ty, absolute_path)|
+      class_def.consts.each do |name, (ty, def_ep)|
         next if ty.is_a?(Type::Class)
-        next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
+        next if !def_ep&.absolute_path || Config.current.check_dir_filter(def_ep&.absolute_path) == :exclude
         consts[name] = ty.screen_name(@scratch)
       end
 
