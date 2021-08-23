@@ -64,6 +64,28 @@ module TypeProf
         end
         tbl
       end
+
+      def code_range_from_node(node)
+        CodeRange.new(
+          CodeLocation.new(node.first_lineno, node.first_column),
+          CodeLocation.new(node.last_lineno, node.last_column),
+        )
+      end
+
+      def find_node_by_id(node, id)
+        node = RubyVM::AbstractSyntaxTree.parse(node) if node.is_a?(String)
+
+        return node if id == node.node_id
+
+        node.children.each do |child|
+          if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
+            ret = find_node_by_id(child, id)
+            return ret if ret
+          end
+        end
+
+        nil
+      end
     end
 
     Insn = Struct.new(:insn, :operands, :lineno, :code_range, :definitions)
@@ -148,10 +170,7 @@ module TypeProf
           ),
         )
       when :block
-        return CodeRange.new(
-          CodeLocation.new(node.first_lineno, node.first_column),
-          CodeLocation.new(node.last_lineno, node.last_column),
-        )
+        return ISeq.code_range_from_node(node)
       end
     end
 
@@ -237,10 +256,7 @@ module TypeProf
           node_id = node_ids.shift
           node = file_info.node_id2node[node_id]
           if node
-            code_range = CodeRange.new(
-              CodeLocation.new(node.first_lineno, node.first_column),
-              CodeLocation.new(node.last_lineno, node.last_column),
-            )
+            code_range = ISeq.code_range_from_node(node)
             case insn
             when :send, :invokesuper
               opt, blk_iseq = operands

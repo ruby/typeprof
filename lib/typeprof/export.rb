@@ -390,7 +390,6 @@ module TypeProf
           when :rbs
             sigs = arg.sort.join(" | ")
             line = "# def #{ method_name }: #{ sigs }"
-            p [line, source_location, rbs_code_range]
           when :iseq
             sigs = []
             untyped = false
