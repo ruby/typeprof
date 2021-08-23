@@ -374,8 +374,9 @@ module TypeProf
       end
 
       def get_constant(name)
-        ty, = @consts[name]
-        ty || Type.any # XXX: warn?
+        ty, def_ep = @consts[name]
+        ty = ty || Type.any # XXX: warn?
+        return ty, def_ep&.detailed_source_location
       end
 
       def add_constant(name, ty, def_ep)
@@ -651,22 +652,22 @@ module TypeProf
 
     def get_constant(klass, name)
       if klass == Type.any
-        Type.any
+        [Type.any, nil]
       elsif klass.is_a?(Type::Class)
         @class_defs[klass.idx].get_constant(name)
       else
-        Type.any
+        [Type.any, nil]
       end
     end
 
     def search_constant(cref, name)
       while cref != :bottom
-        val = get_constant(cref.klass, name)
-        return val if val != Type.any
+        ty, loc = get_constant(cref.klass, name)
+        return ty, loc if ty != Type.any
         cref = cref.outer
       end
 
-      Type.any
+      return Type.any, nil
     end
 
     def add_constant(klass, name, value, def_ep)
@@ -878,8 +879,7 @@ module TypeProf
         site = [singleton, var]
         class_def.ivars.add_write!(site, ty, ep, self)
         class_def.ivars.get_read_ep_list(site).each do |use_ep|
-          def_insn = ep.ctx.iseq.insns[ep.pc]
-          use_ep.ctx.iseq.add_ivar_def(use_ep.pc, def_insn, ep.ctx.iseq)
+          use_ep.ctx.iseq.add_def_loc(use_ep.pc, ep.detailed_source_location)
         end
       end
     end
@@ -1371,7 +1371,7 @@ module TypeProf
         case flags & 7
         when 0, 2 # CLASS / MODULE
           type = (flags & 7) == 2 ? :module : :class
-          existing_klass = get_constant(cbase, id) # TODO: multiple return values
+          existing_klass, = get_constant(cbase, id) # TODO: multiple return values
           if existing_klass.is_a?(Type::Class)
             klass = existing_klass
           else
@@ -1711,7 +1711,7 @@ module TypeProf
         var, = operands
         ty = Type.builtin_global_variable_type(var)
         if ty
-          ty = get_constant(Type::Builtin[:obj], ty) if ty.is_a?(Symbol)
+          ty, loc = get_constant(Type::Builtin[:obj], ty) if ty.is_a?(Symbol)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         else
@@ -1856,20 +1856,21 @@ module TypeProf
         name, = operands
         env, (cbase, _allow_nil,) = env.pop(2)
         if cbase == Type.nil
-          ty = search_constant(ep.ctx.cref, name)
+          ty, loc = search_constant(ep.ctx.cref, name)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         elsif cbase == Type.any
           env = env.push(Type.any) # XXX: warning needed?
         else
-          ty = get_constant(cbase, name)
+          ty, loc = get_constant(cbase, name)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         end
+        ep.ctx.iseq.add_def_loc(ep.pc, loc)
       when :setconstant
         name, = operands
         env, (ty, cbase) = env.pop(2)
-        old_ty = get_constant(cbase, name)
+        old_ty, = get_constant(cbase, name)
         if old_ty != Type.any # XXX???
           warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(self) }::#{ name }")
         end

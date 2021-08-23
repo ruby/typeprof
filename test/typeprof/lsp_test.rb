@@ -113,6 +113,41 @@ module TypeProf
         # assert_equal(defs[0][1].inspect, "(6,4)-(6,12)")
     end
 
+    test "analyze const definition" do
+      _, definition_table = analyze(<<~EOS)
+      class A
+      end
+      def get_a
+        A
+      end
+
+      class B
+        class C; end
+      end
+      def get_c
+        B::C
+      end
+
+      def get_undef
+        Undef
+      end
+      EOS
+
+      # get a single const def
+      defs = definition_table[CodeLocation.new(4, 2)].to_a
+      assert_equal(defs[0][1].inspect, "(1,0)-(2,3)")
+
+      # get nested const def
+      defs = definition_table[CodeLocation.new(11, 2)].to_a
+      assert_equal(defs[0][1].inspect, "(7,0)-(9,3)")
+      defs = definition_table[CodeLocation.new(11, 5)].to_a
+      assert_equal(defs[0][1].inspect, "(8,2)-(8,14)")
+
+      # get undefined const
+      defs = definition_table[CodeLocation.new(15, 2)].to_a
+      assert_empty(defs)
+    end
+
     test "analyze method callers" do
       _, _, caller_table = analyze(<<~EOS)
       class A
