@@ -881,7 +881,7 @@ module TypeProf
       # ENV: Hash[String, String]
       str_ty = Type::Instance.new(Type::Builtin[:str])
       env_ty = Type.gen_hash {|h| h[str_ty] = Type.optional(str_ty) }
-      scratch.add_constant(klass_obj, :ENV, env_ty, false)
+      scratch.add_constant(klass_obj, :ENV, env_ty, nil)
 
       scratch.search_method(Type::Builtin[:kernel], false, :sprintf) do |mdefs,|
         mdefs.each do |mdef|

@@ -121,6 +121,10 @@ module TypeProf
     def detailed_source_location
       @ctx.detailed_source_location(@pc)
     end
+
+    def absolute_path
+      @ctx.iseq.absolute_path
+    end
   end
 
   class StaticEnv
@@ -374,11 +378,11 @@ module TypeProf
         ty || Type.any # XXX: warn?
       end
 
-      def add_constant(name, ty, absolute_path)
+      def add_constant(name, ty, def_ep)
         if @consts[name]
           # XXX: warn!
         end
-        @consts[name] = [ty, absolute_path]
+        @consts[name] = [ty, def_ep]
       end
 
       def adjust_substitution_for_module(mods, mid, mthd, subst, &blk)
@@ -464,23 +468,23 @@ module TypeProf
       cbase && cbase.idx != 1 ? @class_defs[cbase.idx].name : []
     end
 
-    def new_class(cbase, name, type_params, superclass, absolute_path)
+    def new_class(cbase, name, type_params, superclass, def_ep)
       show_name = cbase_path(cbase) + [name]
       idx = @class_defs.size
       if superclass
-        @class_defs[idx] = ClassDef.new(:class, show_name, absolute_path)
+        @class_defs[idx] = ClassDef.new(:class, show_name, def_ep&.absolute_path)
         @class_defs[superclass.idx].subclasses << idx unless superclass == :__root__
         klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
-        add_constant(cbase, name, klass, absolute_path)
+        add_constant(cbase, name, klass, def_ep)
         return klass
       else
         # module
-        @class_defs[idx] = ClassDef.new(:module, show_name, absolute_path)
+        @class_defs[idx] = ClassDef.new(:module, show_name, def_ep&.absolute_path)
         mod = Type::Class.new(:module, idx, type_params, nil, show_name)
         @class_defs[idx].klass_obj = mod
-        add_constant(cbase, name, mod, absolute_path)
+        add_constant(cbase, name, mod, def_ep)
         return mod
       end
     end
@@ -665,9 +669,9 @@ module TypeProf
       Type.any
     end
 
-    def add_constant(klass, name, value, user_defined)
+    def add_constant(klass, name, value, def_ep)
       if klass.is_a?(Type::Class)
-        @class_defs[klass.idx].add_constant(name, value, user_defined)
+        @class_defs[klass.idx].add_constant(name, value, def_ep)
       end
     end
 
@@ -1393,7 +1397,7 @@ module TypeProf
               superclass = nil
             end
             if cbase.is_a?(Type::Class)
-              klass = new_class(cbase, id, [], superclass, ep.ctx.iseq.absolute_path)
+              klass = new_class(cbase, id, [], superclass, ep)
               if superclass
                 add_superclass_type_args!(klass, superclass.type_params.map { Type.any })
 
@@ -1874,7 +1878,7 @@ module TypeProf
             @class_defs[ty.idx].name = cbase_path(cbase) + [name]
           end
         end
-        add_constant(cbase, name, globalize_type(ty, env, ep), ep.ctx.iseq.absolute_path)
+        add_constant(cbase, name, globalize_type(ty, env, ep), ep)
 
       when :getspecial
         key, type = operands
