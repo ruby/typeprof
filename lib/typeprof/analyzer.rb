@@ -1124,17 +1124,17 @@ module TypeProf
               str += singleton ? "." : "#"
               str += method_name.to_s
               str += ": "
-              sig, _, sig_ranges = show_method_signature(ctx)
+              sig, _, sig_help = show_method_signature(ctx)
               offset = str.size
-              sig_ranges = sig_ranges.map {|r| (r.begin + offset ... r.end + offset) }
+              sig_help = sig_help.transform_values {|r| (r.begin + offset ... r.end + offset) }
               str += sig
-              sig_help_res << [str, sig_ranges, node_id]
+              sig_help_res << [str, sig_help, node_id]
             when AliasMethodDef
               # TODO
             when TypedMethodDef
-              mdef.rbs_source[1].each do |rbs|
-                # TODO: sig_ranges
-                sig_help_res << [rbs, [], node_id]
+              mdef.rbs_source&.[](1)&.each do |rbs|
+                # TODO: sig_help
+                sig_help_res << [rbs, {}, node_id]
               end
             end
           end

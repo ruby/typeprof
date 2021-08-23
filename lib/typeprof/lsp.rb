@@ -171,26 +171,70 @@ module TypeProf
         end
       end
 
-      class RubyVM::AbstractSyntaxTree::Node
-        def code_range
-          @code_range ||= CodeRange.new(
-            CodeLocation.new(first_lineno, first_column),
-            CodeLocation.new(last_lineno, last_column),
-          )
+      private def locate_arg_index_in_signature_help(node, loc)
+        case node.type
+        when :FCALL
+          _mid, args_node = node.children
+        when :CALL
+          _recv, _mid, args_node = node.children
         end
 
-        def find_id(id)
-          return self if id == node_id
+        idx = 0
 
-          children.each do |child|
-            if child.is_a?(RubyVM::AbstractSyntaxTree::Node)
-              ret = child.find_id(id)
-              return ret if ret
+        if args_node
+          arg_nodes = args_node.children.compact
+
+          arg_indexes = {}
+          hash = arg_nodes.pop if arg_nodes.last&.type == :HASH
+
+          arg_nodes.each_with_index do |node, i|
+            # Ingore arguments after rest argument
+            break if node.type == :LIST || node.type == :ARGSCAT
+
+            arg_indexes[i] = ISeq.code_range_from_node(node)
+          end
+
+          # Handle keyword arguments
+          if hash
+            hash.children.last.children.compact.each_slice(2) do |node1, node2|
+              # key:  expression
+              # ^^^^  ^^^^^^^^^^
+              # node1 node2
+              key = node1.children.first
+              arg_indexes[key] =
+                CodeRange.new(
+                  CodeLocation.new(node1.first_lineno, node1.first_lineno),
+                  CodeLocation.new(node2.last_lineno, node2.last_lineno),
+                )
             end
           end
 
-          nil
+          if arg_indexes.size >= 1 && arg_indexes.values.last.last < loc
+            # There is the cursor after the last argument: "foo(111, 222,|)"
+            idx = arg_indexes.size - 1
+            prev_cr = arg_indexes.values.last
+            if prev_cr.last.lineno == loc.lineno
+              line = @text.lines[prev_cr.last.lineno - 1]
+              idx += 1 if line[prev_cr.last.column..loc.column].include?(",")
+            end
+          else
+            # There is the cursor within any argument: "foo(111,|222)" or foo(111, 22|2)"
+            prev_cr = nil
+            arg_indexes.each do |i, cr|
+              idx = sig_help.keys.index(i)
+              if loc < cr.first
+                break if !prev_cr || prev_cr.last.lineno != loc.lineno
+                line = @text.lines[prev_cr.last.lineno - 1]
+                idx -= 1 unless line[prev_cr.last.column..loc.column].include?(",")
+                break
+              end
+              break if loc <= cr.last
+              prev_cr = cr
+            end
+          end
         end
+
+        idx
       end
 
       def signature_help(loc, trigger_kind)
@@ -199,49 +243,14 @@ module TypeProf
         res, = analyze(@uri, @text, signature_help_loc: loc)
 
         if res
-          res[:signature_help].filter_map do |sig, sig_ranges, node_id|
-            idx = 0
-
-            node = RubyVM::AbstractSyntaxTree.parse(@text).find_id(node_id)
-            p node
-            if node
-              p [node.code_range, loc]
-            end
-            if node && node.code_range.contain_loc?(loc)
-              case node.type
-              when :FCALL
-                _mid, args = node.children
-              when :CALL
-                _recv, _mid, args = node.children
-              end
-              if args
-                code_ranges = args.children.compact.map {|n| n.code_range }
-                if code_ranges.size >= 1 && code_ranges.last.last < loc
-                  idx = code_ranges.size - 1
-                  prev_cr = code_ranges.last
-                  if prev_cr.last.lineno == loc.lineno
-                    line = @text.lines[prev_cr.last.lineno - 1]
-                    idx += 1 if line[prev_cr.last.column..loc.column].include?(",")
-                  end
-                else
-                  prev_cr = nil
-                  (code_ranges).each_with_index do |cr, i|
-                    idx = i
-                    if loc < cr.first
-                      break if !prev_cr || prev_cr.last.lineno != loc.lineno
-                      line = @text.lines[prev_cr.last.lineno - 1]
-                      idx -= 1 unless line[prev_cr.last.column..loc.column].include?(",")
-                      break
-                    end
-                    break if loc <= cr.last
-                    prev_cr = cr
-                  end
-                end
-              end
+          res[:signature_help].filter_map do |sig_str, sig_help, node_id|
+            node = ISeq.find_node_by_id(@text, node_id)
+            if node && ISeq.code_range_from_node(node).contain_loc?(loc)
+              idx = locate_arg_index_in_signature_help(node, loc)
 
               {
-                label: sig,
-                parameters: sig_ranges.map do |r|
+                label: sig_str,
+                parameters: sig_help.values.map do |r|
                   {
                     label: [r.begin, r.end],
                   }
