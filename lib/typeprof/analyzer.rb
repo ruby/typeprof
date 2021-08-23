@@ -359,7 +359,7 @@ module TypeProf
         @subclasses = []
       end
 
-      attr_reader :kind, :modules, :consts, :methods, :ivars, :cvars, :absolute_path, :subclasses
+      attr_reader :kind, :modules, :methods, :ivars, :cvars, :absolute_path, :subclasses
       attr_accessor :name, :klass_obj
 
       def mix_module(kind, mod, type_args, singleton, absolute_path)
@@ -374,17 +374,35 @@ module TypeProf
       end
 
       def get_constant(name)
-        ty, def_ep = @consts[name]
+        ty, locs = @consts[name]
         ty = ty || Type.any # XXX: warn?
-        return ty, def_ep&.detailed_source_location
+        return ty, locs
       end
 
       def add_constant(name, ty, def_ep)
         if @consts[name]
           # XXX: warn!
+          _, eps = @consts[name]
+          @consts[name] = [ty, eps + [def_ep&.detailed_source_location]]
+          return
         end
-        @consts[name] = [ty, def_ep]
+        @consts[name] = [ty, [def_ep&.detailed_source_location]]
       end
+
+      def consts
+        @consts.lazy.flat_map do |name, (ty, eps)|
+          eps.map do |ep|
+            [name, [ty, ep]]
+          end
+        end
+      end
+
+      def add_class_open(name, open_ep)
+        ty, eps = @consts[name]
+        raise "call this only if the class is opened more than once" if ty.nil?
+        @consts[name] = [ty, eps + [open_ep&.detailed_source_location]]
+      end
+
 
       def adjust_substitution_for_module(mods, mid, mthd, subst, &blk)
         mods.each do |mod_def, type_args,|
@@ -662,8 +680,8 @@ module TypeProf
 
     def search_constant(cref, name)
       while cref != :bottom
-        ty, loc = get_constant(cref.klass, name)
-        return ty, loc if ty != Type.any
+        ty, locs = get_constant(cref.klass, name)
+        return ty, locs if ty != Type.any
         cref = cref.outer
       end
 
@@ -1373,6 +1391,8 @@ module TypeProf
           type = (flags & 7) == 2 ? :module : :class
           existing_klass, = get_constant(cbase, id) # TODO: multiple return values
           if existing_klass.is_a?(Type::Class)
+            # record re-opening location
+            @class_defs[cbase.idx].add_class_open(id, ep)
             klass = existing_klass
           else
             if existing_klass != Type.any
@@ -1711,7 +1731,7 @@ module TypeProf
         var, = operands
         ty = Type.builtin_global_variable_type(var)
         if ty
-          ty, loc = get_constant(Type::Builtin[:obj], ty) if ty.is_a?(Symbol)
+          ty, locs = get_constant(Type::Builtin[:obj], ty) if ty.is_a?(Symbol)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         else
@@ -1856,17 +1876,19 @@ module TypeProf
         name, = operands
         env, (cbase, _allow_nil,) = env.pop(2)
         if cbase == Type.nil
-          ty, loc = search_constant(ep.ctx.cref, name)
+          ty, locs = search_constant(ep.ctx.cref, name)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         elsif cbase == Type.any
           env = env.push(Type.any) # XXX: warning needed?
         else
-          ty, loc = get_constant(cbase, name)
+          ty, locs = get_constant(cbase, name)
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
         end
-        ep.ctx.iseq.add_def_loc(ep.pc, loc)
+        locs&.each do |loc|
+          ep.ctx.iseq.add_def_loc(ep.pc, loc)
+        end
       when :setconstant
         name, = operands
         env, (ty, cbase) = env.pop(2)
