@@ -531,7 +531,7 @@ module TypeProf
         superclass = path_to_klass(superclass) if superclass
         base_klass = path_to_klass(classpath[0..-2])
 
-        klass = @scratch.get_constant(base_klass, name)
+        klass, = @scratch.get_constant(base_klass, name)
         if klass.is_a?(Type::Any)
           klass = @scratch.new_class(base_klass, name, type_params, superclass, nil)
 
@@ -747,7 +747,7 @@ module TypeProf
     def path_to_klass(path)
       klass = Type::Builtin[:obj]
       path.each do |name|
-        klass = @scratch.get_constant(klass, name)
+        klass, = @scratch.get_constant(klass, name)
         if klass == Type.any
           raise TypeProfError.new("A constant `#{ path.join("::") }' is used but not defined in RBS")
         end

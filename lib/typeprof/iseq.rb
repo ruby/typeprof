@@ -170,9 +170,9 @@ module TypeProf
       end
     end
 
-    def add_ivar_def(pc, def_insn, def_iseq)
-      if @insns[pc].definitions
-        @insns[pc].definitions << [def_iseq.path, def_insn.code_range]
+    def add_def_loc(pc, detailed_loc)
+      if detailed_loc && @insns[pc].definitions
+        @insns[pc].definitions << detailed_loc
       end
     end
 
@@ -340,7 +340,7 @@ module TypeProf
             end
           end
 
-          if e.code_range && (e.insn == :send || e.insn == :getinstancevariable)
+          if e.code_range && should_collect_defs(e.insn)
             definition = Utils::MutableSet.new
             file_info.definition_table[e.code_range] = definition
           end
@@ -351,6 +351,15 @@ module TypeProf
         end
       end
       ninsns
+    end
+
+    def should_collect_defs(insn_kind)
+      case insn_kind
+      when :send, :getinstancevariable, :getconstant
+        return true
+      else
+        return false
+      end
     end
 
     # Collect local variable use and definition info recursively
