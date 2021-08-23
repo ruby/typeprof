@@ -146,6 +146,11 @@ module TypeProf
           end
         end
       end
+      class F; end
+      class F; end
+      def get_f
+        F
+      end
       EOS
 
       # get a single const def
@@ -171,6 +176,11 @@ module TypeProf
       assert_equal(defs[0][1].inspect, "(23,2)-(23,9)")
       defs = definition_table[CodeLocation.new(28, 6)].to_a
       assert_equal(defs[0][1].inspect, "(26,4)-(26,11)")
+
+      # multi-opened class ref
+      defs = definition_table[CodeLocation.new(35, 2)].to_a
+      assert_equal(defs[0][1].inspect, "(32,0)-(32,12)")
+      assert_equal(defs[1][1].inspect, "(33,0)-(33,12)")
     end
 
     test "analyze method callers" do
