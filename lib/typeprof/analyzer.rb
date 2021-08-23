@@ -816,23 +816,23 @@ module TypeProf
     end
 
     class VarTable
-      Entry = Struct.new(:rbs_declared, :read_continuations, :type, :absolute_paths)
+      Entry = Struct.new(:rbs_declared, :read_continuations, :type, :absolute_paths, :write_eps)
 
       def initialize
         @tbl = {}
       end
 
       def add_read!(site, ep, &ctn)
-        entry = @tbl[site] ||= Entry.new(false, {}, Type.bot, Utils::MutableSet.new)
+        entry = @tbl[site] ||= Entry.new(false, {}, Type.bot, Utils::MutableSet.new, Utils::MutableSet.new)
         entry.read_continuations[ep] = ctn
         entry.absolute_paths << ep.ctx.iseq.absolute_path if ep.ctx.is_a?(Context)
         ty = entry.type
         ty = Type.nil if ty == Type.bot
-        ctn[ty, ep]
+        ctn[ty, ep, entry.write_eps]
       end
 
       def add_write!(site, ty, ep, scratch)
-        entry = @tbl[site] ||= Entry.new(!ep, {}, Type.bot, Utils::MutableSet.new)
+        entry = @tbl[site] ||= Entry.new(!ep, {}, Type.bot, Utils::MutableSet.new, Utils::MutableSet.new)
         if ep
           if entry.rbs_declared
             unless Type.match?(ty, entry.type)
@@ -841,17 +841,12 @@ module TypeProf
             end
           end
           entry.absolute_paths << ep.ctx.iseq.absolute_path
+          entry.write_eps << ep
         end
         entry.type = entry.type.union(ty)
-        entry.read_continuations.each do |ep, ctn|
-          ctn[ty, ep]
+        entry.read_continuations.each do |read_ep, ctn|
+          ctn[ty, read_ep, [ep]]
         end
-      end
-
-      def get_read_ep_list(site)
-        entry = @tbl[site]
-        return [] if entry.nil?
-        entry.read_continuations.keys
       end
 
       def dump
@@ -896,9 +891,6 @@ module TypeProf
         next unless class_def
         site = [singleton, var]
         class_def.ivars.add_write!(site, ty, ep, self)
-        class_def.ivars.get_read_ep_list(site).each do |use_ep|
-          use_ep.ctx.iseq.add_def_loc(use_ep.pc, ep.detailed_source_location)
-        end
       end
     end
 
@@ -1197,12 +1189,15 @@ module TypeProf
     end
 
     def get_instance_variable(recv, var, ep, env)
-      add_ivar_read!(recv, var, ep) do |ty, ep|
+      add_ivar_read!(recv, var, ep) do |ty, ep, write_eps|
         alloc_site = AllocationSite.new(ep)
         nenv, ty = localize_type(ty, env, ep, alloc_site)
         case ty
         when Type::Local
           @alloc_site_to_global_id[ty.id] = [recv, var] # need overwrite check??
+        end
+        write_eps.each do |write_ep|
+          ep.ctx.iseq.add_def_loc(ep.pc, write_ep.detailed_source_location)
         end
         yield ty, nenv
       end
