@@ -4,11 +4,15 @@ require_relative "../../lib/typeprof"
 module TypeProf
   class LSPTest < Test::Unit::TestCase
 
-    def analyze(content)
+    def analyze(rb_content, rbs_content = nil, signature_help_loc: nil)
       config = ConfigData.new
       config.rbs_files = []
-      config.rb_files = [["path/to/file", content]]
+      config.rbs_files << ["path/to/file.rbs", rbs_content] if rbs_content
+      path = "path/to/file"
+      config.rb_files = [[path, rb_content]]
       config.options[:lsp] = true
+      config.options[:show_indicator] = false
+      config.options[:signature_help_loc] = [path, signature_help_loc] if signature_help_loc
       TypeProf.analyze(config)
     end
 
@@ -421,6 +425,93 @@ module TypeProf
       verifier = Verifier.new(self)
       server = TypeProf::LSP::Server.new(config, verifier, verifier)
       server.run
+    end
+
+    def test_code_for_signature_help(src)
+      loc = nil
+      src = src.sub(/#cursor#/) do
+        lines = $`.lines
+        loc = CodeLocation.new(lines.size, lines.last.size)
+        ""
+      end
+      return src, loc
+    end
+
+    test "signatureHelp" do
+      src, loc = test_code_for_signature_help(<<~EOS)
+      class A
+        def target(a, b, c)
+        end
+
+        def test
+          target(#cursor#)
+        end
+      end
+
+      A.new.target(1, "str", A.new)
+      EOS
+      res, = analyze(src, signature_help_loc: loc)
+      assert_equal(
+        [["A#target: (Integer a, String b, A c) -> nil", {0=>11...20, 1=>22...30, 2=>32...35}, 15]],
+        res[:signature_help],
+      )
+
+      src, loc = test_code_for_signature_help(<<~EOS)
+      class A
+        def target(a, b, c)
+        end
+
+        def test
+          target(1, #cursor#)
+        end
+      end
+
+      A.new.target(1, "str", A.new)
+      EOS
+      res, = analyze(src, signature_help_loc: loc)
+      assert_equal(
+        [["A#target: (Integer a, String b, A c) -> nil", {0=>11...20, 1=>22...30, 2=>32...35}, 15]],
+        res[:signature_help],
+      )
+
+      src, loc = test_code_for_signature_help(<<~EOS)
+      class A
+        def target(a, b, c)
+        end
+
+        def test
+          target(1#cursor#, "str", self)
+        end
+      end
+
+      A.new.target(1, "str", A.new)
+      EOS
+      res, = analyze(src, signature_help_loc: loc)
+      assert_equal(
+        [["A#target: (Integer a, String b, A c) -> nil", {0=>11...20, 1=>22...30, 2=>32...35}, 15]],
+        res[:signature_help],
+      )
+
+      src, loc = test_code_for_signature_help(<<~EOS)
+      class A
+        def test
+          target(1#cursor#, "str", self)
+        end
+      end
+      EOS
+
+      rbs = <<~EOS
+      class A
+        def target: (Integer, String) -> void
+                  | (String) -> void
+      end
+      EOS
+
+      res, = analyze(src, rbs, signature_help_loc: loc)
+      assert_equal(
+        [["(Integer, String) -> void", {}, 5], ["(String) -> void", {}, 5]],
+        res[:signature_help],
+      )
     end
   end
 end
