@@ -851,33 +851,46 @@ module TypeProf
     include Utils::StructuralEquality
 
     def screen_name(iseq, scratch)
-      fargs = @lead_tys.map {|ty| ty.screen_name(scratch) }
-      farg_names = []
-      farg_names += iseq.locals[0, @lead_tys.size] if iseq
-      if @opt_tys
-        fargs += @opt_tys.map {|ty| "?" + ty.screen_name(scratch) }
-        farg_names += iseq.locals[@lead_tys.size, @opt_tys.size] if iseq
+      fargs_str = "("
+      sig_help = {}
+      add_farg = -> farg, name, help: false, key: sig_help.size do
+        name = "`#{ name }`" if RBS::Parser::KEYWORDS.key?(name.to_s)
+        name = "noname_#{ name }" if name.is_a?(Integer)
+        fargs_str << ", " if fargs_str != "("
+        i = fargs_str.size
+        fargs_str << (Config.current.options[:show_parameter_names] && name ? "#{ farg } #{ name }" : farg)
+        sig_help[key] = (i...fargs_str.size)
       end
+
+      @lead_tys.zip(iseq ? iseq.locals : []) do |ty, name|
+        add_farg.call(ty.screen_name(scratch), name, help: true)
+      end
+
+      @opt_tys&.zip(iseq ? iseq.locals[@lead_tys.size, @opt_tys.size] : []) do |ty, name|
+        add_farg.call("?" + ty.screen_name(scratch), name, help: true)
+      end
+
       if @rest_ty
-        fargs << ("*" + @rest_ty.screen_name(scratch))
         if iseq
           rest_index = iseq.fargs_format[:rest_start]
-          farg_names << (rest_index ? iseq.locals[rest_index] : nil)
+          name = rest_index ? iseq.locals[rest_index] : nil
         end
+        add_farg.call("*" + @rest_ty.screen_name(scratch), name)
       end
-      if @post_tys
-        fargs += @post_tys.map {|ty| ty.screen_name(scratch) }
-        if iseq
-          post_start = iseq.fargs_format[:post_start]
-          farg_names += (post_start ? iseq.locals[post_start, @post_tys.size] : [nil] * @post_tys.size)
-        end
+
+      if iseq
+        post_start = iseq.fargs_format[:post_start]
+        names = post_start ? iseq.locals[post_start, @post_tys.size] : []
       end
-      if @kw_tys
-        @kw_tys.each do |req, sym, ty|
-          opt = req ? "" : "?"
-          fargs << "#{ opt }#{ sym }: #{ ty.screen_name(scratch) }"
-        end
+      @post_tys&.zip(names || []) do |ty, name|
+        add_farg.call(ty.screen_name(scratch), name)
       end
+
+      @kw_tys&.each do |req, sym, ty|
+        opt = req ? "" : "?"
+        add_farg.call("#{ opt }#{ sym }: #{ ty.screen_name(scratch) }", nil, help: true, key: sym)
+      end
+
       if @kw_rest_ty
         all_val_ty = Type.bot
         @kw_rest_ty.each_child_global do |ty|
@@ -889,32 +902,16 @@ module TypeProf
           end
           all_val_ty = all_val_ty.union(val_ty)
         end
-        fargs << ("**" + all_val_ty.screen_name(scratch))
-      end
-      if Config.current.options[:show_parameter_names]
-        farg_names = farg_names.map {|name| RBS::Parser::KEYWORDS.key?(name.to_s) ? "`#{name}`" : name }
-        farg_names = farg_names.map {|name| name.is_a?(Integer) ? "noname_#{ name }" : name }
-        fargs = fargs.zip(farg_names).map {|farg, name| name ? "#{ farg } #{ name }" : farg }
+        add_farg.call("**" + all_val_ty.screen_name(scratch), nil)
       end
 
-      if fargs.empty?
-        ranges = []
-        fargs = ""
-      else
-        ranges = []
-        str = "("
-        fargs.each do |farg|
-          i = str.size
-          str << farg
-          ranges << (i...str.size)
-          str << ", "
-        end
-        fargs = str[0..-3] + ")"
-      end
+      fargs_str << ")"
+
+      fargs_str = "" if fargs_str == "()"
 
       # Dirty Hack: Stop the iteration at most once!
       # I'll remove this hack if RBS removes the limitation of nesting blocks
-      return fargs, ranges if caller_locations.any? {|frame| frame.label == "show_block_signature" }
+      return fargs_str, sig_help if caller_locations.any? {|frame| frame.label == "show_block_signature" }
 
       optional = false
       blks = []
@@ -927,12 +924,12 @@ module TypeProf
         end
       end
       if blks != []
-        fargs << " " if fargs != ""
-        fargs << "?" if optional
-        fargs << scratch.show_block_signature(blks)
+        fargs_str << " " if fargs_str != ""
+        fargs_str << "?" if optional
+        fargs_str << scratch.show_block_signature(blks)
       end
 
-      return fargs, ranges
+      return fargs_str, sig_help
     end
   end
 
