@@ -10,11 +10,15 @@ import * as net from "net";
 import * as child_process from "child_process";
 import { existsSync } from "fs";
 
+const CONFIGURATION_ROOT_SECTION = "typeprof"
+
 export function makeLanguageClient(): LanguageClient {
   let client: LanguageClient;
 
   const invokeTypeProf = (): child_process.ChildProcessWithoutNullStreams => {
     const workspace = vscode.workspace.workspaceFolders;
+    const configuration = vscode.workspace.getConfiguration(CONFIGURATION_ROOT_SECTION);
+    const customServerPath = configuration.get<string | null>("server.path");
     const cwd = workspace && workspace[0] ? workspace[0].uri.fsPath : undefined;
     const opts = cwd ? { cwd } : {};
     client.info(`Workspace path: ${opts["cwd"]}`);
@@ -24,6 +28,9 @@ export function makeLanguageClient(): LanguageClient {
     if (existsSync(`${cwd}/typeprof-lsp`)) {
       cmd = "./typeprof-lsp";
       cmd_args = [];
+    } else if (customServerPath) {
+      cmd = customServerPath
+      cmd_args = ["--lsp"];
     } else {
       cmd = "bundle";
       cmd_args = ["exec", "typeprof", "--lsp"];
