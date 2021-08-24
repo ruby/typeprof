@@ -287,7 +287,8 @@ module TypeProf
             key = [:iseq, method_name]
             visibilities[key] ||= mdef.pub_meth
             source_locations[key] ||= [ctx.iseq.source_location(0)]
-            (methods[key] ||= []) << @scratch.show_method_signature(ctx)
+            sig = @scratch.show_method_signature(ctx)
+            (methods[key] ||= []) << sig if sig
           when AliasMethodDef
             alias_name, orig_name = mid, mdef.orig_mid
             if singleton
