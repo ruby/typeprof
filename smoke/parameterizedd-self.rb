@@ -13,8 +13,8 @@ bar([])
 __END__
 # Classes
 class Object
-  def foo: -> Array[bot]
+  def foo: -> Array[untyped]
 
   private
-  def bar: (Array[bot] ary) -> Array[bot]
+  def bar: (Array[untyped] ary) -> Array[untyped]
 end

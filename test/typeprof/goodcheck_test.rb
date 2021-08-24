@@ -45,15 +45,15 @@ module TypeProf
     attr_reader trigger: untyped
     attr_reader buffer: Buffer
     def initialize: (rule: untyped, trigger: untyped, buffer: Buffer) -> void
-    def scan: ?{ (Issue) -> Array[bot]? } -> ((Array[Issue] | Enumerator[Issue, untyped] | Enumerator[bot, untyped])?)
-    def scan_simple: (Regexp regexp) ?{ (Issue) -> Array[bot]? } -> Array[Issue]?
+    def scan: ?{ (Issue) -> Array[untyped]? } -> ((Array[Issue] | Enumerator[Issue, untyped] | Enumerator[bot, untyped])?)
+    def scan_simple: (Regexp regexp) ?{ (Issue) -> Array[untyped]? } -> Array[Issue]?
     def scan_var: (untyped pat) ?{ (Issue) -> untyped } -> nil
   end
         END
 
         assert(actual =~ /^module Goodcheck\n.*(^  class Trigger\n(?:(?:    .*?\n|\n)*)^  end\n).*^end\n/m)
         actual = $1
-        exp = TypeProf::ISeq::CASE_WHEN_CHECKMATCH ? "untyped" : "Array\\[bot\\]"
+        exp = TypeProf::ISeq::CASE_WHEN_CHECKMATCH ? "untyped" : "Array\\[untyped\\]"
         assert_match(Regexp.compile(Regexp.quote(<<-END).gsub("HOLE", exp)), actual)
   class Trigger
     @by_pattern: bool
