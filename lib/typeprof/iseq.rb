@@ -30,10 +30,10 @@ module TypeProf
         opt[:coverage_enabled] = false
 
         if str
-          node = RubyVM::AbstractSyntaxTree.parse(str, save_script_lines: true)
+          node = RubyVM::AbstractSyntaxTree.parse(str, keep_script_lines: true)
           iseq = RubyVM::InstructionSequence.compile(str, path, **opt)
         else
-          node = RubyVM::AbstractSyntaxTree.parse_file(path, save_script_lines: true)
+          node = RubyVM::AbstractSyntaxTree.parse_file(path, keep_script_lines: true)
           iseq = RubyVM::InstructionSequence.compile_file(path, **opt)
         end
 
