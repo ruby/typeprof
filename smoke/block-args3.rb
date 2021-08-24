@@ -57,13 +57,13 @@ __END__
 class Object
   private
   def f1: { -> nil } -> ^(nil, ?:opt, *bot, nil) -> nil
-  def log1: (nil a, :opt o, Array[bot] r, nil c) -> nil
+  def log1: (nil a, :opt o, Array[untyped] r, nil c) -> nil
   def f2: { (:a) -> nil } -> ^(:a, ?:opt, *bot, nil) -> nil
-  def log2: (:a a, :opt o, Array[bot] r, nil c) -> nil
+  def log2: (:a a, :opt o, Array[untyped] r, nil c) -> nil
   def f3: { (:a, :b) -> nil } -> ^(:a, ?:opt, *bot, :b) -> nil
-  def log3: (:a a, :opt o, Array[bot] r, :b c) -> nil
+  def log3: (:a a, :opt o, Array[untyped] r, :b c) -> nil
   def f4: { (:a, :b, :c) -> nil } -> (^(:a, ?:b | :opt, *bot, :c) -> nil)
-  def log4: (:a a, :b | :opt o, Array[bot] r, :c c) -> nil
+  def log4: (:a a, :b | :opt o, Array[untyped] r, :c c) -> nil
   def f5: { (:a, :b, :c, :d) -> nil } -> (^(:a, ?:b | :opt, *:c, :d) -> nil)
   def log5: (:a a, :b | :opt o, [:c] r, :d c) -> nil
   def f6: { (:a, :b, :c, :d, :e) -> nil } -> (^(:a, ?:b | :opt, *:c | :d, :e) -> nil)
