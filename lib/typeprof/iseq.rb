@@ -29,11 +29,18 @@ module TypeProf
         opt[:operands_unification] = false
         opt[:coverage_enabled] = false
 
+        keep_script_lines = begin
+          RubyVM::AbstractSyntaxTree.parse("foo", save_script_lines: true)
+          :save_script_lines
+        rescue ArgumentError
+          :keep_script_lines
+        end
+
         if str
-          node = RubyVM::AbstractSyntaxTree.parse(str, keep_script_lines: true)
+          node = RubyVM::AbstractSyntaxTree.parse(str, keep_script_lines => true)
           iseq = RubyVM::InstructionSequence.compile(str, path, **opt)
         else
-          node = RubyVM::AbstractSyntaxTree.parse_file(path, keep_script_lines: true)
+          node = RubyVM::AbstractSyntaxTree.parse_file(path, keep_script_lines => true)
           iseq = RubyVM::InstructionSequence.compile_file(path, **opt)
         end
 
