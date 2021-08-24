@@ -27,6 +27,22 @@
     "activationEvents": [
         "onLanguage:ruby"
     ],
+    "contributes": {
+        "configuration":[
+            {
+                "title": "Ruby TypeProf",
+                "properties": {
+                    "typeprof.server.path": {
+                        "type": [
+                            "null", "string"
+                        ],
+                        "default": null,
+                        "description": "Path to typeprof executable. (e.g. /usr/local/bin/bundle)"
+                    }
+                }
+            }
+        ]
+    },
     "main": "./out/src/extension",
     "scripts": {
         "vscode:prepublish": "tsc -p ./",
