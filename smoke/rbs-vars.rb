@@ -21,9 +21,6 @@ class Foo
 end
 
 __END__
-# Global variables
-#$gvar: :gvar_example
-
 # Classes
 class Object
   private

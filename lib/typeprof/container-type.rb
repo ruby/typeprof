@@ -307,7 +307,11 @@ module TypeProf
         def screen_name(scratch)
           if @rest_ty == Type.bot
             if @lead_tys.empty?
-              return "Array[bot]" # RBS does not allow an empty tuple "[]"
+              # This is heuristic: in general, an empty array is a wrong guess.
+              # Note that an empty array is representable as "[ ]" in RBS, but
+              # users often have to modify it to "Array[something]".
+              # In this term, "Array[untyped]" is considered more useful than "[ ]".
+              return "Array[untyped]"
             end
             s = @lead_tys.map do |ty|
               ty.screen_name(scratch)
@@ -676,6 +680,8 @@ module TypeProf
               k_ty = k_ty.union(k)
               v_ty = v_ty.union(v)
             end
+            k_ty = Type.any if k_ty == Type.bot
+            v_ty = Type.any if v_ty == Type.bot
             k_ty = k_ty.screen_name(scratch)
             v_ty = v_ty.screen_name(scratch)
             "Hash[#{ k_ty }, #{ v_ty }]"

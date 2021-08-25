@@ -9,5 +9,5 @@ end
 __END__
 # Classes
 class Foo
-  def self.foo: (Array[bot] a) -> Array[bot]
+  def self.foo: (Array[untyped] a) -> Array[untyped]
 end

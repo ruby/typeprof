@@ -69,14 +69,17 @@ module TypeProf
     end
 
     def show_gvars(scratch, gvars, output)
+      gvars = gvars.dump.filter_map do |gvar_name, entry|
+        if entry.type != Type.bot && !entry.rbs_declared
+          [gvar_name, entry]
+        end
+      end
       # A signature for global variables is not supported in RBS
-      return if gvars.dump.empty?
+      return if gvars.empty?
 
       output.puts "# Global variables"
-      gvars.dump.each do |gvar_name, entry|
-        next if entry.type == Type.bot
-        s = entry.rbs_declared ? "#" : ""
-        output.puts s + "#{ gvar_name }: #{ entry.type.screen_name(scratch) }"
+      gvars.each do |gvar_name, entry|
+        output.puts "#{ gvar_name }: #{ entry.type.screen_name(scratch) }"
       end
       output.puts
     end

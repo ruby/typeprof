@@ -463,6 +463,8 @@ module TypeProf
         end
       when RBS::Types::Union
         [:union, ty.types.map {|ty2| conv_type(ty2) }.compact]
+      when RBS::Types::Intersection
+        [:intersection, ty.types.map {|ty2| conv_type(ty2) }.compact]
       when RBS::Types::Optional
         [:optional, conv_type(ty.type)]
       when RBS::Types::Interface
@@ -733,6 +735,9 @@ module TypeProf
       when :union
         tys = ty[1]
         Type::Union.create(Utils::Set[*tys.map {|ty2| conv_type(ty2) }], nil) # XXX: Array and Hash support
+      when :intersection
+        tys = ty[1]
+        conv_type(tys.first) # XXX: This is wrong! We need to support intersection type
       when :var
         Type::Var.new(ty[1])
       when :proc
