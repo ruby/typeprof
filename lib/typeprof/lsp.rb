@@ -16,6 +16,7 @@ module TypeProf
       $stdout = $stderr
 
       Socket.accept_loop(servs) do |sock|
+        sock.set_encoding("UTF-8")
         begin
           reader = LSP::Reader.new(sock)
           writer = LSP::Writer.new(sock)
@@ -555,7 +556,7 @@ module TypeProf
 
       def write(**json)
         json = JSON.generate(json.merge(jsonrpc: "2.0"))
-        @io << "Content-Length: #{ json.size }\r\n\r\n" << json
+        @io << "Content-Length: #{ json.bytesize }\r\n\r\n" << json
       end
 
       module ErrorCodes
