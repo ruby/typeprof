@@ -329,7 +329,7 @@ module TypeProf
         end
 
         def read
-          yield ({ id: 0, method: "initialize" })
+          yield ({ id: 0, method: "initialize", params: { rootUri: "dummy" } })
           yield ({ method: "initialized" })
           yield ({
             method: "textDocument/didOpen",
