@@ -171,7 +171,7 @@ module TypeProf
         end
       end
 
-      private def locate_arg_index_in_signature_help(node, loc)
+      private def locate_arg_index_in_signature_help(node, loc, sig_help)
         case node.type
         when :FCALL
           _mid, args_node = node.children
@@ -246,7 +246,7 @@ module TypeProf
           res[:signature_help].filter_map do |sig_str, sig_help, node_id|
             node = ISeq.find_node_by_id(@text, node_id)
             if node && ISeq.code_range_from_node(node).contain_loc?(loc)
-              idx = locate_arg_index_in_signature_help(node, loc)
+              idx = locate_arg_index_in_signature_help(node, loc, sig_help)
 
               {
                 label: sig_str,
