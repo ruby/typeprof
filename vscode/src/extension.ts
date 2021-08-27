@@ -116,7 +116,7 @@ let client: LanguageClient;
 
 export function activate(context: vscode.ExtensionContext) {
   vscode.commands.registerCommand("jump_to_rbs", (arg0: any, arg1: any, arg2: any, arg3: any) => {
-    vscode.window.showInformationMessage(`hello ${ arg0 } ${ arg1 } ${ arg2 } ${ arg3 }`);
+    //vscode.window.showInformationMessage(`hello ${ arg0 } ${ arg1 } ${ arg2 } ${ arg3 }`);
     const uri0 = vscode.Uri.parse(arg0);
     const pos0 = new vscode.Position(arg1.line, arg1.character);
     const uri1 = vscode.Uri.parse(arg2);
