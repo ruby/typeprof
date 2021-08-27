@@ -308,13 +308,16 @@ module TypeProf
         return unless res
 
         @sigs = []
-        res[:sigs].each do |file, lineno, sig, rbs_code_range|
+        res[:sigs].each do |file, lineno, sig_str, rbs_code_range, class_kind, class_name|
           uri0 = "file://" + file
           if @uri == uri0
-            command = { title: sig }
+            command = { title: sig_str }
             if rbs_code_range
               command[:command] = "jump_to_rbs"
-              command[:arguments] = [uri0, { line: lineno - 1, character: 0 }, "file:///home/mame/work/rbswiki/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
+              command[:arguments] = [uri0, { line: lineno - 1, character: 0 }, @server.root_uri + "/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
+            else
+              command[:command] = "create_prototype_rbs"
+              command[:arguments] = [class_kind, class_name, sig_str]
             end
             @sigs << {
               range: {
@@ -369,6 +372,11 @@ module TypeProf
         @server.send_response(id: @id, result: result)
       end
 
+      def respond_error(error)
+        raise "do not respond to notification" if @id == nil
+        @server.send_response(id: @id, error: error)
+      end
+
       Classes = []
       def self.inherited(klass)
         Classes << klass
@@ -384,9 +392,19 @@ module TypeProf
       end
     end
 
+    module ErrorCodes
+      ParseError = -32700
+      InvalidRequest = -32600
+      MethodNotFound = -32601
+      InvalidParams = -32602
+      InternalError = -32603
+    end
+
     class Message::Initialize < Message
       METHOD = "initialize"
       def run
+        @server.root_uri = @params[:rootUri]
+
         respond(
           capabilities: {
             textDocumentSync: {
@@ -406,9 +424,9 @@ module TypeProf
             codeLensProvider: {
               resolveProvider: true,
             },
-            #executeCommandProvider: {
-            #  commands: ["jump_to_rbs"],
-            #},
+            executeCommandProvider: {
+              commands: ["create_prototype_rbs"],
+            },
             definitionProvider: true,
             typeDefinitionProvider: true,
             referencesProvider: true,
@@ -442,6 +460,59 @@ module TypeProf
       def run
         #p "workspace/didChangeWatchedFiles"
         #pp @params
+      end
+    end
+
+    class Message::Workspace::ExecuteCommand < Message
+      METHOD = "workspace/executeCommand"
+      def run
+        case @params[:command]
+        when "create_prototype_rbs"
+          class_kind, class_name, sig_str = @params[:arguments]
+          code_range =
+            CodeRange.new(
+              CodeLocation.new(1, 0),
+              CodeLocation.new(1, 0),
+            )
+          text = []
+          text << "#{ class_kind } #{ class_name.join("::") }\n"
+          text << "  #{ sig_str }\n"
+          text << "end\n\n"
+          text = text.join
+          @server.send_request(
+            "workspace/applyEdit",
+            edit: {
+              changes: {
+                @server.root_uri + "/typeprof.rbs" => [
+                  {
+                    range: code_range.to_lsp,
+                    newText: text,
+                  }
+                ],
+              },
+            },
+          ) do |res|
+            code_range =
+              CodeRange.new(
+                CodeLocation.new(1, 0),
+                CodeLocation.new(3, 3), # 3 = "end".size
+              )
+            @server.send_request(
+              "window/showDocument",
+              uri: @server.root_uri + "/typeprof.rbs",
+              takeFocus: true,
+              selection: code_range.to_lsp,
+            ) do |res|
+              p res
+            end
+          end
+          respond(nil)
+        else
+          respond_error(
+            code: ErrorCodes::InvalidRequest,
+            message: "Unknown command: #{ @params[:command] }",
+          )
+        end
       end
     end
 
@@ -725,6 +796,7 @@ module TypeProf
       end
 
       attr_reader :typeprof_config, :open_texts, :sigs, :running_requests_from_client
+      attr_accessor :root_uri
 
       def run
         @reader.read do |json|
@@ -735,6 +807,7 @@ module TypeProf
             msg.run
           else
             callback = @running_requests_from_server.delete(json[:id])
+            pp json
             callback&.call(json[:params])
           end
         end
@@ -750,7 +823,7 @@ module TypeProf
         exclusive_write(method: method, params: params)
       end
 
-      def send_request(method, params = nil, &blk)
+      def send_request(method, **params, &blk)
         id = @request_id += 1
         @running_requests_from_server[id] = blk
         exclusive_write(id: id, method: method, params: params)

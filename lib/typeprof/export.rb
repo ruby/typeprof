@@ -380,7 +380,6 @@ module TypeProf
         class_data = conv_class_lsp([], class_def)
         next unless class_data
         class_data.methods.each do |key, arg|
-          #vis = class_data.visibilities[key]
           source_location, rbs_code_range = class_data.source_locations[key]
           type, (method_name, hidden) = key
           case type
@@ -404,7 +403,7 @@ module TypeProf
             line = "alias #{ method_name } #{ orig_name }"
           end
           if source_location =~ /:(\d+)$/
-            res << [$`, $1.to_i, line, rbs_code_range]
+            res << [$`, $1.to_i, line, rbs_code_range, class_data.kind, class_data.name]
           end
         end
       end
