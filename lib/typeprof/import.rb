@@ -66,6 +66,14 @@ module TypeProf
       RBSReader.load_rbs(@env, new_decls)
     end
 
+    def load_rbs_collection(collection_path)
+      loader = RBS::EnvironmentLoader.new(core_root: nil)
+      collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
+      loader.add_collection(collection_lock)
+      new_decls = loader.load(env: @env).map {|decl,| decl }
+      RBSReader.load_rbs(@env, new_decls)
+    end
+
     def self.load_rbs(env, new_decls)
       all_env = env.resolve_type_names
       resolver = RBS::TypeNameResolver.from_env(all_env)
@@ -512,6 +520,10 @@ module TypeProf
 
     def self.import_rbs_code(scratch, rbs_name, rbs_code)
       Import.new(scratch, scratch.rbs_reader.load_rbs_string(rbs_name, rbs_code)).import(true)
+    end
+
+    def self.import_rbs_collection(scratch, collection_path)
+      Import.new(scratch, scratch.rbs_reader.load_rbs_collection(collection_path)).import(true)
     end
 
     def initialize(scratch, json)

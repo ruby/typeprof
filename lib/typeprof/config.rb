@@ -7,6 +7,7 @@ module TypeProf
     :output,
     :gem_rbs_features,
     :gem_repo_dirs,
+    :collection_path,
     :verbose,
     :dir_filter,
     :max_iter,
@@ -80,6 +81,9 @@ module TypeProf
     Config.gem_rbs_features.each do |feature|
       Import.import_library(scratch, feature)
     end
+
+    collection_path = config.collection_path
+    Import.import_rbs_collection(scratch, collection_path) if collection_path&.exist?
 
     rbs_files = []
     rbs_codes = []
