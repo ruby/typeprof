@@ -24,8 +24,6 @@ module TypeProf
 
       output = output.string
 
-      RBS::Parser.parse_signature(output[/# Classes.*\z/m]) unless options[:skip_parsing_test]
-
       assert_equal(<<-END, output)
 # Classes
 class Object
@@ -56,8 +54,6 @@ end
 
       output = output.string
 
-      RBS::Parser.parse_signature(output[/# Classes.*\z/m]) unless options[:skip_parsing_test]
-
       assert_equal(<<-END, output)
 # Classes
 class Object
@@ -87,8 +83,6 @@ end
       TypeProf.analyze(config)
 
       output = output.string
-
-      RBS::Parser.parse_signature(output[/# Classes.*\z/m]) unless options[:skip_parsing_test]
 
       assert_equal(<<-END, output)
 # Analysis Error
