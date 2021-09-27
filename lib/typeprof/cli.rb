@@ -25,13 +25,15 @@ module TypeProf
       max_sec = max_iter = nil
       collection_path = RBS::Collection::Config::PATH
 
+      load_path_ext = []
+
       opt.separator ""
       opt.separator "Options:"
       opt.on("-o OUTFILE", "Output to OUTFILE instead of stdout") {|v| output = v }
       opt.on("-q", "--quiet", "Do not display progress indicator") { options[:show_indicator] = false }
       opt.on("-v", "--verbose", "Alias to --show-errors") { options[:show_errors] = true }
       opt.on("--version", "Display typeprof version") { show_version = true }
-      opt.on("-I DIR", "Add DIR to the load/require path") {|v| $LOAD_PATH << v }
+      opt.on("-I DIR", "Add DIR to the load/require path") {|v| load_path_ext << v }
       opt.on("-r FEATURE", "Require RBS of the FEATURE gem") {|v| gem_rbs_features << v }
       opt.on("--repo DIR", "Add DIR to the RBS repository") {|v| gem_repo_dirs << v }
       opt.on("--collection PATH", "File path of collection configuration") { |v| collection_path = v }
@@ -72,6 +74,8 @@ module TypeProf
       opt.on("--[no-]stackprof MODE", /\Acpu|wall|object\z/, "Enable stackprof (for debugging purpose)") {|v| options[:stackprof] = v.to_sym }
 
       opt.parse!(argv)
+
+      $LOAD_PATH.unshift(*load_path_ext)
 
       dir_filter ||= ConfigData::DEFAULT_DIR_FILTER
       rb_files = []
