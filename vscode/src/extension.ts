@@ -113,8 +113,25 @@ export function makeLanguageClient(): LanguageClient {
 }
 
 let client: LanguageClient;
+let statusBarItem: vscode.StatusBarItem;
 
 export function activate(context: vscode.ExtensionContext) {
+  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  statusBarItem.command = "toggle_typeprof_signature";
+  statusBarItem.text = "TypeProf $(eye)";
+  statusBarItem.show();
+
+  vscode.commands.registerCommand("toggle_typeprof_signature", (arg0: any, arg1: any, arg2: any, arg3: any) => {
+    if (statusBarItem.text == "TypeProf $(eye)") {
+      statusBarItem.text = "TypeProf $(eye-closed)";
+      vscode.commands.executeCommand("typeprof.disableSignature");
+    }
+    else {
+      statusBarItem.text = "TypeProf $(eye)";
+      vscode.commands.executeCommand("typeprof.enableSignature");
+    }
+  });
+
   vscode.commands.registerCommand("jump_to_rbs", (arg0: any, arg1: any, arg2: any, arg3: any) => {
     //vscode.window.showInformationMessage(`hello ${ arg0 } ${ arg1 } ${ arg2 } ${ arg3 }`);
     const uri0 = vscode.Uri.parse(arg0);

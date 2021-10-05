@@ -313,10 +313,10 @@ module TypeProf
           if @uri == uri0
             command = { title: sig_str }
             if rbs_code_range
-              command[:command] = "jump_to_rbs"
+              command[:command] = "typeprof.jumpToRBS"
               command[:arguments] = [uri0, { line: lineno - 1, character: 0 }, @server.root_uri + "/" + rbs_code_range[0], rbs_code_range[1].to_lsp]
             else
-              command[:command] = "create_prototype_rbs"
+              command[:command] = "typeprof.createPrototypeRBS"
               command[:arguments] = [class_kind, class_name, sig_str]
             end
             @sigs << {
@@ -425,7 +425,11 @@ module TypeProf
               resolveProvider: true,
             },
             executeCommandProvider: {
-              commands: ["create_prototype_rbs"],
+              commands: [
+                "typeprof.createPrototypeRBS",
+                "typeprof.enableSignature",
+                "typeprof.disableSignature",
+              ],
             },
             definitionProvider: true,
             typeDefinitionProvider: true,
@@ -467,7 +471,13 @@ module TypeProf
       METHOD = "workspace/executeCommand"
       def run
         case @params[:command]
-        when "create_prototype_rbs"
+        when "typeprof.enableSignature"
+          @server.signature_enabled = true
+          @server.send_request("workspace/codeLens/refresh")
+        when "typeprof.disableSignature"
+          @server.signature_enabled = false
+          @server.send_request("workspace/codeLens/refresh")
+        when "typeprof.createPrototypeRBS"
           class_kind, class_name, sig_str = @params[:arguments]
           code_range =
             CodeRange.new(
@@ -705,7 +715,7 @@ module TypeProf
         end
 
         text = @server.open_texts[uri]
-        if text
+        if text && @server.signature_enabled
           # enqueue in the analysis queue because codeLens is order sensitive
           text.push_analysis_queue do
             respond(text.sigs)
@@ -793,10 +803,11 @@ module TypeProf
         @running_requests_from_server = {}
         @open_texts = {}
         @sigs = {} # tmp
+        @signature_enabled = true
       end
 
       attr_reader :typeprof_config, :open_texts, :sigs, :running_requests_from_client
-      attr_accessor :root_uri
+      attr_accessor :root_uri, :signature_enabled
 
       def run
         @reader.read do |json|
