@@ -1108,7 +1108,11 @@ module TypeProf
         sig_help_res = []
         sig_help = @lsp_signature_help[loc]
         if sig_help
-          sig_help => { recv:, mid:, singleton:, mdefs:, node_id: }
+          recv = sig_help[:recv]
+          mid = sig_help[:mid]
+          singleton = sig_help[:singleton]
+          mdefs = sig_help[:mdefs]
+          node_id = sig_help[:node_id]
           mdefs.each do |mdef|
             case mdef
             when ISeqMethodDef
