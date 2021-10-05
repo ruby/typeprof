@@ -1,6 +1,8 @@
 require_relative "test_helper"
 require_relative "../../lib/typeprof"
 
+return unless TypeProf::ISeq::RICH_AST
+
 module TypeProf
   class LSPTest < Test::Unit::TestCase
 
