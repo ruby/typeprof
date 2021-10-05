@@ -4,6 +4,8 @@ module TypeProf
     CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
     # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
     VM_ENV_DATA_SIZE = 3
+    # Check if Ruby 3.1 or later
+    RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("1", keep_script_lines: true).node_id; true; rescue; false; end
 
     FileInfo = Struct.new(
       :node_id2node,
@@ -29,27 +31,23 @@ module TypeProf
         opt[:operands_unification] = false
         opt[:coverage_enabled] = false
 
-        keep_script_lines = begin
-          RubyVM::AbstractSyntaxTree.parse("foo", save_script_lines: true)
-          :save_script_lines
-        rescue ArgumentError
-          :keep_script_lines
-        end
+        parse_opts = {}
+        parse_opts[:keep_script_lines] = true if RICH_AST
 
         if str
-          node = RubyVM::AbstractSyntaxTree.parse(str, keep_script_lines => true)
+          node = RubyVM::AbstractSyntaxTree.parse(str, **parse_opts)
           iseq = RubyVM::InstructionSequence.compile(str, path, **opt)
         else
-          node = RubyVM::AbstractSyntaxTree.parse_file(path, keep_script_lines => true)
+          node = RubyVM::AbstractSyntaxTree.parse_file(path, **parse_opts)
           iseq = RubyVM::InstructionSequence.compile_file(path, **opt)
         end
 
         node_id2node = {}
-        build_ast_node_id_table(node, node_id2node)
+        build_ast_node_id_table(node, node_id2node) if RICH_AST
 
         file_info = FileInfo.new(node_id2node, CodeRangeTable.new, CodeRangeTable.new, [])
         iseq_rb = new(iseq.to_a, file_info)
-        iseq_rb.collect_local_variable_info(file_info)
+        iseq_rb.collect_local_variable_info(file_info) if RICH_AST
         file_info.created_iseqs.each do |iseq|
           iseq.unify_instructions
         end
@@ -109,7 +107,7 @@ module TypeProf
       fl, fc, ll, lc = misc[:code_location]
       @iseq_code_range = CodeRange.new(CodeLocation.new(fl, fc), CodeLocation.new(ll, lc))
 
-      convert_insns(insns, misc[:node_ids], file_info)
+      convert_insns(insns, misc[:node_ids] || [], file_info)
 
       add_body_start_marker(insns)
 
@@ -183,7 +181,7 @@ module TypeProf
       if code_range
         [@path, code_range]
       else
-        nil
+        [@path]
       end
     end
 
