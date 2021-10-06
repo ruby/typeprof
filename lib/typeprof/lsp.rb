@@ -330,7 +330,7 @@ module TypeProf
         end
 
         diagnostics = {}
-        res[:errors].each do |(file, code_range), msg|
+        res[:errors].to_a.each do |(file, code_range), msg|
           next unless file
           uri0 = "file://" + file
           diagnostics[uri0] ||= []
