@@ -404,6 +404,13 @@ module TypeProf
       METHOD = "initialize"
       def run
         @server.root_uri = @params[:rootUri]
+        pwd = Dir.pwd
+        @params[:workspaceFolders]&.each do |folder|
+          folder => { uri:, }
+          if pwd == URI(uri).path
+            @server.root_uri = uri
+          end
+        end
 
         respond(
           capabilities: {
@@ -537,7 +544,9 @@ module TypeProf
         else
           raise
         end
-        @server.open_texts[uri] = Text.new(@server, uri, text, version)
+        if uri.start_with?(@server.root_uri)
+          @server.open_texts[uri] = Text.new(@server, uri, text, version)
+        end
       end
     end
 
@@ -549,7 +558,7 @@ module TypeProf
         else
           raise
         end
-        @server.open_texts[uri].apply_changes(changes, version)
+        @server.open_texts[uri]&.apply_changes(changes, version)
       end
 
       def cancel
@@ -581,7 +590,7 @@ module TypeProf
           raise
         end
 
-        definition_table = @server.open_texts[uri].definition_table
+        definition_table = @server.open_texts[uri]&.definition_table
         code_locations = definition_table[CodeLocation.from_lsp(loc)] if definition_table
         if code_locations
           respond(
@@ -625,7 +634,7 @@ module TypeProf
           raise
         end
 
-        caller_table = @server.open_texts[uri].caller_table
+        caller_table = @server.open_texts[uri]&.caller_table
         code_locations = caller_table[CodeLocation.from_lsp(loc)] if caller_table
         if code_locations
           respond(
