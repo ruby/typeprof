@@ -2364,7 +2364,7 @@ module TypeProf
             path, loc = Config.current.options[:signature_help_loc]
             if path && path == ep.ctx.iseq.path && mid != :inherited # XXX: too ad-hoc!!!
               path, code_range = ep&.detailed_source_location
-              if path && code_range.contain_loc?(loc)
+              if path && code_range&.contain_loc?(loc)
                 @lsp_signature_help[code_range] = {
                   recv: recv,
                   mid: mid,
