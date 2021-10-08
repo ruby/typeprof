@@ -490,6 +490,7 @@ module TypeProf
           [:instance, conv_type_name(ty.name)]
         end
       when RBS::Types::Bases::Instance then [:any] # XXX: not implemented yet
+      when RBS::Types::Bases::Class then [:any] # XXX: not implemented yet
       when RBS::Types::Record
         [:hash_record, [:Hash], ty.fields.map {|key, ty| [key, conv_type(ty)] }]
       when RBS::Types::Proc
