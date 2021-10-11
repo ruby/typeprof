@@ -1,31 +1,22 @@
-# LSP client for vscode
+# Ruby TypeProf VSCode Integration
 
-Note: this is under development
+*NOTE: This extenstion is very preliminary.*
 
-## How to run
+This is a VSCode extension to help you write Ruby code by using an code analyzer called [Ruby TypeProf](https://github.com/ruby/typeprof/) as a backend.
 
-```
-$ cd vscode
-$ npm install
-$ npx run tsc -p ./
-$ cd ..
-$ code --extensionDevelopmentPath=vscode/ .
-```
+## How to use this extension
 
-Alternatively, you can do it in vscode itself.
+*TBD*
 
-```
-$ cd vscode
-$ code
-```
+Requirements:
 
-And then press F5 to run another vscode with extension.
+1. Use Ruby 3.1.0 or later, and TypeProf 0.20.0 or later
+2. Add `gem "typeprof"` to your `Gemfile`, and execute `bundle install`
 
-## How to release
+Troubleshooting:
 
-```
-$ npm run package
-$ npx vsce publish
-```
+*TBD*
 
-See also: https://code.visualstudio.com/api/working-with-extensions/publishing-extension
+## How to develop this extension
+
+See [development.md](https://github.com/ruby/typeprof/blob/master/development.md).

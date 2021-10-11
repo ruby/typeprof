@@ -4,3 +4,4 @@
 **/*.ts
 **/*.js.map
 **/tsconfig.json
+development.md
