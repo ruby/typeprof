@@ -1,7 +1,7 @@
 {
     "name": "typeprof",
     "displayName": "Ruby TypeProf",
-    "version": "0.20.0",
+    "version": "0.16.0",
     "publisher": "mame",
     "author": {
         "name": "Yusuke Endoh"
@@ -28,13 +28,14 @@
         "onLanguage:ruby"
     ],
     "contributes": {
-        "configuration":[
+        "configuration": [
             {
                 "title": "Ruby TypeProf",
                 "properties": {
                     "typeprof.server.path": {
                         "type": [
-                            "null", "string"
+                            "null",
+                            "string"
                         ],
                         "default": null,
                         "description": "Path to typeprof executable. (e.g. /usr/local/bin/bundle)"

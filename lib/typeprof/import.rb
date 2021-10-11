@@ -7,6 +7,11 @@ module TypeProf
       Config.current.gem_repo_dirs.each do |dir|
         @repo.add(Pathname(dir))
       end
+      collection_path = Config.current.collection_path
+      if collection_path&.exist?
+        collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
+        @repo.add(collection_lock.repo_path)
+      end
       @env, @builtin_env_json = RBSReader.get_builtin_env
     end
 
@@ -766,7 +771,7 @@ module TypeProf
       path.each do |name|
         klass, = @scratch.get_constant(klass, name)
         if klass == Type.any
-          raise TypeProfError.new("A constant `#{ path.join("::") }' is used but not defined in RBS")
+          raise TypeProfError.new("A constant `#{ path.join("::") }' is used but not defined in RBS: #{ path }")
         end
       end
       klass
