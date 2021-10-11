@@ -7,9 +7,9 @@ module TypeProf
     test "testbed/goodcheck" do
       omit_if(ENV["RUBY"], "goodcheck testbed is not supported yet in test-bundled-gems")
 
-      begin
-        TestRun.setup_testbed_repository("goodcheck", "https://github.com/sider/goodcheck.git", "b78f0f6f90887a97aa369e287fa109a63cee4a04")
+      TestRun.setup_testbed_repository("goodcheck", "https://github.com/sider/goodcheck.git", "b78f0f6f90887a97aa369e287fa109a63cee4a04")
 
+      begin
         load_path_back = $LOAD_PATH
         env_bundle_gemfile_back = ENV["BUNDLE_GEMFILE"]
 
