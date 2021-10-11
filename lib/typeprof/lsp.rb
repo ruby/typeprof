@@ -463,6 +463,13 @@ module TypeProf
       end
     end
 
+    class Message::Exit < Message
+      METHOD = "exit"
+      def run
+        exit
+      end
+    end
+
     module Message::Workspace
     end
 
@@ -519,9 +526,7 @@ module TypeProf
               uri: @server.root_uri + "/typeprof.rbs",
               takeFocus: true,
               selection: code_range.to_lsp,
-            ) do |res|
-              p res
-            end
+            )
           end
           respond(nil)
         else
@@ -827,7 +832,6 @@ module TypeProf
             msg.run
           else
             callback = @running_requests_from_server.delete(json[:id])
-            pp json
             callback&.call(json[:params])
           end
         end
