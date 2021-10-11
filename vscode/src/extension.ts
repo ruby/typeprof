@@ -13,7 +13,7 @@ import { existsSync } from "fs";
 interface Invoking {
   kind: "invoking";
   workspaceFolder: vscode.WorkspaceFolder;
-  cancelled: boolean;
+  process: child_process.ChildProcessWithoutNullStreams;
 }
 interface Running {
   kind: "running";
@@ -95,44 +95,42 @@ function executeTypeProf(folder: vscode.WorkspaceFolder, arg: String): child_pro
   return typeprof;
 }
 
-function getTypeProfVersion(folder: vscode.WorkspaceFolder): Promise<null | string> {
-  return new Promise((resolve, reject) => {
-    const typeprof = executeTypeProf(folder, "--version");
-    let output = "";
+function getTypeProfVersion(folder: vscode.WorkspaceFolder, callback: (version: string) => void): child_process.ChildProcessWithoutNullStreams {
+  const typeprof = executeTypeProf(folder, "--version");
+  let output = "";
 
-    typeprof.stdout?.on("data", out => { output += out; });
-    typeprof.stderr?.on("data", out => { console.log(out); });
-    typeprof.on("error", e => {
-      console.info(`typeprof is not supported for this folder: ${folder}`);
-      console.info(`because: ${e}`);
-      resolve(null);
-    });
-    typeprof.on("exit", (code) => {
-      if (code == 0) {
-        console.info(`typeprof version: ${output}`)
-        const str = output.trim();
-        const version = /^typeprof (\d+).(\d+).(\d+)$/.exec(str);
-        if (version) {
-          const major = Number(version[1]);
-          const minor = Number(version[2]);
-          const _teeny = Number(version[3]);
-          if (major >= 1 || (major == 0 && minor >= 16)) {
-            resolve(str)
-          }
-          else {
-            resolve(null)
-          }
+  typeprof.stdout?.on("data", out => { output += out; });
+  typeprof.stderr?.on("data", out => { console.log(out); });
+  typeprof.on("error", e => {
+    console.info(`typeprof is not supported for this folder: ${folder}`);
+    console.info(`because: ${e}`);
+  });
+  typeprof.on("exit", (code) => {
+    if (code == 0) {
+      console.info(`typeprof version: ${output}`)
+      const str = output.trim();
+      const version = /^typeprof (\d+).(\d+).(\d+)$/.exec(str);
+      if (version) {
+        const major = Number(version[1]);
+        const minor = Number(version[2]);
+        const _teeny = Number(version[3]);
+        if (major >= 1 || (major == 0 && minor >= 20)) {
+          callback(str);
         }
         else {
-          resolve(null)
+          console.info(`typeprof version ${str} is too old; please use 0.20.0 or later for IDE feature`);
         }
       }
       else {
-        console.info(`failed to invoke typeprof: error code ${code}`)
-        resolve(null);
+        console.info(`typeprof --version showed unknown message`);
       }
-    })
+    }
+    else {
+      console.info(`failed to invoke typeprof: error code ${code}`);
+    }
+    typeprof.kill()
   });
+  return typeprof;
 }
 
 function getTypeProfStream(folder: vscode.WorkspaceFolder, error: (msg: string) => void):
@@ -202,15 +200,14 @@ const clientSessions: Map<vscode.WorkspaceFolder, State> = new Map();
 
 function startTypeProf(folder: vscode.WorkspaceFolder) {
   const showStatus = (msg: string) => vscode.window.setStatusBarMessage(msg, 3000);
+  console.log(`start: ${folder}`);
 
-  getTypeProfVersion(folder)
-  .then((version) => {
+  const typeprof = getTypeProfVersion(folder, (version) => {
     if (!version) {
       showStatus(`Ruby TypeProf is not configured; Try to add "gem 'typeprof'" to Gemfile`);
       clientSessions.delete(folder);
       return;
     }
-    if ((clientSessions.get(folder) as Invoking).cancelled) return;
     showStatus(`Starting Ruby TypeProf (${version})...`);
     const client = invokeTypeProf(folder);
     client.onReady()
@@ -222,23 +219,31 @@ function startTypeProf(folder: vscode.WorkspaceFolder) {
     });
     client.start();
     clientSessions.set(folder, { kind: "running", workspaceFolder: folder, client });
-  })
-  .catch((e: any) => {
-    showStatus(`Failed to start Ruby TypeProf: ${e}`);
   });
-  clientSessions.set(folder, { kind: "invoking", workspaceFolder: folder, cancelled: false })
+
+  clientSessions.set(folder, { kind: "invoking", workspaceFolder: folder, process: typeprof });
 }
 
 function stopTypeProf(state: State) {
+  console.log(`stop: ${state.workspaceFolder}`);
   switch (state.kind) {
     case "invoking":
-      state.cancelled = true;
+      state.process.kill();
+
       break;
     case "running":
       state.client.stop();
       break;
   }
   clientSessions.delete(state.workspaceFolder);
+}
+
+function restartTypeProf() {
+  vscode.workspace.workspaceFolders?.forEach((folder) => {
+    let state = clientSessions.get(folder);
+    if (state) stopTypeProf(state);
+    startTypeProf(folder);
+  });
 }
 
 function ensureTypeProf() {
@@ -259,14 +264,22 @@ function ensureTypeProf() {
   });
 }
 
+function addRestartCommand(context: vscode.ExtensionContext) {
+  const disposable = vscode.commands.registerCommand("typeprof.restart", () => {
+    restartTypeProf();
+  });
+  context.subscriptions.push(disposable);
+}
+
 export function activate(context: vscode.ExtensionContext) {
   addToggleButton(context);
   addJumpToRBS(context);
+  addRestartCommand(context)
   ensureTypeProf();
 }
 
 export function deactivate() {
   clientSessions.forEach((state) => {
     stopTypeProf(state);
-  })
+  });
 }

@@ -1,7 +1,7 @@
 {
     "name": "typeprof",
     "displayName": "Ruby TypeProf",
-    "version": "0.16.0",
+    "version": "0.20.0",
     "publisher": "mame",
     "author": {
         "name": "Yusuke Endoh"
@@ -28,6 +28,13 @@
         "onLanguage:ruby"
     ],
     "contributes": {
+        "commands": [
+            {
+                "command": "typeprof.restart",
+                "title": "Restart",
+                "category": "TypeProf"
+            }
+        ],
         "configuration": [
             {
                 "title": "Ruby TypeProf",
