@@ -447,6 +447,8 @@ module TypeProf
             version: "0.0.0",
           },
         )
+
+        puts "TypeProf for IDE is started successfully"
       end
     end
 
