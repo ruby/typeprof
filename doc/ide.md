@@ -3,7 +3,7 @@
 First, try it with an already-configured repository!
 
 1. `rbenv install 3.1.0-dev`
-2. `git clone https://github.com/mame/rbswiki.rb`
+2. `git clone https://github.com/mame/rbswiki`
 3. `cd rbswiki && bundle install`
 4. `rbs collection install`
 5. install [VSCode extension for TypeProf](https://marketplace.visualstudio.com/items?itemName=mame.ruby-typeprof) to your VSCode
