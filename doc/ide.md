@@ -4,11 +4,12 @@ First, try it with an already-configured repository!
 
 1. `rbenv install 3.1.0-dev`
 2. `git clone https://github.com/mame/rbswiki.rb`
-3. `cd rbswiki && bundle install`
-4. `rbs collection install`
-5. install [VSCode extension for TypeProf](https://marketplace.visualstudio.com/items?itemName=mame.ruby-typeprof) to your VSCode
-6. open the `rbswiki` folder by VSCode
-7. open `lib/rbswiki/wiki.rb`
+3. `git clone https://github.com/ruby/typeprof`
+4. `cd rbswiki && bundle install`
+5. `rbs collection install`
+6. install [VSCode extension for TypeProf](https://marketplace.visualstudio.com/items?itemName=mame.ruby-typeprof) to your VSCode
+7. open the `rbswiki` folder by VSCode
+8. open `lib/rbswiki/wiki.rb`
 
 If everything goes well, you will see guessed signatures for each method:
 
