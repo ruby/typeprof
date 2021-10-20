@@ -74,9 +74,9 @@ module TypeProf
             begin
               work.call
             rescue Exception
-              STDERR.puts "Rescued exception:"
-              STDERR.puts $!.full_message
-              STDERR.puts
+              puts "Rescued exception:"
+              puts $!.full_message
+              puts
             end
           end
         end
@@ -167,7 +167,7 @@ module TypeProf
         case trigger_kind
         when LSP::CompletionTriggerKind::TRIGGER_FOR_INCOMPLETE_COMPLETIONS
           unless @current_completion_session&.reusable?(row, start_offset)
-            STDERR.puts "no reusable completion session but got TRIGGER_FOR_INCOMPLETE_COMPLETIONS"
+            puts "no reusable completion session but got TRIGGER_FOR_INCOMPLETE_COMPLETIONS"
             @current_completion_session = new_code_completion_session(row, start_offset, end_offset)
           end
           return @current_completion_session.results
@@ -454,7 +454,7 @@ module TypeProf
           },
         )
 
-        STDERR.puts "TypeProf for IDE is started successfully"
+        puts "TypeProf for IDE is started successfully"
       end
     end
 
@@ -575,7 +575,7 @@ module TypeProf
       end
 
       def cancel
-        STDERR.puts "cancel"
+        puts "cancel"
       end
     end
 
