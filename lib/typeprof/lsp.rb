@@ -4,27 +4,33 @@ require "uri"
 
 module TypeProf
   def self.start_lsp_server(config)
-    Socket.tcp_server_sockets("localhost", config.lsp_options[:port]) do |servs|
-      serv = servs[0].local_address
-      $stdout << JSON.generate({
-        host: serv.ip_address,
-        port: serv.ip_port,
-        pid: $$,
-      })
-      $stdout.flush
+    if config.lsp_options[:stdio]
+      reader = LSP::Reader.new($stdin)
+      writer = LSP::Writer.new($stdout)
+      TypeProf::LSP::Server.new(config, reader, writer).run
+    else
+      Socket.tcp_server_sockets("localhost", config.lsp_options[:port]) do |servs|
+        serv = servs[0].local_address
+        $stdout << JSON.generate({
+          host: serv.ip_address,
+          port: serv.ip_port,
+          pid: $$,
+        })
+        $stdout.flush
 
-      $stdout = $stderr
+        $stdout = $stderr
 
-      Socket.accept_loop(servs) do |sock|
-        sock.set_encoding("UTF-8")
-        begin
-          reader = LSP::Reader.new(sock)
-          writer = LSP::Writer.new(sock)
-          TypeProf::LSP::Server.new(config, reader, writer).run
-        ensure
-          sock.close
+        Socket.accept_loop(servs) do |sock|
+          sock.set_encoding("UTF-8")
+          begin
+            reader = LSP::Reader.new(sock)
+            writer = LSP::Writer.new(sock)
+            TypeProf::LSP::Server.new(config, reader, writer).run
+          ensure
+            sock.close
+          end
+          exit
         end
-        exit
       end
     end
   end
