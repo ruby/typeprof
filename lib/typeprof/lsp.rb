@@ -799,6 +799,7 @@ module TypeProf
       def write(**json)
         json = JSON.generate(json.merge(jsonrpc: "2.0"))
         @io << "Content-Length: #{ json.bytesize }\r\n\r\n" << json
+        @io.flush
       end
 
       module ErrorCodes
