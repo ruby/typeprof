@@ -78,6 +78,7 @@ module TypeProf
       opt.separator ""
       opt.separator "LSP options:"
       opt.on("--port PORT", Integer, "Specify a port number to listen for requests on") {|v| lsp_options[:port] = v }
+      opt.on("--stdio", "Use stdio for LSP transport") {|v| lsp_options[:stdio] = v }
 
       opt.parse!(argv)
 
