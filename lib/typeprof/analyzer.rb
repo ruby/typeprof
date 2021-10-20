@@ -935,7 +935,7 @@ module TypeProf
 
     def reveal_type(ep, ty)
       key = ep.source_location
-      STDERR.puts "reveal:#{ ep.source_location }:#{ ty.screen_name(self) }" if Config.current.verbose >= 2
+      puts "reveal:#{ ep.source_location }:#{ ty.screen_name(self) }" if Config.current.verbose >= 2
       if @reveal_types[key]
         @reveal_types[key] = @reveal_types[key].union(ty)
       else
@@ -1060,7 +1060,7 @@ module TypeProf
             @pending_execution.delete(iseq)
           end while @executed_iseqs.include?(iseq)
 
-          STDERR.puts "DEBUG: trigger stub execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.current.verbose >= 2
+          puts "DEBUG: trigger stub execution (#{ iseq&.name || "(nil)" }): rest #{ @pending_execution.size }" if Config.current.verbose >= 2
 
           break if !iseq
           case kind
@@ -1263,8 +1263,8 @@ module TypeProf
 
       if Config.current.verbose >= 2
         # XXX: more dedicated output
-        STDERR.puts "DEBUG: stack=%p" % [env.stack]
-        STDERR.puts "DEBUG: %s (%s) PC=%d insn=%s sp=%d" % [ep.source_location, ep.ctx.iseq.name, ep.pc, insn.insn, env.stack.size]
+        puts "DEBUG: stack=%p" % [env.stack]
+        puts "DEBUG: %s (%s) PC=%d insn=%s sp=%d" % [ep.source_location, ep.ctx.iseq.name, ep.pc, insn.insn, env.stack.size]
       end
 
       case insn.insn
