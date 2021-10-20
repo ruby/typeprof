@@ -7,6 +7,8 @@ module TypeProf
     if config.lsp_options[:stdio]
       reader = LSP::Reader.new($stdin)
       writer = LSP::Writer.new($stdout)
+      # pipe all builtin print output to stderr to avoid conflicting with lsp
+      $stdout = $stderr
       TypeProf::LSP::Server.new(config, reader, writer).run
     else
       Socket.tcp_server_sockets("localhost", config.lsp_options[:port]) do |servs|
