@@ -21,7 +21,6 @@ module TypeProf
       lsp_options = {}
       dir_filter = nil
       gem_rbs_features = []
-      gem_repo_dirs = []
       show_version = false
       max_sec = max_iter = nil
       collection_path = RBS::Collection::Config::PATH
@@ -36,7 +35,6 @@ module TypeProf
       opt.on("--version", "Display typeprof version") { show_version = true }
       opt.on("-I DIR", "Add DIR to the load/require path") {|v| load_path_ext << v }
       opt.on("-r FEATURE", "Require RBS of the FEATURE gem") {|v| gem_rbs_features << v }
-      opt.on("--repo DIR", "Add DIR to the RBS repository") {|v| gem_repo_dirs << v }
       opt.on("--collection PATH", "File path of collection configuration") { |v| collection_path = v }
       opt.on("--no-collection", "Ignore collection configuration") { collection_path = nil }
       opt.on("--lsp", "LSP mode") {|v| options[:lsp] = true }
@@ -111,7 +109,6 @@ module TypeProf
         rbs_files: rbs_files,
         output: output,
         gem_rbs_features: gem_rbs_features,
-        gem_repo_dirs: gem_repo_dirs,
         collection_path: collection_path,
         verbose: verbose,
         dir_filter: dir_filter,

@@ -4,36 +4,49 @@ module TypeProf
   class RBSReader
     def initialize
       @repo = RBS::Repository.new
-      Config.current.gem_repo_dirs.each do |dir|
-        @repo.add(Pathname(dir))
-      end
       collection_path = Config.current.collection_path
       if collection_path&.exist?
         collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
         @repo.add(collection_lock.repo_path)
       end
-      @env, @builtin_env_json = RBSReader.get_builtin_env
+      @env, @loaded_gems, @builtin_env_json = RBSReader.get_builtin_env
     end
 
     @builtin_env = @builtin_env_json = nil
     def self.get_builtin_env
+      @loaded_gems = []
       unless @builtin_env
         @builtin_env = RBS::Environment.new
 
-        loader = RBS::EnvironmentLoader.new(repository: @repo)
+        loader = RBS::EnvironmentLoader.new
+
+        # TODO: invalidate this cache when rbs_collection.yml was changed
+        collection_path = Config.current.collection_path
+        if collection_path&.exist?
+          collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
+          collection_lock.gems.each {|gem| @loaded_gems << gem["name"] }
+          loader.add_collection(collection_lock)
+        end
+
         new_decls = loader.load(env: @builtin_env).map {|decl,| decl }
         @builtin_env_json = load_rbs(@builtin_env, new_decls)
       end
 
-      return @builtin_env.dup, @builtin_env_json
+      return @builtin_env.dup, @loaded_gems.dup, @builtin_env_json
     end
 
     def load_builtin
       @builtin_env_json
     end
 
+    class RBSCollectionDefined < StandardError; end
+
     def load_library(lib)
       loader = RBS::EnvironmentLoader.new(core_root: nil, repository: @repo)
+      if @loaded_gems.include?(lib)
+        raise RBSCollectionDefined
+      end
+      @loaded_gems << lib
       loader.add(library: lib)
 
       case lib
@@ -68,14 +81,6 @@ module TypeProf
         @env << decl
         new_decls << decl
       end
-      RBSReader.load_rbs(@env, new_decls)
-    end
-
-    def load_rbs_collection(collection_path)
-      loader = RBS::EnvironmentLoader.new(core_root: nil)
-      collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
-      loader.add_collection(collection_lock)
-      new_decls = loader.load(env: @env).map {|decl,| decl }
       RBSReader.load_rbs(@env, new_decls)
     end
 
@@ -517,7 +522,7 @@ module TypeProf
         json = scratch.rbs_reader.load_library(feature)
       rescue RBS::EnvironmentLoader::UnknownLibraryError
         return nil
-      rescue RBS::DuplicatedDeclarationError
+      rescue RBS::DuplicatedDeclarationError, RBSReader::RBSCollectionDefined
         return true
       end
       # need cache?
@@ -531,10 +536,6 @@ module TypeProf
 
     def self.import_rbs_code(scratch, rbs_name, rbs_code)
       Import.new(scratch, scratch.rbs_reader.load_rbs_string(rbs_name, rbs_code)).import(true)
-    end
-
-    def self.import_rbs_collection(scratch, collection_path)
-      Import.new(scratch, scratch.rbs_reader.load_rbs_collection(collection_path)).import(true)
     end
 
     def initialize(scratch, json)

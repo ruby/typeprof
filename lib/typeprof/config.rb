@@ -6,7 +6,6 @@ module TypeProf
     :rbs_files,
     :output,
     :gem_rbs_features,
-    :gem_repo_dirs,
     :collection_path,
     :verbose,
     :dir_filter,
@@ -29,7 +28,6 @@ module TypeProf
     def initialize(**opt)
       opt[:output] ||= $stdout
       opt[:gem_rbs_features] ||= []
-      opt[:gem_repo_dirs] ||= []
       opt[:dir_filter] ||= DEFAULT_DIR_FILTER
       opt[:verbose] ||= 0
       opt[:options] ||= {}
@@ -94,9 +92,6 @@ module TypeProf
     Config.current.gem_rbs_features.each do |feature|
       Import.import_library(scratch, feature)
     end
-
-    collection_path = config.collection_path
-    Import.import_rbs_collection(scratch, collection_path) if collection_path&.exist?
 
     rbs_files = []
     rbs_codes = []
