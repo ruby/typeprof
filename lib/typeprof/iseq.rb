@@ -34,6 +34,11 @@ module TypeProf
         parse_opts = {}
         parse_opts[:keep_script_lines] = true if RICH_AST
 
+        unless defined?(RubyVM::InstructionSequence)
+          puts "Currently, TypeProf can work on a Ruby implementation that supports RubyVM::InstructionSequence, such as CRuby."
+          exit 1
+        end
+
         if str
           node = RubyVM::AbstractSyntaxTree.parse(str, **parse_opts)
           iseq = RubyVM::InstructionSequence.compile(str, path, **opt)
