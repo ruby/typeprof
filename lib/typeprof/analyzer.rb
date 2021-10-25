@@ -1933,8 +1933,13 @@ module TypeProf
       when :setconstant
         name, = operands
         env, (ty, cbase) = env.pop(2)
-        old_ty, = get_constant(cbase, name)
-        if old_ty != Type.any # XXX???
+        old_ty, old_locs = get_constant(cbase, name)
+        if old_locs == [nil] # RBS defined
+          # TODO: it would be better to check if ty is consistent with old_ty (defined in RBS)
+          # instead of extending the type
+          env, old_ty = localize_type(globalize_type(old_ty, env, ep), env, ep)
+          ty = ty.union(old_ty)
+        elsif old_ty != Type.any # XXX???
           warn(ep, "already initialized constant #{ Type::Instance.new(cbase).screen_name(self) }::#{ name }")
         end
         ty.each_child do |ty|
