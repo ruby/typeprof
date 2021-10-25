@@ -483,6 +483,7 @@ module TypeProf
       when RBS::Types::Interface
         # XXX: Currently, only a few builtin interfaces are supported
         case ty.to_s
+        when "::_ToS" then [:str]
         when "::_ToStr" then [:str]
         when "::_ToInt" then [:int]
         when "::_ToAry[U]" then [:array, [:Array], [], [:var, :U]]
