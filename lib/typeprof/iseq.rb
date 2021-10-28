@@ -704,7 +704,7 @@ module TypeProf
         sp += 1
       when :newhashfromarray
         raise NotImplementedError, "newhashfromarray"
-      when :newrange, :tostring
+      when :newrange, :tostring, :anytostring
         sp -= 2
         return nil if sp <= 0
         sp += 1
