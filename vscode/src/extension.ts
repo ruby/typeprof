@@ -95,20 +95,30 @@ function executeTypeProf(folder: vscode.WorkspaceFolder, arg: String): child_pro
   return typeprof;
 }
 
-function getTypeProfVersion(folder: vscode.WorkspaceFolder, callback: (version: string) => void): child_process.ChildProcessWithoutNullStreams {
+function getTypeProfVersion(folder: vscode.WorkspaceFolder, outputChannel: vscode.OutputChannel, callback: (version: string) => void): child_process.ChildProcessWithoutNullStreams {
   const typeprof = executeTypeProf(folder, "--version");
   let output = "";
 
+  const log = (msg: string) => {
+    outputChannel.appendLine("[vscode] " + msg);
+    console.info(msg);
+  };
+
   typeprof.stdout?.on("data", out => { output += out; });
-  typeprof.stderr?.on("data", out => { console.log(out); });
+  typeprof.stderr?.on("data", (out: Buffer) => {
+    const str = ("" + out).trim();
+    for (const line of str.split("\n")) {
+      log("stderr: " + line);
+    }
+  });
   typeprof.on("error", e => {
-    console.info(`typeprof is not supported for this folder: ${folder}`);
-    console.info(`because: ${e}`);
+    log(`typeprof is not supported for this folder: ${folder}`);
+    log(`because: ${e}`);
   });
   typeprof.on("exit", (code) => {
     if (code == 0) {
-      console.info(`typeprof version: ${output}`)
       const str = output.trim();
+      log(`typeprof version: ${str}`)
       const version = /^typeprof (\d+).(\d+).(\d+)$/.exec(str);
       if (version) {
         const major = Number(version[1]);
@@ -118,15 +128,15 @@ function getTypeProfVersion(folder: vscode.WorkspaceFolder, callback: (version: 
           callback(str);
         }
         else {
-          console.info(`typeprof version ${str} is too old; please use 0.20.0 or later for IDE feature`);
+          log(`typeprof version ${str} is too old; please use 0.20.0 or later for IDE feature`);
         }
       }
       else {
-        console.info(`typeprof --version showed unknown message`);
+        log(`typeprof --version showed unknown message`);
       }
     }
     else {
-      console.info(`failed to invoke typeprof: error code ${code}`);
+      log(`failed to invoke typeprof: error code ${code}`);
     }
     typeprof.kill()
   });
@@ -164,7 +174,7 @@ function getTypeProfStream(folder: vscode.WorkspaceFolder, error: (msg: string) 
   });
 }
 
-function invokeTypeProf(folder: vscode.WorkspaceFolder): LanguageClient {
+function invokeTypeProf(folder: vscode.WorkspaceFolder, outputChannel: vscode.OutputChannel): LanguageClient {
   let client: LanguageClient;
 
   const reportError = (msg: string) => client.info(msg);
@@ -185,6 +195,7 @@ function invokeTypeProf(folder: vscode.WorkspaceFolder): LanguageClient {
       { scheme: "file", language: "ruby" },
       { scheme: "file", language: "rbs" },
     ],
+    outputChannel,
     synchronize: {
       fileEvents:
         vscode.workspace.createFileSystemWatcher("{**/*.rb,**/*.rbs}"),
@@ -199,17 +210,21 @@ function invokeTypeProf(folder: vscode.WorkspaceFolder): LanguageClient {
 const clientSessions: Map<vscode.WorkspaceFolder, State> = new Map();
 
 function startTypeProf(folder: vscode.WorkspaceFolder) {
-  const showStatus = (msg: string) => vscode.window.setStatusBarMessage(msg, 3000);
-  console.log(`start: ${folder}`);
+  const outputChannel = vscode.window.createOutputChannel("Ruby TypeProf");
+  const showStatus = (msg: string) => {
+    outputChannel.appendLine("[vscode] " + msg);
+    vscode.window.setStatusBarMessage(msg, 3000);
+  }
+  outputChannel.appendLine("[vscode] Try to start TypeProf for IDE");
 
-  const typeprof = getTypeProfVersion(folder, (version) => {
+  const typeprof = getTypeProfVersion(folder, outputChannel, (version) => {
     if (!version) {
       showStatus(`Ruby TypeProf is not configured; Try to add "gem 'typeprof'" to Gemfile`);
       clientSessions.delete(folder);
       return;
     }
     showStatus(`Starting Ruby TypeProf (${version})...`);
-    const client = invokeTypeProf(folder);
+    const client = invokeTypeProf(folder, outputChannel);
     client.onReady()
     .then(() => {
       showStatus("Ruby TypeProf is running");
@@ -225,7 +240,6 @@ function startTypeProf(folder: vscode.WorkspaceFolder) {
 }
 
 function stopTypeProf(state: State) {
-  console.log(`stop: ${state.workspaceFolder}`);
   switch (state.kind) {
     case "invoking":
       state.process.kill();
