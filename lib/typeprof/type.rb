@@ -422,22 +422,22 @@ module TypeProf
     end
 
     def self.any
-      @any ||= Any.new
+      Thread.current[:any] ||= Any.new
     end
 
     def self.bot
-      @bot ||= Union.new(Utils::Set[], nil)
+      Thread.current[:bot] ||= Union.new(Utils::Set[], nil)
     end
 
     def self.bool
-      @bool ||= Union.new(Utils::Set[
+      Thread.current[:bool] ||= Union.new(Utils::Set[
         Instance.new(Type::Builtin[:true]),
         Instance.new(Type::Builtin[:false])
       ], nil)
     end
 
     def self.nil
-      @nil ||= Instance.new(Type::Builtin[:nil])
+      Thread.current[:nil] ||= Instance.new(Type::Builtin[:nil])
     end
 
     def self.optional(ty)
