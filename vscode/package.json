@@ -8,7 +8,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/mame/vscode-typeprof"
+        "url": "https://github.com/ruby/typeprof/tree/master/vscode"
     },
     "license": "MIT",
     "categories": [
