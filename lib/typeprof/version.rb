@@ -1,3 +1,3 @@
 module TypeProf
-  VERSION = "0.20.3"
+  VERSION = "0.20.4"
 end
