@@ -1393,7 +1393,7 @@ module TypeProf
         num, = operands
         env, = env.pop(num)
         env = env.push(Type::Instance.new(Type::Builtin[:str]))
-      when :tostring, :anytostring
+      when :tostring, :objtostring, :anytostring
         env, (_ty1, _ty2,) = env.pop(2)
         env = env.push(Type::Instance.new(Type::Builtin[:str]))
       when :freezestring
