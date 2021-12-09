@@ -67,6 +67,10 @@ module TypeProf
       if rest_start
         # almost ok
       else
+        if msig.rest_ty
+          scratch.error(ep, "RBS says that a rest argument is accepted, but the method definition does not accept one")
+          return
+        end
         if msig.lead_tys.size + msig.post_tys.size < lead_num + post_num
           scratch.error(ep, "RBS says that the arity may be %d, but the method definition requires at least %d arguments" % [msig.lead_tys.size + msig.post_tys.size, lead_num + post_num])
           return
@@ -79,7 +83,6 @@ module TypeProf
 
       lead_num = @iseq.fargs_format[:lead_num] || 0
       post_start = @iseq.fargs_format[:post_start]
-      rest_start = @iseq.fargs_format[:rest_start]
       kw_start = @iseq.fargs_format[:kwbits]
       keyword = @iseq.fargs_format[:keyword]
       kw_start -= keyword.size if kw_start
