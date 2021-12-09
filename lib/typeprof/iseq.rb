@@ -753,7 +753,7 @@ module TypeProf
       when :setlocal, :setblockparam
         return # conservative
       when :getinstancevariable, :getclassvariable, :getglobal,
-           :getlocal, :getblockparam, :getblockparamproxy
+           :getlocal, :getblockparam, :getblockparamproxy, :getlocal_checkmatch_branch
         sp += 1
       when :getconstant
         sp -= 2
