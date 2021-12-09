@@ -88,6 +88,9 @@ function executeTypeProf(folder: vscode.WorkspaceFolder, arg: String): child_pro
   if (shell && (shell.endsWith("bash") || shell.endsWith("zsh") || shell.endsWith("fish"))) {
     typeprof = child_process.spawn(shell, ["-c", "-l", cmd], { cwd });
   }
+  else if (process.platform === "win32") {
+    typeprof = child_process.spawn("cmd", ["/c", cmd], { cwd });
+  }
   else {
     typeprof = child_process.spawn(cmd, { cwd });
   }
