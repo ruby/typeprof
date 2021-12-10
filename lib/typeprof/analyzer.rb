@@ -848,7 +848,7 @@ module TypeProf
         end
         entry.type = entry.type.union(ty)
         entry.read_continuations.each do |read_ep, ctn|
-          ctn[ty, read_ep, [ep]]
+          ctn[ty, read_ep, ep ? [ep] : []]
         end
       end
 
