@@ -201,7 +201,7 @@ module TypeProf
       tys.each do |ty|
         raise "nil cannot be pushed to the stack" if ty.nil?
         ty.each_child do |ty|
-          raise if ty.is_a?(Type::Var)
+          #raise if ty.is_a?(Type::Var)
           #raise if ty.is_a?(Type::Instance) && ty.klass.type_params.size > 1
           raise "Array cannot be pushed to the stack" if ty.is_a?(Type::Array)
           raise "Hash cannot be pushed to the stack" if ty.is_a?(Type::Hash)
