@@ -1,0 +1,6 @@
+module Net
+  class HTTP
+    def start: [T] () { (Net::HTTP) -> T } -> T
+             | () -> Net::HTTP
+  end
+end
