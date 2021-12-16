@@ -1421,7 +1421,16 @@ module TypeProf
         cref = ep.ctx.cref
         recv.each_child do |recv|
           if recv.is_a?(Type::Class)
-            meth = add_singleton_iseq_method(recv, mid, iseq, cref, nil, env.static_env.pub_meth)
+            typed_mdef = check_typed_method(recv, mid, true)
+            if typed_mdef
+              mdef = ISeqMethodDef.new(iseq, cref, nil, env.static_env.pub_meth)
+              typed_mdef.each do |typed_mdef|
+                typed_mdef.do_match_iseq_mdef(mdef, recv, mid, env, ep, self)
+              end
+            else
+              meth = add_singleton_iseq_method(recv, mid, iseq, cref, nil, env.static_env.pub_meth)
+            end
+
             pend_method_execution(iseq, meth, recv, mid, ep.ctx.cref, nil)
           else
             recv = Type.any # XXX: what to do?
