@@ -527,6 +527,7 @@ module TypeProf
           exclude = Config.current.options[:exclude_untyped] && untyped ? "#" : " " # XXX
           lines << (indent + "#{ exclude } attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }")
         when :rbs
+          arg = arg.map { |a| a.split("\n").join("\n" + indent + "#" + " " * (method_name.size + 5)) }
           sigs = arg.sort.join("\n" + indent + "#" + " " * (method_name.size + 5) + "| ")
           lines << (indent + "# def #{ method_name }: #{ sigs }")
         when :iseq
