@@ -191,12 +191,15 @@ module TypeProf
             when RBS::AST::Members::AttrReader
               ty = conv_type(member.type)
               attr_methods[[false, member.name]] = attr_method_def(:reader, member.name, ty, visibility)
+              rbs_sources[[false, member.name]] = attr_rbs_source(member)
             when RBS::AST::Members::AttrWriter
               ty = conv_type(member.type)
               attr_methods[[false, member.name]] = attr_method_def(:writer, member.name, ty, visibility)
+              rbs_sources[[false, member.name]] = attr_rbs_source(member)
             when RBS::AST::Members::AttrAccessor
               ty = conv_type(member.type)
               attr_methods[[false, member.name]] = attr_method_def(:accessor, member.name, ty, visibility)
+              rbs_sources[[false, member.name]] = attr_rbs_source(member)
             when RBS::AST::Members::Alias
               # XXX: an alias to attr methods?
               if member.instance?
@@ -392,6 +395,14 @@ module TypeProf
         ty: ty,
         visibility: visibility,
       }
+    end
+
+    def attr_rbs_source(member)
+      [
+        member.name.to_s,
+        member.type.location.source,
+        [member.location.name, CodeRange.from_rbs(member.location)],
+      ]
     end
 
     def conv_block(rbs_block)
@@ -604,11 +615,13 @@ module TypeProf
         end
 
         attr_methods.each do |(singleton, method_name), mdef|
-          kind = mdef[:kind]
-          ivar = mdef[:ivar]
+          rbs_source = explicit ? rbs_sources[[singleton, method_name]] : nil
           ty = conv_type(mdef[:ty]).remove_type_vars
-          @scratch.add_attr_method(klass, ivar, :"@#{ ivar }", kind, mdef[:visibility], nil)
-          @scratch.add_ivar_write!(Type::Instance.new(klass), :"@#{ ivar }", ty, nil)
+          mdefs = conv_attr_defs(mdef, rbs_source)
+          mdefs.each do |mdef|
+            @scratch.add_typed_attr_method(klass, mdef)
+          end
+          @scratch.add_ivar_write!(Type::Instance.new(klass), :"@#{ mdef[:ivar] }", ty, nil)
         end
 
         ivars.each do |ivar_name, ty|
@@ -642,6 +655,22 @@ module TypeProf
       end
 
       TypedMethodDef.new(sig_rets, rbs_source, mdef[:visibility])
+    end
+
+    def conv_attr_defs(mdef, rbs_source)
+      ivar = :"@#{ mdef[:ivar] }"
+      kind = mdef[:kind]
+      pub_meth = mdef[:visibility]
+
+      defs = []
+      if kind == :reader || kind == :accessor
+        defs << TypedAttrMethodDef.new(ivar, :reader, pub_meth, rbs_source)
+      end
+      if kind == :writer || kind == :accessor
+        defs << TypedAttrMethodDef.new(ivar, :writer, pub_meth, rbs_source)
+      end
+      raise if defs.empty?
+      defs
     end
 
     def conv_func(sig_ret)

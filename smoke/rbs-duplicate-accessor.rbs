@@ -1,0 +1,5 @@
+class Foo
+  attr_reader a: String
+  attr_writer b: String
+  attr_accessor c: String
+end
