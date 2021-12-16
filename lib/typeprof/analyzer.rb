@@ -446,12 +446,20 @@ module TypeProf
         end
       end
 
-      def check_typed_method(mid, singleton)
+      def check_typed(mid, singleton, klass)
         set = @methods[[singleton, mid]]
         return nil unless set
-        set = set.select {|mdef| mdef.is_a?(TypedMethodDef) }
+        set = set.select {|mdef| mdef.is_a?(klass) }
         return nil if set.empty?
         return set
+      end
+
+      def check_typed_method(mid, singleton)
+        check_typed(mid, singleton, TypedMethodDef)
+      end
+
+      def check_typed_attr(mid, singleton)
+        check_typed(mid, singleton, TypedAttrMethodDef)
       end
 
       def add_method(mid, singleton, mdef)
@@ -701,6 +709,10 @@ module TypeProf
       @class_defs[klass.idx].check_typed_method(mid, singleton)
     end
 
+    def check_typed_attr(klass, mid, singleton)
+      @class_defs[klass.idx].check_typed_attr(mid, singleton)
+    end
+
     def add_method(klass, mid, singleton, mdef)
       @class_defs[klass.idx].add_method(mid, singleton, mdef)
       mdef
@@ -713,11 +725,24 @@ module TypeProf
 
     def add_attr_method(klass, mid, ivar, kind, pub_meth, ep)
       if kind == :reader || kind == :accessor
-        add_method(klass, mid, false, AttrMethodDef.new(ivar, :reader, pub_meth, ep))
+        typed_mdef = check_typed_attr(klass, mid, ep.ctx.cref.singleton)
+        unless typed_mdef
+          add_method(klass, mid, false, ExecutedAttrMethodDef.new(ivar, :reader, pub_meth, ep))
+        end
       end
       if kind == :writer || kind == :accessor
-        add_method(klass, :"#{ mid }=", false, AttrMethodDef.new(ivar, :writer, pub_meth, ep))
+        mid = :"#{ mid }="
+        typed_mdef = check_typed_attr(klass, mid, ep.ctx.cref.singleton)
+        unless typed_mdef
+          add_method(klass, mid, false, ExecutedAttrMethodDef.new(ivar, :writer, pub_meth, ep))
+        end
       end
+    end
+
+    def add_typed_attr_method(klass, mdef)
+      name = mdef.ivar[1..-1]
+      name = mdef.kind == :writer ? :"#{ name }=" : name.to_sym
+      add_method(klass, name, false, mdef)
     end
 
     def add_iseq_method(klass, mid, iseq, cref, outer_ep, pub_meth)

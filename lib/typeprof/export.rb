@@ -163,8 +163,7 @@ module TypeProf
             visibilities[key] ||= mdef.pub_meth
             source_locations[key] ||= mdef.def_ep&.source_location
             methods[key] = orig_name
-          when AttrMethodDef
-            next if !mdef.def_ep
+          when ExecutedAttrMethodDef
             absolute_path = mdef.def_ep.ctx.iseq.absolute_path
             next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
             mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
@@ -190,6 +189,23 @@ module TypeProf
               methods[key] = sigs
               visibilities[key] ||= mdef.pub_meth
               source_locations[key] ||= mdef.iseq&.source_location(0)
+            end
+          when TypedAttrMethodDef
+            if mdef.rbs_source
+              mid = mid.to_s[0..-2].to_sym if mid.to_s.end_with?("=")
+              method_name = mid
+              method_name = [method_name, :"@#{ mid }" != mdef.ivar]
+              key = [:rbs_attr, method_name]
+              visibilities[key] ||= mdef.pub_meth
+              if methods[key]
+                if methods[key][0] != mdef.kind
+                  methods[key][0] = :accessor
+                end
+              else
+                entry = ivars[[singleton, mdef.ivar]]
+                ty = entry ? entry.type : Type.any
+                methods[key] = [mdef.kind, ty.screen_name(@scratch), ty.include_untyped?(@scratch)]
+              end
             end
           end
         end
@@ -383,7 +399,7 @@ module TypeProf
           source_location, rbs_code_range = class_data.source_locations[key]
           type, (method_name, hidden) = key
           case type
-          when :attr
+          when :attr, :rbs_attr
             kind, ty, untyped = *arg
             line = "attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }"
           when :rbs
@@ -522,6 +538,9 @@ module TypeProf
         end
         type, (method_name, hidden) = key
         case type
+        when :rbs_attr
+          kind, ty, untyped = *arg
+          lines << (indent + "# attr_#{ kind } #{ method_name }#{ hidden ? "()" : "" }: #{ ty }")
         when :attr
           kind, ty, untyped = *arg
           exclude = Config.current.options[:exclude_untyped] && untyped ? "#" : " " # XXX

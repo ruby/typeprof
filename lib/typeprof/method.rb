@@ -178,14 +178,13 @@ module TypeProf
   end
 
   class AttrMethodDef < MethodDef
-    def initialize(ivar, kind, pub_meth, def_ep)
+    def initialize(ivar, kind, pub_meth)
       @ivar = ivar
       @kind = kind # :reader | :writer
       @pub_meth = pub_meth
-      @def_ep = def_ep
     end
 
-    attr_reader :ivar, :kind, :def_ep
+    attr_reader :ivar, :kind
 
     def do_send(recv, mid, aargs, caller_ep, caller_env, scratch, &ctn)
       case @kind
@@ -207,6 +206,25 @@ module TypeProf
         end
       end
     end
+  end
+
+  class ExecutedAttrMethodDef < AttrMethodDef
+    def initialize(ivar, kind, pub_meth, def_ep)
+      super(ivar, kind, pub_meth)
+      @def_ep = def_ep
+    end
+
+    attr_reader :def_ep
+  end
+
+  class TypedAttrMethodDef < AttrMethodDef
+    def initialize(ivar, kind, pub_meth, rbs_source)
+      @rbs_source = rbs_source
+
+      super(ivar, kind, pub_meth)
+    end
+
+    attr_reader :rbs_source
   end
 
   class TypedMethodDef < MethodDef
