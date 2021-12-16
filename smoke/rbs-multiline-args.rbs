@@ -1,0 +1,8 @@
+class Foo
+  def initialize: (
+    String? one,
+    String? two,
+    String? three,
+    String? four,
+  ) -> void
+end
