@@ -195,10 +195,25 @@ module TypeProf
         end
       end
 
+      superclass_ivars = {}
+      while (superclass_def = (superclass_def || class_def).superclass)
+        superclass_ivars.merge!(superclass_def.ivars.dump)
+      end
+
       ivars = ivars.map do |(singleton, var), entry|
         next if entry.absolute_paths.all? {|path| Config.current.check_dir_filter(path) == :exclude }
         ty = entry.type
         next unless var.to_s.start_with?("@")
+
+        if (_, existing = superclass_ivars.find {|((s, v), _)| s == singleton && v == var })
+          existing_types = existing.type.is_a?(Type::Union) ? existing.type.types : [existing.type]
+          entry_types = entry.type.is_a?(Type::Union) ? entry.type.types : [entry.type]
+          if entry_types.all? { |t| existing_types.include?(t) }
+            # This type is a subset of the parent type
+            next
+          end
+        end
+
         var = "self.#{ var }" if singleton
         next if methods[[:attr, [singleton ? "self.#{ var.to_s[1..] }" : var.to_s[1..].to_sym, false]]]
         next if entry.rbs_declared

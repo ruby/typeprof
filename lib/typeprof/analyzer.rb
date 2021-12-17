@@ -345,7 +345,7 @@ module TypeProf
     attr_reader :class_defs
 
     class ClassDef # or ModuleDef
-      def initialize(kind, name, absolute_path)
+      def initialize(kind, name, absolute_path, superclass)
         raise unless name.is_a?(Array)
         @kind = kind
         @modules = {
@@ -359,10 +359,11 @@ module TypeProf
         @cvars = VarTable.new
         @absolute_path = absolute_path
         @namespace = nil
+        @superclass = superclass
         @subclasses = []
       end
 
-      attr_reader :kind, :modules, :methods, :ivars, :cvars, :absolute_path, :subclasses
+      attr_reader :kind, :modules, :methods, :ivars, :cvars, :absolute_path, :superclass, :subclasses
       attr_accessor :name, :klass_obj
 
       def mix_module(kind, mod, type_args, singleton, absolute_path)
@@ -494,8 +495,9 @@ module TypeProf
       show_name = cbase_path(cbase) + [name]
       idx = @class_defs.size
       if superclass
-        @class_defs[idx] = ClassDef.new(:class, show_name, def_ep&.absolute_path)
-        @class_defs[superclass.idx].subclasses << idx unless superclass == :__root__
+        superclass_def = @class_defs[superclass.idx] unless superclass == :__root__
+        @class_defs[idx] = ClassDef.new(:class, show_name, def_ep&.absolute_path, superclass_def)
+        superclass_def.subclasses << idx if superclass_def
         klass = Type::Class.new(:class, idx, type_params, superclass, show_name)
         @class_defs[idx].klass_obj = klass
         cbase ||= klass # for bootstrap
@@ -503,7 +505,7 @@ module TypeProf
         return klass
       else
         # module
-        @class_defs[idx] = ClassDef.new(:module, show_name, def_ep&.absolute_path)
+        @class_defs[idx] = ClassDef.new(:module, show_name, def_ep&.absolute_path, nil)
         mod = Type::Class.new(:module, idx, type_params, nil, show_name)
         @class_defs[idx].klass_obj = mod
         add_constant(cbase, name, mod, def_ep)
@@ -521,7 +523,8 @@ module TypeProf
       idx = @class_defs.size
       superclass = Type::Builtin[:struct]
       name = "AnonymousStruct_generated_#{ @anonymous_struct_gen_id += 1 }"
-      @class_defs[idx] = ClassDef.new(:class, [name], ep.ctx.iseq.absolute_path)
+      # Should we pass a superclass here?
+      @class_defs[idx] = ClassDef.new(:class, [name], ep.ctx.iseq.absolute_path, nil)
       #@class_defs[superclass.idx].subclasses << idx # needed?
       klass = Type::Class.new(:class, idx, [], superclass, name)
       add_superclass_type_args!(klass, [Type.any])
