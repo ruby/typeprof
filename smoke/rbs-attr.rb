@@ -25,3 +25,9 @@ class Object
   def read_test_2: -> Integer
   def write_test: -> String
 end
+
+class Foo
+# attr_reader reader_example: Integer
+# attr_writer writer_example: Integer
+# attr_accessor accessor_example: Integer
+end
