@@ -97,7 +97,8 @@ module TypeProf
       # check?
       #subst = { Type::Var.new(:self) => caller_env.static_env.recv_ty }
       # XXX: Update type vars
-      ctn[@ret_ty, caller_ep, caller_env]
+      ret_ty = @ret_ty.remove_type_vars
+      ctn[ret_ty, caller_ep, caller_env]
     end
   end
 
