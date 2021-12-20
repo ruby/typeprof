@@ -227,8 +227,9 @@ module TypeProf
 
       def screen_name(scratch)
         str = @elems.screen_name(scratch)
-        if str.start_with?("*")
-          str = @base_type.screen_name(scratch) + str[1..]
+        if str =~ /\A\*\[(.*)\]\z/
+          str = @base_type.klass.type_params.map {|var_name,| var_name == :Elem ? $1 : "untyped" }.join(", ")
+          str = "#{ @base_type.screen_name(scratch) }[#{ str }]"
         end
         str
       end
