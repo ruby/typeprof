@@ -333,7 +333,7 @@ module TypeProf
             visibilities[key] ||= mdef.pub_meth
             source_locations[key] ||= [mdef.def_ep&.source_location]
             methods[key] = orig_name
-          when AttrMethodDef
+          when ExecutedAttrMethodDef
             next if !mdef.def_ep
             absolute_path = mdef.def_ep.ctx.iseq.absolute_path
             next if !absolute_path || Config.current.check_dir_filter(absolute_path) == :exclude
