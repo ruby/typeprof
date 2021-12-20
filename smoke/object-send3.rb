@@ -10,7 +10,7 @@ __END__
 # Classes
 class Object
   private
-  def log: -> Enumerator[untyped]
+  def log: -> Enumerator[untyped, untyped]
 end
 
 class Foo

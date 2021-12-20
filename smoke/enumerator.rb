@@ -11,6 +11,6 @@ __END__
 # Classes
 class Object
   private
-  def hoge: -> Enumerator[Integer]
-  def fuga: -> Enumerator[Integer]
+  def hoge: -> Enumerator[Integer, untyped]
+  def fuga: -> Enumerator[Integer, untyped]
 end

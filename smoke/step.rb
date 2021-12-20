@@ -14,5 +14,5 @@ class Object
   private
   def log1: (Integer | Numeric x) -> nil
   def log2: (void x) -> nil
-  def log3: (Enumerator[Integer | Numeric] x) -> nil
+  def log3: (Enumerator[Integer | Numeric, untyped] x) -> nil
 end
