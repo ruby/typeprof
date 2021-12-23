@@ -158,7 +158,10 @@ module TypeProf
         decls.each do |decl|
           decl = decl.decl
 
-          type_params2 = decl.type_params.params.map {|param| [param.name, param.variance] }
+          type_params2 = decl.type_params
+          # A hack to deal with the imcompatibility between rbs 1.8 and 2.0
+          type_params2 = type_params2.params if type_params2.respond_to?(:params)
+          type_params2 = type_params2.map {|param| [param.name, param.variance] }
           raise "inconsistent type parameter declaration" if type_params && type_params != type_params2
           type_params = type_params2
 
