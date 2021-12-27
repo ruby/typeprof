@@ -5,6 +5,8 @@ require "uri"
 module TypeProf
   def self.start_lsp_server(config)
     if config.lsp_options[:stdio]
+      $stdin.binmode
+      $stdout.binmode
       reader = LSP::Reader.new($stdin)
       writer = LSP::Writer.new($stdout)
       # pipe all builtin print output to stderr to avoid conflicting with lsp
