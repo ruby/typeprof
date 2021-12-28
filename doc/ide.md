@@ -2,7 +2,7 @@
 
 First, try it with an already-configured repository!
 
-1. `rbenv install 3.1.0-dev`
+1. `rbenv install 3.1.0`
 2. `git clone https://github.com/mame/rbswiki`
 3. `cd rbswiki && bundle install`
 4. `rbs collection install`
@@ -16,11 +16,11 @@ If everything goes well, you will see guessed signatures for each method:
 
 ### Troubleshooting
 
-* Make sure that you are using ruby 3.1.0-dev.
+* Make sure that you are using ruby 3.1.0.
 
 ```
 $ ruby -v
-ruby 3.1.0dev (2021-09-28T11:03:54Z master 545e01645f) [x86_64-linux]
+ruby 3.1.0p0 (2021-12-25 revision fb4df44d16) [x86_64-linux]
 ```
 
 * Check if typeprof version is 0.20.0 or later.
