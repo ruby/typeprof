@@ -79,3 +79,7 @@ TypeProf for IDE is extremely preliminary! Please give it a try with a warm hear
 ## How to develop TypeProf for IDE
 
 See `../vscode/development.md`.
+
+## See also
+
+* [Live Ruby Type Checking with TypeProf-IDE - Big Nerd Ranch](https://bignerdranch.com/blog/live-ruby-type-checking-with-typeprof-ide/)
