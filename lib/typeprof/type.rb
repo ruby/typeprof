@@ -855,7 +855,7 @@ module TypeProf
       sig_help = {}
       add_farg = -> farg, name, help: false, key: sig_help.size do
         name = "`#{ name }`" if RBS::Parser::KEYWORDS.key?(name.to_s)
-        name = "noname_#{ name }" if name.is_a?(Integer)
+        name = "noname" if name.is_a?(Integer) || name == :"*"
         fargs_str << ", " if fargs_str != "("
         i = fargs_str.size
         fargs_str << (Config.current.options[:show_parameter_names] && name ? "#{ farg } #{ name }" : farg)
