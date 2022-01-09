@@ -23,19 +23,18 @@ $ ruby -v
 ruby 3.1.0p0 (2021-12-25 revision fb4df44d16) [x86_64-linux]
 ```
 
-* Check if typeprof version is 0.20.0 or later.
+* Check if typeprof version is 0.21.2 or later.
 
 ```
 $ bundle exec typeprof --version
-typeprof 0.20.0
+typeprof 0.21.2
 ```
 
 * Check if TypeProf can analyze `lib/rbswiki/wiki.rb` within one second.
 
 ```
 $ bundle exec typeprof lib/rbswiki/wiki.rb
-warning: rbs collection is experimental, and the behavior may change until RBS v2.0
-# TypeProf 0.20.0
+# TypeProf 0.21.2
 
 # Classes
 module RBSWiki
