@@ -56,7 +56,9 @@ module RBSWiki
 
 ### Troubleshooting
 
-*TBD*
+* Note that in bash, `~/.bashrc` and `~/.bash_profile` do not contain scripts that assume that pseudo-TTYs are available (such as the `bind` command). 
+  * TypeProf for IDE will run `typeprof --version` at startup to parse STDOUT and make sure the proper version is running.
+  * If the `.bashrc` contains a command that requires a pseudo-TTY, such as the `bind` command, unexpected error messages will be output to STDOUT, and the LSP server will stop because it fails to parse the execution results of the `typeprof` command.
 
 ## Protips, limitation, unimplemented features, ...
 
