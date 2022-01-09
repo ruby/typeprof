@@ -77,7 +77,7 @@ TypeProf for IDE is extremely preliminary! Please give it a try with a warm hear
 
 ## How to develop TypeProf for IDE
 
-See `../vscode/development.md`.
+See [../vscode/development.md](../vscode/development.md).
 
 ## See also
 
