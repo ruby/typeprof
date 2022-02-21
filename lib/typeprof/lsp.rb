@@ -500,9 +500,11 @@ module TypeProf
         when "typeprof.enableSignature"
           @server.signature_enabled = true
           @server.send_request("workspace/codeLens/refresh")
+          respond(nil)
         when "typeprof.disableSignature"
           @server.signature_enabled = false
           @server.send_request("workspace/codeLens/refresh")
+          respond(nil)
         when "typeprof.createPrototypeRBS"
           class_kind, class_name, sig_str = @params[:arguments]
           code_range =
