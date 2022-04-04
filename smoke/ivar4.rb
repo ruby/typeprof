@@ -16,6 +16,6 @@ class Object
   @undefined_ivar: bot
 
   private
-  def foo: -> bool
+  def foo: -> true
   def bar: -> nil
 end

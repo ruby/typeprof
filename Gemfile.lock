@@ -11,7 +11,7 @@ GEM
     docile (1.4.0)
     power_assert (2.0.1)
     rake (13.0.1)
-    rbs (2.0.0)
+    rbs (2.3.0)
     simplecov (0.21.2)
       docile (~> 1.1)
       simplecov-html (~> 0.11)

@@ -23,6 +23,6 @@ class Foo
 
 # def self.foo?: -> bool
 # def foo?: -> bool
-  def self.bar?: -> bool
-  def bar?: -> bool
+  def self.bar?: -> false
+  def bar?: -> false
 end
