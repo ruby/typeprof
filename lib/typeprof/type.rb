@@ -59,10 +59,13 @@ module TypeProf
         else
           if ty2.is_a?(Type::ContainerType)
             # ty2 may have type variables
-            return nil if ty1.class != ty2.class
-            ty1.match?(ty2)
+            if ty1.class == ty2.class
+              ty1.match?(ty2)
+            else
+              Type.match?(ty1, ty2.base_type)
+            end
           elsif ty1.is_a?(Type::ContainerType)
-            nil
+            Type.match?(ty1.base_type, ty2)
           else
             ty1.consistent?(ty2) ? {} : nil
           end
