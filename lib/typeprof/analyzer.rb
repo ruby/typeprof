@@ -1997,7 +1997,8 @@ module TypeProf
             env = env.push(Type.any) # or String | NilClass only?
           when 1 # VM_SVAR_BACKREF ($~)
             merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:matchdata])))
-            merge_env(ep.next, env.push(Type.nil))
+            # tentatively disabled; it is too conservative
+            #merge_env(ep.next, env.push(Type.nil))
             return
           else # flip-flop
             env = env.push(Type.bool)
@@ -2005,7 +2006,8 @@ module TypeProf
         else
           # NTH_REF ($1, $2, ...) / BACK_REF ($&, $+, ...)
           merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:str])))
-          merge_env(ep.next, env.push(Type.nil))
+          # tentatively disabled; it is too conservative
+          #merge_env(ep.next, env.push(Type.nil))
           return
         end
       when :setspecial

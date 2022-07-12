@@ -813,7 +813,9 @@ module TypeProf
       when :$0, :$PROGRAM_NAME
         Type::Instance.new(Type::Builtin[:str])
       when :$~
-        Type.optional(Type::Instance.new(Type::Builtin[:matchdata]))
+        # optional type is tentatively disabled; it is too conservative
+        #Type.optional(Type::Instance.new(Type::Builtin[:matchdata]))
+        Type::Instance.new(Type::Builtin[:matchdata])
       when :$., :$$
         Type::Instance.new(Type::Builtin[:int])
       when :$?
