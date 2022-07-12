@@ -447,6 +447,11 @@ module TypeProf
           insn.insn, insn.operands = :branch, [:nil] + insn.operands
         when :getblockparam, :getblockparamproxy
           insn.insn = :getlocal
+        when :getglobal
+          if insn.operands == [:$typeprof]
+            insn.insn = :putobject
+            insn.operands = [true]
+          end
         end
       end
     end
@@ -685,6 +690,27 @@ module TypeProf
           branch_operands   = insn1.operands
           @insns[i    ] = Insn.new(:nop, [])
           @insns[i + 1] = Insn.new(:getlocal_branch, [getlocal_operands, branch_operands])
+        end
+      end
+
+      # find a pattern: putobject, branch
+      (@insns.size - 1).times do |i|
+        next if branch_targets[i + 1]
+        insn0 = @insns[i]
+        insn1 = @insns[i + 1]
+        if insn0.insn == :putobject && insn1.insn == :branch
+          putobject_operands = insn0.operands
+          branch_operands = insn1.operands
+          obj = putobject_operands[0]
+          branch_type = branch_operands[0]
+          branch_target = branch_operands[1]
+          case branch_type
+          when :if     then jump = !!obj
+          when :unless then jump = !obj
+          when :nil    then jump = obj == nil
+          end
+          @insns[i    ] = Insn.new(:nop, [])
+          @insns[i + 1] = jump ? Insn.new(:jump, [branch_target]) : Insn.new(:nop, [])
         end
       end
     end
