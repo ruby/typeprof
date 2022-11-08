@@ -5,7 +5,7 @@ gemspec
 
 group :development do
   gem "rake"
-  gem "stackprof"
+  gem "stackprof", platforms: :mri
   gem "test-unit"
   gem "simplecov"
   gem "simplecov-html"
