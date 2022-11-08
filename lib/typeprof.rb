@@ -17,4 +17,4 @@ require_relative "typeprof/builtin"
 require_relative "typeprof/cli"
 require_relative "typeprof/code-range"
 
-require_relative "typeprof/lsp" if RUBY_VERSION >= "3"
+require_relative "typeprof/lsp" if RUBY_VERSION >= "3" and RUBY_ENGINE != "truffleruby"

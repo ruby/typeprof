@@ -1,11 +1,13 @@
 module TypeProf
   class ISeq
-    # https://github.com/ruby/ruby/pull/4468
-    CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
-    # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
-    VM_ENV_DATA_SIZE = 3
-    # Check if Ruby 3.1 or later
-    RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("1", keep_script_lines: true).node_id; true; rescue; false; end
+    if defined?(RubyVM::InstructionSequence)
+      # https://github.com/ruby/ruby/pull/4468
+      CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
+      # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
+      VM_ENV_DATA_SIZE = 3
+      # Check if Ruby 3.1 or later
+      RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("1", keep_script_lines: true).node_id; true; rescue; false; end
+    end
 
     FileInfo = Struct.new(
       :node_id2node,
