@@ -56,11 +56,17 @@
         "vscode:prepublish": "tsc -p ./",
         "compile": "tsc -watch -p ./",
         "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "node ./node_modules/vscode/bin/test",
+        "pretest": "tsc -p ./",
+        "test": "node ./out/src/test/runTest.js",
         "package": "vsce package"
     },
     "devDependencies": {
+        "@types/glob": "^8.0.0",
+        "@types/mocha": "^10.0.1",
         "@types/node": "^14.14.37",
+        "@vscode/test-electron": "^2.2.1",
+        "glob": "^8.0.3",
+        "mocha": "^10.2.0",
         "typescript": "^4.2.3",
         "vsce": "^1.103.1",
         "vscode": "^1.1.37"

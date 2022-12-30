@@ -1,0 +1,41 @@
+name: VS code extension
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "vscode/**"
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "vscode/**"
+
+env:
+  VSCODE_EXTENSION_PATH: ${{ github.workspace }}/vscode/
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # TODO: support other platform such as macos
+        os: [ubuntu-latest]
+        ruby: ['3.1.0']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+    - name: Install Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+    - run: gem install bundler
+    - run: npm install
+      working-directory: ${{ env.VSCODE_EXTENSION_PATH }}
+    - run: xvfb-run -a npm test
+      working-directory: ${{ env.VSCODE_EXTENSION_PATH }}

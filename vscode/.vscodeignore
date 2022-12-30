@@ -5,3 +5,4 @@
 **/*.js.map
 **/tsconfig.json
 development.md
+.vscode-test/
