@@ -115,7 +115,7 @@ function getTypeProfVersion(folder: vscode.WorkspaceFolder, outputChannel: vscod
     }
   });
   typeprof.on("error", e => {
-    log(`typeprof is not supported for this folder: ${folder}`);
+    log(`typeprof is not supported for this folder: ${folder.name}`);
     log(`because: ${e}`);
   });
   typeprof.on("exit", (code) => {
