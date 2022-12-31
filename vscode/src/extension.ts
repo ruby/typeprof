@@ -92,7 +92,8 @@ function executeTypeProf(folder: vscode.WorkspaceFolder, arg: String): child_pro
     typeprof = child_process.spawn(process.env.SYSTEMROOT + "\\System32\\cmd.exe", ["/c", cmd], { cwd });
   }
   else {
-    typeprof = child_process.spawn(cmd, { cwd });
+    const cmds = cmd.split(' ')
+    typeprof = child_process.spawn(cmds[0], cmds.slice(1), { cwd });
   }
 
   return typeprof;
