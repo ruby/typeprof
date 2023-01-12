@@ -170,7 +170,12 @@ module TypeProf
             when RBS::AST::Members::MethodDefinition
               name = member.name
 
-              method_types = member.types.map do |method_type|
+              if member.respond_to?(:overloads)
+                types = member.overloads.map {|overload| overload.method_type }
+              else
+                types = member.types
+              end
+              method_types = types.map do |method_type|
                 case method_type
                 when RBS::MethodType then method_type
                 when :super then raise NotImplementedError
@@ -180,7 +185,7 @@ module TypeProf
               method_def = conv_method_def(method_types, visibility)
               rbs_source = [
                 (member.kind == :singleton ? "self." : "") + member.name.to_s,
-                member.types.map {|type| type.location.source },
+                types.map {|type| type.location.source },
                 [member.location.name, CodeRange.from_rbs(member.location)],
               ]
               if member.instance?
