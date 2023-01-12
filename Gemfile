@@ -1,7 +1,11 @@
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in typeprof.gemspec
-gemspec
+if ENV["RBS_MASTER"]
+  gem "rbs", github: "ruby/rbs", branch: "master"
+else
+  # Specify your gem's dependencies in typeprof.gemspec
+  gemspec
+end
 
 group :development do
   gem "rake"
