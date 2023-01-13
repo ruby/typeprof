@@ -15,7 +15,6 @@ jobs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby-version }}
-        bundler-cache: true
     - name: Run the test suite
       run: |
         bundle exec rake TESTOPT=-v
@@ -28,5 +27,4 @@ jobs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: truffleruby
-        bundler-cache: true
     - run: bundle exec typeprof --version
