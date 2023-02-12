@@ -78,9 +78,7 @@ module TypeProf
             begin
               work.call
             rescue Exception
-              puts "Rescued exception:"
-              puts $!.full_message
-              puts
+              print_exception("Rescued exception:")
             end
           end
         end
@@ -88,6 +86,17 @@ module TypeProf
         # analyze synchronously to respond the first codeLens request
         res, def_table, caller_table = self.analyze(uri, text)
         on_text_changed_analysis(res, def_table, caller_table)
+      rescue
+        print_exception("Typeprof server failed to analyze #{uri}")
+        @server.send_notification(
+          'typeprof.failedToStart'
+        )
+      end
+
+      def print_exception msg
+        puts msg
+        puts $!.full_message
+        puts
       end
 
       attr_reader :text, :version, :sigs, :caller_table
