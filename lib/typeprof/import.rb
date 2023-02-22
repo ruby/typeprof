@@ -78,19 +78,37 @@ module TypeProf
     def load_rbs_string(name, content)
       buffer = RBS::Buffer.new(name: name, content: content)
       new_decls = []
-      RBS::Parser.parse_signature(buffer).each do |decl|
-        @env << decl
-        new_decls << decl
+      ret = RBS::Parser.parse_signature(buffer)
+      if ret[0].is_a?(RBS::Buffer)
+        # rbs 3.0
+        buffer, directives, decls = ret
+        @env.add_signature(buffer: buffer, directives: directives, decls: decls)
+        new_decls.concat(decls)
+      else
+        ret.each do |decl|
+          @env << decl
+          new_decls << decl
+        end
       end
       RBSReader.load_rbs(@env, new_decls)
     end
 
     def self.load_rbs(env, new_decls)
       all_env = env.resolve_type_names
-      resolver = RBS::TypeNameResolver.from_env(all_env)
       cur_env = RBS::Environment.new
-      new_decls.each do |decl|
-        cur_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
+      if defined?(RBS::TypeNameResolver)
+        resolver = RBS::TypeNameResolver.from_env(all_env)
+        new_decls.each do |decl|
+          cur_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
+        end
+      else
+        resolver = RBS::Resolver::TypeNameResolver.new(all_env)
+        table = RBS::Environment::UseMap::Table.new()
+        table.compute_children
+        map = RBS::Environment::UseMap.new(table: table)
+        new_decls.each do |decl|
+          cur_env << s = env.resolve_declaration(resolver, map, decl, outer: [], prefix: RBS::Namespace.root)
+        end
       end
 
       RBS2JSON.new(all_env, cur_env).dump_json
@@ -134,6 +152,9 @@ module TypeProf
       end
       gvars
     end
+
+    AliasDecl = defined?(RBS::AST::Declarations::Alias) ? RBS::AST::Declarations::Alias : RBS::AST::Declarations::AliasDecl
+    TypeAlias = defined?(RBS::AST::Declarations::TypeAlias) ? RBS::AST::Declarations::TypeAlias : nil
 
     def conv_classes
       json = {}
@@ -266,9 +287,10 @@ module TypeProf
 
             # The following declarations are ignoreable because they are handled in other level
             when RBS::AST::Declarations::Constant
-            when RBS::AST::Declarations::Alias # type alias
+            when AliasDecl # type alias
             when RBS::AST::Declarations::Class, RBS::AST::Declarations::Module
             when RBS::AST::Declarations::Interface
+            when TypeAlias
 
             else
               warn "Importing #{ member.class.name } is not supported yet"
@@ -493,7 +515,7 @@ module TypeProf
         else
           begin
             @alias_resolution_stack[ty.name] = true
-            alias_decl = @all_env.alias_decls[ty.name]
+            alias_decl = (@all_env.respond_to?(:alias_decls) ? @all_env.alias_decls : @all_env.type_alias_decls)[ty.name]
             alias_decl ? conv_type(alias_decl.decl.type) : [:any]
           ensure
             @alias_resolution_stack.delete(ty.name)
