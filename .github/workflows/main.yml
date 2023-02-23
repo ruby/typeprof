@@ -1,6 +1,11 @@
 name: Ruby
 
-on: [push,pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '11 24 * * 5'
 
 jobs:
   build:
