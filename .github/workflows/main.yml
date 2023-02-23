@@ -3,34 +3,31 @@ name: Ruby
 on: [push,pull_request]
 
 jobs:
+  ruby-versions:
+    uses: ruby/actions/.github/workflows/ruby_versions.yml@master
+    with:
+      engine: cruby-truffleruby
+      min_version: 2.7
+
   build:
+    needs: ruby-versions
+    name: build (${{ matrix.ruby }})
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: [2.7, 3.0, 3.1, 3.2, head]
+        ruby: ${{ fromJson(needs.ruby-versions.outputs.versions) }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: ${{ matrix.ruby-version }}
-    - name: Bundle install
-      run: |
-        bundle install
-    - name: Run the test suite
-      run: |
-        bundle exec rake TESTOPT=-v
-
-  truffleruby:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: truffleruby
+        ruby-version: ${{ matrix.ruby }}
     - name: Bundle install
       run: |
         bundle install
     - run: bundle exec typeprof --version
+    - name: Run the test suite
+      run: |
+        bundle exec rake TESTOPT=-v
+      if: ${{ !startsWith(matrix.ruby, 'truffle') }}
