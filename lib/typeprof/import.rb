@@ -6,9 +6,13 @@ module TypeProf
       @repo = RBS::Repository.new
       collection_path = Config.current.collection_path
       if collection_path&.exist?
-        collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
-        raise "Please execute 'rbs collection install'" if collection_lock.nil?
-        @repo.add(collection_lock.repo_path)
+        lock_path = RBS::Collection::Config.to_lockfile_path(collection_path)
+        if lock_path.exist?
+          collection_lock = RBS::Collection::Config.from_path(lock_path)
+          @repo.add(collection_lock.repo_path)
+        else
+          raise "Please execute 'rbs collection install'"
+        end
       end
       @env, @loaded_gems, @builtin_env_json = RBSReader.get_builtin_env
     end
