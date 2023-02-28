@@ -28,9 +28,14 @@ module TypeProf
         # TODO: invalidate this cache when rbs_collection.yml was changed
         collection_path = Config.current.collection_path
         if collection_path&.exist?
-          collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
-          collection_lock.gems.each {|gem| @loaded_gems << gem["name"] }
-          loader.add_collection(collection_lock)
+          lock_path = RBS::Collection::Config.to_lockfile_path(collection_path)
+          if lock_path.exist?
+            collection_lock = RBS::Collection::Config::Lockfile.from_lockfile(lockfile_path: lock_path, data: YAML.load_file(lock_path.to_s))
+            collection_lock.gems.each {|gem| @loaded_gems << gem["name"] }
+            loader.add_collection(collection_lock)
+          else
+            raise "Please execute 'rbs collection install'"
+          end
         end
 
         new_decls = loader.load(env: @builtin_env).map {|decl,| decl }
