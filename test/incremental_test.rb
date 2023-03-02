@@ -117,5 +117,54 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_incremental4
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+class C
+  def foo(n)
+    C
+  end
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> singleton(C)"],
+        serv.get_method_sig([:C], false, :foo),
+      )
+
+      serv.update_file("test0.rb", <<-END)
+class C
+  class C
+  end
+
+  def foo(n)
+    C
+  end
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> singleton(C::C)"],
+        serv.get_method_sig([:C], false, :foo),
+      )
+
+      serv.update_file("test0.rb", <<-END)
+class C
+  class D
+  end
+
+  def foo(n)
+    C
+  end
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> singleton(C)"],
+        serv.get_method_sig([:C], false, :foo),
+      )
+    end
   end
 end

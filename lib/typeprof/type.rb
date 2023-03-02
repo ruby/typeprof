@@ -63,13 +63,7 @@ module TypeProf
     end
   end
 
-  class Value
-    def show
-      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
-    end
-  end
-
-  class Variable < Value
+  class Variable
     def initialize(show_name)
       @show_name = show_name
       @types = {}
@@ -119,22 +113,18 @@ module TypeProf
       @followers.delete(follower)
       follower.on_type_removed(genv, self, @types.keys) unless @types.empty?
     end
+
+    def show
+      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
+    end
   end
 
-  class Immutable < Value
+  class Immutable
     def initialize(ty)
       @types = { ty => nil }
     end
 
     attr_reader :types
-
-    def add_source(_, _)
-      raise
-    end
-
-    def remove_source(_)
-      raise
-    end
 
     def add_follower(genv, follower)
       follower.on_type_added(genv, self, @types.keys)
@@ -142,6 +132,10 @@ module TypeProf
 
     def remove_follower(genv, follower)
       follower.on_type_removed(genv, self, @types.keys)
+    end
+
+    def show
+      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
     end
   end
 
