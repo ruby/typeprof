@@ -14,7 +14,7 @@ module TypeProf
       @superclass_path = cpath
     end
 
-    attr_reader :module_defs, :consts, :child_modules
+    attr_reader :module_defs, :child_modules
     attr_accessor :superclass_cpath
     attr_reader :consts, :singleton_methods, :instance_methods
   end

@@ -70,6 +70,14 @@ module TypeProf
       end
     end
 
+    def get_method_sig(cpath, singleton, mid)
+      s = []
+      @genv.get_method_entity(cpath, singleton, mid).defs.each do |mdef|
+        s << "def #{ mid }: " + mdef.show
+      end
+      s
+    end
+
     def show_graph(cpath, mid)
       mdefs = @genv.get_method_defs(cpath, mid)
       tyvars = {}

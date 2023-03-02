@@ -156,7 +156,7 @@ module TypeProf
         # XXX
         @lenv.get_var(@tbl.first)
       end
-      
+
       def destroy0(genv)
         @body.destroy0(genv)
       end

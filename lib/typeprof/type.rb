@@ -234,7 +234,7 @@ module TypeProf
         mds.each do |md|
           case md
           when MethodDecl
-          if md.builtin
+            if md.builtin
               @followings[md] = md.builtin[ty, @mid, @args, @ret]
             else
               ret_types = md.resolve_overloads(genv, @args)
