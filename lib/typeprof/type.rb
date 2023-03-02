@@ -63,11 +63,12 @@ module TypeProf
     end
   end
 
-  class Variable
+  class Vertex
     def initialize(show_name)
       @show_name = show_name
       @types = {}
       @followers = Set.new
+      @decls = Set.new
     end
 
     attr_reader :show_name, :followers, :types
@@ -119,7 +120,7 @@ module TypeProf
     end
   end
 
-  class Immutable
+  class Source
     def initialize(ty)
       @types = { ty => nil }
     end
@@ -200,15 +201,17 @@ module TypeProf
   end
 
   class CallSite
-    def initialize(node, recv, mid, args, ret)
+    def initialize(genv, node, recv, mid, args)
       raise mid.to_s unless mid
       @node = node
       @recv = recv
       @mid = mid
       @args = args
-      @ret = ret
+      @ret = Vertex.new("ret:#{ mid }")
       @error = false
       @followings = {}
+      recv.add_follower(genv, self)
+      args.add_follower(genv, self)
     end
 
     attr_reader :node, :recv, :mid, :args, :ret
@@ -233,7 +236,7 @@ module TypeProf
             else
               ret_types = md.resolve_overloads(genv, @args)
               # TODO: handle Type::Union
-              @followings[md] = ret_types.map {|ty| [Immutable.new(ty), @ret] }
+              @followings[md] = ret_types.map {|ty| [Source.new(ty), @ret] }
             end
           when MethodDef
             @followings[md] = [[@args, md.arg], [md.ret, @ret]]
@@ -270,11 +273,11 @@ module TypeProf
   end
 
   class ReadSite
-    def initialize(node, cref, cname, ret)
+    def initialize(node, cref, cname)
       @node = node
       @cref = cref
       @cname = cname
-      @ret = ret
+      @ret = Vertex.new("cname:#{ cname }")
       @followings = {}
     end
 
@@ -289,7 +292,7 @@ module TypeProf
         break if e && !e.defs.empty? # TODO: decls
         cref = cref.outer
       end
-      @followings = [[e.tyvar, @ret]]
+      @followings = [[e.val, @ret]]
 
       @followings.each do |src_tyvar, dest_tyvar|
         src_tyvar.add_follower(genv, dest_tyvar)

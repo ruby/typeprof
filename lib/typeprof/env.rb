@@ -32,10 +32,11 @@ module TypeProf
     def initialize
       @decls = Set.new
       @defs = Set.new
-      @tyvar = Variable.new("(const)")
+      @val = nil
     end
 
-    attr_reader :decls, :defs, :tyvar
+    attr_reader :decls, :defs
+    attr_accessor :val
   end
 
   class GlobalEnv
@@ -97,6 +98,7 @@ module TypeProf
     def add_const(cpath, cname, const_def)
       node = resolve_cpath(cpath)
       e = node.consts[cname] ||= ConstEntity.new
+      e.val ||= Vertex.new("(const: #{ cname })")
       e.defs << const_def
 
       readsites = @readsites_by_name[cname]
@@ -106,7 +108,7 @@ module TypeProf
         end
       end
 
-      e.tyvar
+      e.val
     end
 
     def remove_const(cpath, cname, const_def)

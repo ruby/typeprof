@@ -20,7 +20,7 @@ module TypeProf
               end
             end
           end
-          followings << [Immutable.new(ty), ret]
+          followings << [Source.new(ty), ret]
         end
       end
 
@@ -66,7 +66,8 @@ module TypeProf
           end
         end
         code_ranges.compact
-      when Variable
+      when Vertex
+        # TODO
       end
     end
 
@@ -86,9 +87,9 @@ module TypeProf
         case obj
         when CallSite
           callsites[obj] ||= "c#{ callsites.size }@#{ obj.node&.code_range.inspect }"
-        when Variable
+        when Vertex
           tyvars[obj] ||= "v#{ tyvars.size }@#{ obj.show_name }@#{ obj.object_id }"
-        when Immutable
+        when Source
           "<imm>"
         else
           raise obj.class.to_s
@@ -105,7 +106,7 @@ module TypeProf
           next if visited[obj]
           visited[obj] = true
           case obj
-          when Variable
+          when Vertex
             if obj.followers.empty?
               puts "  #{ name[obj] } has no followers"
             else
@@ -114,7 +115,7 @@ module TypeProf
                 stack << obj2
               end
             end
-          when Immutable
+          when Source
           when CallSite
             puts "  #{ name[obj] }:"
             puts "    recv=#{ name[obj.recv] }"

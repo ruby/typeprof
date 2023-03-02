@@ -139,7 +139,7 @@ module TypeProf
         @tbl, raw_args, raw_body = raw_node.children
 
         @tbl.each do |v|
-          lenv.add_var(v, Variable.new(v.to_s))
+          lenv.allocate_var(v)
         end
 
         @args = raw_args ? raw_args.children : nil
@@ -149,6 +149,11 @@ module TypeProf
       attr_reader :tbl, :args, :body
 
       def run0(genv)
+        if args
+          args[0].times do |i|
+            @lenv.def_var(@tbl[i], self)
+          end
+        end
         @body.run(genv)
       end
 
@@ -289,7 +294,7 @@ module TypeProf
         genv.add_module(@cpath, self)
         genv.set_superclass(@cpath, @superclass_cpath)
         const_tyvar = genv.add_const(@cpath[0..-2], @cpath[-1], self)
-        @tyval = Immutable.new(Type::Class.new(@cpath))
+        @tyval = Source.new(Type::Class.new(@cpath))
         @tyval.add_follower(genv, const_tyvar)
         @body.run(genv)
       end
@@ -316,11 +321,10 @@ module TypeProf
       def run0(genv)
         # TODO: ConstReadSite to refresh
         cref = @lenv.cref
-        ret_tyvar = Variable.new("call:#{ @cname }")
-        @readsite = ReadSite.new(self, cref, @cname, ret_tyvar)
+        @readsite = ReadSite.new(self, cref, @cname)
         genv.add_readsite(@readsite)
         genv.add_run(@readsite) # needed...?
-        ret_tyvar
+        @readsite.ret
       end
 
       def destroy0(genv)
@@ -392,7 +396,7 @@ module TypeProf
           @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, arg_tyvar, ret_tyvar)
           genv.add_method_def(@mdef)
         end
-        Immutable.new(Type::Instance.new([:Symbol]))
+        Source.new(Type::Instance.new([:Symbol]))
       end
 
       def destroy0(genv)
@@ -443,13 +447,10 @@ module TypeProf
     class CallNode < Node
       attr_reader :callsite
 
-      def run_call(genv, recv_tyvar, mid, arg_tyvar)
-        ret_tyvar = Variable.new("call:#{ mid }")
-        @callsite = CallSite.new(self, recv_tyvar, mid, arg_tyvar, ret_tyvar)
+      def run_call(genv, recv, mid, arg)
+        @callsite = CallSite.new(genv, self, recv, mid, arg)
         genv.add_callsite(@callsite)
-        recv_tyvar.add_follower(genv, @callsite)
-        arg_tyvar.add_follower(genv, @callsite)
-        ret_tyvar
+        @callsite.ret
       end
 
       def destroy0(genv)
@@ -687,11 +688,11 @@ module TypeProf
       def run0(genv)
         case @lit
         when Integer
-          Immutable.new(Type::Instance.new([:Integer]))
+          Source.new(Type::Instance.new([:Integer]))
         when String
-          Immutable.new(Type::Instance.new([:String]))
+          Source.new(Type::Instance.new([:String]))
         when Float
-          Immutable.new(Type::Instance.new([:Float]))
+          Source.new(Type::Instance.new([:Float]))
         else
           raise "not supported yet"
         end
@@ -723,7 +724,7 @@ module TypeProf
       attr_reader :var
 
       def run0(genv)
-        @lenv.get_var(@var)
+        @lenv.get_var(@var) || raise
       end
 
       def destroy0(genv)
@@ -755,7 +756,8 @@ module TypeProf
 
       def run0(genv)
         tyvar = @rhs.run(genv)
-        tyvar.add_follower(genv, @lenv.get_var(@var))
+        v = @lenv.def_var(@var, self)
+        tyvar.add_follower(genv, v)
         tyvar
       end
 
@@ -785,13 +787,18 @@ module TypeProf
       @tbl = {} # variable table
       @outer = outer
       # XXX
-      @self = Immutable.new(Type::Instance.new(@cref.cpath))
+      @self = Source.new(Type::Instance.new(@cref.cpath))
     end
 
     attr_reader :cref, :outer
 
-    def add_var(name, var)
-      @tbl[name] = var
+    def allocate_var(name)
+      @tbl[name] = nil
+    end
+
+    def def_var(name, node)
+      raise unless @tbl.key?(name)
+      @tbl[name] ||= Vertex.new(name)
     end
 
     def get_var(name)

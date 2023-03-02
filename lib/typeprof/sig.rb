@@ -18,7 +18,7 @@ module TypeProf
           end
           genv.add_module(cpath, decl)
           genv.set_superclass(cpath, superclass_cpath)
-          imm = Immutable.new(Type::Class.new(cpath))
+          imm = Source.new(Type::Class.new(cpath))
           const_tyvar = genv.add_const(cpath[0..-2], cpath[-1], decl)
           imm.add_follower(genv, const_tyvar)
           members(genv, cpath, decl.members)
@@ -27,13 +27,13 @@ module TypeProf
           cpath = name.namespace.path + [name.name]
           genv.add_module(cpath, decl)
           const_tyvar = genv.add_const(cpath[0..-2], cpath[-1], decl)
-          imm = Immutable.new(Type::Module.new(cpath))
+          imm = Source.new(Type::Module.new(cpath))
           imm.add_follower(genv, const_tyvar)
           members(genv, cpath, decl.members)
         when RBS::AST::Declarations::Constant
           name = decl.name
           cpath = name.namespace.path + [name.name]
-          imm = Immutable.new(Type::RBS.new(decl.type))
+          imm = Source.new(Type::RBS.new(decl.type))
           const_tyvar = genv.add_const(name.namespace.path, name.name, decl)
           imm.add_follower(genv, const_tyvar)
         when RBS::AST::Declarations::AliasDecl
