@@ -64,14 +64,15 @@ module TypeProf
   end
 
   class Vertex
-    def initialize(show_name)
+    def initialize(show_name, node)
       @show_name = show_name
+      @node = node
       @types = {}
-      @followers = Set.new
+      @next_vtxs = Set.new
       @decls = Set.new
     end
 
-    attr_reader :show_name, :followers, :types
+    attr_reader :show_name, :next_vtxs, :types
 
     def on_type_added(genv, src_var, added_types)
       new_added_types = []
@@ -83,8 +84,8 @@ module TypeProf
         @types[ty] << src_var
       end
       unless new_added_types.empty?
-        @followers.each do |follower|
-          follower.on_type_added(genv, self, new_added_types)
+        @next_vtxs.each do |nvtx|
+          nvtx.on_type_added(genv, self, new_added_types)
         end
       end
     end
@@ -99,24 +100,36 @@ module TypeProf
         end
       end
       unless new_removed_types.empty?
-        @followers.each do |follower|
-          follower.on_type_removed(genv, self, new_removed_types)
+        @next_vtxs.each do |nvtx|
+          nvtx.on_type_removed(genv, self, new_removed_types)
         end
       end
     end
 
-    def add_follower(genv, follower)
-      @followers << follower
-      follower.on_type_added(genv, self, @types.keys) unless @types.empty?
+    def add_edge(genv, nvtx)
+      @next_vtxs << nvtx
+      nvtx.on_type_added(genv, self, @types.keys) unless @types.empty?
     end
 
-    def remove_follower(genv, follower)
-      @followers.delete(follower)
-      follower.on_type_removed(genv, self, @types.keys) unless @types.empty?
+    def remove_edge(genv, nvtx)
+      @next_vtxs.delete(nvtx)
+      nvtx.on_type_removed(genv, self, @types.keys) unless @types.empty?
     end
 
     def show
       @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
+    end
+
+    @@new_id = 0
+
+    def to_s
+      "v#{ @id ||= @@new_id += 1 }"
+    end
+
+    alias inspect to_s
+
+    def long_inspect
+      "#{ to_s } (#{ @show_name }; #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
 
@@ -127,17 +140,23 @@ module TypeProf
 
     attr_reader :types
 
-    def add_follower(genv, follower)
-      follower.on_type_added(genv, self, @types.keys)
+    def add_edge(genv, nvtx)
+      nvtx.on_type_added(genv, self, @types.keys)
     end
 
-    def remove_follower(genv, follower)
-      follower.on_type_removed(genv, self, @types.keys)
+    def remove_edge(genv, nvtx)
+      nvtx.on_type_removed(genv, self, @types.keys)
     end
 
     def show
       @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
     end
+
+    def to_s
+      "<fixed>"
+    end
+
+    alias inspect to_s
   end
 
   class MethodDecl
@@ -207,11 +226,11 @@ module TypeProf
       @recv = recv
       @mid = mid
       @args = args
-      @ret = Vertex.new("ret:#{ mid }")
+      @ret = Vertex.new("ret:#{ mid }", node)
       @error = false
-      @followings = {}
-      recv.add_follower(genv, self)
-      args.add_follower(genv, self)
+      @edges = {}
+      recv.add_edge(genv, self)
+      args.add_edge(genv, self)
     end
 
     attr_reader :node, :recv, :mid, :args, :ret
@@ -232,32 +251,32 @@ module TypeProf
           case md
           when MethodDecl
             if md.builtin
-              @followings[md] = md.builtin[ty, @mid, @args, @ret]
+              @edges[md] = md.builtin[ty, @mid, @args, @ret]
             else
               ret_types = md.resolve_overloads(genv, @args)
               # TODO: handle Type::Union
-              @followings[md] = ret_types.map {|ty| [Source.new(ty), @ret] }
+              @edges[md] = ret_types.map {|ty| [Source.new(ty), @ret] }
             end
           when MethodDef
-            @followings[md] = [[@args, md.arg], [md.ret, @ret]]
+            @edges[md] = [[@args, md.arg], [md.ret, @ret]]
           end
         end
       end
 
-      @followings.each do |mdef, rel|
+      @edges.each do |mdef, rel|
         rel.each do |src_tyvar, dest_tyvar|
-          src_tyvar.add_follower(genv, dest_tyvar)
+          src_tyvar.add_edge(genv, dest_tyvar)
         end
       end
     end
 
     def destroy(genv)
-      @followings.each do |mdef, rel|
+      @edges.each do |mdef, rel|
         rel.each do |src_tyvar, dest_tyvar|
-          src_tyvar.remove_follower(genv, dest_tyvar)
+          src_tyvar.remove_edge(genv, dest_tyvar)
         end
       end
-      @followings.clear
+      @edges.clear
     end
 
     def resolve(genv)
@@ -270,6 +289,18 @@ module TypeProf
       end
       ret
     end
+
+    @@new_id = 0
+
+    def to_s
+      "C#{ @id ||= @@new_id += 1 }"
+    end
+
+    alias inspect to_s
+
+    def long_inspect
+      "#{ to_s } (mid:#{ @mid }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+    end
   end
 
   class ReadSite
@@ -277,8 +308,8 @@ module TypeProf
       @node = node
       @cref = cref
       @cname = cname
-      @ret = Vertex.new("cname:#{ cname }")
-      @followings = {}
+      @ret = Vertex.new("cname:#{ cname }", node)
+      @edges = {}
     end
 
     attr_reader :node, :cref, :cname, :ret
@@ -292,18 +323,30 @@ module TypeProf
         break if e && !e.defs.empty? # TODO: decls
         cref = cref.outer
       end
-      @followings = [[e.val, @ret]]
+      @edges = [[e.val, @ret]]
 
-      @followings.each do |src_tyvar, dest_tyvar|
-        src_tyvar.add_follower(genv, dest_tyvar)
+      @edges.each do |src_tyvar, dest_tyvar|
+        src_tyvar.add_edge(genv, dest_tyvar)
       end
     end
 
     def destroy(genv)
-      @followings.each do |src_tyvar, dest_tyvar|
-        src_tyvar.remove_follower(genv, dest_tyvar)
+      @edges.each do |src_tyvar, dest_tyvar|
+        src_tyvar.remove_edge(genv, dest_tyvar)
       end
-      @followings.clear
+      @edges.clear
+    end
+
+    @@new_id = 0
+
+    def to_s
+      "R#{ @id ||= @@new_id += 1 }"
+    end
+
+    alias inspect to_s
+
+    def long_inspect
+      "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
 end

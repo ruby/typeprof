@@ -1,4 +1,23 @@
 module TypeProf
+  class TextId
+    def initialize(path, version)
+      @path = path
+      @version = version
+    end
+
+    attr_reader :path, :version
+
+    def ==(other)
+      @path == other.path && @version == other.version
+    end
+
+    alias eql? ==
+
+    def to_s
+      "#{ @path }@#{ @version }"
+    end
+  end
+
   class Service
     def initialize
       @genv = GlobalEnv.new
@@ -7,7 +26,7 @@ module TypeProf
       mdecls = @genv.resolve_method([:Class], false, :new)
       mdecls.each do |mdecl|
         mdecl.set_builtin do |ty, mid, args, ret|
-          followings = []
+          edges = []
           ty = ty.get_instance_type
           mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Class), :initialize)
           if mds
@@ -16,30 +35,34 @@ module TypeProf
               when MethodDecl
                 # TODO?
               when MethodDef
-                followings << [args, md.arg]
+                edges << [args, md.arg]
               end
             end
           end
-          followings << [Source.new(ty), ret]
+          edges << [Source.new(ty), ret]
         end
       end
 
       #@genv.system_sigs_loaded
-      @file_nodes = {}
+      @text_nodes = {}
     end
 
     attr_reader :genv
 
     def update_file(path, code)
+      prev_node = @text_nodes[path]
+      version = prev_node ? prev_node.lenv.text_id.version : 0
+
+      text_id = TextId.new(path, version)
       cref = CRef.new([], false, nil)
-      lenv = LexicalScope.new(cref, nil)
+      lenv = LexicalScope.new(text_id, cref, nil)
       node = AST.parse(code, lenv)
 
-      prev_node = @file_nodes[path]
-      node.diff(@file_nodes[path]) if prev_node
-      @file_nodes[path] = node
+      node.diff(@text_nodes[path]) if prev_node
+      @text_nodes[path] = node
 
       node.run(@genv)
+
       @genv.run_all
 
       if prev_node
@@ -48,12 +71,45 @@ module TypeProf
       end
     end
 
+    def dump_graph(path)
+      node = @text_nodes[path]
+
+      vtxs = Set.new
+      puts node.dump(vtxs)
+      puts "---"
+      vtxs.each do |vtx|
+        case vtx
+        when Vertex
+          puts "\e[34m#{ vtx.long_inspect }\e[m"
+          vtx.next_vtxs.each do |nvtx|
+            puts "  #{ vtx } -> #{ nvtx }"
+          end
+        end
+      end
+      vtxs.each do |vtx|
+        case vtx
+        when CallSite
+          puts "\e[33m#{ vtx.long_inspect }\e[m"
+          puts "  recv: #{ vtx.recv }"
+          puts "  args: (#{ vtx.args })"
+          puts "  ret: #{ vtx.ret }"
+        end
+      end
+      vtxs.each do |vtx|
+        case vtx
+        when ReadSite
+          puts "\e[32m#{ vtx.long_inspect }\e[m"
+          puts "  ret: #{ vtx.ret }"
+        end
+      end
+    end
+
     def hover(path, pos)
-      @file_nodes[path].hover(pos)
+      @text_nodes[path].hover(pos)
     end
 
     def gotodefs(path, pos)
-      obj = @file_nodes[path].hover(pos)
+      obj = @text_nodes[path].hover(pos)
       case obj
       when CallSite
         code_ranges = []
@@ -107,10 +163,10 @@ module TypeProf
           visited[obj] = true
           case obj
           when Vertex
-            if obj.followers.empty?
-              puts "  #{ name[obj] } has no followers"
+            if obj.next_vtxs.empty?
+              puts "  #{ name[obj] } has no edge"
             else
-              obj.followers.each do |obj2|
+              obj.next_vtxs.each do |obj2|
                 puts "  #{ name[obj] } -> #{ name[obj2] }"
                 stack << obj2
               end

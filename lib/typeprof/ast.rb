@@ -74,10 +74,10 @@ module TypeProf
         @lenv = lenv
         @raw_children = raw_node.children
         @prev_node = nil
-        @val = nil
+        @ret = nil
       end
 
-      attr_reader :lenv, :prev_node, :val
+      attr_reader :lenv, :prev_node, :ret
 
       def code_range
         if @raw_node
@@ -96,11 +96,11 @@ module TypeProf
         if debug
           puts "run enter: #{ self.class }@#{ code_range.inspect }"
         end
-        @val = run0(genv)
+        @ret = run0(genv)
         if debug
           puts "run leave: #{ self.class }@#{ code_range.inspect }"
         end
-        @val
+        @ret
       end
 
       def destroy(genv)
@@ -108,16 +108,15 @@ module TypeProf
         if debug
           puts "destroy enter: #{ self.class }@#{ code_range.inspect }"
         end
-        @val = destroy0(genv)
+        destroy0(genv)
         if debug
           puts "destroy leave: #{ self.class }@#{ code_range.inspect }"
         end
-        @val
       end
 
       def reuse
         @lenv = @prev_node.lenv
-        @val = @prev_node.val
+        @ret = @prev_node.ret
         reuse0
       end
 
@@ -127,8 +126,12 @@ module TypeProf
         end
       end
 
+      def dump(dumper)
+        dump0(dumper) + "\e[34m:#{ @ret.inspect }\e[m"
+      end
+
       def pretty_print_instance_variables
-        super - [:@raw_node, :@raw_children, :@lenv]
+        super - [:@raw_node, :@raw_children, :@lenv, :@prev_node]
       end
     end
 
@@ -179,6 +182,10 @@ module TypeProf
 
       def hover0(pos)
         @body.hover(pos)
+      end
+
+      def dump(dumper) # intentionally not dump0
+        @body.dump(dumper)
       end
     end
 
@@ -238,6 +245,12 @@ module TypeProf
         end
         nil
       end
+
+      def dump0(dumper)
+        @stmts.map do |stmt|
+          stmt.dump(dumper)
+        end.join("\n")
+      end
     end
 
     class ModuleNode < Node
@@ -247,7 +260,7 @@ module TypeProf
         @cpath = AST.parse_cpath(raw_cpath, lenv.cref.cpath)
 
         ncref = CRef.new(@cpath, true, lenv.cref)
-        nlenv = LexicalScope.new(ncref, nil)
+        nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
 
         @body = SCOPE.new(raw_scope, nlenv)
       end
@@ -277,6 +290,10 @@ module TypeProf
         @body.destroy(genv)
         genv.remove_module(@cpath)
       end
+
+      def dump0(dumper)
+        "module #{ @cpath.join("::") }\n" + s.gsub(/^/, "  ") + "\nend"
+      end
     end
 
     class CLASS < ModuleNode
@@ -295,7 +312,7 @@ module TypeProf
         genv.set_superclass(@cpath, @superclass_cpath)
         const_tyvar = genv.add_const(@cpath[0..-2], @cpath[-1], self)
         @tyval = Source.new(Type::Class.new(@cpath))
-        @tyval.add_follower(genv, const_tyvar)
+        @tyval.add_edge(genv, const_tyvar)
         @body.run(genv)
       end
 
@@ -305,8 +322,12 @@ module TypeProf
         genv.remove_module(@cpath, self)
         # TODO: add_const???
         const_tyvar = genv.add_const(@cpath[0..-2], @cpath[-1], self)
-        @tyval.remove_follower(genv, const_tyvar)
+        @tyval.remove_edge(genv, const_tyvar)
         genv.remove_const(@cpath[0..-2], @cpath[-1], self)
+      end
+
+      def dump0(dumper)
+        "class #{ @cpath.join("::") } < #{ @superclass_cpath.join("::") }\n" + @body.dump(dumper).gsub(/^/, "  ") + "\nend"
       end
     end
 
@@ -340,6 +361,12 @@ module TypeProf
 
       def reuse0
         @readsite = @prev_node.readsite
+      end
+
+      def dump0(dumper)
+        dumper << @readsite
+        dumper << @readsite.ret
+        "#{ @cname }\e[32m:#{ @readsite }\e[m"
       end
     end
 
@@ -376,13 +403,13 @@ module TypeProf
         @mid, raw_scope = raw_node.children
 
         ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-        nlenv = LexicalScope.new(ncref, nil)
-        @body = AST.create_node(raw_scope, nlenv)
+        nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
+        @scope = AST.create_node(raw_scope, nlenv)
 
         @reused = false
       end
 
-      attr_reader :mid, :body
+      attr_reader :mid, :scope
       attr_accessor :reused
 
       def run0(genv)
@@ -391,8 +418,8 @@ module TypeProf
           @prev_node.reused = true
         else
           # TODO: ユーザ定義 RBS があるときは検証する
-          ret_tyvar = @body.run(genv)
-          arg_tyvar = @body.get_arg_tyvar
+          ret_tyvar = @scope.run(genv)
+          arg_tyvar = @scope.get_arg_tyvar
           @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, arg_tyvar, ret_tyvar)
           genv.add_method_def(@mdef)
         end
@@ -401,25 +428,31 @@ module TypeProf
 
       def destroy0(genv)
         unless @reused
-          @body.destroy(genv)
+          @scope.destroy(genv)
           genv.remove_method_def(@mdef)
         end
       end
 
       def diff(prev_node)
         if prev_node.is_a?(DEFN) && @mid == prev_node.mid
-          @body.diff(prev_node.body)
-          @prev_node = prev_node if @body.prev_node
+          @scope.diff(prev_node.scope)
+          @prev_node = prev_node if @scope.prev_node
         end
       end
 
       def reuse0
-        @body.reuse
+        @scope.reuse
       end
 
       def hover0(pos)
         # TODO: mid, f_args
-        @body.hover(pos)
+        @scope.hover(pos)
+      end
+
+      def dump0(dumper)
+        vtx = @scope.lenv.get_var(@scope.tbl[0])
+        dumper << vtx
+        "def #{ @mid }(#{ @scope.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n" + @scope.dump(dumper).gsub(/^/, "  ") + "\nend"
       end
     end
 
@@ -442,6 +475,10 @@ module TypeProf
           @prev_node = prev_node
         end
       end
+
+      def dump0(dumper)
+        "begin; end"
+      end
     end
 
     class CallNode < Node
@@ -457,6 +494,11 @@ module TypeProf
         @callsite.destroy(genv)
         genv.remove_callsite(@callsite)
       end
+
+      def dump0(dumper)
+        dumper << @callsite
+        dumper << @callsite.ret
+      end
     end
 
     class CALL < CallNode
@@ -467,7 +509,7 @@ module TypeProf
         @a_args = A_ARGS.new(raw_args, lenv) if raw_args
       end
 
-      attr_reader :op, :recv, :a_args
+      attr_reader :mid, :recv, :a_args
 
       def run0(genv)
         recv_tyvar = @recv.run(genv)
@@ -487,7 +529,7 @@ module TypeProf
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(OPCALL) && @op == prev_node.op
+        if prev_node.is_a?(CALL) && @op == prev_node.op
           @recv.diff(prev_node.recv)
           @a_args.diff(prev_node.a_args)
           @prev_node = prev_node if @recv.prev_node && @a_args.prev_node
@@ -503,6 +545,11 @@ module TypeProf
       def hover0(pos)
         # TODO: op
         @recv.hover(pos) || @a_args.hover(pos)
+      end
+
+      def dump0(dumper)
+        super
+        @recv.dump(dumper) + ".#{ @mid.to_s }\e[33m[#{ @callsite }]\e[m(#{ @a_args.dump(dumper) })"
       end
     end
 
@@ -561,6 +608,11 @@ module TypeProf
           @a_args.hover(pos)
         end
       end
+
+      def dump0(dumper)
+        super
+        "#{ @mid }\e[33m[#{ @callsite }]\e[m(#{ @a_args.dump(dumper) })"
+      end
     end
 
     class OPCALL < CallNode
@@ -608,6 +660,11 @@ module TypeProf
         # TODO: op
         @recv.hover(pos) || @a_args.hover(pos)
       end
+
+      def dump0(dumper)
+        super
+        "(#{ @recv.dump(dumper) } #{ @op.to_s }\e[33m[#{ @callsite }]\e[m #{ @a_args.dump(dumper) })"
+      end
     end
 
     class A_ARGS < Node
@@ -652,6 +709,10 @@ module TypeProf
       def hover0(pos)
         # TODO: op
         @recv.hover(pos) || @a_args.hover(pos)
+      end
+
+      def dump(dumper) # HACK: intentionally not dump0 because this node does not simply return a vertex
+        @positional_args.map {|n| n.dump(dumper) }.join(", ")
       end
     end
 
@@ -712,6 +773,10 @@ module TypeProf
 
       def hover0(pos)
       end
+
+      def dump0(dumper)
+        @lit.inspect
+      end
     end
 
     class LVAR < Node
@@ -740,7 +805,11 @@ module TypeProf
       end
 
       def hover0(pos)
-        @val
+        @ret
+      end
+
+      def dump0(dumper)
+        "#{ @var }"
       end
     end
 
@@ -756,8 +825,8 @@ module TypeProf
 
       def run0(genv)
         tyvar = @rhs.run(genv)
-        v = @lenv.def_var(@var, self)
-        tyvar.add_follower(genv, v)
+        @vtx = @lenv.def_var(@var, self)
+        tyvar.add_edge(genv, @vtx)
         tyvar
       end
 
@@ -778,11 +847,17 @@ module TypeProf
 
       def hover0(pos)
       end
+
+      def dump0(dumper)
+        dumper << @vtx
+        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper )}"
+      end
     end
   end
 
   class LexicalScope
-    def initialize(cref, outer)
+    def initialize(text_id, cref, outer)
+      @text_id = text_id
       @cref = cref
       @tbl = {} # variable table
       @outer = outer
@@ -790,7 +865,7 @@ module TypeProf
       @self = Source.new(Type::Instance.new(@cref.cpath))
     end
 
-    attr_reader :cref, :outer
+    attr_reader :text_id, :cref, :outer
 
     def allocate_var(name)
       @tbl[name] = nil
@@ -798,7 +873,7 @@ module TypeProf
 
     def def_var(name, node)
       raise unless @tbl.key?(name)
-      @tbl[name] ||= Vertex.new(name)
+      @tbl[name] ||= Vertex.new("var:#{ name }", node)
     end
 
     def get_var(name)

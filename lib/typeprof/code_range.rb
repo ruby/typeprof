@@ -14,9 +14,11 @@ module TypeProf
 
     include Comparable
 
-    def inspect
+    def to_s
       "(%d,%d)" % [@lineno, @column]
     end
+
+    alias inspect to_s
   end
 
   class CodeRange
@@ -31,9 +33,11 @@ module TypeProf
       @first <= pos && pos < @last
     end
 
-    def inspect
+    def to_s
       "%p-%p" % [@first, @last]
     end
+
+    alias inspect to_s
 
     def ==(other)
       @first == other.first && @last == other.last

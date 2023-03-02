@@ -98,7 +98,7 @@ module TypeProf
     def add_const(cpath, cname, const_def)
       node = resolve_cpath(cpath)
       e = node.consts[cname] ||= ConstEntity.new
-      e.val ||= Vertex.new("(const: #{ cname })")
+      e.val ||= Vertex.new("(const: #{ cname })", const_def)
       e.defs << const_def
 
       readsites = @readsites_by_name[cname]
