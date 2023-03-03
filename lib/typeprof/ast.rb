@@ -140,14 +140,14 @@ module TypeProf
       def initialize(raw_node, lenv)
         raise if raw_node.type != :SCOPE
         super
-        @tbl, raw_args, raw_body = raw_node.children
+        @tbl, raw_args, raw_body = p(raw_node.children)
 
         @tbl.each do |v|
           lenv.allocate_var(v)
         end
 
         @args = raw_args ? raw_args.children : nil
-        @body = AST.create_node(raw_body, lenv)
+        @body = raw_body ? AST.create_node(raw_body, lenv) : nil
       end
 
       attr_reader :tbl, :args, :body
@@ -158,7 +158,7 @@ module TypeProf
             @lenv.def_var(@tbl[i], self)
           end
         end
-        @body.install(genv)
+        @body ? @body.install(genv) : Source.new(Type::Instance.new([:NilClass]))
       end
 
       def get_arg_tyvar
@@ -167,30 +167,34 @@ module TypeProf
       end
 
       def uninstall0(genv)
-        @body.uninstall0(genv)
+        @body.uninstall0(genv) if @body
       end
 
       def diff(prev_node)
         if prev_node.is_a?(SCOPE) && @tbl == prev_node.tbl && @args == prev_node.args
-          @body.diff(prev_node.body)
-          @prev_node = prev_node if @body.prev_node
+          if @body
+            @body.diff(prev_node.body)
+            @prev_node = prev_node if @body.prev_node
+          else
+            @prev_node = prev_node if prev_node.body == nil
+          end
         end
       end
 
       def reuse0
-        @body.reuse
+        @body.reuse if @body
       end
 
       def hover0(pos)
-        @body.hover(pos)
+        @body.hover(pos) if @body
       end
 
       def dump(dumper) # intentionally not dump0
-        @body.dump(dumper)
+        @body ? @body.dump(dumper) : ""
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
-        @body.get_vertexes_and_boxes(vtxs, boxes)
+        @body.get_vertexes_and_boxes(vtxs, boxes) if @body
       end
     end
 
