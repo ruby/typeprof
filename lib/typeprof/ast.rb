@@ -361,11 +361,8 @@ module TypeProf
       attr_reader :cname, :readsite
 
       def run0(genv)
-        # TODO: ConstReadSite to refresh
         cref = @lenv.cref
         @readsite = ReadSite.new(genv, self, cref, nil, @cname)
-        genv.add_readsite(@readsite)
-        genv.add_run(@readsite) # needed...?
         @readsite.ret
       end
 
@@ -401,11 +398,8 @@ module TypeProf
       attr_reader :cname, :readsite
 
       def run0(genv)
-        # TODO: ConstReadSite to refresh
         cbase = @cbase ? @cbase.run(genv) : nil
         @readsite = ReadSite.new(genv, self, @lenv.cref, cbase, @cname)
-        genv.add_readsite(@readsite)
-        genv.add_run(@readsite) # needed...?
         @readsite.ret
       end
 
@@ -432,28 +426,45 @@ module TypeProf
     end
 
     class CDECL < Node
-      def initialize(raw_node)
+      def initialize(raw_node, lenv)
         super
-        raw_const_path, raw_rhs = raw_node.children
-        @const_path = Node.create_const_path(raw_const_path)
-        @rhs = AST.create_node(raw_rhs)
+        children = raw_node.children
+        if children.size == 2
+          # C = expr
+          @cpath = nil
+          @static_cpath = [children[0]]
+          raw_rhs = children[1]
+        else # children.size == 3
+          # expr::C = expr
+          @cpath = children[0]
+          @static_cpath = AST.parse_cpath(@cpath, lenv.cref.cpath)
+          raw_rhs = children[2]
+        end
+        @rhs = AST.create_node(raw_rhs, lenv)
       end
 
-      attr_reader :name, :rhs
+      attr_reader :name, :cpath, :static_cpath, :rhs
 
-      def run0(genv, lenv)
-        tyvar = @rhs.run(genv, lenv)
-        env.add_const(@const_path, tyvar) # TODO: rhs
+      def run0(genv)
+        val = @rhs.run(genv)
+        if @static_cpath
+          @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
+          genv.add_const_def(@cdef)
+        end
       end
 
       def destroy0(genv)
-        raise NotImplementedError
+        if @static_cpath
+          genv.remove_const_def(@cdef)
+        end
+        @rhs.destroy(genv)
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(CDECL) && @cpath == prev_node.cpath && @cpath_abs == prev_node.cpath_abs && @superclass_cpath == prev_node.superclass_cpath
-          @body.diff(prev_node.body)
-          @prev_node = prev_node if @body.prev_node
+        if prev_node.is_a?(CDECL) &&
+          @static_cpath && @static_cpath == prev_node.static_cpath
+          @rhs.diff(prev_node.rhs)
+          @prev_node = prev_node if @rhs.prev_node
         end
       end
     end
@@ -547,7 +558,6 @@ module TypeProf
 
       def run_call(genv, recv, mid, arg)
         @callsite = CallSite.new(genv, self, recv, mid, arg)
-        genv.add_callsite(@callsite)
         @callsite.ret
       end
 

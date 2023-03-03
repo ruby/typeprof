@@ -80,7 +80,7 @@ module TypeProf
       vtxs.each do |vtx|
         case vtx
         when Vertex
-          puts "\e[34m#{ vtx.long_inspect }\e[m"
+          puts "\e[34m#{ vtx.long_inspect }\e[m: #{ vtx.show }"
           vtx.next_vtxs.each do |nvtx|
             puts "  #{ vtx } -> #{ nvtx }"
           end

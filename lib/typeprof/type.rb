@@ -240,90 +240,6 @@ module TypeProf
     end
   end
 
-  class CallSite
-    def initialize(genv, node, recv, mid, args)
-      raise mid.to_s unless mid
-      @node = node
-      @recv = recv
-      @mid = mid
-      @args = args
-      @ret = Vertex.new("ret:#{ mid }", node)
-      @error = false
-      @edges = Set.new
-      @recv.add_edge(genv, self)
-      @args.add_edge(genv, self)
-    end
-
-    attr_reader :node, :recv, :mid, :args, :ret
-
-    def on_type_added(genv, src_tyvar, added_types)
-      genv.add_run(self)
-    end
-
-    def on_type_removed(genv, src_tyvar, removed_types)
-      genv.add_run(self)
-    end
-
-    def run(genv)
-      destroy(genv)
-
-      resolve(genv).each do |ty, mds|
-        mds.each do |md|
-          case md
-          when MethodDecl
-            if md.builtin
-              md.builtin[ty, @mid, @args, @ret].each do |src, dest|
-                @edges << [src, dest]
-              end
-            else
-              ret_types = md.resolve_overloads(genv, @args)
-              # TODO: handle Type::Union
-              ret_types.each do |ty|
-                @edges << [Source.new(ty), @ret]
-              end
-            end
-          when MethodDef
-            @edges << [@args, md.arg] << [md.ret, @ret]
-          end
-        end
-      end
-
-      @edges.each do |src_tyvar, dest_tyvar|
-        src_tyvar.add_edge(genv, dest_tyvar)
-      end
-    end
-
-    def destroy(genv)
-      @edges.each do |src_tyvar, dest_tyvar|
-        src_tyvar.remove_edge(genv, dest_tyvar)
-      end
-      @edges.clear
-    end
-
-    def resolve(genv)
-      ret = []
-      @recv.types.each do |ty, source|
-        # TODO: resolve ty#mid
-        # assume ty is a Type::Instnace or Type::Class
-        mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Class), @mid)
-        ret << [ty, mds] if mds
-      end
-      ret
-    end
-
-    @@new_id = 0
-
-    def to_s
-      "C#{ @id ||= @@new_id += 1 }"
-    end
-
-    alias inspect to_s
-
-    def long_inspect
-      "#{ to_s } (mid:#{ @mid }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
-    end
-  end
-
   class ReadSite
     def initialize(genv, node, cref, cbase, cname)
       @node = node
@@ -331,6 +247,8 @@ module TypeProf
       @cbase = cbase
       @cname = cname
       @ret = Vertex.new("cname:#{ cname }", node)
+      genv.add_readsite(self)
+      genv.add_run(self)
       @cbase.add_edge(genv, self) if @cbase
       @edges = Set.new
     end
@@ -408,6 +326,91 @@ module TypeProf
 
     def long_inspect
       "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+    end
+  end
+
+  class CallSite
+    def initialize(genv, node, recv, mid, args)
+      raise mid.to_s unless mid
+      @node = node
+      @recv = recv
+      @mid = mid
+      @args = args
+      @ret = Vertex.new("ret:#{ mid }", node)
+      @edges = Set.new
+      genv.add_callsite(self)
+      genv.add_run(self)
+      @recv.add_edge(genv, self)
+      @args.add_edge(genv, self)
+    end
+
+    attr_reader :node, :recv, :mid, :args, :ret
+
+    def on_type_added(genv, src_tyvar, added_types)
+      genv.add_run(self)
+    end
+
+    def on_type_removed(genv, src_tyvar, removed_types)
+      genv.add_run(self)
+    end
+
+    def run(genv)
+      destroy(genv)
+
+      resolve(genv).each do |ty, mds|
+        mds.each do |md|
+          case md
+          when MethodDecl
+            if md.builtin
+              md.builtin[ty, @mid, @args, @ret].each do |src, dest|
+                @edges << [src, dest]
+              end
+            else
+              ret_types = md.resolve_overloads(genv, @args)
+              # TODO: handle Type::Union
+              ret_types.each do |ty|
+                @edges << [Source.new(ty), @ret]
+              end
+            end
+          when MethodDef
+            @edges << [@args, md.arg] << [md.ret, @ret]
+          end
+        end
+      end
+
+      @edges.each do |src_tyvar, dest_tyvar|
+        src_tyvar.add_edge(genv, dest_tyvar)
+      end
+    end
+
+    def destroy(genv)
+      @edges.each do |src_tyvar, dest_tyvar|
+        src_tyvar.remove_edge(genv, dest_tyvar)
+      end
+      @edges.clear
+    end
+
+    def resolve(genv)
+      ret = []
+      @recv.types.each do |ty, source|
+        # TODO: resolve ty#mid
+        # assume ty is a Type::Instnace or Type::Class
+        mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Class), @mid)
+        ret << [ty, mds] if mds
+      end
+      ret
+    end
+
+    @@new_id = 0
+
+    def to_s
+      "C#{ @id ||= @@new_id += 1 }"
+    end
+
+    alias inspect to_s
+
+    def long_inspect
+      "#{ to_s } (mid:#{ @mid }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
 end
