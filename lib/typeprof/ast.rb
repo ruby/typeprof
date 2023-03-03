@@ -92,26 +92,26 @@ module TypeProf
         end
       end
 
-      def run(genv)
+      def install(genv)
         debug = ENV["TYPEPROF_DEBUG"]
         if debug
-          puts "run enter: #{ self.class }@#{ code_range.inspect }"
+          puts "install enter: #{ self.class }@#{ code_range.inspect }"
         end
-        @ret = run0(genv)
+        @ret = install0(genv)
         if debug
-          puts "run leave: #{ self.class }@#{ code_range.inspect }"
+          puts "install leave: #{ self.class }@#{ code_range.inspect }"
         end
         @ret
       end
 
-      def destroy(genv)
+      def uninstall(genv)
         debug = ENV["TYPEPROF_DEBUG"]
         if debug
-          puts "destroy enter: #{ self.class }@#{ code_range.inspect }"
+          puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
         end
-        destroy0(genv)
+        uninstall0(genv)
         if debug
-          puts "destroy leave: #{ self.class }@#{ code_range.inspect }"
+          puts "uninstall leave: #{ self.class }@#{ code_range.inspect }"
         end
       end
 
@@ -152,13 +152,13 @@ module TypeProf
 
       attr_reader :tbl, :args, :body
 
-      def run0(genv)
+      def install0(genv)
         if args
           args[0].times do |i|
             @lenv.def_var(@tbl[i], self)
           end
         end
-        @body.run(genv)
+        @body.install(genv)
       end
 
       def get_arg_tyvar
@@ -166,8 +166,8 @@ module TypeProf
         @lenv.get_var(@tbl.first)
       end
 
-      def destroy0(genv)
-        @body.destroy0(genv)
+      def uninstall0(genv)
+        @body.uninstall0(genv)
       end
 
       def diff(prev_node)
@@ -199,17 +199,17 @@ module TypeProf
 
       attr_reader :stmts
 
-      def run0(genv)
+      def install0(genv)
         ret = nil
         @stmts.each do |stmt|
-          ret = stmt.run(genv)
+          ret = stmt.install(genv)
         end
         ret
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
         @stmts.each do |stmt|
-          stmt.destroy(genv)
+          stmt.uninstall(genv)
         end
       end
 
@@ -286,14 +286,14 @@ module TypeProf
         super(raw_node, lenv, raw_cpath, raw_scope)
       end
 
-      def run0(genv)
-        @cpath_node.run(genv)
+      def install0(genv)
+        @cpath_node.install(genv)
         genv.add_module(@cpath)
-        @body.run(genv)
+        @body.install(genv)
       end
 
-      def destroy0(genv)
-        @body.destroy(genv)
+      def uninstall0(genv)
+        @body.uninstall(genv)
         genv.remove_module(@cpath)
       end
 
@@ -313,8 +313,8 @@ module TypeProf
         super(raw_node, lenv, raw_cpath, raw_scope)
       end
 
-      def run0(genv)
-        @cpath.run(genv)
+      def install0(genv)
+        @cpath.install(genv)
         if @static_cpath
           genv.add_module(@static_cpath, self)
           genv.set_superclass(@static_cpath, @superclass_cpath)
@@ -323,22 +323,22 @@ module TypeProf
           @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           genv.add_const_def(@cdef)
 
-          @body.run(genv)
+          @body.install(genv)
         else
           # TODO: show error
         end
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
         if @static_cpath
-          @body.destroy(genv)
+          @body.uninstall(genv)
 
           genv.remove_const_def(@cdef)
 
           genv.set_superclass(@static_cpath, nil)
           genv.remove_module(@static_cpath, self)
         end
-        @cpath.destroy(genv)
+        @cpath.uninstall(genv)
       end
 
       def dump0(dumper)
@@ -360,14 +360,14 @@ module TypeProf
 
       attr_reader :cname, :readsite
 
-      def run0(genv)
+      def install0(genv)
         cref = @lenv.cref
         @readsite = ReadSite.new(genv, self, cref, nil, @cname)
         @readsite.ret
       end
 
-      def destroy0(genv)
-        @readsite.destroy(genv)
+      def uninstall0(genv)
+        @readsite.uninstall(genv)
         genv.remove_readsite(@readsite)
       end
 
@@ -397,13 +397,13 @@ module TypeProf
 
       attr_reader :cname, :readsite
 
-      def run0(genv)
-        cbase = @cbase ? @cbase.run(genv) : nil
+      def install0(genv)
+        cbase = @cbase ? @cbase.install(genv) : nil
         @readsite = ReadSite.new(genv, self, @lenv.cref, cbase, @cname)
         @readsite.ret
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
         @readsite.destroy(genv)
         genv.remove_readsite(@readsite)
       end
@@ -445,19 +445,19 @@ module TypeProf
 
       attr_reader :name, :cpath, :static_cpath, :rhs
 
-      def run0(genv)
-        val = @rhs.run(genv)
+      def install0(genv)
+        val = @rhs.install(genv)
         if @static_cpath
           @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           genv.add_const_def(@cdef)
         end
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
         if @static_cpath
           genv.remove_const_def(@cdef)
         end
-        @rhs.destroy(genv)
+        @rhs.uninstall(genv)
       end
 
       def diff(prev_node)
@@ -484,13 +484,13 @@ module TypeProf
       attr_reader :mid, :scope
       attr_accessor :reused
 
-      def run0(genv)
+      def install0(genv)
         if @prev_node
           reuse
           @prev_node.reused = true
         else
           # TODO: ユーザ定義 RBS があるときは検証する
-          ret_tyvar = @scope.run(genv)
+          ret_tyvar = @scope.install(genv)
           arg_tyvar = @scope.get_arg_tyvar
           @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, arg_tyvar, ret_tyvar)
           genv.add_method_def(@mdef)
@@ -498,9 +498,9 @@ module TypeProf
         Source.new(Type::Instance.new([:Symbol]))
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
         unless @reused
-          @scope.destroy(genv)
+          @scope.uninstall(genv)
           genv.remove_method_def(@mdef)
         end
       end
@@ -534,11 +534,11 @@ module TypeProf
         raise NotImplementedError if raw_node.children != [nil]
       end
 
-      def run0(genv)
+      def install0(genv)
         # TODO
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
         # TODO
       end
 
@@ -561,7 +561,7 @@ module TypeProf
         @callsite.ret
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
         @callsite.destroy(genv)
         genv.remove_callsite(@callsite)
       end
@@ -582,20 +582,20 @@ module TypeProf
 
       attr_reader :mid, :recv, :a_args
 
-      def run0(genv)
-        recv_tyvar = @recv.run(genv)
+      def install0(genv)
+        recv_tyvar = @recv.install(genv)
 
         # TODO: A_ARGS を引数1つと勝手に仮定してる
-        #@a_args.run(genv)?
+        #@a_args.install(genv)?
         arg = @a_args.positional_args[0]
-        arg_tyvar = arg.run(genv)
+        arg_tyvar = arg.install(genv)
 
         run_call(genv, recv_tyvar, @mid, arg_tyvar)
       end
 
-      def destroy0(genv)
-        @recv.destroy(genv)
-        @a_args.destroy(genv)
+      def uninstall0(genv)
+        @recv.uninstall(genv)
+        @a_args.uninstall(genv)
         super
       end
 
@@ -643,20 +643,20 @@ module TypeProf
 
       attr_reader :mid, :a_args
 
-      def run0(genv)
+      def install0(genv)
         # TODO
         recv_tyvar = @lenv.get_self
 
         # TODO: A_ARGS を引数1つと勝手に仮定してる
-        #@a_args.run(genv, lenv)?
+        #@a_args.install(genv, lenv)?
         arg = @a_args.positional_args[0]
-        arg_tyvar = arg.run(genv)
+        arg_tyvar = arg.install(genv)
 
         run_call(genv, recv_tyvar, @mid, arg_tyvar)
       end
 
-      def destroy0(genv)
-        @a_args.destroy(genv)
+      def uninstall0(genv)
+        @a_args.uninstall(genv)
         super
       end
 
@@ -696,20 +696,20 @@ module TypeProf
 
       attr_reader :op, :recv, :a_args
 
-      def run0(genv)
-        recv_tyvar = @recv.run(genv)
+      def install0(genv)
+        recv_tyvar = @recv.install(genv)
 
         # TODO: A_ARGS を引数1つと勝手に仮定してる
-        #@a_args.run(genv)?
+        #@a_args.install(genv)?
         arg = @a_args.positional_args[0]
-        arg_tyvar = arg.run(genv)
+        arg_tyvar = arg.install(genv)
 
         run_call(genv, recv_tyvar, @op, arg_tyvar)
       end
 
-      def destroy0(genv)
-        @recv.destroy(genv)
-        @a_args.destroy(genv)
+      def uninstall0(genv)
+        @recv.uninstall(genv)
+        @a_args.uninstall(genv)
         super
       end
 
@@ -756,9 +756,9 @@ module TypeProf
 
       attr_reader :positional_args
 
-      def destroy0(genv)
+      def uninstall0(genv)
         @positional_args.each do |node|
-          node.destroy(genv)
+          node.uninstall(genv)
         end
       end
 
@@ -795,12 +795,12 @@ module TypeProf
         # TODO: raw_rescue
       end
 
-      def run0(genv)
-        @body.run(genv)
+      def install0(genv)
+        @body.install(genv)
       end
 
-      def destroy0(genv)
-        @body.destroy(genv)
+      def uninstall0(genv)
+        @body.uninstall(genv)
       end
 
       def diff(prev_node)
@@ -817,7 +817,7 @@ module TypeProf
 
       attr_reader :lit
 
-      def run0(genv)
+      def install0(genv)
         case @lit
         when Integer
           Source.new(Type::Instance.new([:Integer]))
@@ -830,7 +830,7 @@ module TypeProf
         end
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
       end
 
       def diff(prev_node)
@@ -859,11 +859,11 @@ module TypeProf
 
       attr_reader :var
 
-      def run0(genv)
+      def install0(genv)
         @lenv.get_var(@var) || raise
       end
 
-      def destroy0(genv)
+      def uninstall0(genv)
       end
 
       def diff(prev_node)
@@ -894,15 +894,15 @@ module TypeProf
 
       attr_reader :var, :rhs
 
-      def run0(genv)
-        tyvar = @rhs.run(genv)
+      def install0(genv)
+        tyvar = @rhs.install(genv)
         @vtx = @lenv.def_var(@var, self)
         tyvar.add_edge(genv, @vtx)
         tyvar
       end
 
-      def destroy0(genv)
-        @rhs.destroy(genv)
+      def uninstall0(genv)
+        @rhs.uninstall(genv)
       end
 
       def diff(prev_node)

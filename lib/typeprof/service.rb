@@ -61,12 +61,12 @@ module TypeProf
       node.diff(@text_nodes[path]) if prev_node
       @text_nodes[path] = node
 
-      node.run(@genv)
+      node.install(@genv)
 
       @genv.run_all
 
       if prev_node
-        prev_node.destroy(@genv)
+        prev_node.uninstall(@genv)
         @genv.run_all
       end
     end
