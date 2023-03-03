@@ -106,8 +106,9 @@ module TypeProf
 
     def destroy(genv)
       @destroyed = true
-      uninstall(genv, @edges)
-      @edges.clear
+      @edges.each do |src, dst|
+        src.remove_edge(genv, dst)
+      end
     end
 
     def on_type_added(genv, src_tyvar, added_types)
@@ -121,21 +122,18 @@ module TypeProf
     def run(genv)
       return if @destroyed
       new_edges = run0(genv)
-      install(genv, new_edges - @edges)
-      uninstall(genv, @edges - new_edges)
+
+      # install
+      new_edges.each do |src, dst|
+        src.add_edge(genv, dst) unless @edges.include?([src, dst])
+      end
+
+      # uninstall
+      @edges.each do |src, dst|
+        src.remove_edge(genv, dst) unless new_edges.include?([src, dst])
+      end
+
       @edges = new_edges
-    end
-
-    def install(genv, edges)
-      edges.each do |src, dst|
-        src.add_edge(genv, dst)
-      end
-    end
-
-    def uninstall(genv, edges)
-      edges.each do |src, dst|
-        src.remove_edge(genv, dst)
-      end
     end
 
     @@new_id = 0
