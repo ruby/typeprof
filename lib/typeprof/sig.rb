@@ -18,24 +18,24 @@ module TypeProf
           end
           genv.add_module(cpath, decl)
           genv.set_superclass(cpath, superclass_cpath)
-          imm = Source.new(Type::Class.new(cpath))
-          const_tyvar = genv.add_const(cpath[0..-2], cpath[-1], decl)
-          imm.add_edge(genv, const_tyvar)
+          ty = Type::Class.new(cpath)
+          cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
+          genv.add_const_decl(cdecl)
           members(genv, cpath, decl.members)
         when RBS::AST::Declarations::Module
           name = decl.name
           cpath = name.namespace.path + [name.name]
           genv.add_module(cpath, decl)
-          const_tyvar = genv.add_const(cpath[0..-2], cpath[-1], decl)
-          imm = Source.new(Type::Module.new(cpath))
-          imm.add_edge(genv, const_tyvar)
+          ty = Type::Module.new(cpath)
+          cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
+          genv.add_const_decl(cdecl)
           members(genv, cpath, decl.members)
         when RBS::AST::Declarations::Constant
           name = decl.name
           cpath = name.namespace.path + [name.name]
-          imm = Source.new(Type::RBS.new(decl.type))
-          const_tyvar = genv.add_const(name.namespace.path, name.name, decl)
-          imm.add_edge(genv, const_tyvar)
+          ty = Type::RBS.new(decl.type)
+          cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
+          genv.add_const_decl(cdecl)
         when RBS::AST::Declarations::AliasDecl
         when RBS::AST::Declarations::TypeAlias
           # TODO: check

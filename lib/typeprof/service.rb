@@ -51,7 +51,7 @@ module TypeProf
 
     def update_file(path, code)
       prev_node = @text_nodes[path]
-      version = prev_node ? prev_node.lenv.text_id.version : 0
+      version = prev_node ? prev_node.lenv.text_id.version + 1 : 0
 
       text_id = TextId.new(path, version)
       cref = CRef.new([], false, nil)

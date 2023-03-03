@@ -129,6 +129,8 @@ class C
 end
       END
 
+      #serv.dump_graph("test0.rb")
+
       assert_equal(
         ["def foo: (untyped) -> singleton(C)"],
         serv.get_method_sig([:C], false, :foo),
@@ -144,6 +146,7 @@ class C
   end
 end
       END
+      #serv.dump_graph("test0.rb")
 
       assert_equal(
         ["def foo: (untyped) -> singleton(C::C)"],
@@ -160,6 +163,8 @@ class C
   end
 end
       END
+
+      #serv.dump_graph("test0.rb")
 
       assert_equal(
         ["def foo: (untyped) -> singleton(C)"],

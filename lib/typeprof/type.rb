@@ -159,6 +159,27 @@ module TypeProf
     alias inspect to_s
   end
 
+  class ConstDecl
+    def initialize(cpath, cname, type)
+      @cpath = cpath
+      @cname = cname
+      @type = type
+    end
+
+    attr_reader :cpath, :cname, :type
+  end
+
+  class ConstDef
+    def initialize(cpath, cname, node, val)
+      @cpath = cpath
+      @cname = cname
+      @node = node
+      @val = val
+    end
+
+    attr_reader :cpath, :cname, :node, :val
+  end
+
   class MethodDecl
     def initialize(cpath, singleton, mid, rbs_member)
       @cpath = cpath
@@ -229,8 +250,8 @@ module TypeProf
       @ret = Vertex.new("ret:#{ mid }", node)
       @error = false
       @edges = {}
-      recv.add_edge(genv, self)
-      args.add_edge(genv, self)
+      @recv.add_edge(genv, self)
+      @args.add_edge(genv, self)
     end
 
     attr_reader :node, :recv, :mid, :args, :ret
@@ -304,26 +325,63 @@ module TypeProf
   end
 
   class ReadSite
-    def initialize(node, cref, cname)
+    def initialize(genv, node, cref, cbase, cname)
       @node = node
       @cref = cref
+      @cbase = cbase
       @cname = cname
       @ret = Vertex.new("cname:#{ cname }", node)
+      @cbase.add_edge(genv, self) if @cbase
       @edges = {}
     end
 
-    attr_reader :node, :cref, :cname, :ret
+    def on_type_added(genv, src_tyvar, added_types)
+      genv.add_run(self)
+    end
+
+    def on_type_removed(genv, src_tyvar, removed_types)
+      genv.add_run(self)
+    end
+
+    attr_reader :node, :cref, :cbase, :cname, :ret
 
     def run(genv)
       destroy(genv)
 
-      cref = @cref
-      while cref
-        e = genv.get_const(cref.cpath, @cname)
-        break if e && !e.defs.empty? # TODO: decls
-        cref = cref.outer
+      if @cbase
+        @edges = []
+        @cbase.types.each do |ty, source|
+          case ty
+          when Type::Class
+            e = genv.get_const(ty.cpath, @cname)
+            if e && !e.defs.empty?
+              @edges << [e.val, @ret]
+            end
+          else
+            puts "???"
+          end
+        end
+      else
+        cref = @cref
+        edges = []
+        while cref
+          cds = genv.resolve_const(cref.cpath, @cname)
+          if cds && !cds.empty?
+            cds.each do |cd|
+              case cd
+              when ConstDecl
+                # TODO
+                raise
+              when ConstDef
+                edges << [cd.val, @ret]
+              end
+            end
+            break
+          end
+          cref = cref.outer
+        end
+        @edges = edges
       end
-      @edges = [[e.val, @ret]]
 
       @edges.each do |src_tyvar, dest_tyvar|
         src_tyvar.add_edge(genv, dest_tyvar)

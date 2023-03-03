@@ -19,24 +19,13 @@ module TypeProf
     attr_reader :consts, :singleton_methods, :instance_methods
   end
 
-  class MethodEntity
+  class Entity
     def initialize
       @decls = Set.new
       @defs = Set.new
     end
 
     attr_reader :decls, :defs
-  end
-
-  class ConstEntity
-    def initialize
-      @decls = Set.new
-      @defs = Set.new
-      @val = nil
-    end
-
-    attr_reader :decls, :defs
-    attr_accessor :val
   end
 
   class GlobalEnv
@@ -95,28 +84,22 @@ module TypeProf
       node.superclass_cpath = superclass_cpath
     end
 
-    def add_const(cpath, cname, const_def)
+    def get_const_entity(cpath, cname)
       node = resolve_cpath(cpath)
-      e = node.consts[cname] ||= ConstEntity.new
-      e.val ||= Vertex.new("(const: #{ cname })", const_def)
-      e.defs << const_def
-
-      readsites = @readsites_by_name[cname]
-      if readsites
-        readsites.each do |readsite|
-          add_run(readsite)
-        end
-      end
-
-      e.val
+      node.consts[cname] ||= Entity.new
     end
 
-    def remove_const(cpath, cname, const_def)
-      node = resolve_cpath(cpath)
-      e = node.consts[cname]
-      e.defs.delete(const_def)
+    def add_const_decl(mdecl)
+      e = get_const_entity(mdecl.cpath, mdecl.cname)
+      e.decls << mdecl
+    end
 
-      readsites = @readsites_by_name[cname]
+    def add_const_def(cdef)
+      #p [:add, cdef.cpath, cdef.cname, cdef.node.is_a?(AST::CLASS) && cdef.node.lenv.text_id]
+      e = get_const_entity(cdef.cpath, cdef.cname)
+      e.defs << cdef
+
+      readsites = @readsites_by_name[cdef.cname]
       if readsites
         readsites.each do |readsite|
           add_run(readsite)
@@ -124,21 +107,47 @@ module TypeProf
       end
     end
 
-    def get_const(cpath, cname)
-      node = resolve_cpath(cpath)
-      node.consts[cname]
+    def remove_const_def(cdef)
+      #p [:remove, cdef.cpath, cdef.cname, cdef.node.is_a?(AST::CLASS) && cdef.node.lenv.text_id]
+      node = resolve_cpath(cdef.cpath)
+      node.consts[cdef.cname].defs.delete(cdef)
+
+      readsites = @readsites_by_name[cdef.cname]
+      if readsites
+        readsites.each do |readsite|
+          add_run(readsite)
+        end
+      end
+    end
+
+    def resolve_const(cpath, cname)
+      while cpath
+        node = resolve_cpath(cpath)
+        e = node.consts[cname]
+        if e
+          return e.decls unless e.decls.empty?
+          return e.defs unless e.defs.empty?
+        end
+        if cpath == [:BasicObject]
+          return nil
+        else
+          cpath = node.superclass_cpath
+        end
+      end
     end
 
     def get_method_entity(cpath, singleton, mid)
       node = resolve_cpath(cpath)
       methods = singleton ? node.singleton_methods : node.instance_methods
-      methods[mid] ||= MethodEntity.new
+      methods[mid] ||= Entity.new
     end
 
     def add_method_decl(mdecl)
       e = get_method_entity(mdecl.cpath, mdecl.singleton, mdecl.mid)
       e.decls << mdecl
     end
+
+    # TODO: remove_method_decl
 
     def add_method_def(mdef)
       e = get_method_entity(mdef.cpath, mdef.singleton, mdef.mid)
@@ -189,20 +198,24 @@ module TypeProf
       end
     end
 
+    def add_readsite(readsite)
+      #p [:add1, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
+      (@readsites_by_name[readsite.cname] ||= Set.new) << readsite
+      #p [:add2, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
+    end
+
+    def remove_readsite(readsite)
+      #p [:remove1, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
+      @readsites_by_name[readsite.cname].delete(readsite)
+      #p [:remove2, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
+    end
+
     def add_callsite(callsite)
       (@callsites_by_name[callsite.mid] ||= Set.new) << callsite
     end
 
     def remove_callsite(callsite)
-      @callsites_by_name.delete(callsite.mid)
-    end
-
-    def add_readsite(readsite)
-      (@readsites_by_name[readsite.cname] ||= Set.new) << readsite
-    end
-
-    def remove_readsite(readsite)
-      @readsites_by_name.delete(readsite.cname)
+      @callsites_by_name[callsite.mid].delete(callsite)
     end
   end
 end

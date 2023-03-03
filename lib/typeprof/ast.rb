@@ -17,6 +17,8 @@ module TypeProf
         CLASS.new(raw_node, lenv)
       when :CONST
         CONST.new(raw_node, lenv)
+      when :COLON2
+        COLON2.new(raw_node, lenv)
       when :CDECL
         CDECL.new(raw_node, lenv)
       when :DEFN
@@ -46,7 +48,6 @@ module TypeProf
     end
 
     def self.parse_cpath(raw_node, base_cpath)
-      # TODO: これは NODE の構造を覚えておくべき？
       names = []
       while raw_node
         case raw_node.type
@@ -62,7 +63,7 @@ module TypeProf
           names << name
           return names.reverse
         else
-          raise "not supported"
+          return nil
         end
       end
       return base_cpath + names.reverse
@@ -257,18 +258,22 @@ module TypeProf
       def initialize(raw_node, lenv, raw_cpath, raw_scope)
         super(raw_node, lenv)
 
-        @cpath = AST.parse_cpath(raw_cpath, lenv.cref.cpath)
+        @cpath = AST.create_node(raw_cpath, lenv)
+        @static_cpath = AST.parse_cpath(raw_cpath, lenv.cref.cpath)
 
-        ncref = CRef.new(@cpath, true, lenv.cref)
+        ncref = CRef.new(@static_cpath, true, lenv.cref)
         nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
 
         @body = SCOPE.new(raw_scope, nlenv)
       end
 
-      attr_reader :name, :cpath, :superclass_cpath, :body
+      attr_reader :name, :cpath, :static_cpath, :superclass_cpath, :static_superclass_cpath, :body
 
       def diff(prev_node)
-        if prev_node.is_a?(CLASS) && @cpath == prev_node.cpath && @superclass_cpath == prev_node.superclass_cpath
+        if prev_node.is_a?(CLASS) &&
+          @static_cpath && @static_cpath == prev_node.static_cpath &&
+          @static_superclass_cpath == prev_node.static_superclass_cpath
+
           @body.diff(prev_node.body)
           @prev_node = prev_node if @body.prev_node
         end
@@ -282,6 +287,7 @@ module TypeProf
       end
 
       def run0(genv)
+        @cpath_node.run(genv)
         genv.add_module(@cpath)
         @body.run(genv)
       end
@@ -308,26 +314,41 @@ module TypeProf
       end
 
       def run0(genv)
-        genv.add_module(@cpath, self)
-        genv.set_superclass(@cpath, @superclass_cpath)
-        const_tyvar = genv.add_const(@cpath[0..-2], @cpath[-1], self)
-        @tyval = Source.new(Type::Class.new(@cpath))
-        @tyval.add_edge(genv, const_tyvar)
-        @body.run(genv)
+        @cpath.run(genv)
+        if @static_cpath
+          genv.add_module(@static_cpath, self)
+          genv.set_superclass(@static_cpath, @superclass_cpath)
+
+          val = Source.new(Type::Class.new(@static_cpath))
+          @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
+          genv.add_const_def(@cdef)
+
+          @body.run(genv)
+        else
+          # TODO: show error
+        end
       end
 
       def destroy0(genv)
-        @body.destroy(genv)
-        genv.set_superclass(@cpath, nil)
-        genv.remove_module(@cpath, self)
-        # TODO: add_const???
-        const_tyvar = genv.add_const(@cpath[0..-2], @cpath[-1], self)
-        @tyval.remove_edge(genv, const_tyvar)
-        genv.remove_const(@cpath[0..-2], @cpath[-1], self)
+        if @static_cpath
+          @body.destroy(genv)
+
+          genv.remove_const_def(@cdef)
+
+          genv.set_superclass(@static_cpath, nil)
+          genv.remove_module(@static_cpath, self)
+        end
+        @cpath.destroy(genv)
       end
 
       def dump0(dumper)
-        "class #{ @cpath.join("::") } < #{ @superclass_cpath.join("::") }\n" + @body.dump(dumper).gsub(/^/, "  ") + "\nend"
+        s = "class #{ @cpath.dump(dumper) } < #{ @superclass_cpath.join("::") }\n"
+        if @static_cpath
+          s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
+        else
+          s << "<analysis ommitted>\n"
+        end
+        s << "end"
       end
     end
 
@@ -342,7 +363,47 @@ module TypeProf
       def run0(genv)
         # TODO: ConstReadSite to refresh
         cref = @lenv.cref
-        @readsite = ReadSite.new(self, cref, @cname)
+        @readsite = ReadSite.new(genv, self, cref, nil, @cname)
+        genv.add_readsite(@readsite)
+        genv.add_run(@readsite) # needed...?
+        @readsite.ret
+      end
+
+      def destroy0(genv)
+        @readsite.destroy(genv)
+        genv.remove_readsite(@readsite)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(CONST) && @cname == prev_node.cname
+          @prev_node = prev_node
+        end
+      end
+
+      def reuse0
+        @readsite = @prev_node.readsite
+      end
+
+      def dump0(dumper)
+        dumper << @readsite
+        dumper << @readsite.ret
+        "#{ @cname }\e[32m:#{ @readsite }\e[m"
+      end
+    end
+
+    class COLON2 < Node
+      def initialize(raw_node, lenv)
+        super
+        cbase_raw, @cname = raw_node.children
+        @cbase = cbase_raw ? AST.create_node(cbase_raw, lenv) : nil
+      end
+
+      attr_reader :cname, :readsite
+
+      def run0(genv)
+        # TODO: ConstReadSite to refresh
+        cbase = @cbase ? @cbase.run(genv) : nil
+        @readsite = ReadSite.new(genv, self, @lenv.cref, cbase, @cname)
         genv.add_readsite(@readsite)
         genv.add_run(@readsite) # needed...?
         @readsite.ret
@@ -529,7 +590,7 @@ module TypeProf
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(CALL) && @op == prev_node.op
+        if prev_node.is_a?(CALL) && @mid == prev_node.mid
           @recv.diff(prev_node.recv)
           @a_args.diff(prev_node.a_args)
           @prev_node = prev_node if @recv.prev_node && @a_args.prev_node
@@ -862,7 +923,7 @@ module TypeProf
       @tbl = {} # variable table
       @outer = outer
       # XXX
-      @self = Source.new(Type::Instance.new(@cref.cpath))
+      @self = Source.new(Type::Instance.new(@cref.cpath || [:Object]))
     end
 
     attr_reader :text_id, :cref, :outer
