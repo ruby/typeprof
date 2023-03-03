@@ -1,5 +1,5 @@
 module TypeProf
-  class ModuleNode
+  class ModuleDirectory
     def initialize
       @module_defs = Set.new
       @child_modules = {}
@@ -16,7 +16,11 @@ module TypeProf
 
     attr_reader :module_defs, :child_modules
     attr_accessor :superclass_cpath
-    attr_reader :consts, :singleton_methods, :instance_methods
+    attr_reader :consts
+
+    def methods(singleton)
+      singleton ? @singleton_methods : @instance_methods
+    end
   end
 
   class Entity
@@ -28,12 +32,93 @@ module TypeProf
     attr_reader :decls, :defs
   end
 
+  class ConstDecl
+    def initialize(cpath, cname, type)
+      @cpath = cpath
+      @cname = cname
+      @type = type
+    end
+
+    attr_reader :cpath, :cname, :type
+  end
+
+  class ConstDef
+    def initialize(cpath, cname, node, val)
+      @cpath = cpath
+      @cname = cname
+      @node = node
+      @val = val
+    end
+
+    attr_reader :cpath, :cname, :node, :val
+  end
+
+  class MethodDecl
+    def initialize(cpath, singleton, mid, rbs_member)
+      @cpath = cpath
+      @singleton = singleton
+      @mid = mid
+      @rbs_member = rbs_member
+      @builtin = nil
+    end
+
+    attr_reader :cpath, :singleton, :mid, :rbs_member, :builtin
+
+    def resolve_overloads(genv, a_arg) # TODO: only one argument is supported!
+      if @builtin
+        return @builtin[genv, a_arg]
+      end
+      ret_types = []
+      @rbs_member.overloads.each do |overload|
+        func = overload.method_type.type
+        # func.optional_keywords
+        # func.optional_positionals
+        # func.required_keywords
+        # func.rest_keywords
+        # func.rest_positionals
+        # func.trailing_positionals
+        # TODO: only one argument!
+        f_arg = func.required_positionals.first
+        f_arg = Signatures.type(genv, f_arg.type)
+        if a_arg.types.key?(f_arg) # TODO: type consistency
+          ret_types << Signatures.type(genv, func.return_type)
+        end
+      end
+      ret_types
+    end
+
+    def set_builtin(&blk)
+      @builtin = blk
+    end
+
+    def inspect
+      "#<MethodDecl ...>"
+    end
+  end
+
+  class MethodDef
+    def initialize(cpath, singleton, mid, node, arg, ret)
+      @cpath = cpath
+      @singleton = singleton
+      @mid = mid
+      @node = node
+      @arg = arg
+      @ret = ret
+    end
+
+    attr_reader :cpath, :singleton, :mid, :node, :arg, :ret
+
+    def show
+      "(#{ arg.show }) -> #{ ret.show }"
+    end
+  end
+
   class GlobalEnv
     def initialize
       @run_queue = []
       @run_queue_set = Set.new
 
-      @toplevel = ModuleNode.new
+      @toplevel = ModuleDirectory.new
 
       loader = RBS::EnvironmentLoader.new
       @rbs_env = RBS::Environment.from_loader(loader).resolve_type_names
@@ -61,32 +146,32 @@ module TypeProf
     end
 
     def resolve_cpath(cpath)
-      node = @toplevel
+      dir = @toplevel
       cpath.each do |cname|
-        node = node.child_modules[cname] ||= ModuleNode.new
+        dir = dir.child_modules[cname] ||= ModuleDirectory.new
       end
-      node
+      dir
     end
 
     def add_module(cpath, mod_def)
-      node = resolve_cpath(cpath)
-      node.module_defs << mod_def
-      node
+      dir = resolve_cpath(cpath)
+      dir.module_defs << mod_def
+      dir
     end
 
     def remove_module(cpath, mod_def)
-      node = resolve_cpath(cpath)
-      node.module_defs.delete(mod_def)
+      dir = resolve_cpath(cpath)
+      dir.module_defs.delete(mod_def)
     end
 
     def set_superclass(cpath, superclass_cpath)
-      node = resolve_cpath(cpath)
-      node.superclass_cpath = superclass_cpath
+      dir = resolve_cpath(cpath)
+      dir.superclass_cpath = superclass_cpath
     end
 
     def get_const_entity(cpath, cname)
-      node = resolve_cpath(cpath)
-      node.consts[cname] ||= Entity.new
+      dir = resolve_cpath(cpath)
+      dir.consts[cname] ||= Entity.new
     end
 
     def add_const_decl(mdecl)
@@ -109,8 +194,8 @@ module TypeProf
 
     def remove_const_def(cdef)
       #p [:remove, cdef.cpath, cdef.cname, cdef.node.is_a?(AST::CLASS) && cdef.node.lenv.text_id]
-      node = resolve_cpath(cdef.cpath)
-      node.consts[cdef.cname].defs.delete(cdef)
+      dir = resolve_cpath(cdef.cpath)
+      dir.consts[cdef.cname].defs.delete(cdef)
 
       readsites = @readsites_by_name[cdef.cname]
       if readsites
@@ -122,8 +207,8 @@ module TypeProf
 
     def resolve_const(cpath, cname)
       while cpath
-        node = resolve_cpath(cpath)
-        e = node.consts[cname]
+        dir = resolve_cpath(cpath)
+        e = dir.consts[cname]
         if e
           return e.decls unless e.decls.empty?
           return e.defs unless e.defs.empty?
@@ -131,15 +216,14 @@ module TypeProf
         if cpath == [:BasicObject]
           return nil
         else
-          cpath = node.superclass_cpath
+          cpath = dir.superclass_cpath
         end
       end
     end
 
     def get_method_entity(cpath, singleton, mid)
-      node = resolve_cpath(cpath)
-      methods = singleton ? node.singleton_methods : node.instance_methods
-      methods[mid] ||= Entity.new
+      dir = resolve_cpath(cpath)
+      dir.methods(singleton)[mid] ||= Entity.new
     end
 
     def add_method_decl(mdecl)
@@ -153,7 +237,6 @@ module TypeProf
       e = get_method_entity(mdef.cpath, mdef.singleton, mdef.mid)
       e.defs << mdef
 
-      # メソッドが定義されたので再解析
       # TODO: クラス階層上、再解析が必要なところだけにする
       callsites = @callsites_by_name[mdef.mid]
       if callsites
@@ -164,9 +247,8 @@ module TypeProf
     end
 
     def remove_method_def(mdef)
-      node = resolve_cpath(mdef.cpath)
-      methods = mdef.singleton ? node.singleton_methods : node.instance_methods
-      methods[mdef.mid].defs.delete(mdef)
+      dir = resolve_cpath(mdef.cpath)
+      dir.methods(mdef.singleton)[mdef.mid].defs.delete(mdef)
 
       callsites = @callsites_by_name[mdef.mid]
       if callsites
@@ -178,9 +260,8 @@ module TypeProf
 
     def resolve_method(cpath, singleton, mid)
       while true
-        node = resolve_cpath(cpath)
-        methods = singleton ? node.singleton_methods : node.instance_methods
-        e = methods[mid]
+        dir = resolve_cpath(cpath)
+        e = dir.methods(singleton)[mid]
         if e
           return e.decls unless e.decls.empty?
           return e.defs unless e.defs.empty?
@@ -193,7 +274,7 @@ module TypeProf
             return nil
           end
         else
-          cpath = node.superclass_cpath
+          cpath = dir.superclass_cpath
         end
       end
     end
