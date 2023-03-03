@@ -249,7 +249,7 @@ module TypeProf
       @args = args
       @ret = Vertex.new("ret:#{ mid }", node)
       @error = false
-      @edges = {}
+      @edges = Set.new
       @recv.add_edge(genv, self)
       @args.add_edge(genv, self)
     end
@@ -272,30 +272,30 @@ module TypeProf
           case md
           when MethodDecl
             if md.builtin
-              @edges[md] = md.builtin[ty, @mid, @args, @ret]
+              md.builtin[ty, @mid, @args, @ret].each do |src, dest|
+                @edges << [src, dest]
+              end
             else
               ret_types = md.resolve_overloads(genv, @args)
               # TODO: handle Type::Union
-              @edges[md] = ret_types.map {|ty| [Source.new(ty), @ret] }
+              ret_types.each do |ty|
+                @edges << [Source.new(ty), @ret]
+              end
             end
           when MethodDef
-            @edges[md] = [[@args, md.arg], [md.ret, @ret]]
+            @edges << [@args, md.arg] << [md.ret, @ret]
           end
         end
       end
 
-      @edges.each do |mdef, rel|
-        rel.each do |src_tyvar, dest_tyvar|
-          src_tyvar.add_edge(genv, dest_tyvar)
-        end
+      @edges.each do |src_tyvar, dest_tyvar|
+        src_tyvar.add_edge(genv, dest_tyvar)
       end
     end
 
     def destroy(genv)
-      @edges.each do |mdef, rel|
-        rel.each do |src_tyvar, dest_tyvar|
-          src_tyvar.remove_edge(genv, dest_tyvar)
-        end
+      @edges.each do |src_tyvar, dest_tyvar|
+        src_tyvar.remove_edge(genv, dest_tyvar)
       end
       @edges.clear
     end
@@ -332,7 +332,7 @@ module TypeProf
       @cname = cname
       @ret = Vertex.new("cname:#{ cname }", node)
       @cbase.add_edge(genv, self) if @cbase
-      @edges = {}
+      @edges = Set.new
     end
 
     def on_type_added(genv, src_tyvar, added_types)
@@ -348,39 +348,16 @@ module TypeProf
     def run(genv)
       destroy(genv)
 
-      if @cbase
-        @edges = []
-        @cbase.types.each do |ty, source|
-          case ty
-          when Type::Class
-            e = genv.get_const(ty.cpath, @cname)
-            if e && !e.defs.empty?
-              @edges << [e.val, @ret]
-            end
-          else
-            puts "???"
+      resolve(genv).each do |cds|
+        cds.each do |cd|
+          case cd
+          when ConstDecl
+            # TODO
+            raise
+          when ConstDef
+            @edges << [cd.val, @ret]
           end
         end
-      else
-        cref = @cref
-        edges = []
-        while cref
-          cds = genv.resolve_const(cref.cpath, @cname)
-          if cds && !cds.empty?
-            cds.each do |cd|
-              case cd
-              when ConstDecl
-                # TODO
-                raise
-              when ConstDef
-                edges << [cd.val, @ret]
-              end
-            end
-            break
-          end
-          cref = cref.outer
-        end
-        @edges = edges
       end
 
       @edges.each do |src_tyvar, dest_tyvar|
@@ -393,6 +370,32 @@ module TypeProf
         src_tyvar.remove_edge(genv, dest_tyvar)
       end
       @edges.clear
+    end
+
+    def resolve(genv)
+      ret = []
+      if @cbase
+        @cbase.types.each do |ty, source|
+          case ty
+          when Type::Class
+            cds = genv.resolve_const(ty.cpath, @cname)
+            ret << cds if cds
+          else
+            puts "???"
+          end
+        end
+      else
+        cref = @cref
+        while cref
+          cds = genv.resolve_const(cref.cpath, @cname)
+          if cds && !cds.empty?
+            ret << cds
+            break
+          end
+          cref = cref.outer
+        end
+      end
+      ret
     end
 
     @@new_id = 0

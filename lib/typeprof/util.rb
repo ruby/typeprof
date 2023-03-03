@@ -21,6 +21,7 @@ module TypeProf
 
     def <<(elem)
       @hash[elem] = true
+      self
     end
 
     def include?(elem)
