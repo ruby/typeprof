@@ -140,7 +140,7 @@ module TypeProf
       def initialize(raw_node, lenv)
         raise if raw_node.type != :SCOPE
         super
-        @tbl, raw_args, raw_body = p(raw_node.children)
+        @tbl, raw_args, raw_body = raw_node.children
 
         @tbl.each do |v|
           lenv.allocate_var(v)

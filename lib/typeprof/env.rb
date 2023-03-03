@@ -180,29 +180,17 @@ module TypeProf
     end
 
     def add_const_def(cdef)
-      #p [:add, cdef.cpath, cdef.cname, cdef.node.is_a?(AST::CLASS) && cdef.node.lenv.text_id]
       e = get_const_entity(cdef.cpath, cdef.cname)
       e.defs << cdef
 
-      readsites = @readsites_by_name[cdef.cname]
-      if readsites
-        readsites.each do |readsite|
-          add_run(readsite)
-        end
-      end
+      run_readsite(cdef.cname)
     end
 
     def remove_const_def(cdef)
-      #p [:remove, cdef.cpath, cdef.cname, cdef.node.is_a?(AST::CLASS) && cdef.node.lenv.text_id]
       dir = resolve_cpath(cdef.cpath)
       dir.consts[cdef.cname].defs.delete(cdef)
 
-      readsites = @readsites_by_name[cdef.cname]
-      if readsites
-        readsites.each do |readsite|
-          add_run(readsite)
-        end
-      end
+      run_readsite(cdef.cname)
     end
 
     def resolve_const(cpath, cname)
@@ -234,25 +222,14 @@ module TypeProf
       e = get_method_entity(mdef.cpath, mdef.singleton, mdef.mid)
       e.defs << mdef
 
-      # TODO: クラス階層上、再解析が必要なところだけにする
-      callsites = @callsites_by_name[mdef.mid]
-      if callsites
-        callsites.each do |callsite|
-          add_run(callsite)
-        end
-      end
+      run_callsite(mdef.mid)
     end
 
     def remove_method_def(mdef)
       dir = resolve_cpath(mdef.cpath)
       dir.methods(mdef.singleton)[mdef.mid].defs.delete(mdef)
 
-      callsites = @callsites_by_name[mdef.mid]
-      if callsites
-        callsites.each do |callsite|
-          add_run(callsite)
-        end
-      end
+      run_callsite(mdef.mid)
     end
 
     def resolve_method(cpath, singleton, mid)
@@ -277,16 +254,22 @@ module TypeProf
     end
 
     def add_readsite(readsite)
-      #p [:add1, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
       (@readsites_by_name[readsite.cname] ||= Set[]) << readsite
       add_run(readsite)
-      #p [:add2, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
     end
 
     def remove_readsite(readsite)
-      #p [:remove1, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
       @readsites_by_name[readsite.cname].delete(readsite)
-      #p [:remove2, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
+    end
+
+    def run_callsite(mid)
+      # TODO: クラス階層上、再解析が必要なところだけにする
+      callsites = @callsites_by_name[mid]
+      if callsites
+        callsites.each do |callsite|
+          add_run(callsite)
+        end
+      end
     end
 
     def add_callsite(callsite)
@@ -296,6 +279,15 @@ module TypeProf
 
     def remove_callsite(callsite)
       @callsites_by_name[callsite.mid].delete(callsite)
+    end
+
+    def run_readsite(cname)
+      readsites = @readsites_by_name[cname]
+      if readsites
+        readsites.each do |readsite|
+          add_run(readsite)
+        end
+      end
     end
   end
 end
