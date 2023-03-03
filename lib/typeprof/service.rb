@@ -73,6 +73,27 @@ module TypeProf
       # node.install(@genv)
       # prev_node.uninstall(@genv) if prev_node
       # @genv.run_all
+
+      # invariant validation
+      if prev_node
+        dead_vtxs = Set[]
+        dead_boxes = Set[]
+        prev_node.get_vertexes_and_boxes(dead_vtxs, dead_boxes)
+
+        live_vtxs = Set[]
+        live_boxes = Set[]
+        @text_nodes.each do |path_, node|
+          node.get_vertexes_and_boxes(live_vtxs, live_boxes)
+        end
+
+        if live_vtxs.to_a & dead_vtxs.to_a != []
+          raise
+        end
+
+        if live_boxes.to_a & dead_boxes.to_a != []
+          raise
+        end
+      end
     end
 
     def dump_graph(path)
@@ -80,6 +101,9 @@ module TypeProf
 
       vtxs = Set[]
       puts node.dump(vtxs)
+      vtxs = Set[]
+      boxes = Set[]
+      node.get_vertexes_and_boxes(vtxs, boxes)
       puts "---"
       vtxs.each do |vtx|
         case vtx

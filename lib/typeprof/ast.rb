@@ -188,6 +188,10 @@ module TypeProf
       def dump(dumper) # intentionally not dump0
         @body.dump(dumper)
       end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @body.get_vertexes_and_boxes(vtxs, boxes)
+      end
     end
 
     class BLOCK < Node
@@ -252,6 +256,12 @@ module TypeProf
           stmt.dump(dumper)
         end.join("\n")
       end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @stmts.each do |stmt|
+          stmt.get_vertexes_and_boxes(vtxs, boxes)
+        end
+      end
     end
 
     class ModuleNode < Node
@@ -298,7 +308,18 @@ module TypeProf
       end
 
       def dump0(dumper)
-        "module #{ @cpath.join("::") }\n" + s.gsub(/^/, "  ") + "\nend"
+        s = "module #{ @cpath.join("::") }\n" + s.gsub(/^/, "  ") + "\n"
+        if @static_cpath
+          s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
+        else
+          s << "<analysis ommitted>\n"
+        end
+        s << "end"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @cpath.get_vertexes_and_boxes(vtxs, boxes)
+        @body.get_vertexes_and_boxes(vtxs, boxes)
       end
     end
 
@@ -356,6 +377,12 @@ module TypeProf
         end
         s << "end"
       end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @cpath.get_vertexes_and_boxes(vtxs, boxes)
+        @superclass_cpath.get_vertexes_and_boxes(vtxs, boxes) if @superclass_cpath
+        @body.get_vertexes_and_boxes(vtxs, boxes)
+      end
     end
 
     class CONST < Node
@@ -387,9 +414,12 @@ module TypeProf
       end
 
       def dump0(dumper)
-        dumper << @readsite
-        dumper << @readsite.ret
         "#{ @cname }\e[32m:#{ @readsite }\e[m"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @readsite.ret
+        boxes << @readsite
       end
     end
 
@@ -423,10 +453,14 @@ module TypeProf
       end
 
       def dump0(dumper)
-        dumper << @readsite
-        dumper << @readsite.ret
         s = @cbase ? @cbase.dump(dumper) : ""
         s << "::#{ @cname }\e[32m:#{ @readsite }\e[m"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @readsite.ret
+        boxes << @readsite
+        @cbase.get_vertexes_and_boxes(vtxs, boxes) if @cbase
       end
     end
 
@@ -479,6 +513,11 @@ module TypeProf
         else
           "#{ @static_cpath[0] } = #{ @rhs.dump(dumper) }"
         end
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @cpath.get_vertexes_and_boxes(vtxs, boxes)
+        @rhs.get_vertexes_and_boxes(vtxs, boxes)
       end
     end
 
@@ -536,8 +575,13 @@ module TypeProf
 
       def dump0(dumper)
         vtx = @scope.lenv.get_var(@scope.tbl[0])
-        dumper << vtx
-        "def #{ @mid }(#{ @scope.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n" + @scope.dump(dumper).gsub(/^/, "  ") + "\nend"
+        s = "def #{ @mid }(#{ @scope.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n"
+        s << @scope.dump(dumper).gsub(/^/, "  ") + "\n"
+        s << "end"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @scope.get_vertexes_and_boxes(vtxs, boxes) unless @reused
       end
     end
 
@@ -564,6 +608,9 @@ module TypeProf
       def dump0(dumper)
         "begin; end"
       end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+      end
     end
 
     class CallNode < Node
@@ -578,9 +625,9 @@ module TypeProf
         @callsite.destroy(genv)
       end
 
-      def dump0(dumper)
-        dumper << @callsite
-        dumper << @callsite.ret
+      def get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @callsite.ret
+        boxes << @callsite
       end
     end
 
@@ -631,8 +678,13 @@ module TypeProf
       end
 
       def dump0(dumper)
-        super
         @recv.dump(dumper) + ".#{ @mid.to_s }\e[33m[#{ @callsite }]\e[m(#{ @a_args.dump(dumper) })"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        super
+        @recv.get_vertexes_and_boxes(vtxs, boxes)
+        @a_args.get_vertexes_and_boxes(vtxs, boxes)
       end
     end
 
@@ -693,8 +745,12 @@ module TypeProf
       end
 
       def dump0(dumper)
-        super
         "#{ @mid }\e[33m[#{ @callsite }]\e[m(#{ @a_args.dump(dumper) })"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        super
+        @a_args.get_vertexes_and_boxes(vtxs, boxes)
       end
     end
 
@@ -748,6 +804,12 @@ module TypeProf
         super
         "(#{ @recv.dump(dumper) } #{ @op.to_s }\e[33m[#{ @callsite }]\e[m #{ @a_args.dump(dumper) })"
       end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        super
+        @recv.get_vertexes_and_boxes(vtxs, boxes)
+        @a_args.get_vertexes_and_boxes(vtxs, boxes)
+      end
     end
 
     class A_ARGS < Node
@@ -796,6 +858,12 @@ module TypeProf
 
       def dump(dumper) # HACK: intentionally not dump0 because this node does not simply return a vertex
         @positional_args.map {|n| n.dump(dumper) }.join(", ")
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @positional_args.each do |n|
+          n.get_vertexes_and_boxes(vtxs, boxes)
+        end
       end
     end
 
@@ -860,6 +928,9 @@ module TypeProf
       def dump0(dumper)
         @lit.inspect
       end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+      end
     end
 
     class LVAR < Node
@@ -894,6 +965,9 @@ module TypeProf
       def dump0(dumper)
         "#{ @var }"
       end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+      end
     end
 
     class LASGN < Node
@@ -907,10 +981,10 @@ module TypeProf
       attr_reader :var, :rhs
 
       def install0(genv)
-        tyvar = @rhs.install(genv)
+        val = @rhs.install(genv)
         @vtx = @lenv.def_var(@var, self)
-        tyvar.add_edge(genv, @vtx)
-        tyvar
+        val.add_edge(genv, @vtx)
+        val
       end
 
       def uninstall0(genv)
@@ -932,8 +1006,11 @@ module TypeProf
       end
 
       def dump0(dumper)
-        dumper << @vtx
-        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper )}"
+        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @vtx
       end
     end
   end

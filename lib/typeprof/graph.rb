@@ -259,7 +259,6 @@ module TypeProf
     def resolve(genv)
       ret = []
       @recv.types.each do |ty, source|
-        # TODO: resolve ty#mid
         # assume ty is a Type::Instnace or Type::Class
         mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Class), @mid)
         ret << [ty, mds] if mds
