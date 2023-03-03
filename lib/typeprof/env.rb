@@ -213,11 +213,8 @@ module TypeProf
           return e.decls unless e.decls.empty?
           return e.defs unless e.defs.empty?
         end
-        if cpath == [:BasicObject]
-          return nil
-        else
-          cpath = dir.superclass_cpath
-        end
+        cpath = dir.superclass_cpath
+        break if cpath == [:Object]
       end
     end
 

@@ -306,18 +306,21 @@ module TypeProf
       def initialize(raw_node, lenv)
         raw_cpath, raw_superclass, raw_scope = raw_node.children
         if raw_superclass
-          raise NotImplementedError
+          @superclass_cpath = AST.create_node(raw_superclass, lenv)
+          @static_superclass_cpath = AST.parse_cpath(raw_superclass, lenv.cref.cpath)
         else
-          @superclass_cpath = [:Object]
+          @superclass_cpath = nil
+          @static_superclass_cpath = [:Object]
         end
         super(raw_node, lenv, raw_cpath, raw_scope)
       end
 
       def install0(genv)
         @cpath.install(genv)
-        if @static_cpath
+        @superclass_cpath.install(genv) if @superclass_cpath
+        if @static_cpath && @static_superclass_cpath
           genv.add_module(@static_cpath, self)
-          genv.set_superclass(@static_cpath, @superclass_cpath)
+          genv.set_superclass(@static_cpath, @static_superclass_cpath)
 
           val = Source.new(Type::Class.new(@static_cpath))
           @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
@@ -339,10 +342,13 @@ module TypeProf
           genv.remove_module(@static_cpath, self)
         end
         @cpath.uninstall(genv)
+        @superclass_cpath.uninstall(genv) if @superclass_cpath
       end
 
       def dump0(dumper)
-        s = "class #{ @cpath.dump(dumper) } < #{ @superclass_cpath.join("::") }\n"
+        s = "class #{ @cpath.dump(dumper) }"
+        s << " < #{ @superclass_cpath.dump(dumper) }" if @superclass_cpath
+        s << "\n"
         if @static_cpath
           s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         else
@@ -419,7 +425,8 @@ module TypeProf
       def dump0(dumper)
         dumper << @readsite
         dumper << @readsite.ret
-        "#{ @cname }\e[32m:#{ @readsite }\e[m"
+        s = @cbase ? @cbase.dump(dumper) : ""
+        s << "::#{ @cname }\e[32m:#{ @readsite }\e[m"
       end
     end
 
@@ -430,7 +437,7 @@ module TypeProf
         if children.size == 2
           # C = expr
           @cpath = nil
-          @static_cpath = [children[0]]
+          @static_cpath = lenv.cref.cpath + [children[0]]
           raw_rhs = children[1]
         else # children.size == 3
           # expr::C = expr
@@ -444,6 +451,7 @@ module TypeProf
       attr_reader :name, :cpath, :static_cpath, :rhs
 
       def install0(genv)
+        @cpath.install(genv) if @cpath
         val = @rhs.install(genv)
         if @static_cpath
           @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
@@ -452,9 +460,8 @@ module TypeProf
       end
 
       def uninstall0(genv)
-        if @static_cpath
-          genv.remove_const_def(@cdef)
-        end
+        genv.remove_const_def(@cdef) if @static_cpath
+        @cpath.uninstall(genv) if @cpath
         @rhs.uninstall(genv)
       end
 
@@ -463,6 +470,14 @@ module TypeProf
           @static_cpath && @static_cpath == prev_node.static_cpath
           @rhs.diff(prev_node.rhs)
           @prev_node = prev_node if @rhs.prev_node
+        end
+      end
+
+      def dump0(dumper)
+        if @cpath
+          "#{ @cpath.dump(dumper) } = #{ @rhs.dump(dumper) }"
+        else
+          "#{ @static_cpath[0] } = #{ @rhs.dump(dumper) }"
         end
       end
     end

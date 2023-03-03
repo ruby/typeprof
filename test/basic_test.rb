@@ -63,5 +63,27 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_const
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+class C
+  X = 1
+end
+
+class D < C
+end
+
+def foo(_)
+  D::X
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end
