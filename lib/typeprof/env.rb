@@ -1,7 +1,7 @@
 module TypeProf
   class ModuleDirectory
     def initialize
-      @module_defs = Set.new
+      @module_defs = Set[]
       @child_modules = {}
       @superclass_cpath = nil
 
@@ -25,8 +25,8 @@ module TypeProf
 
   class Entity
     def initialize
-      @decls = Set.new
-      @defs = Set.new
+      @decls = Set[]
+      @defs = Set[]
     end
 
     attr_reader :decls, :defs
@@ -116,7 +116,7 @@ module TypeProf
   class GlobalEnv
     def initialize
       @run_queue = []
-      @run_queue_set = Set.new
+      @run_queue_set = Set[]
 
       @toplevel = ModuleDirectory.new
 
@@ -281,7 +281,8 @@ module TypeProf
 
     def add_readsite(readsite)
       #p [:add1, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
-      (@readsites_by_name[readsite.cname] ||= Set.new) << readsite
+      (@readsites_by_name[readsite.cname] ||= Set[]) << readsite
+      add_run(readsite)
       #p [:add2, readsite, readsite.cname, @readsites_by_name[readsite.cname]&.size]
     end
 
@@ -292,7 +293,8 @@ module TypeProf
     end
 
     def add_callsite(callsite)
-      (@callsites_by_name[callsite.mid] ||= Set.new) << callsite
+      (@callsites_by_name[callsite.mid] ||= Set[]) << callsite
+      add_run(callsite)
     end
 
     def remove_callsite(callsite)

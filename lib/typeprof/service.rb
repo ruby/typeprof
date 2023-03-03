@@ -62,19 +62,23 @@ module TypeProf
       @text_nodes[path] = node
 
       node.install(@genv)
-
       @genv.run_all
 
       if prev_node
         prev_node.uninstall(@genv)
         @genv.run_all
       end
+
+      # OR:
+      # node.install(@genv)
+      # prev_node.uninstall(@genv) if prev_node
+      # @genv.run_all
     end
 
     def dump_graph(path)
       node = @text_nodes[path]
 
-      vtxs = Set.new
+      vtxs = Set[]
       puts node.dump(vtxs)
       puts "---"
       vtxs.each do |vtx|
@@ -133,56 +137,6 @@ module TypeProf
         s << "def #{ mid }: " + mdef.show
       end
       s
-    end
-
-    def show_graph(cpath, mid)
-      mdefs = @genv.get_method_defs(cpath, mid)
-      tyvars = {}
-      callsites = {}
-      name = -> obj do
-        case obj
-        when CallSite
-          callsites[obj] ||= "c#{ callsites.size }@#{ obj.node&.code_range.inspect }"
-        when Vertex
-          tyvars[obj] ||= "v#{ tyvars.size }@#{ obj.show_name }@#{ obj.object_id }"
-        when Source
-          "<imm>"
-        else
-          raise obj.class.to_s
-        end
-      end
-      visited = {}
-      mdefs.each do |mdef|
-        puts "#{ cpath.join("::") }##{ mdef.node.mid } @ #{ mdef.node.code_range.inspect }"
-        puts "  arg: #{ name[mdef.arg] }"
-        puts "  ret: #{ name[mdef.ret] }"
-        stack = [mdef.ret, mdef.arg]
-        until stack.empty?
-          obj = stack.pop
-          next if visited[obj]
-          visited[obj] = true
-          case obj
-          when Vertex
-            if obj.next_vtxs.empty?
-              puts "  #{ name[obj] } has no edge"
-            else
-              obj.next_vtxs.each do |obj2|
-                puts "  #{ name[obj] } -> #{ name[obj2] }"
-                stack << obj2
-              end
-            end
-          when Source
-          when CallSite
-            puts "  #{ name[obj] }:"
-            puts "    recv=#{ name[obj.recv] }"
-            puts "    args=(#{ name[obj.args] })"
-            puts "    ret=#{ name[obj.ret] }"
-            stack << obj.ret << obj.args << obj.recv
-          else
-            raise obj.class.to_s
-          end
-        end
-      end
     end
   end
 end

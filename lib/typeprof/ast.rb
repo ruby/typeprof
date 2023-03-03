@@ -362,13 +362,12 @@ module TypeProf
 
       def install0(genv)
         cref = @lenv.cref
-        @readsite = ReadSite.new(genv, self, cref, nil, @cname)
+        @readsite = ReadSite.new(self, genv, cref, nil, @cname)
         @readsite.ret
       end
 
       def uninstall0(genv)
-        @readsite.uninstall(genv)
-        genv.remove_readsite(@readsite)
+        @readsite.destroy(genv)
       end
 
       def diff(prev_node)
@@ -399,13 +398,12 @@ module TypeProf
 
       def install0(genv)
         cbase = @cbase ? @cbase.install(genv) : nil
-        @readsite = ReadSite.new(genv, self, @lenv.cref, cbase, @cname)
+        @readsite = ReadSite.new(self, genv, @lenv.cref, cbase, @cname)
         @readsite.ret
       end
 
       def uninstall0(genv)
         @readsite.destroy(genv)
-        genv.remove_readsite(@readsite)
       end
 
       def diff(prev_node)
@@ -557,13 +555,12 @@ module TypeProf
       attr_reader :callsite
 
       def run_call(genv, recv, mid, arg)
-        @callsite = CallSite.new(genv, self, recv, mid, arg)
+        @callsite = CallSite.new(self, genv, recv, mid, arg)
         @callsite.ret
       end
 
       def uninstall0(genv)
         @callsite.destroy(genv)
-        genv.remove_callsite(@callsite)
       end
 
       def dump0(dumper)

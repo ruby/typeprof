@@ -10,13 +10,14 @@ module TypeProf
   end
 
   class Set
-    def self.[](args)
-      new(*args)
+    def self.[](*elems)
+      h = Hash.new(false)
+      elems.each {|elem| h[elem] = true }
+      new(h)
     end
 
-    def initialize(*elems)
-      @hash = Hash.new(false)
-      elems.each {|elem| @hash[elem] = true }
+    def initialize(hash)
+      @hash = hash
     end
 
     def <<(elem)
@@ -54,6 +55,14 @@ module TypeProf
 
     def size
       @hash.size
+    end
+
+    def -(other)
+      h = @hash.dup
+      other.each do |elem|
+        h.delete(elem)
+      end
+      Set.new(h)
     end
 
     def pretty_print(q)

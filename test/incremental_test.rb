@@ -99,7 +99,7 @@ end
         serv.get_method_sig([], false, :foo),
       )
 
-      #serv.show_graph([:Object], :foo)
+      #serv.dump_graph("test.rb")
 
       serv.update_file("test.rb", <<-END)
 

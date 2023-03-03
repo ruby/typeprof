@@ -4,8 +4,8 @@ module TypeProf
       @show_name = show_name
       @node = node
       @types = {}
-      @next_vtxs = Set.new
-      @decls = Set.new
+      @next_vtxs = Set[]
+      @decls = Set[]
     end
 
     attr_reader :show_name, :next_vtxs, :types
@@ -14,7 +14,7 @@ module TypeProf
       new_added_types = []
       added_types.each do |ty|
         unless @types[ty]
-          @types[ty] ||= Set.new
+          @types[ty] ||= Set[]
           new_added_types << ty
         end
         @types[ty] << src_var
@@ -89,23 +89,25 @@ module TypeProf
     end
 
     def to_s
-      "<fixed>"
+      "<source:#{ show }>"
     end
 
     alias inspect to_s
   end
 
-  class ReadSite
-    def initialize(genv, node, cref, cbase, cname)
+  class Box
+    def initialize(node)
       @node = node
-      @cref = cref
-      @cbase = cbase
-      @cname = cname
-      @ret = Vertex.new("cname:#{ cname }", node)
-      genv.add_readsite(self)
-      genv.add_run(self)
-      @cbase.add_edge(genv, self) if @cbase
-      @edges = Set.new
+      @edges = Set[]
+      @destroyed = false
+    end
+
+    attr_reader :node
+
+    def destroy(genv)
+      @destroyed = true
+      uninstall(genv, @edges)
+      @edges.clear
     end
 
     def on_type_added(genv, src_tyvar, added_types)
@@ -116,11 +118,55 @@ module TypeProf
       genv.add_run(self)
     end
 
+    def run(genv)
+      return if @destroyed
+      new_edges = run0(genv)
+      install(genv, new_edges - @edges)
+      uninstall(genv, @edges - new_edges)
+      @edges = new_edges
+    end
+
+    def install(genv, edges)
+      edges.each do |src, dst|
+        src.add_edge(genv, dst)
+      end
+    end
+
+    def uninstall(genv, edges)
+      edges.each do |src, dst|
+        src.remove_edge(genv, dst)
+      end
+    end
+
+    @@new_id = 0
+
+    def to_s
+      "#{ self.class.to_s.split("::").last[0] }#{ @id ||= @@new_id += 1 }"
+    end
+
+    alias inspect to_s
+  end
+
+  class ReadSite < Box
+    def initialize(node, genv, cref, cbase, cname)
+      super(node)
+      @cref = cref
+      @cbase = cbase
+      @cname = cname
+      @ret = Vertex.new("cname:#{ cname }", node)
+      genv.add_readsite(self)
+      @cbase.add_edge(genv, self) if @cbase
+    end
+
+    def destroy(genv)
+      super
+      genv.remove_readsite(self)
+    end
+
     attr_reader :node, :cref, :cbase, :cname, :ret
 
-    def run(genv)
-      destroy(genv)
-
+    def run0(genv)
+      edges = Set[]
       resolve(genv).each do |cds|
         cds.each do |cd|
           case cd
@@ -128,21 +174,11 @@ module TypeProf
             # TODO
             raise
           when ConstDef
-            @edges << [cd.val, @ret]
+            edges << [cd.val, @ret]
           end
         end
       end
-
-      @edges.each do |src_tyvar, dest_tyvar|
-        src_tyvar.add_edge(genv, dest_tyvar)
-      end
-    end
-
-    def destroy(genv)
-      @edges.each do |src_tyvar, dest_tyvar|
-        src_tyvar.remove_edge(genv, dest_tyvar)
-      end
-      @edges.clear
+      edges
     end
 
     def resolve(genv)
@@ -171,78 +207,54 @@ module TypeProf
       ret
     end
 
-    @@new_id = 0
-
-    def to_s
-      "R#{ @id ||= @@new_id += 1 }"
-    end
-
-    alias inspect to_s
-
     def long_inspect
       "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
 
-  class CallSite
-    def initialize(genv, node, recv, mid, args)
+  class CallSite < Box
+    def initialize(node, genv, recv, mid, args)
       raise mid.to_s unless mid
-      @node = node
+      super(node)
       @recv = recv
       @mid = mid
       @args = args
       @ret = Vertex.new("ret:#{ mid }", node)
-      @edges = Set.new
       genv.add_callsite(self)
-      genv.add_run(self)
       @recv.add_edge(genv, self)
       @args.add_edge(genv, self)
     end
 
-    attr_reader :node, :recv, :mid, :args, :ret
-
-    def on_type_added(genv, src_tyvar, added_types)
-      genv.add_run(self)
+    def destroy(genv)
+      genv.remove_callsite(self)
+      super
     end
 
-    def on_type_removed(genv, src_tyvar, removed_types)
-      genv.add_run(self)
-    end
+    attr_reader :recv, :mid, :args, :ret
 
-    def run(genv)
-      destroy(genv)
-
+    def run0(genv)
+      edges = Set[]
       resolve(genv).each do |ty, mds|
         mds.each do |md|
           case md
           when MethodDecl
             if md.builtin
-              md.builtin[ty, @mid, @args, @ret].each do |src, dest|
-                @edges << [src, dest]
+              md.builtin[ty, @mid, @args, @ret].each do |src, dst|
+                edges << [src, dst]
               end
             else
               ret_types = md.resolve_overloads(genv, @args)
               # TODO: handle Type::Union
               ret_types.each do |ty|
-                @edges << [Source.new(ty), @ret]
+                edges << [Source.new(ty), @ret]
               end
             end
           when MethodDef
-            @edges << [@args, md.arg] << [md.ret, @ret]
+            edges << [@args, md.arg] << [md.ret, @ret]
           end
         end
       end
-
-      @edges.each do |src_tyvar, dest_tyvar|
-        src_tyvar.add_edge(genv, dest_tyvar)
-      end
-    end
-
-    def destroy(genv)
-      @edges.each do |src_tyvar, dest_tyvar|
-        src_tyvar.remove_edge(genv, dest_tyvar)
-      end
-      @edges.clear
+      edges
     end
 
     def resolve(genv)
@@ -255,14 +267,6 @@ module TypeProf
       end
       ret
     end
-
-    @@new_id = 0
-
-    def to_s
-      "C#{ @id ||= @@new_id += 1 }"
-    end
-
-    alias inspect to_s
 
     def long_inspect
       "#{ to_s } (mid:#{ @mid }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
