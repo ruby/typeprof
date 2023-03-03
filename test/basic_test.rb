@@ -48,5 +48,20 @@ C::D.new(1).foo("str")
         serv.get_method_sig([:C, :D], false, :foo),
       )
     end
+
+    def test_rbs_const
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(_)
+  RUBY_VERSION
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> String"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

@@ -1,4 +1,30 @@
 module TypeProf
+  class Source
+    def initialize(ty)
+      @types = { ty => nil }
+    end
+
+    attr_reader :types
+
+    def add_edge(genv, nvtx)
+      nvtx.on_type_added(genv, self, @types.keys)
+    end
+
+    def remove_edge(genv, nvtx)
+      nvtx.on_type_removed(genv, self, @types.keys)
+    end
+
+    def show
+      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
+    end
+
+    def to_s
+      "<source:#{ show }>"
+    end
+
+    alias inspect to_s
+  end
+
   class Vertex
     def initialize(show_name, node)
       @show_name = show_name
@@ -67,32 +93,6 @@ module TypeProf
     def long_inspect
       "#{ to_s } (#{ @show_name }; #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
-  end
-
-  class Source
-    def initialize(ty)
-      @types = { ty => nil }
-    end
-
-    attr_reader :types
-
-    def add_edge(genv, nvtx)
-      nvtx.on_type_added(genv, self, @types.keys)
-    end
-
-    def remove_edge(genv, nvtx)
-      nvtx.on_type_removed(genv, self, @types.keys)
-    end
-
-    def show
-      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
-    end
-
-    def to_s
-      "<source:#{ show }>"
-    end
-
-    alias inspect to_s
   end
 
   class Box
@@ -171,8 +171,9 @@ module TypeProf
         cds.each do |cd|
           case cd
           when ConstDecl
-            # TODO
-            raise
+            ty = cd.type
+            ty = ty.rbs_expand(genv) if ty.is_a?(Type::RBS) # dirty?
+            edges << [Source.new(ty), @ret]
           when ConstDef
             edges << [cd.val, @ret]
           end

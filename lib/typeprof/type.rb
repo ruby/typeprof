@@ -57,6 +57,12 @@ module TypeProf
         @rbs_type = rbs_type
       end
 
+      attr_reader :rbs_type
+
+      def rbs_expand(genv)
+        Signatures.type(genv, @rbs_type)
+      end
+
       def inspect
         "#<Type::RBS ...>"
       end
