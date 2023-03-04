@@ -43,6 +43,20 @@ module TypeProf
         end
       end
 
+      mdecls = @genv.resolve_method([:Proc], false, :call)
+      mdecls.each do |mdecl|
+        mdecl.set_builtin do |ty, mid, args, ret|
+          edges = []
+          case ty
+          when Type::Proc
+            edges << [args, ty.block.arg] << [ty.block.ret, ret]
+          else
+            puts "???"
+          end
+          edges
+        end
+      end
+
       #@genv.system_sigs_loaded
       @text_nodes = {}
     end

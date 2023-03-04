@@ -110,7 +110,21 @@ module TypeProf
     attr_reader :cpath, :singleton, :mid, :node, :arg, :block, :ret
 
     def show
-      "(#{ arg.show }) -> #{ ret.show }"
+      block_show = []
+      # just for debug
+      if @block
+        @block.types.each_key do |ty|
+          case ty
+          when Type::Proc
+            block_show << "{ (#{ ty.block.arg.show }) -> #{ ty.block.ret.show } }"
+          else
+            puts "???"
+          end
+        end
+      end
+      s = "(#{ @arg.show })"
+      s << " (#{ block_show.join(" | ") })" unless block_show.empty?
+      s << " -> #{ @ret.show }"
     end
   end
 

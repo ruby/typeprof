@@ -85,5 +85,25 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_block
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(n, &b)
+  b.call(1.0)
+end
+
+foo(12) do |n|
+  "str"
+end
+      END
+
+      #serv.dump_graph("test0.rb")
+      assert_equal(
+        ["def foo: (Integer) ({ (Float) -> String }) -> String"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

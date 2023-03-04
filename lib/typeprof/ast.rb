@@ -155,10 +155,12 @@ module TypeProf
       attr_reader :tbl, :args, :body
 
       def install0(genv)
-        if args
-          args[0].times do |i|
+        if @args
+          @args[0].times do |i|
             @lenv.def_var(@tbl[i], self)
           end
+          blk = @args[9]
+          @lenv.def_var(blk, self) if blk
         end
         @body ? @body.install(genv) : Source.new(Type::Instance.new([:NilClass]))
       end
@@ -166,6 +168,10 @@ module TypeProf
       def get_arg
         # XXX
         @lenv.get_var(@tbl.first)
+      end
+
+      def get_block
+        @lenv.get_var(@args[9])
       end
 
       def uninstall0(genv)
@@ -196,6 +202,13 @@ module TypeProf
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
+        if @args
+          @args[0].times do |i|
+            vtxs << @lenv.get_var(@tbl[i])
+          end
+          blk = @args[9]
+          vtxs << @lenv.get_var(blk) if blk
+        end
         @body.get_vertexes_and_boxes(vtxs, boxes) if @body
       end
     end
@@ -529,12 +542,13 @@ module TypeProf
 
     class DEFN < Node
       def initialize(raw_node, lenv)
-        super
-        @mid, raw_scope = raw_node.children
-
         ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
         nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
-        @scope = AST.create_node(raw_scope, nlenv)
+
+        super(raw_node, nlenv)
+        @mid, raw_scope = raw_node.children
+
+        @scope = AST.create_node(raw_scope, @lenv)
 
         @reused = false
       end
@@ -550,7 +564,7 @@ module TypeProf
           # TODO: ユーザ定義 RBS があるときは検証する
           ret = @scope.install(genv)
           arg = @scope.get_arg
-          block = nil # XXX
+          block = @scope.get_block
           @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, arg, block, ret)
           genv.add_method_def(@mdef)
         end
@@ -627,9 +641,13 @@ module TypeProf
       def install_call(genv, recv, mid, arg)
         if @block
           @block.install(genv)
-          block = nil # XXX
+          blk_ret = @block.install(genv)
+          blk_arg = @block.get_arg
+          #block = @lenv.get_block(self)
+          block = BlockDef.new(@block, blk_arg, blk_ret)
+          blk_ty = Source.new(Type::Proc.new(block))
         end
-        @callsite = CallSite.new(self, genv, recv, mid, arg, block)
+        @callsite = CallSite.new(self, genv, recv, mid, arg, blk_ty)
         @callsite.ret
       end
 
@@ -1119,10 +1137,6 @@ module TypeProf
 
     def get_self
       @self
-    end
-
-    def get_block
-      @block ||= Vertex.new("block")
     end
   end
 

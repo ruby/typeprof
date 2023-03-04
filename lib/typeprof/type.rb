@@ -1,14 +1,12 @@
 module TypeProf
   class Type
-    include StructuralEquality
-
-    class Untyped < Type
-      def inspect
-        "<untyped>"
-      end
+    def base_type(_)
+      self
     end
 
     class Module < Type
+      include StructuralEquality
+
       def initialize(cpath)
         # TODO: type_param
         @cpath = cpath
@@ -22,6 +20,8 @@ module TypeProf
     end
 
     class Class < Module
+      include StructuralEquality
+
       def initialize(cpath)
         # TODO: type_param
         @cpath = cpath
@@ -36,6 +36,8 @@ module TypeProf
     end
 
     class Instance < Type
+      include StructuralEquality
+
       def initialize(cpath)
         raise unless cpath.is_a?(Array)
         @cpath = cpath
@@ -52,6 +54,22 @@ module TypeProf
       end
     end
 
+    class Proc < Type
+      def initialize(block)
+        @block = block
+      end
+
+      attr_reader :block
+
+      def base_type(genv)
+        Type::Instance.new([:Proc])
+      end
+
+      def show
+        "<Proc>"
+      end
+    end
+
     class RBS < Type
       def initialize(rbs_type)
         @rbs_type = rbs_type
@@ -59,7 +77,7 @@ module TypeProf
 
       attr_reader :rbs_type
 
-      def rbs_expand(genv)
+      def base_type(genv)
         Signatures.type(genv, @rbs_type)
       end
 

@@ -169,8 +169,7 @@ module TypeProf
         cds.each do |cd|
           case cd
           when ConstDecl
-            ty = cd.type
-            ty = ty.rbs_expand(genv) if ty.is_a?(Type::RBS) # dirty?
+            ty = cd.type.base_type(genv)
             edges << [Source.new(ty), @ret]
           when ConstDef
             edges << [cd.val, @ret]
@@ -223,6 +222,7 @@ module TypeProf
       genv.add_callsite(self)
       @recv.add_edge(genv, self)
       @args.add_edge(genv, self)
+      #@block.add_edge(genv, self) # needed?
     end
 
     def destroy(genv)
@@ -266,7 +266,7 @@ module TypeProf
       ret = []
       @recv.types.each do |ty, source|
         # assume ty is a Type::Instnace or Type::Class
-        mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Class), @mid)
+        mds = genv.resolve_method(ty.base_type(genv).cpath, ty.is_a?(Type::Class), @mid)
         ret << [ty, mds] if mds
       end
       ret
