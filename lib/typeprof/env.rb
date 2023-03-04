@@ -97,20 +97,31 @@ module TypeProf
   end
 
   class MethodDef
-    def initialize(cpath, singleton, mid, node, arg, ret)
+    def initialize(cpath, singleton, mid, node, arg, block, ret)
       @cpath = cpath
       @singleton = singleton
       @mid = mid
       @node = node
       @arg = arg
+      @block = block
       @ret = ret
     end
 
-    attr_reader :cpath, :singleton, :mid, :node, :arg, :ret
+    attr_reader :cpath, :singleton, :mid, :node, :arg, :block, :ret
 
     def show
       "(#{ arg.show }) -> #{ ret.show }"
     end
+  end
+
+  class BlockDef
+    def initialize(node, arg, ret)
+      @node = node
+      @arg = arg
+      @ret = ret
+    end
+
+    attr_reader :node, :arg, :ret
   end
 
   class GlobalEnv

@@ -114,20 +114,20 @@ module TypeProf
           end
         end
       end
-      vtxs.each do |vtx|
-        case vtx
+      boxes.each do |box|
+        case box
         when CallSite
-          puts "\e[33m#{ vtx.long_inspect }\e[m"
-          puts "  recv: #{ vtx.recv }"
-          puts "  args: (#{ vtx.args })"
-          puts "  ret: #{ vtx.ret }"
+          puts "\e[33m#{ box.long_inspect }\e[m"
+          puts "  recv: #{ box.recv }"
+          puts "  args: (#{ box.args })"
+          puts "  ret: #{ box.ret }"
         end
       end
-      vtxs.each do |vtx|
-        case vtx
+      boxes.each do |box|
+        case box
         when ReadSite
-          puts "\e[32m#{ vtx.long_inspect }\e[m"
-          puts "  ret: #{ vtx.ret }"
+          puts "\e[32m#{ box.long_inspect }\e[m"
+          puts "  ret: #{ box.ret }"
         end
       end
     end

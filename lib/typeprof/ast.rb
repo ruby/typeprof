@@ -25,6 +25,8 @@ module TypeProf
         DEFN.new(raw_node, lenv)
       when :BEGIN
         BEGIN_.new(raw_node, lenv)
+      when :ITER
+        ITER.new(raw_node, lenv)
       when :CALL
         CALL.new(raw_node, lenv)
       when :FCALL
@@ -161,7 +163,7 @@ module TypeProf
         @body ? @body.install(genv) : Source.new(Type::Instance.new([:NilClass]))
       end
 
-      def get_arg_tyvar
+      def get_arg
         # XXX
         @lenv.get_var(@tbl.first)
       end
@@ -546,9 +548,10 @@ module TypeProf
           @prev_node.reused = true
         else
           # TODO: ユーザ定義 RBS があるときは検証する
-          ret_tyvar = @scope.install(genv)
-          arg_tyvar = @scope.get_arg_tyvar
-          @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, arg_tyvar, ret_tyvar)
+          ret = @scope.install(genv)
+          arg = @scope.get_arg
+          block = nil # XXX
+          @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, arg, block, ret)
           genv.add_method_def(@mdef)
         end
         Source.new(Type::Instance.new([:Symbol]))
@@ -619,9 +622,14 @@ module TypeProf
 
     class CallNode < Node
       attr_reader :callsite
+      attr_accessor :block
 
-      def run_call(genv, recv, mid, arg)
-        @callsite = CallSite.new(self, genv, recv, mid, arg)
+      def install_call(genv, recv, mid, arg)
+        if @block
+          @block.install(genv)
+          block = nil # XXX
+        end
+        @callsite = CallSite.new(self, genv, recv, mid, arg, block)
         @callsite.ret
       end
 
@@ -629,9 +637,27 @@ module TypeProf
         @callsite.destroy(genv)
       end
 
+      def reuse0
+        @callsite = @prev_node.callsite
+      end
+
+      def hover0(pos)
+        @block.hover0(pos) if @block
+      end
+
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @callsite.ret
         boxes << @callsite
+      end
+
+      def dump_call(prefix, suffix)
+        s = prefix + "\e[33m[#{ @callsite }]\e[m" + suffix
+        if @block
+          s << " do |<TODO>|\n"
+          s << @block.dump(nil).gsub(/^/, "  ")
+          s << "\nend"
+        end
+        s
       end
     end
 
@@ -646,14 +672,14 @@ module TypeProf
       attr_reader :mid, :recv, :a_args
 
       def install0(genv)
-        recv_tyvar = @recv.install(genv)
+        recv = @recv.install(genv)
 
         # TODO: A_ARGS を引数1つと勝手に仮定してる
         #@a_args.install(genv)?
         arg = @a_args.positional_args[0]
-        arg_tyvar = arg.install(genv)
+        arg = arg.install(genv)
 
-        run_call(genv, recv_tyvar, @mid, arg_tyvar)
+        install_call(genv, recv, @mid, arg)
       end
 
       def uninstall0(genv)
@@ -671,18 +697,18 @@ module TypeProf
       end
 
       def reuse0
-        @callsite = @prev_node.callsite
+        super
         @recv.reuse
         @a_args.reuse
       end
 
       def hover0(pos)
         # TODO: op
-        @recv.hover(pos) || @a_args.hover(pos)
+        @recv.hover(pos) || @a_args.hover(pos) || super
       end
 
       def dump0(dumper)
-        @recv.dump(dumper) + ".#{ @mid.to_s }\e[33m[#{ @callsite }]\e[m(#{ @a_args.dump(dumper) })"
+        dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ @a_args.dump(dumper) })")
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
@@ -720,7 +746,7 @@ module TypeProf
         arg = @a_args.positional_args[0]
         arg_tyvar = arg.install(genv)
 
-        run_call(genv, recv_tyvar, @mid, arg_tyvar)
+        install_call(genv, recv_tyvar, @mid, arg_tyvar)
       end
 
       def uninstall0(genv)
@@ -736,7 +762,7 @@ module TypeProf
       end
 
       def reuse0
-        @callsite = @prev_node.callsite
+        super
         @a_args.reuse
       end
 
@@ -744,12 +770,12 @@ module TypeProf
         if @mid_code_range.include?(pos)
           @callsite
         else
-          @a_args.hover(pos)
+          @a_args.hover(pos) || super
         end
       end
 
       def dump0(dumper)
-        "#{ @mid }\e[33m[#{ @callsite }]\e[m(#{ @a_args.dump(dumper) })"
+        dump_call("#{ @mid }", "(#{ @a_args.dump(dumper) })")
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
@@ -776,7 +802,7 @@ module TypeProf
         arg = @a_args.positional_args[0]
         arg_tyvar = arg.install(genv)
 
-        run_call(genv, recv_tyvar, @op, arg_tyvar)
+        install_call(genv, recv_tyvar, @op, arg_tyvar)
       end
 
       def uninstall0(genv)
@@ -794,19 +820,18 @@ module TypeProf
       end
 
       def reuse0
-        @callsite = @prev_node.callsite
+        super
         @recv.reuse
         @a_args.reuse
       end
 
       def hover0(pos)
         # TODO: op
-        @recv.hover(pos) || @a_args.hover(pos)
+        @recv.hover(pos) || @a_args.hover(pos) || super
       end
 
       def dump0(dumper)
-        super
-        "(#{ @recv.dump(dumper) } #{ @op.to_s }\e[33m[#{ @callsite }]\e[m #{ @a_args.dump(dumper) })"
+        dump_call("(#{ @recv.dump(dumper) } #{ @op }", "#{ @a_args.dump(dumper) })")
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
@@ -833,6 +858,12 @@ module TypeProf
       end
 
       attr_reader :positional_args
+
+      def install0(genv)
+        @positional_args.each do |node|
+          node.install(genv)
+        end
+      end
 
       def uninstall0(genv)
         @positional_args.each do |node|
@@ -868,6 +899,48 @@ module TypeProf
         @positional_args.each do |n|
           n.get_vertexes_and_boxes(vtxs, boxes)
         end
+      end
+    end
+
+    class ITER < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_call, raw_scope = raw_node.children
+        @call = AST.create_node(raw_call, lenv)
+        @call.block = AST.create_node(raw_scope, lenv)
+      end
+
+      attr_reader :call, :block
+
+      def install0(genv)
+        @call.install(genv)
+      end
+
+      def uninstall0(genv)
+        @call.uninstall(genv)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(ITER)
+          @call.diff(prev_node.call)
+          @prev_node = prev_node if @call.prev_node
+        end
+      end
+
+      def reuse0
+        @call.reuse
+      end
+
+      def hover0(pos)
+        @call.hover(pos)
+      end
+
+      def dump0(dumper)
+        @call.dump(dumper)
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @call.get_vertexes_and_boxes(vtxs, boxes)
       end
     end
 
@@ -1046,6 +1119,10 @@ module TypeProf
 
     def get_self
       @self
+    end
+
+    def get_block
+      @block ||= Vertex.new("block")
     end
   end
 

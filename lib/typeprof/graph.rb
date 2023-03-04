@@ -19,7 +19,7 @@ module TypeProf
     end
 
     def to_s
-      "<source:#{ show }>"
+      "<src:#{ show }>"
     end
 
     alias inspect to_s
@@ -212,12 +212,13 @@ module TypeProf
   end
 
   class CallSite < Box
-    def initialize(node, genv, recv, mid, args)
+    def initialize(node, genv, recv, mid, args, block)
       raise mid.to_s unless mid
       super(node)
       @recv = recv
       @mid = mid
       @args = args
+      @block = block
       @ret = Vertex.new("ret:#{ mid }", node)
       genv.add_callsite(self)
       @recv.add_edge(genv, self)
@@ -229,7 +230,7 @@ module TypeProf
       super
     end
 
-    attr_reader :recv, :mid, :args, :ret
+    attr_reader :recv, :mid, :args, :block, :ret
 
     def run0(genv)
       edges = Set[]
@@ -238,10 +239,12 @@ module TypeProf
           case md
           when MethodDecl
             if md.builtin
+              # TODO: block
               md.builtin[ty, @mid, @args, @ret].each do |src, dst|
                 edges << [src, dst]
               end
             else
+              # TODO: block
               ret_types = md.resolve_overloads(genv, @args)
               # TODO: handle Type::Union
               ret_types.each do |ty|
@@ -249,6 +252,9 @@ module TypeProf
               end
             end
           when MethodDef
+            if @block && md.block
+              edges << [@block, md.block]
+            end
             edges << [@args, md.arg] << [md.ret, @ret]
           end
         end
