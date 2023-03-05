@@ -174,9 +174,9 @@ module TypeProf
         @body ? @body.install(genv) : Source.new(Type::Instance.new([:NilClass]))
       end
 
-      def get_arg
+      def get_args
         # XXX
-        @lenv.get_var(@tbl.first)
+        @tbl[0, @args[0]].map {|v| @lenv.get_var(v) }
       end
 
       def get_block
@@ -575,9 +575,9 @@ module TypeProf
         else
           # TODO: ユーザ定義 RBS があるときは検証する
           ret = @scope.install(genv)
-          arg = @scope.get_arg
+          f_args = @scope.get_args
           block = @scope.get_block
-          @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, arg, block, ret)
+          @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
           genv.add_method_def(@mdef)
         end
         Source.new(Type::Instance.new([:Symbol]))
@@ -655,9 +655,9 @@ module TypeProf
         if @block
           @block.install(genv)
           blk_ret = @block.install(genv)
-          blk_arg = @block.get_arg
+          blk_f_args = @block.get_args
           #block = @lenv.get_block(self)
-          block = BlockDef.new(@block, blk_arg, blk_ret)
+          block = BlockDef.new(@block, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         end
         @callsite = CallSite.new(self, genv, recv, mid, arg, blk_ty)
@@ -704,13 +704,8 @@ module TypeProf
 
       def install0(genv)
         recv = @recv.install(genv)
-
-        # TODO: A_ARGS を引数1つと勝手に仮定してる
-        #@a_args.install(genv)?
-        arg = @a_args.positional_args[0]
-        arg = arg.install(genv)
-
-        install_call(genv, recv, @mid, arg)
+        a_args = @a_args.install(genv)
+        install_call(genv, recv, @mid, a_args)
       end
 
       def uninstall0(genv)
@@ -770,15 +765,9 @@ module TypeProf
       attr_reader :mid, :a_args
 
       def install0(genv)
-        # TODO
-        recv_tyvar = @lenv.get_self
-
-        # TODO: A_ARGS を引数1つと勝手に仮定してる
-        #@a_args.install(genv, lenv)?
-        arg = @a_args.positional_args[0]
-        arg_tyvar = arg.install(genv)
-
-        install_call(genv, recv_tyvar, @mid, arg_tyvar)
+        recv = @lenv.get_self
+        a_args = @a_args.install(genv)
+        install_call(genv, recv, @mid, a_args)
       end
 
       def uninstall0(genv)
@@ -828,14 +817,9 @@ module TypeProf
       attr_reader :op, :recv, :a_args
 
       def install0(genv)
-        recv_tyvar = @recv.install(genv)
-
-        # TODO: A_ARGS を引数1つと勝手に仮定してる
-        #@a_args.install(genv)?
-        arg = @a_args.positional_args[0]
-        arg_tyvar = arg.install(genv)
-
-        install_call(genv, recv_tyvar, @op, arg_tyvar)
+        recv = @recv.install(genv)
+        a_args = @a_args.install(genv)
+        install_call(genv, recv, @op, a_args)
       end
 
       def uninstall0(genv)
@@ -880,21 +864,21 @@ module TypeProf
         super
         @positional_args = []
         # TODO
-        while raw_node
-          case raw_node.type
-          when :LIST
-            arg, raw_node = raw_node.children
-            @positional_args << AST.create_node(arg, lenv)
-          else
-            raise "not supported yet"
-          end
+        case raw_node.type
+        when :LIST
+          args = raw_node.children.compact
+          @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
+        when :ARGSPUSH, :ARGSCAT
+          raise NotImplementedError
+        else
+          raise "not supported yet: #{ raw_node.type }"
         end
       end
 
       attr_reader :positional_args
 
       def install0(genv)
-        @positional_args.each do |node|
+        @positional_args.map do |node|
           node.install(genv)
         end
       end

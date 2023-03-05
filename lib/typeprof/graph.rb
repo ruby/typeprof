@@ -211,17 +211,17 @@ module TypeProf
   end
 
   class CallSite < Box
-    def initialize(node, genv, recv, mid, args, block)
+    def initialize(node, genv, recv, mid, a_args, block)
       raise mid.to_s unless mid
       super(node)
       @recv = recv
       @mid = mid
-      @args = args
+      @a_args = a_args
       @block = block
       @ret = Vertex.new("ret:#{ mid }", node)
       genv.add_callsite(self)
       @recv.add_edge(genv, self)
-      @args.add_edge(genv, self)
+      @a_args.each {|arg| arg.add_edge(genv, self)}
       #@block.add_edge(genv, self) # needed?
     end
 
@@ -230,7 +230,7 @@ module TypeProf
       super
     end
 
-    attr_reader :recv, :mid, :args, :block, :ret
+    attr_reader :recv, :mid, :a_args, :block, :ret
 
     def run0(genv)
       edges = Set[]
@@ -240,12 +240,12 @@ module TypeProf
           when MethodDecl
             if md.builtin
               # TODO: block
-              md.builtin[ty, @mid, @args, @ret].each do |src, dst|
+              md.builtin[ty, @mid, @a_args, @ret].each do |src, dst|
                 edges << [src, dst]
               end
             else
               # TODO: block
-              ret_types = md.resolve_overloads(genv, @args)
+              ret_types = md.resolve_overloads(genv, @a_args)
               # TODO: handle Type::Union
               ret_types.each do |ty|
                 edges << [Source.new(ty), @ret]
@@ -255,7 +255,15 @@ module TypeProf
             if @block && md.block
               edges << [@block, md.block]
             end
-            edges << [@args, md.arg] << [md.ret, @ret]
+            # check arity
+            if @a_args.size == md.f_args.size
+              @a_args.zip(md.f_args) do |a_arg, f_arg|
+                raise unless a_arg
+                raise unless f_arg
+                edges << [a_arg, f_arg]
+              end
+            end
+            edges << [md.ret, @ret]
           end
         end
       end

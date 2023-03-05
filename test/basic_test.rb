@@ -222,5 +222,26 @@ end
         serv.get_method_sig([:D], false, :bar),
       )
     end
+
+    def test_multi_args
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+class Foo
+  def initialize(x, y, z)
+    @x = x
+    @y = y
+    @z = z
+  end
+end
+
+Foo.new(1, 1.0, "String")
+      END
+
+      assert_equal(
+        ["def initialize: (Integer, Float, String) -> String"],
+        serv.get_method_sig([:Foo], false, :initialize),
+      )
+    end
   end
 end

@@ -85,10 +85,7 @@ module TypeProf
 
     attr_reader :rbs_member, :builtin
 
-    def resolve_overloads(genv, a_arg) # TODO: only one argument is supported!
-      if @builtin
-        return @builtin[genv, a_arg]
-      end
+    def resolve_overloads(genv, a_args)
       ret_types = []
       @rbs_member.overloads.each do |overload|
         func = overload.method_type.type
@@ -99,10 +96,12 @@ module TypeProf
         # func.rest_positionals
         # func.trailing_positionals
         # TODO: only one argument!
-        f_arg = func.required_positionals.first
-        f_arg = Signatures.type(genv, f_arg.type)
-        if a_arg.types.key?(f_arg) # TODO: type consistency
-          ret_types << Signatures.type(genv, func.return_type)
+        f_args = func.required_positionals.map {|f_arg| Signatures.type(genv, f_arg.type) }
+        if a_args.size == f_args.size
+          # TODO: type consistency
+          if a_args.zip(f_args).all? {|a_arg, f_arg| a_arg.types.key?(f_arg) }
+            ret_types << Signatures.type(genv, func.return_type)
+          end
         end
       end
       ret_types
@@ -118,15 +117,16 @@ module TypeProf
   end
 
   class MethodDef < MethodEntry
-    def initialize(cpath, singleton, mid, node, arg, block, ret)
+    def initialize(cpath, singleton, mid, node, f_args, block, ret)
       super(cpath, singleton, mid)
       @node = node
-      @arg = arg
+      raise unless f_args
+      @f_args = f_args
       @block = block
       @ret = ret
     end
 
-    attr_reader :cpath, :singleton, :mid, :node, :arg, :block, :ret
+    attr_reader :cpath, :singleton, :mid, :node, :f_args, :block, :ret
 
     def show
       block_show = []
@@ -135,26 +135,26 @@ module TypeProf
         @block.types.each_key do |ty|
           case ty
           when Type::Proc
-            block_show << "{ (#{ ty.block.arg.show }) -> #{ ty.block.ret.show } }"
+            block_show << "{ (#{ ty.block.f_args.map {|arg| arg.show }.join(", ") }) -> #{ ty.block.ret.show } }"
           else
             puts "???"
           end
         end
       end
-      s = "(#{ @arg.show })"
+      s = "(#{ @f_args.map {|arg| arg.show }.join(", ") })"
       s << " (#{ block_show.join(" | ") })" unless block_show.empty?
       s << " -> #{ @ret.show }"
     end
   end
 
   class BlockDef
-    def initialize(node, arg, ret)
+    def initialize(node, f_args, ret)
       @node = node
-      @arg = arg
+      @f_args = f_args
       @ret = ret
     end
 
-    attr_reader :node, :arg, :ret
+    attr_reader :node, :f_args, :ret
   end
 
   class IVarDef

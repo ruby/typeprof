@@ -25,7 +25,7 @@ module TypeProf
 
       mdecls = @genv.resolve_method([:Class], false, :new)
       mdecls.each do |mdecl|
-        mdecl.set_builtin do |ty, mid, args, ret|
+        mdecl.set_builtin do |ty, mid, a_args, ret|
           edges = []
           ty = ty.get_instance_type
           mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Class), :initialize)
@@ -35,7 +35,11 @@ module TypeProf
               when MethodDecl
                 # TODO?
               when MethodDef
-                edges << [args, md.arg]
+                if a_args.size == md.f_args.size
+                  a_args.zip(md.f_args) do |a_arg, f_arg|
+                    edges << [a_arg, f_arg]
+                  end
+                end
               end
             end
           end
@@ -45,11 +49,16 @@ module TypeProf
 
       mdecls = @genv.resolve_method([:Proc], false, :call)
       mdecls.each do |mdecl|
-        mdecl.set_builtin do |ty, mid, args, ret|
+        mdecl.set_builtin do |ty, mid, a_args, ret|
           edges = []
           case ty
           when Type::Proc
-            edges << [args, ty.block.arg] << [ty.block.ret, ret]
+            if a_args.size == ty.block.f_args.size
+              a_args.zip(ty.block.f_args) do |a_arg, f_arg|
+                edges << [a_arg, f_arg]
+              end
+            end
+            edges << [ty.block.ret, ret]
           else
             puts "???"
           end
@@ -134,7 +143,7 @@ module TypeProf
         when CallSite
           puts "\e[33m#{ box.long_inspect }\e[m"
           puts "  recv: #{ box.recv }"
-          puts "  args: (#{ box.args })"
+          puts "  args: (#{ box.a_args.join(", ") })"
           puts "  ret: #{ box.ret }"
         end
       end
