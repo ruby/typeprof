@@ -287,12 +287,11 @@ module TypeProf
       @readsites_by_name[readsite.cname].delete(readsite)
     end
 
-    def run_callsite(mid)
-      # TODO: クラス階層上、再解析が必要なところだけにする
-      callsites = @callsites_by_name[mid]
-      if callsites
-        callsites.each do |callsite|
-          add_run(callsite)
+    def run_readsite(cname)
+      readsites = @readsites_by_name[cname]
+      if readsites
+        readsites.each do |readsite|
+          add_run(readsite)
         end
       end
     end
@@ -306,11 +305,12 @@ module TypeProf
       @callsites_by_name[callsite.mid].delete(callsite)
     end
 
-    def run_readsite(cname)
-      readsites = @readsites_by_name[cname]
-      if readsites
-        readsites.each do |readsite|
-          add_run(readsite)
+    def run_callsite(mid)
+      # TODO: クラス階層上、再解析が必要なところだけにする
+      callsites = @callsites_by_name[mid]
+      if callsites
+        callsites.each do |callsite|
+          add_run(callsite)
         end
       end
     end
