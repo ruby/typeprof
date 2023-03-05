@@ -46,9 +46,13 @@ module TypeProf
       when :RESCUE
         RESCUE.new(raw_node, lenv)
       when :LIT
-        LIT.new(raw_node, lenv)
+        lit, = raw_node.children
+        LIT.new(raw_node, lenv, lit)
       when :STR
-        LIT.new(raw_node, lenv) # Using LIT is OK?
+        str, = raw_node.children
+        LIT.new(raw_node, lenv, str) # Using LIT is OK?
+      when :TRUE
+        LIT.new(raw_node, lenv, true) # Using LIT is OK?
       when :IVAR
         IVAR.new(raw_node, lenv)
       when :IASGN
@@ -1050,9 +1054,8 @@ module TypeProf
     end
 
     class LIT < Node
-      def initialize(raw_node, lenv)
-        super
-        lit, = raw_node.children
+      def initialize(raw_node, lenv, lit)
+        super(raw_node, lenv)
         @lit = lit
       end
 
