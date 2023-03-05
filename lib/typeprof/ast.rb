@@ -648,10 +648,20 @@ module TypeProf
     end
 
     class CallNode < Node
+      def initialize(raw_node, lenv, raw_recv, mid, raw_args)
+        super(raw_node, lenv)
+        @mid = mid
+        @recv = AST.create_node(raw_recv, lenv) if raw_recv
+        @a_args = A_ARGS.new(raw_args, lenv) if raw_args
+      end
+
+      attr_reader :recv, :mid, :a_args
       attr_reader :callsite
       attr_accessor :block
 
-      def install_call(genv, recv, mid, arg)
+      def install0(genv)
+        recv = @recv ? @recv.install(genv) : @lenv.get_self
+        a_args = @a_args.install(genv)
         if @block
           @block.install(genv)
           blk_ret = @block.install(genv)
@@ -660,25 +670,49 @@ module TypeProf
           block = BlockDef.new(@block, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         end
-        @callsite = CallSite.new(self, genv, recv, mid, arg, blk_ty)
+        @callsite = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
         @callsite.ret
       end
 
       def uninstall0(genv)
         @callsite.destroy(genv)
+        @recv.uninstall(genv) if @recv
+        @a_args.uninstall(genv)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(CALL) && @mid == prev_node.mid
+          @recv.diff(prev_node.recv) if @recv
+          @a_args.diff(prev_node.a_args)
+          @block.diff(prev_node.block) if @block
+          if (@recv ? @recv.prev_node : true) &&
+            @a_args.prev_node &&
+            (@block ? @block.prev_node : true)
+
+            @prev_node = prev_node
+          end
+        end
       end
 
       def reuse0
         @callsite = @prev_node.callsite
+        @recv.reuse if @recv
+        @a_args.reuse
       end
 
       def hover0(pos)
-        @block.hover0(pos) if @block
+        [@recv, @a_args, @block].each do |node|
+          next unless node
+          ret = node.hover(pos)
+          return ret if ret
+        end
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @callsite.ret
         boxes << @callsite
+        @recv.get_vertexes_and_boxes(vtxs, boxes) if @recv
+        @a_args.get_vertexes_and_boxes(vtxs, boxes)
       end
 
       def dump_call(prefix, suffix)
@@ -694,168 +728,49 @@ module TypeProf
 
     class CALL < CallNode
       def initialize(raw_node, lenv)
-        super
-        raw_recv, @mid, raw_args = raw_node.children
-        @recv = AST.create_node(raw_recv, lenv)
-        @a_args = A_ARGS.new(raw_args, lenv) if raw_args
-      end
-
-      attr_reader :mid, :recv, :a_args
-
-      def install0(genv)
-        recv = @recv.install(genv)
-        a_args = @a_args.install(genv)
-        install_call(genv, recv, @mid, a_args)
-      end
-
-      def uninstall0(genv)
-        @recv.uninstall(genv)
-        @a_args.uninstall(genv)
-        super
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(CALL) && @mid == prev_node.mid
-          @recv.diff(prev_node.recv)
-          @a_args.diff(prev_node.a_args)
-          @block.diff(prev_node.block) if @block
-          @prev_node = prev_node if @recv.prev_node && @a_args.prev_node && (@block ? @block.prev_node : true)
-        end
-      end
-
-      def reuse0
-        super
-        @recv.reuse
-        @a_args.reuse
-      end
-
-      def hover0(pos)
-        # TODO: op
-        @recv.hover(pos) || @a_args.hover(pos) || super
+        raw_recv, mid, raw_args = raw_node.children
+        super(raw_node, lenv, raw_recv, mid, raw_args)
       end
 
       def dump0(dumper)
         dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ @a_args.dump(dumper) })")
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        super
-        @recv.get_vertexes_and_boxes(vtxs, boxes)
-        @a_args.get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class FCALL < CallNode
       def initialize(raw_node, lenv)
-        super
         @mid, raw_args = raw_node.children
+
+        super(raw_node, lenv, nil, mid, raw_args)
 
         token = raw_node.tokens.first
         if token[1] == :tIDENTIFIER && token[2] == @mid.to_s
           a = token[3]
-          @mid_code_range = CodeRange.new(
-            CodePosition.new(a[0], a[1]),
-            CodePosition.new(a[2], a[3]),
-          )
+          @mid_code_range = CodeRange.new(CodePosition.new(a[0], a[1]), CodePosition.new(a[2], a[3]))
         end
-
-        @a_args = A_ARGS.new(raw_args, lenv)
-      end
-
-      attr_reader :mid, :a_args
-
-      def install0(genv)
-        recv = @lenv.get_self
-        a_args = @a_args.install(genv)
-        install_call(genv, recv, @mid, a_args)
-      end
-
-      def uninstall0(genv)
-        @a_args.uninstall(genv)
-        super
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(FCALL) && @mid == prev_node.mid
-          @a_args.diff(prev_node.a_args)
-          @block.diff(prev_node.block) if @block
-          @prev_node = prev_node if @a_args.prev_node && (@block ? @block.prev_node : true)
-        end
-      end
-
-      def reuse0
-        super
-        @a_args.reuse
       end
 
       def hover0(pos)
         if @mid_code_range.include?(pos)
           @callsite
         else
-          @a_args.hover(pos) || super
+          super
         end
       end
 
       def dump0(dumper)
         dump_call("#{ @mid }", "(#{ @a_args.dump(dumper) })")
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        super
-        @a_args.get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class OPCALL < CallNode
       def initialize(raw_node, lenv)
-        super
-        raw_recv, @op, raw_args = raw_node.children
-        @recv = AST.create_node(raw_recv, lenv)
-        @a_args = A_ARGS.new(raw_args, lenv)
-      end
-
-      attr_reader :op, :recv, :a_args
-
-      def install0(genv)
-        recv = @recv.install(genv)
-        a_args = @a_args.install(genv)
-        install_call(genv, recv, @op, a_args)
-      end
-
-      def uninstall0(genv)
-        @recv.uninstall(genv)
-        @a_args.uninstall(genv)
-        super
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(OPCALL) && @op == prev_node.op
-          @recv.diff(prev_node.recv)
-          @a_args.diff(prev_node.a_args)
-          @block.diff(prev_node.block) if @block
-          @prev_node = prev_node if @recv.prev_node && @a_args.prev_node && (@block ? @block.prev_node : true)
-        end
-      end
-
-      def reuse0
-        super
-        @recv.reuse
-        @a_args.reuse
-      end
-
-      def hover0(pos)
-        # TODO: op
-        @recv.hover(pos) || @a_args.hover(pos) || super
+        raw_recv, mid, raw_args = raw_node.children
+        super(raw_node, lenv, raw_recv, mid, raw_args)
       end
 
       def dump0(dumper)
-        dump_call("(#{ @recv.dump(dumper) } #{ @op }", "#{ @a_args.dump(dumper) })")
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        super
-        @recv.get_vertexes_and_boxes(vtxs, boxes)
-        @a_args.get_vertexes_and_boxes(vtxs, boxes)
+        dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ @a_args.dump(dumper) })")
       end
     end
 
