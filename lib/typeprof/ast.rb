@@ -553,7 +553,7 @@ module TypeProf
         @reused = false
       end
 
-      attr_reader :mid, :scope
+      attr_reader :mid, :scope, :mdef
       attr_accessor :reused
 
       def install0(genv)
@@ -586,6 +586,7 @@ module TypeProf
       end
 
       def reuse0
+        @mdef = @prev_node.mdef
         @scope.reuse
       end
 
@@ -710,7 +711,8 @@ module TypeProf
         if prev_node.is_a?(CALL) && @mid == prev_node.mid
           @recv.diff(prev_node.recv)
           @a_args.diff(prev_node.a_args)
-          @prev_node = prev_node if @recv.prev_node && @a_args.prev_node
+          @block.diff(prev_node.block) if @block
+          @prev_node = prev_node if @recv.prev_node && @a_args.prev_node && (@block ? @block.prev_node : true)
         end
       end
 
@@ -775,7 +777,8 @@ module TypeProf
       def diff(prev_node)
         if prev_node.is_a?(FCALL) && @mid == prev_node.mid
           @a_args.diff(prev_node.a_args)
-          @prev_node = prev_node if @a_args.prev_node
+          @block.diff(prev_node.block) if @block
+          @prev_node = prev_node if @a_args.prev_node && (@block ? @block.prev_node : true)
         end
       end
 
@@ -833,7 +836,8 @@ module TypeProf
         if prev_node.is_a?(OPCALL) && @op == prev_node.op
           @recv.diff(prev_node.recv)
           @a_args.diff(prev_node.a_args)
-          @prev_node = prev_node if @recv.prev_node && @a_args.prev_node
+          @block.diff(prev_node.block) if @block
+          @prev_node = prev_node if @recv.prev_node && @a_args.prev_node && (@block ? @block.prev_node : true)
         end
       end
 
