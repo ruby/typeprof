@@ -263,5 +263,30 @@ end
         serv.get_method_sig([], false, :bar),
       )
     end
+
+    def test_attrasgn
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+class C
+  def foo=(x)
+    @foo = x
+  end
+
+  def foo
+    @foo
+  end
+end
+
+f = C.new
+f.foo = 42
+      END
+
+      #serv.dump_graph("test0.rb")
+      assert_equal(
+        ["def foo: () -> Integer"],
+        serv.get_method_sig([:C], false, :foo),
+      )
+    end
   end
 end

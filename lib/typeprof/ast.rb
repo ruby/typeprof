@@ -35,6 +35,8 @@ module TypeProf
         FCALL.new(raw_node, lenv)
       when :OPCALL
         OPCALL.new(raw_node, lenv)
+      when :ATTRASGN
+        ATTRASGN.new(raw_node, lenv)
       when :IF
         IF.new(raw_node, lenv)
       when :UNLESS
@@ -735,7 +737,7 @@ module TypeProf
       end
 
       def dump0(dumper)
-        dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ @a_args.dump(dumper) })")
+        dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ @a_args ? @a_args.dump(dumper) : "" })")
       end
     end
 
@@ -784,6 +786,17 @@ module TypeProf
 
       def dump0(dumper)
         dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ @a_args.dump(dumper) })")
+      end
+    end
+
+    class ATTRASGN < CallNode
+      def initialize(raw_node, lenv)
+        raw_recv, mid, raw_args = raw_node.children
+        super(raw_node, lenv, raw_recv, mid, raw_args)
+      end
+
+      def dump0(dumper)
+        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ @a_args.dump(dumper) })")
       end
     end
 
