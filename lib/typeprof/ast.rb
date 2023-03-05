@@ -41,6 +41,8 @@ module TypeProf
         IF.new(raw_node, lenv)
       when :UNLESS
         UNLESS.new(raw_node, lenv)
+      when :AND
+        AND.new(raw_node, lenv)
       when :RESCUE
         RESCUE.new(raw_node, lenv)
       when :LIT
@@ -912,7 +914,7 @@ module TypeProf
         @else = raw_else ? AST.create_node(raw_else, lenv) : nil
       end
 
-      attr_reader :cond, :then, :else, :block
+      attr_reader :cond, :then, :else, :ret
 
       def install0(genv)
         @ret = Vertex.new("if", self)
@@ -934,7 +936,7 @@ module TypeProf
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(IF)
+        if self.class == prev_node.class
           @cond.diff(prev_node.cond)
           @then.diff(prev_node.then)
           @else.diff(prev_node.else) if @else
@@ -943,6 +945,7 @@ module TypeProf
       end
 
       def reuse0
+        @ret = @prev_node.ret
         @cond.reuse
         @then.reuse
         @else.reuse if @else
@@ -965,6 +968,7 @@ module TypeProf
         @cond.get_vertexes_and_boxes(vtxs, boxes)
         @then.get_vertexes_and_boxes(vtxs, boxes)
         @else.get_vertexes_and_boxes(vtxs, boxes) if @else
+        vtxs << @ret
       end
     end
 
@@ -972,6 +976,56 @@ module TypeProf
     end
 
     class UNLESS < BranchNode
+    end
+
+    class AND < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_e1, raw_e2 = raw_node.children
+        @e1 = AST.create_node(raw_e1, lenv)
+        @e2 = AST.create_node(raw_e2, lenv)
+      end
+
+      attr_reader :e1, :e2, :ret
+
+      def install0(genv)
+        @ret = Vertex.new("if", self)
+        @e1.install(genv).add_edge(genv, @ret)
+        @e2.install(genv).add_edge(genv, @ret)
+        @ret
+      end
+
+      def uninstall0(genv)
+        @e1.uninstall(genv)
+        @e2.uninstall(genv)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(AND)
+          @e1.diff(prev_node.e1)
+          @e2.diff(prev_node.e2)
+          @prev_node = prev_node if @e1.prev_node && @e2.prev_node
+        end
+      end
+
+      def reuse0
+        @ret = @prev_node.ret
+        @e1.reuse
+        @e2.reuse
+      end
+
+      def hover0(pos)
+      end
+
+      def dump0(dumper)
+        s = "(#{ @e1.dump(dumper) } && #{ @e2.dump(dumper) })"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @e1.get_vertexes_and_boxes(vtxs, boxes)
+        @e2.get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @ret
+      end
     end
 
     class RESCUE < Node
