@@ -53,6 +53,8 @@ module TypeProf
         LIT.new(raw_node, lenv, str) # Using LIT is OK?
       when :TRUE
         LIT.new(raw_node, lenv, true) # Using LIT is OK?
+      when :FALSE
+        LIT.new(raw_node, lenv, false) # Using LIT is OK?
       when :IVAR
         IVAR.new(raw_node, lenv)
       when :IASGN
