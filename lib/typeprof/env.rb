@@ -207,9 +207,9 @@ module TypeProf
       dir.superclass_cpath = superclass_cpath
     end
 
-    def get_const_entity(md)
-      dir = resolve_cpath(md.cpath)
-      dir.consts[md.cname] ||= Entity.new
+    def get_const_entity(ce)
+      dir = resolve_cpath(ce.cpath)
+      dir.consts[ce.cname] ||= Entity.new
     end
 
     def add_const_decl(mdecl)
@@ -244,9 +244,9 @@ module TypeProf
       end
     end
 
-    def get_method_entity(md)
-      dir = resolve_cpath(md.cpath)
-      dir.methods(md.singleton)[md.mid] ||= Entity.new
+    def get_method_entity(me)
+      dir = resolve_cpath(me.cpath)
+      dir.methods(me.singleton)[me.mid] ||= Entity.new
     end
 
     def add_method_decl(mdecl)
