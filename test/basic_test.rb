@@ -288,5 +288,22 @@ f.foo = 42
         serv.get_method_sig([:C], false, :foo),
       )
     end
+
+    def test_and
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(x, y)
+  x and y
+end
+
+foo(1, "s")
+      END
+
+      assert_equal(
+        ["def foo: (Integer, String) -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end
