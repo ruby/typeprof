@@ -43,6 +43,10 @@ module TypeProf
         LIT.new(raw_node, lenv)
       when :STR
         LIT.new(raw_node, lenv) # Using LIT is OK?
+      when :IVAR
+        IVAR.new(raw_node, lenv)
+      when :IASGN
+        IASGN.new(raw_node, lenv)
       when :LVAR
         LVAR.new(raw_node, lenv)
       when :LASGN
@@ -82,6 +86,7 @@ module TypeProf
         @raw_children = raw_node.children
         @prev_node = nil
         @ret = nil
+        @text_di = lenv.text_id
       end
 
       attr_reader :lenv, :prev_node, :ret
@@ -388,7 +393,7 @@ module TypeProf
 
           genv.remove_const_def(@cdef)
 
-          genv.set_superclass(@static_cpath, nil)
+          #genv.set_superclass(@static_cpath, nil)
           genv.remove_module(@static_cpath, self)
         end
         @cpath.uninstall(genv)
@@ -520,6 +525,7 @@ module TypeProf
           @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           genv.add_const_def(@cdef)
         end
+        val
       end
 
       def uninstall0(genv)
@@ -1110,6 +1116,94 @@ module TypeProf
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
+      end
+    end
+
+    class IVAR < Node
+      def initialize(raw_node, lenv)
+        super
+        var, = raw_node.children
+        @var = var
+        @ivreadsite = nil
+      end
+
+      attr_reader :var, :ivreadsite
+
+      def install0(genv)
+        @ivreadsite = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
+        @ivreadsite.ret
+      end
+
+      def uninstall0(genv)
+        @ivreadsite.destroy(genv)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(IVAR) && @var == prev_node.var
+          @prev_node = prev_node
+        end
+      end
+
+      def reuse0
+        @ivreadsite = prev_node.ivreadsite
+      end
+
+      def hover0(pos)
+        @ret
+      end
+
+      def dump0(dumper)
+        "#{ @var }"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @ivreadsite.ret
+        boxes << @ivreadsite
+      end
+    end
+
+    class IASGN < Node
+      def initialize(raw_node, lenv)
+        super
+        var, rhs = raw_node.children
+        @var = var
+        @rhs = AST.create_node(rhs, lenv)
+      end
+
+      attr_reader :var, :rhs
+
+      def install0(genv)
+        val = @rhs.install(genv)
+        @ivdef = IVarDef.new(lenv.cref.cpath, lenv.cref.singleton, @var, self, val)
+        genv.add_ivar_def(@ivdef)
+        val
+      end
+
+      def uninstall0(genv)
+        genv.remove_ivar_def(@ivdef)
+        @rhs.uninstall(genv)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(IASGN) && @var == prev_node.var
+          @rhs.diff(prev_node.rhs)
+          @prev_node = prev_node if @rhs.prev_node
+        end
+      end
+
+      def reuse0
+        @rhs.reuse
+      end
+
+      def hover0(pos)
+      end
+
+      def dump0(dumper)
+        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @rhs.get_vertexes_and_boxes(vtxs, boxes)
       end
     end
 

@@ -163,5 +163,64 @@ end
         serv.get_method_sig([], false, :baz),
       )
     end
+
+    def test_ivar
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+class C
+  def initialize(x)
+    @x = 42
+  end
+
+  def foo(_)
+    @x
+  end
+end
+
+class D < C
+  def bar(_)
+    @x
+  end
+end
+      END
+
+      #serv.dump_graph("test0.rb")
+      assert_equal(
+        ["def foo: (untyped) -> Integer"],
+        serv.get_method_sig([:C], false, :foo),
+      )
+      assert_equal(
+        ["def bar: (untyped) -> Integer"],
+        serv.get_method_sig([:D], false, :bar),
+      )
+
+      serv.update_file("test0.rb", <<-END)
+class C
+  def initialize(x)
+    @x = "42"
+  end
+
+  def foo(_)
+    @x
+  end
+end
+
+class D < C
+  def bar(_)
+    @x
+  end
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> String"],
+        serv.get_method_sig([:C], false, :foo),
+      )
+      assert_equal(
+        ["def bar: (untyped) -> String"],
+        serv.get_method_sig([:D], false, :bar),
+      )
+    end
   end
 end

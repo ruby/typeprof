@@ -275,4 +275,47 @@ module TypeProf
       "#{ to_s } (mid:#{ @mid }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
+
+  class IVarReadSite < Box
+    def initialize(node, genv, cpath, singleton, name)
+      super(node)
+      @cpath = cpath
+      @singleton = singleton
+      @name = name
+      @ret = Vertex.new("ivar:#{ name }", node)
+      genv.add_ivreadsite(self)
+    end
+
+    def destroy(genv)
+      raise
+      super
+      genv.remove_ivreadsite(self)
+    end
+
+    attr_reader :node, :cpath, :singleton, :name, :ret
+
+    def run0(genv)
+      edges = Set[]
+      resolve(genv).each do |ives|
+        ives.each do |ive|
+          case ive
+          when IVarDef
+            edges << [ive.val, @ret]
+          end
+        end
+      end
+      edges
+    end
+
+    def resolve(genv)
+      ret = []
+      ives = genv.resolve_ivar(@cpath, @singleton, @name)
+      ret << ives if ives && !ives.empty?
+      ret
+    end
+
+    def long_inspect
+      "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+    end
+  end
 end

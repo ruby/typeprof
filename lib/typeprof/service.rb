@@ -101,7 +101,8 @@ module TypeProf
         end
 
         if live_vtxs.to_a & dead_vtxs.to_a != []
-          raise
+          dump_graph("test0.rb")
+          raise (live_vtxs.to_a & dead_vtxs.to_a).to_s
         end
 
         if live_boxes.to_a & dead_boxes.to_a != []
@@ -140,6 +141,13 @@ module TypeProf
       boxes.each do |box|
         case box
         when ConstReadSite
+          puts "\e[32m#{ box.long_inspect }\e[m"
+          puts "  ret: #{ box.ret }"
+        end
+      end
+      boxes.each do |box|
+        case box
+        when IVarReadSite
           puts "\e[32m#{ box.long_inspect }\e[m"
           puts "  ret: #{ box.ret }"
         end

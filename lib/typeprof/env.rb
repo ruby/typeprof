@@ -8,6 +8,8 @@ module TypeProf
       @consts = {}
       @singleton_methods = {}
       @instance_methods = {}
+      @singleton_ivars = {}
+      @instance_ivars = {}
     end
 
     def set_superclass_path(cpath)
@@ -20,6 +22,10 @@ module TypeProf
 
     def methods(singleton)
       singleton ? @singleton_methods : @instance_methods
+    end
+
+    def ivars(singleton)
+      singleton ? @singleton_ivars : @instance_ivars
     end
   end
 
@@ -151,6 +157,23 @@ module TypeProf
     attr_reader :node, :arg, :ret
   end
 
+  class IVarDef
+    def initialize(cpath, singleton, name, node, val)
+      @cpath = cpath
+      @singleton = singleton
+      @name = name
+      @node = node
+      @val = val
+    end
+
+    attr_reader :cpath, :singleton, :name
+    attr_reader :node, :val
+
+    def show
+      "<TODO IVarDef>"
+    end
+  end
+
   class GlobalEnv
     def initialize
       @run_queue = []
@@ -162,8 +185,9 @@ module TypeProf
       @rbs_env = RBS::Environment.from_loader(loader).resolve_type_names
       @rbs_builder = RBS::DefinitionBuilder.new(env: rbs_env)
 
-      @callsites_by_name = {}
       @creadsites_by_name = {}
+      @callsites_by_name = {}
+      @ivreadsites_by_name = {}
     end
 
     attr_reader :rbs_env, :rbs_builder
@@ -216,9 +240,9 @@ module TypeProf
       dir.consts[ce.cname] ||= Entity.new
     end
 
-    def add_const_decl(mdecl)
-      e = get_const_entity(mdecl)
-      e.decls << mdecl
+    def add_const_decl(cdecl)
+      e = get_const_entity(cdecl)
+      e.decls << cdecl
     end
 
     def add_const_def(cdef)
@@ -330,6 +354,72 @@ module TypeProf
       if callsites
         callsites.each do |callsite|
           add_run(callsite)
+        end
+      end
+    end
+
+    # instance variables
+
+    def get_ivar_entity(ive)
+      dir = resolve_cpath(ive.cpath)
+      dir.ivars(ive.singleton)[ive.name] ||= Entity.new
+    end
+
+    def add_ivar_decl(ivdecl)
+      e = get_ivar_entity(ivdecl)
+      e.decls << ivdecl
+    end
+
+    def add_ivar_def(ivdef)
+      e = get_ivar_entity(ivdef)
+      e.defs << ivdef
+
+      run_ivreadsite(ivdef.name)
+    end
+
+    def remove_ivar_def(ivdef)
+      e = get_ivar_entity(ivdef)
+      e.defs.delete(ivdef)
+
+      run_ivreadsite(ivdef.name)
+    end
+
+    def resolve_ivar(cpath, singleton, name)
+      while cpath
+        dir = resolve_cpath(cpath)
+        e = dir.ivars(singleton)[name]
+        if e
+          return e.decls unless e.decls.empty?
+          return e.defs unless e.defs.empty?
+        end
+        cpath = dir.superclass_cpath
+        if cpath == [:BasicObject]
+          if singleton
+            singleton = false
+            cpath = [:Class]
+          else
+            return nil
+          end
+        else
+          cpath = dir.superclass_cpath
+        end
+      end
+    end
+
+    def add_ivreadsite(ivreadsite)
+      (@ivreadsites_by_name[ivreadsite.name] ||= Set[]) << ivreadsite
+      add_run(ivreadsite)
+    end
+
+    def remove_ivreadsite(ivreadsite)
+      @ivreadsites_by_name[ivreadsite.name].delete(ivreadsite)
+    end
+
+    def run_ivreadsite(name)
+      ivreadsites = @ivreadsites_by_name[name]
+      if ivreadsites
+        ivreadsites.each do |ivreadsite|
+          add_run(ivreadsite)
         end
       end
     end
