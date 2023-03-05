@@ -243,5 +243,25 @@ Foo.new(1, 1.0, "String")
         serv.get_method_sig([:Foo], false, :initialize),
       )
     end
+
+    def test_no_args
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo
+  1
+end
+
+def bar
+  foo
+end
+      END
+
+      #serv.dump_graph("test0.rb")
+      assert_equal(
+        ["def bar: () -> Integer"],
+        serv.get_method_sig([], false, :bar),
+      )
+    end
   end
 end

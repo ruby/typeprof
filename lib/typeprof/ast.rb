@@ -29,6 +29,8 @@ module TypeProf
         ITER.new(raw_node, lenv)
       when :CALL
         CALL.new(raw_node, lenv)
+      when :VCALL
+        VCALL.new(raw_node, lenv)
       when :FCALL
         FCALL.new(raw_node, lenv)
       when :OPCALL
@@ -661,7 +663,7 @@ module TypeProf
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @lenv.get_self
-        a_args = @a_args.install(genv)
+        a_args = @a_args ? @a_args.install(genv) : []
         if @block
           @block.install(genv)
           blk_ret = @block.install(genv)
@@ -677,16 +679,16 @@ module TypeProf
       def uninstall0(genv)
         @callsite.destroy(genv)
         @recv.uninstall(genv) if @recv
-        @a_args.uninstall(genv)
+        @a_args.uninstall(genv) if @a_args
       end
 
       def diff(prev_node)
         if prev_node.is_a?(CALL) && @mid == prev_node.mid
           @recv.diff(prev_node.recv) if @recv
-          @a_args.diff(prev_node.a_args)
+          @a_args.diff(prev_node.a_args) if @a_args
           @block.diff(prev_node.block) if @block
           if (@recv ? @recv.prev_node : true) &&
-            @a_args.prev_node &&
+            (@a_args ? @a_args.prev_node : true) &&
             (@block ? @block.prev_node : true)
 
             @prev_node = prev_node
@@ -697,7 +699,7 @@ module TypeProf
       def reuse0
         @callsite = @prev_node.callsite
         @recv.reuse if @recv
-        @a_args.reuse
+        @a_args.reuse if @a_args
       end
 
       def hover0(pos)
@@ -712,7 +714,7 @@ module TypeProf
         vtxs << @callsite.ret
         boxes << @callsite
         @recv.get_vertexes_and_boxes(vtxs, boxes) if @recv
-        @a_args.get_vertexes_and_boxes(vtxs, boxes)
+        @a_args.get_vertexes_and_boxes(vtxs, boxes) if @a_args
       end
 
       def dump_call(prefix, suffix)
@@ -734,6 +736,17 @@ module TypeProf
 
       def dump0(dumper)
         dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ @a_args.dump(dumper) })")
+      end
+    end
+
+    class VCALL < CallNode
+      def initialize(raw_node, lenv)
+        mid, = raw_node.children
+        super(raw_node, lenv, nil, mid, nil)
+      end
+
+      def dump0(dumper)
+        dump_call(@mid.to_s, "")
       end
     end
 
