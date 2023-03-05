@@ -156,7 +156,8 @@ module TypeProf
       when CallSite
         code_ranges = []
         obj.recv.types.each_key do |ty|
-          mdefs = genv.get_method_entity(ty.cpath, ty.is_a?(Type::Class), obj.mid).defs
+          me = MethodEntry.new(ty.cpath, ty.is_a?(Type::Class), obj.mid)
+          mdefs = genv.get_method_entity(me).defs
           if mdefs
             mdefs.each do |mdef|
               code_ranges << mdef.node&.code_range
@@ -171,7 +172,7 @@ module TypeProf
 
     def get_method_sig(cpath, singleton, mid)
       s = []
-      @genv.get_method_entity(cpath, singleton, mid).defs.each do |mdef|
+      @genv.get_method_entity(MethodEntry.new(cpath, singleton, mid)).defs.each do |mdef|
         s << "def #{ mid }: " + mdef.show
       end
       s

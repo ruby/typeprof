@@ -32,37 +32,52 @@ module TypeProf
     attr_reader :decls, :defs
   end
 
-  class ConstDecl
-    def initialize(cpath, cname, type)
+  class ConstEntry
+    def initialize(cpath, cname)
       @cpath = cpath
       @cname = cname
+    end
+
+    attr_reader :cpath, :cname
+  end
+
+  class ConstDecl < ConstEntry
+    def initialize(cpath, cname, type)
+      super(cpath, cname)
       @type = type
     end
 
-    attr_reader :cpath, :cname, :type
+    attr_reader :type
   end
 
-  class ConstDef
+  class ConstDef < ConstEntry
     def initialize(cpath, cname, node, val)
-      @cpath = cpath
-      @cname = cname
+      super(cpath, cname)
       @node = node
       @val = val
     end
 
-    attr_reader :cpath, :cname, :node, :val
+    attr_reader :node, :val
   end
 
-  class MethodDecl
-    def initialize(cpath, singleton, mid, rbs_member)
+  class MethodEntry
+    def initialize(cpath, singleton, mid)
       @cpath = cpath
       @singleton = singleton
       @mid = mid
+    end
+
+    attr_reader :cpath, :singleton, :mid
+  end
+
+  class MethodDecl < MethodEntry
+    def initialize(cpath, singleton, mid, rbs_member)
+      super(cpath, singleton, mid)
       @rbs_member = rbs_member
       @builtin = nil
     end
 
-    attr_reader :cpath, :singleton, :mid, :rbs_member, :builtin
+    attr_reader :rbs_member, :builtin
 
     def resolve_overloads(genv, a_arg) # TODO: only one argument is supported!
       if @builtin
@@ -96,11 +111,9 @@ module TypeProf
     end
   end
 
-  class MethodDef
+  class MethodDef < MethodEntry
     def initialize(cpath, singleton, mid, node, arg, block, ret)
-      @cpath = cpath
-      @singleton = singleton
-      @mid = mid
+      super(cpath, singleton, mid)
       @node = node
       @arg = arg
       @block = block
@@ -194,26 +207,26 @@ module TypeProf
       dir.superclass_cpath = superclass_cpath
     end
 
-    def get_const_entity(cpath, cname)
-      dir = resolve_cpath(cpath)
-      dir.consts[cname] ||= Entity.new
+    def get_const_entity(md)
+      dir = resolve_cpath(md.cpath)
+      dir.consts[md.cname] ||= Entity.new
     end
 
     def add_const_decl(mdecl)
-      e = get_const_entity(mdecl.cpath, mdecl.cname)
+      e = get_const_entity(mdecl)
       e.decls << mdecl
     end
 
     def add_const_def(cdef)
-      e = get_const_entity(cdef.cpath, cdef.cname)
+      e = get_const_entity(cdef)
       e.defs << cdef
 
       run_readsite(cdef.cname)
     end
 
     def remove_const_def(cdef)
-      dir = resolve_cpath(cdef.cpath)
-      dir.consts[cdef.cname].defs.delete(cdef)
+      e = get_const_entity(cdef)
+      e.defs.delete(cdef)
 
       run_readsite(cdef.cname)
     end
@@ -231,28 +244,28 @@ module TypeProf
       end
     end
 
-    def get_method_entity(cpath, singleton, mid)
-      dir = resolve_cpath(cpath)
-      dir.methods(singleton)[mid] ||= Entity.new
+    def get_method_entity(md)
+      dir = resolve_cpath(md.cpath)
+      dir.methods(md.singleton)[md.mid] ||= Entity.new
     end
 
     def add_method_decl(mdecl)
-      e = get_method_entity(mdecl.cpath, mdecl.singleton, mdecl.mid)
+      e = get_method_entity(mdecl)
       e.decls << mdecl
     end
 
     # TODO: remove_method_decl
 
     def add_method_def(mdef)
-      e = get_method_entity(mdef.cpath, mdef.singleton, mdef.mid)
+      e = get_method_entity(mdef)
       e.defs << mdef
 
       run_callsite(mdef.mid)
     end
 
     def remove_method_def(mdef)
-      dir = resolve_cpath(mdef.cpath)
-      dir.methods(mdef.singleton)[mdef.mid].defs.delete(mdef)
+      e = get_method_entity(mdef)
+      e.defs.delete(mdef)
 
       run_callsite(mdef.mid)
     end
