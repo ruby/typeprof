@@ -163,7 +163,7 @@ module TypeProf
       @rbs_builder = RBS::DefinitionBuilder.new(env: rbs_env)
 
       @callsites_by_name = {}
-      @readsites_by_name = {}
+      @creadsites_by_name = {}
     end
 
     attr_reader :rbs_env, :rbs_builder
@@ -182,6 +182,8 @@ module TypeProf
         obj.run(self)
       end
     end
+
+    # classes and modules
 
     def resolve_cpath(cpath)
       dir = @toplevel
@@ -207,6 +209,8 @@ module TypeProf
       dir.superclass_cpath = superclass_cpath
     end
 
+    # consts
+
     def get_const_entity(ce)
       dir = resolve_cpath(ce.cpath)
       dir.consts[ce.cname] ||= Entity.new
@@ -221,14 +225,14 @@ module TypeProf
       e = get_const_entity(cdef)
       e.defs << cdef
 
-      run_readsite(cdef.cname)
+      run_creadsite(cdef.cname)
     end
 
     def remove_const_def(cdef)
       e = get_const_entity(cdef)
       e.defs.delete(cdef)
 
-      run_readsite(cdef.cname)
+      run_creadsite(cdef.cname)
     end
 
     def resolve_const(cpath, cname)
@@ -243,6 +247,26 @@ module TypeProf
         break if cpath == [:Object]
       end
     end
+
+    def add_creadsite(creadsite)
+      (@creadsites_by_name[creadsite.cname] ||= Set[]) << creadsite
+      add_run(creadsite)
+    end
+
+    def remove_creadsite(creadsite)
+      @creadsites_by_name[creadsite.cname].delete(creadsite)
+    end
+
+    def run_creadsite(cname)
+      creadsites = @creadsites_by_name[cname]
+      if creadsites
+        creadsites.each do |creadsite|
+          add_run(creadsite)
+        end
+      end
+    end
+
+    # methods
 
     def get_method_entity(me)
       dir = resolve_cpath(me.cpath)
@@ -287,24 +311,6 @@ module TypeProf
           end
         else
           cpath = dir.superclass_cpath
-        end
-      end
-    end
-
-    def add_readsite(readsite)
-      (@readsites_by_name[readsite.cname] ||= Set[]) << readsite
-      add_run(readsite)
-    end
-
-    def remove_readsite(readsite)
-      @readsites_by_name[readsite.cname].delete(readsite)
-    end
-
-    def run_readsite(cname)
-      readsites = @readsites_by_name[cname]
-      if readsites
-        readsites.each do |readsite|
-          add_run(readsite)
         end
       end
     end

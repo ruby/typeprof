@@ -424,7 +424,7 @@ module TypeProf
 
       def install0(genv)
         cref = @lenv.cref
-        @readsite = ReadSite.new(self, genv, cref, nil, @cname)
+        @readsite = ConstReadSite.new(self, genv, cref, nil, @cname)
         @readsite.ret
       end
 
@@ -463,7 +463,7 @@ module TypeProf
 
       def install0(genv)
         cbase = @cbase ? @cbase.install(genv) : nil
-        @readsite = ReadSite.new(self, genv, @lenv.cref, cbase, @cname)
+        @readsite = ConstReadSite.new(self, genv, @lenv.cref, cbase, @cname)
         @readsite.ret
       end
 

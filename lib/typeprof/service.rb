@@ -139,7 +139,7 @@ module TypeProf
       end
       boxes.each do |box|
         case box
-        when ReadSite
+        when ConstReadSite
           puts "\e[32m#{ box.long_inspect }\e[m"
           puts "  ret: #{ box.ret }"
         end

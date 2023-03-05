@@ -145,20 +145,20 @@ module TypeProf
     alias inspect to_s
   end
 
-  class ReadSite < Box
+  class ConstReadSite < Box
     def initialize(node, genv, cref, cbase, cname)
       super(node)
       @cref = cref
       @cbase = cbase
       @cname = cname
       @ret = Vertex.new("cname:#{ cname }", node)
-      genv.add_readsite(self)
+      genv.add_creadsite(self)
       @cbase.add_edge(genv, self) if @cbase
     end
 
     def destroy(genv)
       super
-      genv.remove_readsite(self)
+      genv.remove_creadsite(self)
     end
 
     attr_reader :node, :cref, :cbase, :cname, :ret
