@@ -105,5 +105,63 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_branch
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(n)
+  n ? 1 : "str"
+end
+def bar(n)
+  n = 1 if n
+  n
+end
+def baz(n)
+  n = 1 unless n
+end
+      END
+
+      #serv.dump_graph("test0.rb")
+      assert_equal(
+        ["def foo: (untyped) -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+      assert_equal(
+        ["def bar: (Integer) -> Integer"],
+        serv.get_method_sig([], false, :bar),
+      )
+      assert_equal(
+        ["def baz: (Integer) -> Integer | NilClass"],
+        serv.get_method_sig([], false, :baz),
+      )
+
+      serv.update_file("test0.rb", <<-END)
+def foo(n)
+  n ? 1 : "str"
+end
+def bar(n)
+  n = 1 if n
+  n
+end
+def baz(n)
+  n = 1 unless n
+end
+      END
+
+      #serv.dump_graph("test0.rb")
+      assert_equal(
+        ["def foo: (untyped) -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+      assert_equal(
+        ["def bar: (Integer) -> Integer"],
+        serv.get_method_sig([], false, :bar),
+      )
+      assert_equal(
+        ["def baz: (Integer) -> Integer | NilClass"],
+        serv.get_method_sig([], false, :baz),
+      )
+    end
   end
 end

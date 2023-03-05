@@ -33,6 +33,10 @@ module TypeProf
         FCALL.new(raw_node, lenv)
       when :OPCALL
         OPCALL.new(raw_node, lenv)
+      when :IF
+        IF.new(raw_node, lenv)
+      when :UNLESS
+        UNLESS.new(raw_node, lenv)
       when :RESCUE
         RESCUE.new(raw_node, lenv)
       when :LIT
@@ -259,6 +263,12 @@ module TypeProf
           if i == prev_node.stmts.size
             @prev_node = prev_node
           end
+        end
+      end
+
+      def reuse0
+        @stmts.each do |stmt|
+          stmt.reuse
         end
       end
 
@@ -964,6 +974,77 @@ module TypeProf
       def get_vertexes_and_boxes(vtxs, boxes)
         @call.get_vertexes_and_boxes(vtxs, boxes)
       end
+    end
+
+    class BranchNode < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_cond, raw_then, raw_else = raw_node.children
+        @cond = AST.create_node(raw_cond, lenv)
+        @then = AST.create_node(raw_then, lenv)
+        @else = raw_else ? AST.create_node(raw_else, lenv) : nil
+      end
+
+      attr_reader :cond, :then, :else, :block
+
+      def install0(genv)
+        @ret = Vertex.new("if", self)
+        @cond.install(genv)
+        @then.install(genv).add_edge(genv, @ret)
+        if @else
+          else_val = @else.install(genv)
+        else
+          else_val = Source.new(Type::Instance.new([:NilClass]))
+        end
+        else_val.add_edge(genv, @ret)
+        @ret
+      end
+
+      def uninstall0(genv)
+        @cond.uninstall(genv)
+        @then.uninstall(genv)
+        @else.uninstall(genv) if @else
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(IF)
+          @cond.diff(prev_node.cond)
+          @then.diff(prev_node.then)
+          @else.diff(prev_node.else) if @else
+          @prev_node = prev_node if @cond.prev_node && @then.prev_node && (@else ? @else.prev_node : true)
+        end
+      end
+
+      def reuse0
+        @cond.reuse
+        @then.reuse
+        @else.reuse if @else
+      end
+
+      def hover0(pos)
+      end
+
+      def dump0(dumper)
+        s = "if #{ @cond.dump(dumper) }\n"
+        s << @then.dump(dumper).gsub(/^/, "  ")
+        if @else
+          s << "\nelse\n"
+          s << @else.dump(dumper).gsub(/^/, "  ")
+        end
+        s << "\nend"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        @cond.get_vertexes_and_boxes(vtxs, boxes)
+        @then.get_vertexes_and_boxes(vtxs, boxes)
+        @else.get_vertexes_and_boxes(vtxs, boxes) if @else
+      end
+    end
+
+    class IF < BranchNode
+    end
+
+    class UNLESS < BranchNode
     end
 
     class RESCUE < Node
