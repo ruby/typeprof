@@ -217,9 +217,16 @@ module TypeProf
       dir
     end
 
-    def add_module(cpath, mod_def)
+    def add_module(cpath, mod_def, superclass_cpath = nil)
       dir = resolve_cpath(cpath)
       dir.module_defs << mod_def
+      if superclass_cpath
+        if dir.superclass_cpath
+          # error
+        else
+          dir.superclass_cpath = superclass_cpath
+        end
+      end
       dir
     end
 

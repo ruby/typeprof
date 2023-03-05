@@ -332,7 +332,7 @@ module TypeProf
 
       def install0(genv)
         @cpath_node.install(genv)
-        genv.add_module(@cpath)
+        genv.add_module(@static_cpath, self)
         @body.install(genv)
       end
 
@@ -374,8 +374,7 @@ module TypeProf
         @cpath.install(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
         if @static_cpath && @static_superclass_cpath
-          genv.add_module(@static_cpath, self)
-          genv.set_superclass(@static_cpath, @static_superclass_cpath)
+          genv.add_module(@static_cpath, self, @static_superclass_cpath)
 
           val = Source.new(Type::Class.new(@static_cpath))
           @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
@@ -390,10 +389,7 @@ module TypeProf
       def uninstall0(genv)
         if @static_cpath
           @body.uninstall(genv)
-
           genv.remove_const_def(@cdef)
-
-          #genv.set_superclass(@static_cpath, nil)
           genv.remove_module(@static_cpath, self)
         end
         @cpath.uninstall(genv)

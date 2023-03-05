@@ -16,8 +16,7 @@ module TypeProf
           else
             superclass_cpath = [:Object]
           end
-          genv.add_module(cpath, decl)
-          genv.set_superclass(cpath, superclass_cpath)
+          genv.add_module(cpath, decl, superclass_cpath)
           ty = Type::Class.new(cpath)
           cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
           genv.add_const_decl(cdecl)
