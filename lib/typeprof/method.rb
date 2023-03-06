@@ -117,6 +117,12 @@ module TypeProf
         ty = Type::Array.new(Type::Array::Elements.new([], msig.rest_ty), Type::Instance.new(Type::Builtin[:ary]))
         ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
         nenv, rest_ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
+        # TODO: handle a case where rest_start is not found
+        nenv = nenv.local_update(rest_start, rest_ty)
+      elsif rest_start
+        alloc_site2 = alloc_site.add_id(idx += 1)
+        ty = Type::Array.new(Type::Array::Elements.new([], Type.any), Type::Instance.new(Type::Builtin[:ary]))
+        nenv, rest_ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(rest_start, rest_ty)
       end
       if msig.post_tys
@@ -144,6 +150,11 @@ module TypeProf
         ty = msig.kw_rest_ty
         alloc_site2 = alloc_site.add_id(:**)
         ty = ty.substitute(cur_subst, Config.current.options[:type_depth_limit]).remove_type_vars
+        nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
+        nenv = nenv.local_update(kw_rest, ty)
+      elsif kw_rest
+        alloc_site2 = alloc_site.add_id(:**)
+        ty = Type.gen_hash {}
         nenv, ty = scratch.localize_type(ty, nenv, callee_ep, alloc_site2)
         nenv = nenv.local_update(kw_rest, ty)
       end
