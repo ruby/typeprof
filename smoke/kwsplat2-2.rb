@@ -1,4 +1,5 @@
-# RUBY_VERSION < 3.3
+# RUBY_VERSION >= 3.3
+
 def foo(*r, k:)
 end
 
@@ -10,5 +11,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: (*Integer | {k: Integer} r, k: Integer) -> nil
+  def foo: (*Integer r, k: Integer) -> nil
 end

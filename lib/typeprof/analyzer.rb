@@ -2231,6 +2231,34 @@ module TypeProf
       merge_env(ep.next, env)
     end
 
+    private def ruby_3_3_keywords?
+      @ruby_3_3_keywords ||=
+        RubyVM::InstructionSequence.compile("foo(*a, **b)").to_a.last[-2][1][:orig_argc] == 2
+    end
+
+    private def type_to_keywords(ty, ep)
+      case ty
+      when Type::Hash
+        ty.elems.to_keywords
+      when Type::Union
+        hash_elems = nil
+        ty.elems&.each do |(container_kind, base_type), elems|
+          if container_kind == Type::Hash
+            elems.to_keywords
+            hash_elems = hash_elems ? hash_elems.union(elems) : elems
+          end
+        end
+        if hash_elems
+          hash_elems.to_keywords
+        else
+          { nil => Type.any }
+        end
+      else
+        warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
+        { nil => Type.any }
+      end
+    end
+
     private def setup_actual_arguments(kind, operands, ep, env)
       opt, blk_iseq = operands
       flags = opt[:flag]
@@ -2284,42 +2312,33 @@ module TypeProf
       blk_ty = new_blk_ty
 
       if flag_args_splat
-        # assert !flag_args_kwarg
-        rest_ty = aargs.last
-        aargs = aargs[0..-2]
-        if flag_args_kw_splat
-          # XXX: The types contained in ActualArguments are expected to be all local types.
-          # This "globalize_type" breaks the invariant, and violates the assertion of Union#globalize that asserts @elems be nil.
-          # To fix this issue fundamentally, ActualArguments should keep all arguments as-is (as like the VM does),
-          # and globalize some types on the on-demand bases.
-          ty = globalize_type(rest_ty, env, ep)
-          if ty.is_a?(Type::Array)
-            _, (ty,) = ty.elems.take_last(1)
-            case ty
-            when Type::Hash
-              kw_tys = ty.elems.to_keywords
-            when Type::Union
-              hash_elems = nil
-              ty.elems&.each do |(container_kind, base_type), elems|
-                if container_kind == Type::Hash
-                  elems.to_keywords
-                  hash_elems = hash_elems ? hash_elems.union(elems) : elems
-                end
-              end
-              if hash_elems
-                kw_tys = hash_elems.to_keywords
-              else
-                kw_tys = { nil => Type.any }
-              end
+        if ruby_3_3_keywords?
+          if flag_args_kw_splat
+            kw_tys = type_to_keywords(globalize_type(aargs[-1], env, ep), ep)
+            aargs = aargs[0..-2]
+          else
+            kw_tys = {}
+          end
+          rest_ty = aargs.last
+          aargs = aargs[0..-2]
+        else
+          rest_ty = aargs.last
+          aargs = aargs[0..-2]
+          if flag_args_kw_splat
+            # XXX: The types contained in ActualArguments are expected to be all local types.
+            # This "globalize_type" breaks the invariant, and violates the assertion of Union#globalize that asserts @elems be nil.
+            # To fix this issue fundamentally, ActualArguments should keep all arguments as-is (as like the VM does),
+            # and globalize some types on the on-demand bases.
+            ty = globalize_type(rest_ty, env, ep)
+            if ty.is_a?(Type::Array)
+              _, (ty,) = ty.elems.take_last(1)
+              kw_tys = type_to_keywords(ty, ep)
             else
-              warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
-              kw_tys = { nil => Type.any }
+              raise NotImplementedError
             end
           else
-            raise NotImplementedError
+            kw_tys = {}
           end
-        else
-          kw_tys = {}
         end
         aargs = ActualArguments.new(aargs, rest_ty, kw_tys, blk_ty)
       elsif flag_args_kw_splat
