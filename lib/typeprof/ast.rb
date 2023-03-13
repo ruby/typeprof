@@ -565,7 +565,7 @@ module TypeProf
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
-        @cpath.get_vertexes_and_boxes(vtxs, boxes)
+        @cpath.get_vertexes_and_boxes(vtxs, boxes) if @cpath
         @rhs.get_vertexes_and_boxes(vtxs, boxes)
       end
     end
@@ -798,7 +798,11 @@ module TypeProf
       end
 
       def dump0(dumper)
-        dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ @a_args.dump(dumper) })")
+        if @a_args
+          dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ @a_args.dump(dumper) })")
+        else
+          dump_call("(#{ @mid }", "#{ @recv.dump(dumper) })")
+        end
       end
     end
 
