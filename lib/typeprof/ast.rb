@@ -160,6 +160,12 @@ module TypeProf
         dump0(dumper) + "\e[34m:#{ @ret.inspect }\e[m"
       end
 
+      def get_vertexes_and_boxes(vtxs, boxes)
+        children.each do |subnode|
+          subnode.get_vertexes_and_boxes(vtxs, boxes)
+        end
+      end
+
       def pretty_print_instance_variables
         super - [:@raw_node, :@raw_children, :@lenv, :@prev_node]
       end
@@ -180,6 +186,11 @@ module TypeProf
       end
 
       attr_reader :tbl, :args, :body
+
+      def children
+        # TODO: default expr for optional args
+        [@body].compact
+      end
 
       def install0(genv)
         if @args
@@ -236,7 +247,7 @@ module TypeProf
           blk = @args[9]
           vtxs << @lenv.get_var(blk) if blk
         end
-        @body.get_vertexes_and_boxes(vtxs, boxes) if @body
+        super
       end
     end
 
@@ -245,6 +256,10 @@ module TypeProf
         super
         stmts = raw_node.children
         @stmts = stmts.map {|n| AST.create_node(n, lenv) }
+      end
+
+      def children
+        @stmts
       end
 
       attr_reader :stmts
@@ -308,12 +323,6 @@ module TypeProf
           stmt.dump(dumper)
         end.join("\n")
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @stmts.each do |stmt|
-          stmt.get_vertexes_and_boxes(vtxs, boxes)
-        end
-      end
     end
 
     class ModuleNode < Node
@@ -348,6 +357,10 @@ module TypeProf
         super(raw_node, lenv, raw_cpath, raw_scope)
       end
 
+      def children
+        [@cpath, @body]
+      end
+
       def install0(genv)
         @cpath_node.install(genv)
         genv.add_module(@static_cpath, self)
@@ -368,11 +381,6 @@ module TypeProf
         end
         s << "end"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @cpath.get_vertexes_and_boxes(vtxs, boxes)
-        @body.get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class CLASS < ModuleNode
@@ -386,6 +394,10 @@ module TypeProf
           @static_superclass_cpath = [:Object]
         end
         super(raw_node, lenv, raw_cpath, raw_scope)
+      end
+
+      def children
+        [@cpath, @superclass_cpath, @body].compact
       end
 
       def install0(genv)
@@ -425,18 +437,16 @@ module TypeProf
         end
         s << "end"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @cpath.get_vertexes_and_boxes(vtxs, boxes)
-        @superclass_cpath.get_vertexes_and_boxes(vtxs, boxes) if @superclass_cpath
-        @body.get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class CONST < Node
       def initialize(raw_node, lenv)
         super
         @cname, = raw_node.children
+      end
+
+      def children
+        []
       end
 
       attr_reader :cname, :readsite
@@ -478,6 +488,10 @@ module TypeProf
         @cbase = cbase_raw ? AST.create_node(cbase_raw, lenv) : nil
       end
 
+      def children
+        [@cbase].compact
+      end
+
       attr_reader :cname, :readsite
 
       def install0(genv)
@@ -508,7 +522,7 @@ module TypeProf
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @readsite.ret
         boxes << @readsite
-        @cbase.get_vertexes_and_boxes(vtxs, boxes) if @cbase
+        super
       end
     end
 
@@ -528,6 +542,10 @@ module TypeProf
           raw_rhs = children[2]
         end
         @rhs = AST.create_node(raw_rhs, lenv)
+      end
+
+      def children
+        [@cpath, @rhs].compact
       end
 
       attr_reader :name, :cpath, :static_cpath, :rhs
@@ -563,11 +581,6 @@ module TypeProf
           "#{ @static_cpath[0] } = #{ @rhs.dump(dumper) }"
         end
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @cpath.get_vertexes_and_boxes(vtxs, boxes) if @cpath
-        @rhs.get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class DEFN < Node
@@ -581,6 +594,10 @@ module TypeProf
         @scope = AST.create_node(raw_scope, nlenv)
 
         @reused = false
+      end
+
+      def children
+        @reused ? [] : [@scope]
       end
 
       attr_reader :mid, :scope, :mdef
@@ -631,16 +648,16 @@ module TypeProf
         s << @scope.dump(dumper).gsub(/^/, "  ") + "\n"
         s << "end"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @scope.get_vertexes_and_boxes(vtxs, boxes) unless @reused
-      end
     end
 
     class BEGIN_ < Node
       def initialize(raw_node, lenv)
         super
         raise NotImplementedError if raw_node.children != [nil]
+      end
+
+      def children
+        []
       end
 
       def install0(genv)
@@ -660,9 +677,6 @@ module TypeProf
       def dump0(dumper)
         "begin; end"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class CallNode < Node
@@ -671,6 +685,11 @@ module TypeProf
         @mid = mid
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
         @a_args = A_ARGS.new(raw_args, lenv) if raw_args
+        @block = nil
+      end
+
+      def children
+        [@recv, @a_args, @block].compact
       end
 
       attr_reader :recv, :mid, :a_args
@@ -728,8 +747,7 @@ module TypeProf
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @callsite.ret
         boxes << @callsite
-        @recv.get_vertexes_and_boxes(vtxs, boxes) if @recv
-        @a_args.get_vertexes_and_boxes(vtxs, boxes) if @a_args
+        super
       end
 
       def dump_call(prefix, suffix)
@@ -833,6 +851,10 @@ module TypeProf
         end
       end
 
+      def children
+        @positional_args
+      end
+
       attr_reader :positional_args
 
       def install0(genv)
@@ -870,12 +892,6 @@ module TypeProf
       def dump(dumper) # HACK: intentionally not dump0 because this node does not simply return a vertex
         @positional_args.map {|n| n.dump(dumper) }.join(", ")
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @positional_args.each do |n|
-          n.get_vertexes_and_boxes(vtxs, boxes)
-        end
-      end
     end
 
     class ITER < Node
@@ -887,6 +903,10 @@ module TypeProf
         ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
         nlenv = LexicalScope.new(lenv.text_id, ncref, lenv)
         @call.block = AST.create_node(raw_scope, nlenv)
+      end
+
+      def children
+        [@call]
       end
 
       attr_reader :call, :block
@@ -917,10 +937,6 @@ module TypeProf
       def dump0(dumper)
         @call.dump(dumper)
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @call.get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class BranchNode < Node
@@ -930,6 +946,10 @@ module TypeProf
         @cond = AST.create_node(raw_cond, lenv)
         @then = AST.create_node(raw_then, lenv)
         @else = raw_else ? AST.create_node(raw_else, lenv) : nil
+      end
+
+      def children
+        [@cond, @then, @else].compact
       end
 
       attr_reader :cond, :then, :else, :ret
@@ -983,10 +1003,8 @@ module TypeProf
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
-        @cond.get_vertexes_and_boxes(vtxs, boxes)
-        @then.get_vertexes_and_boxes(vtxs, boxes)
-        @else.get_vertexes_and_boxes(vtxs, boxes) if @else
         vtxs << @ret
+        super
       end
     end
 
@@ -1002,6 +1020,10 @@ module TypeProf
         raw_e1, raw_e2 = raw_node.children
         @e1 = AST.create_node(raw_e1, lenv)
         @e2 = AST.create_node(raw_e2, lenv)
+      end
+
+      def children
+        [@e1, @e2]
       end
 
       attr_reader :e1, :e2, :ret
@@ -1040,9 +1062,8 @@ module TypeProf
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
-        @e1.get_vertexes_and_boxes(vtxs, boxes)
-        @e2.get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @ret
+        super
       end
     end
 
@@ -1052,6 +1073,10 @@ module TypeProf
         raw_body, _raw_rescue = raw_node.children
         @body = AST.create_node(raw_body, lenv)
         # TODO: raw_rescue
+      end
+
+      def children
+        [@body]
       end
 
       def install0(genv)
@@ -1071,6 +1096,10 @@ module TypeProf
       def initialize(raw_node, lenv, lit)
         super(raw_node, lenv)
         @lit = lit
+      end
+
+      def children
+        []
       end
 
       attr_reader :lit
@@ -1112,15 +1141,16 @@ module TypeProf
       def dump0(dumper)
         @lit.inspect
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class LIST < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         @elems = raw_node.children.compact.map {|n| AST.create_node(n, lenv) }
+      end
+
+      def children
+        @elems
       end
 
       attr_reader :elems, :vtx
@@ -1163,6 +1193,7 @@ module TypeProf
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @aryallocsite.ret
         boxes << @aryallocsite
+        super
       end
     end
 
@@ -1172,6 +1203,10 @@ module TypeProf
         var, = raw_node.children
         @var = var
         @ivreadsite = nil
+      end
+
+      def children
+        []
       end
 
       attr_reader :var, :ivreadsite
@@ -1206,6 +1241,7 @@ module TypeProf
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @ivreadsite.ret
         boxes << @ivreadsite
+        super
       end
     end
 
@@ -1215,6 +1251,10 @@ module TypeProf
         var, rhs = raw_node.children
         @var = var
         @rhs = AST.create_node(rhs, lenv)
+      end
+
+      def children
+        [@rhs]
       end
 
       attr_reader :var, :rhs
@@ -1248,10 +1288,6 @@ module TypeProf
       def dump0(dumper)
         "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        @rhs.get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class LVAR < Node
@@ -1259,6 +1295,10 @@ module TypeProf
         super
         var, = raw_node.children
         @var = var
+      end
+
+      def children
+        []
       end
 
       attr_reader :var
@@ -1286,9 +1326,6 @@ module TypeProf
       def dump0(dumper)
         "#{ @var }"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class LASGN < Node
@@ -1297,6 +1334,10 @@ module TypeProf
         var, rhs = raw_node.children
         @var = var
         @rhs = AST.create_node(rhs, lenv)
+      end
+
+      def children
+        [@rhs]
       end
 
       attr_reader :var, :rhs
@@ -1332,6 +1373,7 @@ module TypeProf
 
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @vtx
+        super
       end
     end
 
@@ -1340,6 +1382,10 @@ module TypeProf
         super
         var, = raw_node.children
         @var = var
+      end
+
+      def children
+        []
       end
 
       attr_reader :var
@@ -1372,9 +1418,6 @@ module TypeProf
       def dump0(dumper)
         "#{ @var }"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-      end
     end
 
     class DASGN < Node
@@ -1383,6 +1426,10 @@ module TypeProf
         var, rhs = raw_node.children
         @var = var
         @rhs = AST.create_node(rhs, lenv)
+      end
+
+      def children
+        [@rhs]
       end
 
       attr_reader :var, :rhs
@@ -1426,6 +1473,7 @@ module TypeProf
 
       def get_vertexes_and_boxes(vtxs, boxes)
         vtxs << @vtx
+        super
       end
     end
   end
