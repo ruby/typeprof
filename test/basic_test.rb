@@ -106,6 +106,29 @@ end
       )
     end
 
+    def test_block2
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+      def foo
+        1.times {|_| }
+      end
+
+      def bar
+        1.times
+      end
+      END
+
+      assert_equal(
+        ["def foo: () -> Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+      assert_equal(
+        ["def bar: () -> Enumerator"], # TODO: type parameter
+        serv.get_method_sig([], false, :bar),
+      )
+    end
+
     def test_branch
       serv = TypeProf::Service.new
 

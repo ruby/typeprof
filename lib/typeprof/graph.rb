@@ -259,7 +259,7 @@ module TypeProf
               end
             else
               # TODO: block
-              ret_types = md.resolve_overloads(genv, ty, @a_args)
+              ret_types = md.resolve_overloads(genv, ty, @a_args, @block)
               # TODO: handle Type::Union
               ret_types.each do |ty|
                 edges << [Source.new(ty), @ret]
