@@ -107,6 +107,14 @@ module TypeProf
         @text_di = lenv.text_id
       end
 
+      def traverse(&blk)
+        yield :enter, self
+        children.each do |subnode|
+          subnode.traverse(&blk)
+        end
+        yield :leave, self
+      end
+
       attr_reader :lenv, :prev_node, :ret
 
       def code_range

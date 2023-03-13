@@ -120,6 +120,38 @@ module TypeProf
       end
     end
 
+    def dump_declarations(path)
+      depth = 0
+      @text_nodes[path].traverse do |event, node|
+        case node
+        when AST::MODULE
+          if node.static_cpath
+            if event == :enter
+              puts " " * depth + "module #{ node.static_path.join("::") }"
+              depth += 2
+            else
+              depth -= 2
+              puts " " * depth + "end"
+            end
+          end
+        when AST::CLASS
+          if node.static_cpath && node.static_superclass_cpath
+            if event == :enter
+              puts " " * depth + "class #{ node.static_cpath.join("::") } < #{ node.static_superclass_cpath.join("::") }"
+              depth += 2
+            else
+              depth -= 2
+              puts " " * depth + "end"
+            end
+          end
+        when AST::DEFN
+          if event == :enter
+            puts " " * depth + "def #{ node.mid }: " + node.mdef.show
+          end
+        end
+      end
+    end
+
     def dump_graph(path)
       node = @text_nodes[path]
 
