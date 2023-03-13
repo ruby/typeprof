@@ -78,5 +78,21 @@ bar("str")
         serv.get_method_sig([], false, :bar),
       )
     end
+
+    def test_aref
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo
+  ary = [1, "str"]
+  ary[0]
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

@@ -1,7 +1,7 @@
 module TypeProf
   class Type
-    def base_type(_)
-      self
+    def base_types(_)
+      [self]
     end
 
     class Module < Type
@@ -58,8 +58,8 @@ module TypeProf
 
       attr_reader :elem
 
-      def base_type(genv)
-        Type::Instance.new([:Array])
+      def base_types(genv)
+        [Type::Instance.new([:Array])]
       end
 
       def show
@@ -74,8 +74,8 @@ module TypeProf
 
       attr_reader :block
 
-      def base_type(genv)
-        Type::Instance.new([:Proc])
+      def base_types(genv)
+        [Type::Instance.new([:Proc])]
       end
 
       def show
@@ -92,8 +92,9 @@ module TypeProf
 
       attr_reader :rbs_type
 
-      def base_type(genv)
-        Signatures.type(genv, @rbs_type).first # TODO
+      def base_types(genv)
+        map = {} # is this OK?
+        Signatures.type(genv, @rbs_type, map)
       end
 
       def inspect

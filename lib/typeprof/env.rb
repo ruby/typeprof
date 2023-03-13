@@ -85,8 +85,14 @@ module TypeProf
 
     attr_reader :rbs_member, :builtin
 
-    def resolve_overloads(genv, a_args)
+    def resolve_overloads(genv, recv_ty, a_args)
       ret_types = []
+      map = {
+        __self: (@singleton ? Type::Module : Type::Instance).new(@cpath),
+      }
+      if recv_ty.is_a?(Type::Array)
+        map[:Elem] = recv_ty.elem
+      end
       @rbs_member.overloads.each do |overload|
         func = overload.method_type.type
         # func.optional_keywords
@@ -96,7 +102,9 @@ module TypeProf
         # func.rest_positionals
         # func.trailing_positionals
         # TODO: only one argument!
-        f_args = func.required_positionals.map {|f_arg| Signatures.type(genv, f_arg.type) }
+        f_args = func.required_positionals.map do |f_arg|
+          Signatures.type(genv, f_arg.type, map)
+        end
         if a_args.size == f_args.size
           match = a_args.zip(f_args).all? do |a_arg, f_arg|
             a_arg.types.any? do |ty,|
@@ -107,7 +115,7 @@ module TypeProf
             end
           end
           if match
-            ret_types.concat(Signatures.type(genv, func.return_type))
+            ret_types.concat(Signatures.type(genv, func.return_type, map))
           end
         end
       end

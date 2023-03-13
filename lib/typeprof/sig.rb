@@ -70,13 +70,13 @@ module TypeProf
       end
     end
 
-    def self.type(genv, type)
+    def self.type(genv, type, map)
       case type
       when RBS::Types::Alias
-        self.type(genv, genv.rbs_builder.expand_alias(type.name))
+        self.type(genv, genv.rbs_builder.expand_alias(type.name), map)
       when RBS::Types::Union
         type.types.flat_map do |ty|
-          self.type(genv, ty)
+          self.type(genv, ty, map)
         end.compact
       when RBS::Types::ClassInstance
         name = type.name
@@ -86,7 +86,9 @@ module TypeProf
       when RBS::Types::Bases::Bool
         [Type::Instance.new([:TrueClass]), Type::Instance.new([:FalseClass])]
       when RBS::Types::Bases::Self
-
+        [map[:__self]]
+      when RBS::Types::Variable
+        [map[type.name] || raise]
       else
         raise "unknown RBS type: #{ type.class }"
       end

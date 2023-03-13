@@ -182,8 +182,9 @@ module TypeProf
         cds.each do |cd|
           case cd
           when ConstDecl
-            ty = cd.type.base_type(genv)
-            edges << [Source.new(ty), @ret]
+            cd.type.base_types(genv).each do |base_ty|
+              edges << [Source.new(base_ty), @ret]
+            end
           when ConstDef
             edges << [cd.val, @ret]
           end
@@ -258,7 +259,7 @@ module TypeProf
               end
             else
               # TODO: block
-              ret_types = md.resolve_overloads(genv, @a_args)
+              ret_types = md.resolve_overloads(genv, ty, @a_args)
               # TODO: handle Type::Union
               ret_types.each do |ty|
                 edges << [Source.new(ty), @ret]
@@ -286,8 +287,10 @@ module TypeProf
     def resolve(genv)
       ret = []
       @recv.types.each do |ty, _source|
-        mds = genv.resolve_method(ty.base_type(genv).cpath, ty.is_a?(Type::Module), @mid)
-        ret << [ty, mds] if mds
+        ty.base_types(genv).each do |base_ty|
+          mds = genv.resolve_method(base_ty.cpath, base_ty.is_a?(Type::Module), @mid)
+          ret << [ty, mds] if mds
+        end
       end
       ret
     end
@@ -363,8 +366,10 @@ module TypeProf
     def resolve(genv)
       ret = []
       @recv.types.each do |ty, _source|
-        mds = genv.resolve_method(ty.base_type(genv).cpath, ty.is_a?(Type::Class), @mid)
-        ret << [ty, mds] if mds
+        ty.base_types(genv).each do |base_ty|
+          mds = genv.resolve_method(base_ty.cpath, base_ty.is_a?(Type::Class), @mid)
+          ret << [ty, mds] if mds
+        end
       end
       ret
     end
