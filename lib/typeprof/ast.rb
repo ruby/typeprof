@@ -65,6 +65,10 @@ module TypeProf
         LVAR.new(raw_node, lenv)
       when :LASGN
         LASGN.new(raw_node, lenv)
+      when :DVAR
+        DVAR.new(raw_node, lenv)
+      when :DASGN
+        DASGN.new(raw_node, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"
@@ -568,13 +572,13 @@ module TypeProf
 
     class DEFN < Node
       def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @mid, raw_scope = raw_node.children
+
         ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
         nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
 
-        super(raw_node, nlenv)
-        @mid, raw_scope = raw_node.children
-
-        @scope = AST.create_node(raw_scope, @lenv)
+        @scope = AST.create_node(raw_scope, nlenv)
 
         @reused = false
       end
@@ -677,7 +681,6 @@ module TypeProf
         recv = @recv ? @recv.install(genv) : @lenv.get_self
         a_args = @a_args ? @a_args.install(genv) : []
         if @block
-          @block.install(genv)
           blk_ret = @block.install(genv)
           blk_f_args = @block.get_args
           #block = @lenv.get_block(self)
@@ -876,7 +879,10 @@ module TypeProf
         super
         raw_call, raw_scope = raw_node.children
         @call = AST.create_node(raw_call, lenv)
-        @call.block = AST.create_node(raw_scope, lenv)
+
+        ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
+        nlenv = LexicalScope.new(lenv.text_id, ncref, lenv)
+        @call.block = AST.create_node(raw_scope, nlenv)
       end
 
       attr_reader :call, :block
@@ -1318,6 +1324,100 @@ module TypeProf
         vtxs << @vtx
       end
     end
+
+    class DVAR < Node
+      def initialize(raw_node, lenv)
+        super
+        var, = raw_node.children
+        @var = var
+      end
+
+      attr_reader :var
+
+      def install0(genv)
+        lenv = @lenv
+        while lenv
+          vtx = lenv.get_var(@var)
+          return vtx if vtx
+          lenv = lenv.outer
+        end
+      end
+
+      def uninstall0(genv)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(DVAR) && @var == prev_node.var
+          @prev_node = prev_node
+        end
+      end
+
+      def reuse0
+      end
+
+      def hover0(pos)
+        @ret
+      end
+
+      def dump0(dumper)
+        "#{ @var }"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+      end
+    end
+
+    class DASGN < Node
+      def initialize(raw_node, lenv)
+        super
+        var, rhs = raw_node.children
+        @var = var
+        @rhs = AST.create_node(rhs, lenv)
+      end
+
+      attr_reader :var, :rhs
+
+      def install0(genv)
+        val = @rhs.install(genv)
+
+        lenv = @lenv
+        while lenv
+          break if lenv.var_exist?(@var)
+          lenv = lenv.outer
+        end
+
+        @vtx = lenv.def_var(@var, self)
+
+        val.add_edge(genv, @vtx)
+        val
+      end
+
+      def uninstall0(genv)
+        @rhs.uninstall(genv)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(LASGN) && @var == prev_node.var
+          @rhs.diff(prev_node.rhs)
+          @prev_node = prev_node if @rhs.prev_node
+        end
+      end
+
+      def reuse0
+        @rhs.reuse
+      end
+
+      def hover0(pos)
+      end
+
+      def dump0(dumper)
+        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @vtx
+      end
+    end
   end
 
   class LexicalScope
@@ -1343,6 +1443,10 @@ module TypeProf
 
     def get_var(name)
       @tbl[name]
+    end
+
+    def var_exist?(name)
+      @tbl.key?(name)
     end
 
     def get_self

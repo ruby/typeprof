@@ -305,5 +305,29 @@ foo(1, "s")
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_dvar
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(&blk)
+  blk.call(42)
+end
+
+def bar
+  a = "str"
+  foo do |x|
+    a = x
+    a
+  end
+  a
+end
+      END
+
+      assert_equal(
+        ["def foo: () ({ (Integer) -> String | Integer }) -> String | Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end
