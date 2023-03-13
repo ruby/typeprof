@@ -1079,8 +1079,14 @@ module TypeProf
           Source.new(Type::Instance.new([:String]))
         when Float
           Source.new(Type::Instance.new([:Float]))
+        when Symbol
+          Source.new(Type::Instance.new([:Symbol]))
+        when TrueClass
+          Source.new(Type::Instance.new([:TrueClss]))
+        when FalseClass
+          Source.new(Type::Instance.new([:FalseClss]))
         else
-          raise "not supported yet"
+          raise "not supported yet: #{ @lit.inspect }"
         end
       end
 

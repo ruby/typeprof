@@ -99,8 +99,8 @@ module TypeProf
         f_args = func.required_positionals.map {|f_arg| Signatures.type(genv, f_arg.type) }
         if a_args.size == f_args.size
           # TODO: type consistency
-          if a_args.zip(f_args).all? {|a_arg, f_arg| a_arg.types.key?(f_arg) }
-            ret_types << Signatures.type(genv, func.return_type)
+          if a_args.zip(f_args).all? {|a_arg, f_arg| a_arg.types.any? {|ty,| ty.match?(genv, f_arg) } }
+            ret_types.concat(Signatures.type(genv, func.return_type))
           end
         end
       end
@@ -429,6 +429,15 @@ module TypeProf
           add_run(ivreadsite)
         end
       end
+    end
+
+    def subclass?(cpath1, cpath2)
+      while cpath1
+        return true if cpath1 == cpath2
+        dir = resolve_cpath(cpath1)
+        cpath1 = dir.superclass_cpath
+      end
+      return false
     end
   end
 end

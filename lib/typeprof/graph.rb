@@ -286,7 +286,7 @@ module TypeProf
     def resolve(genv)
       ret = []
       @recv.types.each do |ty, _source|
-        mds = genv.resolve_method(ty.base_type(genv).cpath, ty.is_a?(Type::Class), @mid)
+        mds = genv.resolve_method(ty.base_type(genv).cpath, ty.is_a?(Type::Module) || ty.is_a?(Type::Class), @mid)
         ret << [ty, mds] if mds
       end
       ret

@@ -75,19 +75,16 @@ module TypeProf
       when RBS::Types::Alias
         self.type(genv, genv.rbs_builder.expand_alias(type.name))
       when RBS::Types::Union
-        types = type.types.map do |ty|
+        type.types.flat_map do |ty|
           self.type(genv, ty)
         end.compact
-        if types.size == 1
-          types.first
-        else
-          raise "TODO"
-        end
       when RBS::Types::ClassInstance
         name = type.name
-        Type::Instance.new(name.namespace.path + [name.name])
+        [Type::Instance.new(name.namespace.path + [name.name])]
       when RBS::Types::Interface
         nil # TODO...
+      when RBS::Types::Bases::Bool
+        [Type::Instance.new([:TrueClass]), Type::Instance.nwe([:FalseClass])]
       else
         raise "unknown RBS type: #{ type.class }"
       end

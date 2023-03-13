@@ -52,6 +52,13 @@ module TypeProf
       def show
         "#{ @cpath.join("::" )}"
       end
+
+      def match?(genv, other)
+        return true if self == other
+
+        # TODO: base_type?
+        return Instance === other && genv.subclass?(@cpath, other.cpath)
+      end
     end
 
     class Array < Type
