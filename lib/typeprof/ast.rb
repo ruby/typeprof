@@ -55,6 +55,8 @@ module TypeProf
         LIT.new(raw_node, lenv, true) # Using LIT is OK?
       when :FALSE
         LIT.new(raw_node, lenv, false) # Using LIT is OK?
+      when :LIST
+        LIST.new(raw_node, lenv)
       when :IVAR
         IVAR.new(raw_node, lenv)
       when :IASGN
@@ -995,7 +997,7 @@ module TypeProf
       attr_reader :e1, :e2, :ret
 
       def install0(genv)
-        @ret = Vertex.new("if", self)
+        @ret = Vertex.new("and", self)
         @e1.install(genv).add_edge(genv, @ret)
         @e2.install(genv).add_edge(genv, @ret)
         @ret
@@ -1024,7 +1026,7 @@ module TypeProf
       end
 
       def dump0(dumper)
-        s = "(#{ @e1.dump(dumper) } && #{ @e2.dump(dumper) })"
+        "(#{ @e1.dump(dumper) } && #{ @e2.dump(dumper) })"
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
@@ -1096,6 +1098,55 @@ module TypeProf
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
+      end
+    end
+
+    class LIST < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @elems = raw_node.children.compact.map {|n| AST.create_node(n, lenv) }
+      end
+
+      attr_reader :elems, :vtx
+
+      def install0(genv)
+        args = @elems.map {|elem| elem.install(genv) }
+        @aryallocsite = ArrayAllocSite.new(self, genv, args)
+        @aryallocsite.ret
+      end
+
+      def uninstall0(genv)
+        @aryallocsite.destroy(genv)
+        @elems.each do |elem|
+          elem.uninstall(genv)
+        end
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(LIST) && @elems.size == prev_node.elems.size
+          match = true
+          @elems.zip(prev_node.elems) do |elem, prev_elem|
+            elem.diff(prev_elem)
+            match = false unless elem.prev_node
+          end
+          @prev_node = prev_node if match
+        end
+      end
+
+      def reuse0
+        @vtx = @prev_node.vtx
+      end
+
+      def hover0(pos)
+      end
+
+      def dump0(dumper)
+        "[#{ @elems.map {|elem| elem.dump(dumper) }.join(", ") }]"
+      end
+
+      def get_vertexes_and_boxes(vtxs, boxes)
+        vtxs << @aryallocsite.ret
+        boxes << @aryallocsite
       end
     end
 

@@ -39,7 +39,7 @@ module TypeProf
       include StructuralEquality
 
       def initialize(cpath)
-        raise unless cpath.is_a?(Array)
+        raise unless cpath.is_a?(::Array)
         @cpath = cpath
       end
 
@@ -51,6 +51,24 @@ module TypeProf
 
       def show
         "#{ @cpath.join("::" )}"
+      end
+    end
+
+    class Array < Type
+      include StructuralEquality
+
+      def initialize(elem)
+        @elem = elem
+      end
+
+      attr_reader :elem
+
+      def base_type(genv)
+        Type::Instance.new([:Array])
+      end
+
+      def show
+        "Array[#{ @elem.show }]"
       end
     end
 
@@ -71,6 +89,8 @@ module TypeProf
     end
 
     class RBS < Type
+      include StructuralEquality
+
       def initialize(rbs_type)
         @rbs_type = rbs_type
       end
