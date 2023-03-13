@@ -197,7 +197,7 @@ module TypeProf
       if @cbase
         @cbase.types.each do |ty, _source|
           case ty
-          when Type::Class
+          when Type::Module
             cds = genv.resolve_const(ty.cpath, @cname)
             ret << cds if cds
           else
@@ -286,7 +286,7 @@ module TypeProf
     def resolve(genv)
       ret = []
       @recv.types.each do |ty, _source|
-        mds = genv.resolve_method(ty.base_type(genv).cpath, ty.is_a?(Type::Module) || ty.is_a?(Type::Class), @mid)
+        mds = genv.resolve_method(ty.base_type(genv).cpath, ty.is_a?(Type::Module), @mid)
         ret << [ty, mds] if mds
       end
       ret

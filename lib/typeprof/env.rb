@@ -98,8 +98,15 @@ module TypeProf
         # TODO: only one argument!
         f_args = func.required_positionals.map {|f_arg| Signatures.type(genv, f_arg.type) }
         if a_args.size == f_args.size
-          # TODO: type consistency
-          if a_args.zip(f_args).all? {|a_arg, f_arg| a_arg.types.any? {|ty,| ty.match?(genv, f_arg) } }
+          match = a_args.zip(f_args).all? do |a_arg, f_arg|
+            a_arg.types.any? do |ty,|
+              f_arg.any? do |ty2|
+                # TODO: type consistency
+                ty.match?(genv, ty2)
+              end
+            end
+          end
+          if match
             ret_types.concat(Signatures.type(genv, func.return_type))
           end
         end
@@ -434,6 +441,7 @@ module TypeProf
     def subclass?(cpath1, cpath2)
       while cpath1
         return true if cpath1 == cpath2
+        break if cpath1 == [:BasicObject]
         dir = resolve_cpath(cpath1)
         cpath1 = dir.superclass_cpath
       end

@@ -17,20 +17,8 @@ module TypeProf
       def show
         "singleton(#{ @cpath.join("::" ) })"
       end
-    end
-
-    class Class < Module
-      include StructuralEquality
-
-      def initialize(cpath)
-        # TODO: type_param
-        @cpath = cpath
-      end
-
-      attr_reader :kind, :cpath
 
       def get_instance_type
-        raise "cannot instantiate a module" if @kind == :module
         Instance.new(@cpath)
       end
     end
@@ -105,7 +93,7 @@ module TypeProf
       attr_reader :rbs_type
 
       def base_type(genv)
-        Signatures.type(genv, @rbs_type)
+        Signatures.type(genv, @rbs_type).first # TODO
       end
 
       def inspect

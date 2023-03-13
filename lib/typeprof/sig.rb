@@ -17,7 +17,7 @@ module TypeProf
             superclass_cpath = [:Object]
           end
           genv.add_module(cpath, decl, superclass_cpath)
-          ty = Type::Class.new(cpath)
+          ty = Type::Module.new(cpath)
           cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
           genv.add_const_decl(cdecl)
           members(genv, cpath, decl.members)
@@ -84,7 +84,9 @@ module TypeProf
       when RBS::Types::Interface
         nil # TODO...
       when RBS::Types::Bases::Bool
-        [Type::Instance.new([:TrueClass]), Type::Instance.nwe([:FalseClass])]
+        [Type::Instance.new([:TrueClass]), Type::Instance.new([:FalseClass])]
+      when RBS::Types::Bases::Self
+
       else
         raise "unknown RBS type: #{ type.class }"
       end

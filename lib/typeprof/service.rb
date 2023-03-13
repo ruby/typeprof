@@ -28,7 +28,7 @@ module TypeProf
         mdecl.set_builtin do |ty, mid, a_args, ret|
           edges = []
           ty = ty.get_instance_type
-          mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Class), :initialize)
+          mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Module), :initialize)
           if mds
             mds.each do |md|
               case md
@@ -173,7 +173,7 @@ module TypeProf
       when CallSite
         code_ranges = []
         obj.recv.types.each_key do |ty|
-          me = MethodEntry.new(ty.cpath, ty.is_a?(Type::Class), obj.mid)
+          me = MethodEntry.new(ty.cpath, ty.is_a?(Type::Module), obj.mid)
           mdefs = genv.get_method_entity(me).defs
           if mdefs
             mdefs.each do |mdef|

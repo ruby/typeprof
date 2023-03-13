@@ -394,7 +394,7 @@ module TypeProf
         if @static_cpath && @static_superclass_cpath
           genv.add_module(@static_cpath, self, @static_superclass_cpath)
 
-          val = Source.new(Type::Class.new(@static_cpath))
+          val = Source.new(Type::Module.new(@static_cpath))
           @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           genv.add_const_def(@cdef)
 
