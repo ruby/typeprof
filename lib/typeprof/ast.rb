@@ -231,7 +231,12 @@ module TypeProf
       end
 
       def dump(dumper)
-        dump0(dumper) + "\e[34m:#{ @ret.inspect }\e[m"
+        s = dump0(dumper)
+        if @sites && !@sites.empty?
+          s += "\e[32m:#{ @sites.to_a.join(",") }\e[m"
+        end
+        s += "\e[34m:#{ @ret.inspect }\e[m"
+        s
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
@@ -484,7 +489,7 @@ module TypeProf
         {}
       end
 
-      attr_reader :cname, :readsite
+      attr_reader :cname
 
       def install0(genv)
         cref = @lenv.cref
@@ -498,7 +503,7 @@ module TypeProf
       end
 
       def dump0(dumper)
-        "#{ @cname }\e[32m:#{ @readsite }\e[m"
+        "#{ @cname }"
       end
     end
 
@@ -528,7 +533,7 @@ module TypeProf
 
       def dump0(dumper)
         s = @cbase ? @cbase.dump(dumper) : ""
-        s << "::#{ @cname }\e[32m:#{ @readsite }\e[m"
+        s << "::#{ @cname }"
       end
     end
 
@@ -1035,14 +1040,14 @@ module TypeProf
         super
         var, = raw_node.children
         @var = var
-        @ivreadsite = nil
+        @iv = nil
       end
 
       def subnodes
         {}
       end
 
-      attr_reader :var, :ivreadsite
+      attr_reader :var
 
       def install0(genv)
         site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
