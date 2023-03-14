@@ -113,8 +113,8 @@ module TypeProf
 
       def traverse(&blk)
         yield :enter, self
-        subnodes.each do |subnode|
-          subnode.traverse(&blk)
+        subnodes.each_value do |subnode|
+          subnode.traverse(&blk) if subnode
         end
         yield :leave, self
       end
@@ -184,9 +184,28 @@ module TypeProf
       end
 
       def uninstall0(genv)
-        subnodes.each do |subnode|
-          subnode.uninstall(genv)
+        subnodes.each_value do |subnode|
+          subnode.uninstall(genv) if subnode
         end
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(self.class) && diff0(prev_node)
+          subnodes.each do |key, subnode|
+            prev_subnode = prev_node.send(key)
+            if subnode && prev_subnode
+              subnode.diff(prev_subnode)
+              return unless subnode.prev_node
+            else
+              return if subnode != prev_subnode
+            end
+          end
+          @prev_node = prev_node
+        end
+      end
+
+      def diff0(_)
+        true
       end
 
       def reuse
@@ -195,14 +214,15 @@ module TypeProf
         @method_defs = @prev_node.method_defs
         @sites = @prev_node.sites
 
-        subnodes.each do |subnode|
-          subnode.reuse
+        subnodes.each_value do |subnode|
+          subnode.reuse if subnode
         end
       end
 
       def hover(pos)
         if code_range.include?(pos)
-          subnodes.each do |subnode|
+          subnodes.each_value do |subnode|
+            next unless subnode
             ret = subnode.hover(pos)
             return ret if ret
           end
@@ -221,8 +241,8 @@ module TypeProf
             boxes << site
           end
         end
-        subnodes.each do |subnode|
-          subnode.get_vertexes_and_boxes(vtxs, boxes)
+        subnodes.each_value do |subnode|
+          subnode.get_vertexes_and_boxes(vtxs, boxes) if subnode
         end
       end
 
@@ -249,7 +269,7 @@ module TypeProf
 
       def subnodes
         # TODO: default expr for optional args
-        [@body].compact
+        { body: }
       end
 
       def install0(genv)
@@ -272,15 +292,8 @@ module TypeProf
         @lenv.get_var(@args[9])
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(SCOPE) && @tbl == prev_node.tbl && @args == prev_node.args
-          if @body
-            @body.diff(prev_node.body)
-            @prev_node = prev_node if @body.prev_node
-          else
-            @prev_node = prev_node if prev_node.body == nil
-          end
-        end
+      def diff0(prev_node)
+        @tbl == prev_node.tbl && @args == prev_node.args
       end
 
       def dump(dumper) # intentionally not dump0
@@ -307,7 +320,9 @@ module TypeProf
       end
 
       def subnodes
-        @stmts
+        h = {}
+        @stmts.each_with_index {|stmt, i| h[i] = stmt }
+        h
       end
 
       attr_reader :stmts
@@ -374,17 +389,13 @@ module TypeProf
       attr_reader :name, :cpath, :static_cpath, :superclass_cpath, :static_superclass_cpath, :body
 
       def subnodes
-        [@cpath, @body].compact
+        { cpath:, body: }
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(CLASS) &&
-          @static_cpath && @static_cpath == prev_node.static_cpath &&
-          @static_superclass_cpath == prev_node.static_superclass_cpath
-
-          @body.diff(prev_node.body)
-          @prev_node = prev_node if @body.prev_node
-        end
+      def diff0(prev_node)
+        @static_cpath &&
+        @static_cpath == prev_node.static_cpath &&
+        @static_superclass_cpath == prev_node.static_superclass_cpath
       end
     end
 
@@ -420,8 +431,10 @@ module TypeProf
         end
       end
 
+      attr_reader :superclass_cpath
+
       def subnodes
-        super + [@superclass_cpath].compact
+        super.merge!({ superclass_cpath: })
       end
 
       def install0(genv)
@@ -468,7 +481,7 @@ module TypeProf
       end
 
       def subnodes
-        []
+        {}
       end
 
       attr_reader :cname, :readsite
@@ -480,10 +493,8 @@ module TypeProf
         site.ret
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(CONST) && @cname == prev_node.cname
-          @prev_node = prev_node
-        end
+      def diff0(prev_node)
+        @cname == prev_node.cname
       end
 
       def dump0(dumper)
@@ -499,10 +510,10 @@ module TypeProf
       end
 
       def subnodes
-        [@cbase].compact
+        { cbase: }
       end
 
-      attr_reader :cname, :readsite
+      attr_reader :cbase, :cname
 
       def install0(genv)
         cbase = @cbase ? @cbase.install(genv) : nil
@@ -511,10 +522,8 @@ module TypeProf
         site.ret
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(CONST) && @cname == prev_node.cname
-          @prev_node = prev_node
-        end
+      def diff0(prev_node)
+        @cname == prev_node.cname
       end
 
       def dump0(dumper)
@@ -542,10 +551,10 @@ module TypeProf
       end
 
       def subnodes
-        [@cpath, @rhs].compact
+        { cpath:, rhs: }
       end
 
-      attr_reader :name, :cpath, :static_cpath, :rhs
+      attr_reader :name, :cpath, :rhs, :static_cpath
 
       def install0(genv)
         @cpath.install(genv) if @cpath
@@ -562,12 +571,8 @@ module TypeProf
         super
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(CDECL) &&
-          @static_cpath && @static_cpath == prev_node.static_cpath
-          @rhs.diff(prev_node.rhs)
-          @prev_node = prev_node if @rhs.prev_node
-        end
+      def diff0(prev_node)
+        @static_cpath && @static_cpath == prev_node.static_cpath
       end
 
       def dump0(dumper)
@@ -593,7 +598,7 @@ module TypeProf
       end
 
       def subnodes
-        @reused ? [] : [@scope]
+        @reused ? {} : { scope: }
       end
 
       attr_reader :mid, :scope, :mdef
@@ -614,11 +619,8 @@ module TypeProf
         Source.new(Type::Symbol.new(@mid))
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(DEFN) && @mid == prev_node.mid
-          @scope.diff(prev_node.scope)
-          @prev_node = prev_node if @scope.prev_node
-        end
+      def diff0(prev_node)
+        @mid == prev_node.mid
       end
 
       def dump0(dumper)
@@ -636,7 +638,7 @@ module TypeProf
       end
 
       def subnodes
-        []
+        {}
       end
 
       def install0(genv)
@@ -648,9 +650,7 @@ module TypeProf
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(BEGIN_)
-          @prev_node = prev_node
-        end
+        # TODO
       end
 
       def dump0(dumper)
@@ -668,7 +668,7 @@ module TypeProf
       end
 
       def subnodes
-        [@recv, @a_args, @block].compact
+        { recv:, a_args:, block: }
       end
 
       attr_reader :recv, :mid, :a_args
@@ -690,18 +690,8 @@ module TypeProf
         site.ret
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(CALL) && @mid == prev_node.mid
-          @recv.diff(prev_node.recv) if @recv
-          @a_args.diff(prev_node.a_args) if @a_args
-          @block.diff(prev_node.block) if @block
-          if (@recv ? @recv.prev_node : true) &&
-            (@a_args ? @a_args.prev_node : true) &&
-            (@block ? @block.prev_node : true)
-
-            @prev_node = prev_node
-          end
-        end
+      def diff0(prev_node)
+        @mid == prev_node.mid
       end
 
       def dump_call(prefix, suffix)
@@ -806,7 +796,9 @@ module TypeProf
       end
 
       def subnodes
-        @positional_args
+        h = {}
+        @positional_args.each_with_index {|n, i| h[i] = n }
+        h
       end
 
       attr_reader :positional_args
@@ -819,12 +811,11 @@ module TypeProf
 
       def diff(prev_node)
         if prev_node.is_a?(A_ARGS) && @positional_args.size == prev_node.positional_args.size
-          not_changed = true
           @positional_args.zip(prev_node.positional_args) do |node, prev_node|
             node.diff(prev_node)
-            not_changed &&= node.prev_node
+            return unless node.prev_node
           end
-          @prev_node = prev_node if not_changed
+          @prev_node = prev_node
         end
       end
 
@@ -845,20 +836,13 @@ module TypeProf
       end
 
       def subnodes
-        [@call]
+        { call: }
       end
 
       attr_reader :call, :block
 
       def install0(genv)
         @call.install(genv)
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(ITER)
-          @call.diff(prev_node.call)
-          @prev_node = prev_node if @call.prev_node
-        end
       end
 
       def dump0(dumper)
@@ -876,7 +860,7 @@ module TypeProf
       end
 
       def subnodes
-        [@cond, @then, @else].compact
+        { cond:, then:, else: }
       end
 
       attr_reader :cond, :then, :else, :ret
@@ -892,15 +876,6 @@ module TypeProf
         end
         else_val.add_edge(genv, @ret)
         @ret
-      end
-
-      def diff(prev_node)
-        if self.class == prev_node.class
-          @cond.diff(prev_node.cond)
-          @then.diff(prev_node.then)
-          @else.diff(prev_node.else) if @else
-          @prev_node = prev_node if @cond.prev_node && @then.prev_node && (@else ? @else.prev_node : true)
-        end
       end
 
       def dump0(dumper)
@@ -934,7 +909,7 @@ module TypeProf
       end
 
       def subnodes
-        [@e1, @e2]
+        { e1:, e2: }
       end
 
       attr_reader :e1, :e2, :ret
@@ -944,14 +919,6 @@ module TypeProf
         @e1.install(genv).add_edge(genv, @ret)
         @e2.install(genv).add_edge(genv, @ret)
         @ret
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(AND)
-          @e1.diff(prev_node.e1)
-          @e2.diff(prev_node.e2)
-          @prev_node = prev_node if @e1.prev_node && @e2.prev_node
-        end
       end
 
       def dump0(dumper)
@@ -972,8 +939,10 @@ module TypeProf
         # TODO: raw_rescue
       end
 
+      attr_reader :body
+
       def subnodes
-        [@body]
+        { body: }
       end
 
       def install0(genv)
@@ -992,7 +961,7 @@ module TypeProf
       end
 
       def subnodes
-        []
+        {}
       end
 
       attr_reader :lit
@@ -1016,10 +985,8 @@ module TypeProf
         end
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(LIT) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
-          @prev_node = prev_node
-        end
+      def diff0(prev_node)
+        @lit.class == prev_node.lit.class && @lit == prev_node.lit
       end
 
       def dump0(dumper)
@@ -1034,7 +1001,9 @@ module TypeProf
       end
 
       def subnodes
-        @elems
+        h = {}
+        @elems.each_with_index {|elem, i| h[i] = elem }
+        h
       end
 
       attr_reader :elems
@@ -1048,10 +1017,9 @@ module TypeProf
 
       def diff(prev_node)
         if prev_node.is_a?(LIST) && @elems.size == prev_node.elems.size
-          match = true
           @elems.zip(prev_node.elems) do |elem, prev_elem|
             elem.diff(prev_elem)
-            match = false unless elem.prev_node
+            return unless elem.prev_node
           end
           @prev_node = prev_node if match
         end
@@ -1071,7 +1039,7 @@ module TypeProf
       end
 
       def subnodes
-        []
+        {}
       end
 
       attr_reader :var, :ivreadsite
@@ -1082,10 +1050,8 @@ module TypeProf
         site.ret
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(IVAR) && @var == prev_node.var
-          @prev_node = prev_node
-        end
+      def diff0(prev_node)
+        @var == prev_node.var
       end
 
       def hover(pos)
@@ -1106,7 +1072,7 @@ module TypeProf
       end
 
       def subnodes
-        [@rhs]
+        { rhs: }
       end
 
       attr_reader :var, :rhs
@@ -1123,11 +1089,8 @@ module TypeProf
         super
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(IASGN) && @var == prev_node.var
-          @rhs.diff(prev_node.rhs)
-          @prev_node = prev_node if @rhs.prev_node
-        end
+      def diff0(prev_node)
+        @var == prev_node.var
       end
 
       def dump0(dumper)
@@ -1143,7 +1106,7 @@ module TypeProf
       end
 
       def subnodes
-        []
+        {}
       end
 
       attr_reader :var
@@ -1152,10 +1115,8 @@ module TypeProf
         @lenv.get_var(@var) || raise
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(LVAR) && @var == prev_node.var
-          @prev_node = prev_node
-        end
+      def diff0(prev_node)
+        @var == prev_node.var
       end
 
       def hover(pos)
@@ -1176,7 +1137,7 @@ module TypeProf
       end
 
       def subnodes
-        [@rhs]
+        { rhs: }
       end
 
       attr_reader :var, :rhs
@@ -1188,11 +1149,8 @@ module TypeProf
         val
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(LASGN) && @var == prev_node.var
-          @rhs.diff(prev_node.rhs)
-          @prev_node = prev_node if @rhs.prev_node
-        end
+      def diff0(prev_node)
+        @var == prev_node.var
       end
 
       def dump0(dumper)
@@ -1213,7 +1171,7 @@ module TypeProf
       end
 
       def subnodes
-        []
+        {}
       end
 
       attr_reader :var
@@ -1227,10 +1185,8 @@ module TypeProf
         end
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(DVAR) && @var == prev_node.var
-          @prev_node = prev_node
-        end
+      def diff0(prev_node)
+        @var == prev_node.var
       end
 
       def hover(pos)
@@ -1251,7 +1207,7 @@ module TypeProf
       end
 
       def subnodes
-        [@rhs]
+        { rhs: }
       end
 
       attr_reader :var, :rhs
@@ -1271,11 +1227,8 @@ module TypeProf
         val
       end
 
-      def diff(prev_node)
-        if prev_node.is_a?(LASGN) && @var == prev_node.var
-          @rhs.diff(prev_node.rhs)
-          @prev_node = prev_node if @rhs.prev_node
-        end
+      def diff0(prev_node)
+        @var == prev_node.var
       end
 
       def dump0(dumper)

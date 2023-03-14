@@ -310,9 +310,8 @@ module TypeProf
     end
 
     def destroy(genv)
-      raise
-      super
       genv.remove_ivreadsite(self)
+      super
     end
 
     attr_reader :node, :cpath, :singleton, :name, :ret

@@ -217,7 +217,7 @@ end
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def foo: (Integer) ({ (Float) -> Integer } | { (Float) -> String }) -> String | Integer"],
+        ["def foo: (Integer) ({ (Float) -> String } | { (Float) -> Integer }) -> String | Integer"],
         serv.get_method_sig([], false, :foo),
       )
 
