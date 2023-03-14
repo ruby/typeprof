@@ -74,13 +74,11 @@ module TypeProf
             a_arg.types.each do |ty, _source|
               case ty
               when Type::Symbol
-                p ty.sym
-                raise
-                node.add_method_def(mdef)
-                ret = @scope.install(genv)
-                f_args = @scope.get_args
-                block = @scope.get_block
-                mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
+                ivar_name = :"@#{ ty.sym }"
+                site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
+                node.add_site(site)
+                mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
+                node.add_method_def(@genv, mdef)
               else
                 puts "???"
               end
@@ -171,7 +169,8 @@ module TypeProf
         else
           if event == :enter && !node.method_defs.empty?
             node.method_defs.each do |mdef|
-              puts " " * depth + "def #{ node.mid }: " + mdef.show
+              puts " " * depth + "# #{ mdef.node.code_range }"
+              puts " " * depth + "def #{ mdef.mid }: " + mdef.show
             end
           end
         end
