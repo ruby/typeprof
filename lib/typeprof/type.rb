@@ -83,6 +83,24 @@ module TypeProf
       end
     end
 
+    class Symbol < Type
+      include StructuralEquality
+
+      def initialize(sym)
+        @sym = sym
+      end
+
+      attr_reader :sym
+
+      def base_types(genv)
+        [Type::Instance.new([:Symbol])]
+      end
+
+      def show
+        @sym.inspect
+      end
+    end
+
     class RBS < Type
       include StructuralEquality
 

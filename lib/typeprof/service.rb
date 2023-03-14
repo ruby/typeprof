@@ -25,7 +25,7 @@ module TypeProf
 
       mdecls = @genv.resolve_method([:Class], false, :new)
       mdecls.each do |mdecl|
-        mdecl.set_builtin do |ty, mid, a_args, ret|
+        mdecl.set_builtin do |node, ty, mid, a_args, ret|
           edges = []
           ty = ty.get_instance_type
           mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Module), :initialize)
@@ -49,7 +49,7 @@ module TypeProf
 
       mdecls = @genv.resolve_method([:Proc], false, :call)
       mdecls.each do |mdecl|
-        mdecl.set_builtin do |ty, mid, a_args, ret|
+        mdecl.set_builtin do |node, ty, mid, a_args, ret|
           edges = []
           case ty
           when Type::Proc
@@ -68,9 +68,24 @@ module TypeProf
 
       mdecls = @genv.resolve_method([:Module], false, :attr_reader)
       mdecls.each do |mdecl|
-        mdecl.set_builtin do |ty, mid, a_args, ret|
+        mdecl.set_builtin do |node, ty, mid, a_args, ret|
           edges = []
-          puts "foo"
+          a_args.each do |a_arg|
+            a_arg.types.each do |ty, _source|
+              case ty
+              when Type::Symbol
+                p ty.sym
+                raise
+                node.add_method_def(mdef)
+                ret = @scope.install(genv)
+                f_args = @scope.get_args
+                block = @scope.get_block
+                mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
+              else
+                puts "???"
+              end
+            end
+          end
           edges
         end
       end
@@ -153,9 +168,11 @@ module TypeProf
               puts " " * depth + "end"
             end
           end
-        when AST::DEFN
-          if event == :enter
-            puts " " * depth + "def #{ node.mid }: " + node.mdef.show
+        else
+          if event == :enter && !node.method_defs.empty?
+            node.method_defs.each do |mdef|
+              puts " " * depth + "def #{ node.mid }: " + mdef.show
+            end
           end
         end
       end

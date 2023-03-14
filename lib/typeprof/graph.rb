@@ -254,9 +254,8 @@ module TypeProf
           when MethodDecl
             if md.builtin
               # TODO: block
-              md.builtin[ty, @mid, @a_args, @ret].each do |src, dst|
-                edges << [src, dst]
-              end
+              nedges = md.builtin[@node, ty, @mid, @a_args, @ret]
+              nedges.each {|src, dst| edges << [src, dst] }
             else
               # TODO: block
               ret_types = md.resolve_overloads(genv, ty, @a_args, @block)

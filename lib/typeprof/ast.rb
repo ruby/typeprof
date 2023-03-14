@@ -105,7 +105,11 @@ module TypeProf
         @prev_node = nil
         @ret = nil
         @text_di = lenv.text_id
+        @method_defs = nil
+        @sites = nil
       end
+
+      attr_reader :lenv, :prev_node, :ret
 
       def traverse(&blk)
         yield :enter, self
@@ -114,8 +118,6 @@ module TypeProf
         end
         yield :leave, self
       end
-
-      attr_reader :lenv, :prev_node, :ret
 
       def code_range
         if @raw_node
@@ -127,6 +129,23 @@ module TypeProf
           pp self
           nil
         end
+      end
+
+      def method_defs
+        @method_defs ||= Set[]
+      end
+
+      def add_method_def(genv, mdef)
+        method_defs << mdef
+        genv.add_method_def(mdef)
+      end
+
+      def sites
+        @sites ||= Set[]
+      end
+
+      def add_site(site)
+        sites << site
       end
 
       def install(genv)
@@ -146,16 +165,36 @@ module TypeProf
         if debug
           puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
         end
+        unless @reused
+          if @method_defs
+            @method_defs.each do |mdef|
+              genv.remove_method_def(mdef)
+            end
+          end
+          if @sites
+            @sites.each do |site|
+              site.destroy(genv)
+            end
+          end
+        end
         uninstall0(genv)
         if debug
           puts "uninstall leave: #{ self.class }@#{ code_range.inspect }"
         end
       end
 
+      def uninstall0(_)
+      end
+
       def reuse
         @lenv = @prev_node.lenv
         @ret = @prev_node.ret
+        @method_defs = @prev_node.method_defs
+        @sites = @prev_node.sites
         reuse0
+      end
+
+      def reuse0
       end
 
       def hover(pos)
@@ -169,6 +208,12 @@ module TypeProf
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
+        if @sites
+          @sites.each do |site|
+            vtxs << site.ret
+            boxes << site
+          end
+        end
         children.each do |subnode|
           subnode.get_vertexes_and_boxes(vtxs, boxes)
         end
@@ -221,7 +266,7 @@ module TypeProf
       end
 
       def uninstall0(genv)
-        @body.uninstall0(genv) if @body
+        @body.uninstall(genv) if @body
       end
 
       def diff(prev_node)
@@ -461,12 +506,9 @@ module TypeProf
 
       def install0(genv)
         cref = @lenv.cref
-        @readsite = ConstReadSite.new(self, genv, cref, nil, @cname)
-        @readsite.ret
-      end
-
-      def uninstall0(genv)
-        @readsite.destroy(genv)
+        site = ConstReadSite.new(self, genv, cref, nil, @cname)
+        add_site(site)
+        site.ret
       end
 
       def diff(prev_node)
@@ -475,17 +517,8 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @readsite = @prev_node.readsite
-      end
-
       def dump0(dumper)
         "#{ @cname }\e[32m:#{ @readsite }\e[m"
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @readsite.ret
-        boxes << @readsite
       end
     end
 
@@ -504,12 +537,9 @@ module TypeProf
 
       def install0(genv)
         cbase = @cbase ? @cbase.install(genv) : nil
-        @readsite = ConstReadSite.new(self, genv, @lenv.cref, cbase, @cname)
-        @readsite.ret
-      end
-
-      def uninstall0(genv)
-        @readsite.destroy(genv)
+        site = ConstReadSite.new(self, genv, @lenv.cref, cbase, @cname)
+        add_site(site)
+        site.ret
       end
 
       def diff(prev_node)
@@ -518,19 +548,9 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @readsite = @prev_node.readsite
-      end
-
       def dump0(dumper)
         s = @cbase ? @cbase.dump(dumper) : ""
         s << "::#{ @cname }\e[32m:#{ @readsite }\e[m"
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @readsite.ret
-        boxes << @readsite
-        super
       end
     end
 
@@ -620,16 +640,15 @@ module TypeProf
           ret = @scope.install(genv)
           f_args = @scope.get_args
           block = @scope.get_block
-          @mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
-          genv.add_method_def(@mdef)
+          mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
+          add_method_def(genv, mdef)
         end
-        Source.new(Type::Instance.new([:Symbol]))
+        Source.new(Type::Symbol.new(@mid))
       end
 
       def uninstall0(genv)
         unless @reused
           @scope.uninstall(genv)
-          genv.remove_method_def(@mdef)
         end
       end
 
@@ -641,7 +660,6 @@ module TypeProf
       end
 
       def reuse0
-        @mdef = @prev_node.mdef
         @scope.reuse
       end
 
@@ -714,12 +732,12 @@ module TypeProf
           block = BlockDef.new(@block, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         end
-        @callsite = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
-        @callsite.ret
+        site = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
+        add_site(site)
+        site.ret
       end
 
       def uninstall0(genv)
-        @callsite.destroy(genv)
         @recv.uninstall(genv) if @recv
         @a_args.uninstall(genv) if @a_args
       end
@@ -739,7 +757,6 @@ module TypeProf
       end
 
       def reuse0
-        @callsite = @prev_node.callsite
         @recv.reuse if @recv
         @a_args.reuse if @a_args
       end
@@ -750,12 +767,6 @@ module TypeProf
           ret = node.hover(pos)
           return ret if ret
         end
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @callsite.ret
-        boxes << @callsite
-        super
       end
 
       def dump_call(prefix, suffix)
@@ -806,7 +817,7 @@ module TypeProf
 
       def hover0(pos)
         if @mid_code_range.include?(pos)
-          @callsite
+          @sites.to_a.first # TODO
         else
           super
         end
@@ -1121,7 +1132,7 @@ module TypeProf
         when Float
           Source.new(Type::Instance.new([:Float]))
         when Symbol
-          Source.new(Type::Instance.new([:Symbol]))
+          Source.new(Type::Symbol.new(@lit))
         when TrueClass
           Source.new(Type::Instance.new([:TrueClss]))
         when FalseClass
@@ -1161,16 +1172,16 @@ module TypeProf
         @elems
       end
 
-      attr_reader :elems, :vtx
+      attr_reader :elems
 
       def install0(genv)
         args = @elems.map {|elem| elem.install(genv) }
-        @aryallocsite = ArrayAllocSite.new(self, genv, args)
-        @aryallocsite.ret
+        site = ArrayAllocSite.new(self, genv, args)
+        add_site(site)
+        site.ret
       end
 
       def uninstall0(genv)
-        @aryallocsite.destroy(genv)
         @elems.each do |elem|
           elem.uninstall(genv)
         end
@@ -1187,21 +1198,11 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @vtx = @prev_node.vtx
-      end
-
       def hover0(pos)
       end
 
       def dump0(dumper)
         "[#{ @elems.map {|elem| elem.dump(dumper) }.join(", ") }]"
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @aryallocsite.ret
-        boxes << @aryallocsite
-        super
       end
     end
 
@@ -1220,12 +1221,9 @@ module TypeProf
       attr_reader :var, :ivreadsite
 
       def install0(genv)
-        @ivreadsite = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
-        @ivreadsite.ret
-      end
-
-      def uninstall0(genv)
-        @ivreadsite.destroy(genv)
+        site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
+        add_site(site)
+        site.ret
       end
 
       def diff(prev_node)
@@ -1234,22 +1232,12 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @ivreadsite = prev_node.ivreadsite
-      end
-
       def hover0(pos)
         @ret
       end
 
       def dump0(dumper)
         "#{ @var }"
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @ivreadsite.ret
-        boxes << @ivreadsite
-        super
       end
     end
 
