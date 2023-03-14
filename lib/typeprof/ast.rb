@@ -194,10 +194,10 @@ module TypeProf
         @ret = @prev_node.ret
         @method_defs = @prev_node.method_defs
         @sites = @prev_node.sites
-        reuse0
-      end
 
-      def reuse0
+        children.each do |subnode|
+          subnode.reuse
+        end
       end
 
       def hover(pos)
@@ -279,10 +279,6 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @body.reuse if @body
-      end
-
       def hover0(pos)
         @body.hover(pos) if @body
       end
@@ -347,12 +343,6 @@ module TypeProf
           if i == prev_node.stmts.size
             @prev_node = prev_node
           end
-        end
-      end
-
-      def reuse0
-        @stmts.each do |stmt|
-          stmt.reuse
         end
       end
 
@@ -641,10 +631,6 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @scope.reuse
-      end
-
       def hover0(pos)
         # TODO: mid, f_args
         @scope.hover(pos)
@@ -731,11 +717,6 @@ module TypeProf
             @prev_node = prev_node
           end
         end
-      end
-
-      def reuse0
-        @recv.reuse if @recv
-        @a_args.reuse if @a_args
       end
 
       def hover0(pos)
@@ -870,10 +851,6 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @positional_args.each {|node| node.reuse }
-      end
-
       def hover0(pos)
         # TODO: op
         @recv.hover(pos) || @a_args.hover(pos)
@@ -910,10 +887,6 @@ module TypeProf
           @call.diff(prev_node.call)
           @prev_node = prev_node if @call.prev_node
         end
-      end
-
-      def reuse0
-        @call.reuse
       end
 
       def hover0(pos)
@@ -960,13 +933,6 @@ module TypeProf
           @else.diff(prev_node.else) if @else
           @prev_node = prev_node if @cond.prev_node && @then.prev_node && (@else ? @else.prev_node : true)
         end
-      end
-
-      def reuse0
-        @ret = @prev_node.ret
-        @cond.reuse
-        @then.reuse
-        @else.reuse if @else
       end
 
       def hover0(pos)
@@ -1021,12 +987,6 @@ module TypeProf
           @e2.diff(prev_node.e2)
           @prev_node = prev_node if @e1.prev_node && @e2.prev_node
         end
-      end
-
-      def reuse0
-        @ret = @prev_node.ret
-        @e1.reuse
-        @e2.reuse
       end
 
       def hover0(pos)
@@ -1098,9 +1058,6 @@ module TypeProf
         if prev_node.is_a?(LIT) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
           @prev_node = prev_node
         end
-      end
-
-      def reuse0
       end
 
       def hover0(pos)
@@ -1217,10 +1174,6 @@ module TypeProf
         end
       end
 
-      def reuse0
-        @rhs.reuse
-      end
-
       def hover0(pos)
       end
 
@@ -1250,9 +1203,6 @@ module TypeProf
         if prev_node.is_a?(LVAR) && @var == prev_node.var
           @prev_node = prev_node
         end
-      end
-
-      def reuse0
       end
 
       def hover0(pos)
@@ -1290,10 +1240,6 @@ module TypeProf
           @rhs.diff(prev_node.rhs)
           @prev_node = prev_node if @rhs.prev_node
         end
-      end
-
-      def reuse0
-        @rhs.reuse
       end
 
       def hover0(pos)
@@ -1335,9 +1281,6 @@ module TypeProf
         if prev_node.is_a?(DVAR) && @var == prev_node.var
           @prev_node = prev_node
         end
-      end
-
-      def reuse0
       end
 
       def hover0(pos)
@@ -1383,10 +1326,6 @@ module TypeProf
           @rhs.diff(prev_node.rhs)
           @prev_node = prev_node if @rhs.prev_node
         end
-      end
-
-      def reuse0
-        @rhs.reuse
       end
 
       def hover0(pos)
