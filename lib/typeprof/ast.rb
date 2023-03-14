@@ -1493,7 +1493,7 @@ module TypeProf
       @tbl = {} # variable table
       @outer = outer
       # XXX
-      @self = Source.new(Type::Instance.new(@cref.cpath || [:Object]))
+      @self = Source.new(@cref.get_self)
     end
 
     attr_reader :text_id, :cref, :outer
@@ -1531,6 +1531,10 @@ module TypeProf
 
     def extend(cpath, singleton)
       CRef.new(cpath, singleton, self)
+    end
+
+    def get_self
+      (@singleton ? Type::Module : Type::Instance).new(@cpath || [:Object])
     end
   end
 end

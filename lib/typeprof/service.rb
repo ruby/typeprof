@@ -66,6 +66,15 @@ module TypeProf
         end
       end
 
+      mdecls = @genv.resolve_method([:Module], false, :attr_reader)
+      mdecls.each do |mdecl|
+        mdecl.set_builtin do |ty, mid, a_args, ret|
+          edges = []
+          puts "foo"
+          edges
+        end
+      end
+
       #@genv.system_sigs_loaded
       @text_nodes = {}
     end
