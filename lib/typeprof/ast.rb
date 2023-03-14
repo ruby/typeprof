@@ -374,7 +374,7 @@ module TypeProf
       attr_reader :name, :cpath, :static_cpath, :superclass_cpath, :static_superclass_cpath, :body
 
       def children
-        [@cpath, @body]
+        [@cpath, @body].compact
       end
 
       def diff(prev_node)
@@ -442,12 +442,10 @@ module TypeProf
 
       def uninstall0(genv)
         if @static_cpath && @static_superclass_cpath
-          @body.uninstall(genv)
           genv.remove_const_def(@cdef)
           genv.remove_module(@static_cpath, self)
         end
-        @cpath.uninstall(genv)
-        @superclass_cpath.uninstall(genv) if @superclass_cpath
+        super
       end
 
       def dump0(dumper)
@@ -684,7 +682,7 @@ module TypeProf
           blk_ret = @block.install(genv)
           blk_f_args = @block.get_args
           #block = @lenv.get_block(self)
-          block = BlockDef.new(@block, blk_f_args, blk_ret)
+          block = Block.new(@block, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         end
         site = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)

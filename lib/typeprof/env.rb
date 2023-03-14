@@ -164,7 +164,7 @@ module TypeProf
     end
   end
 
-  class BlockDef
+  class Block
     def initialize(node, f_args, ret)
       @node = node
       @f_args = f_args
