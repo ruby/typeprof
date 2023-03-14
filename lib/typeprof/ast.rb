@@ -113,7 +113,7 @@ module TypeProf
 
       def traverse(&blk)
         yield :enter, self
-        children.each do |subnode|
+        subnodes.each do |subnode|
           subnode.traverse(&blk)
         end
         yield :leave, self
@@ -184,7 +184,7 @@ module TypeProf
       end
 
       def uninstall0(genv)
-        children.each do |subnode|
+        subnodes.each do |subnode|
           subnode.uninstall(genv)
         end
       end
@@ -195,14 +195,14 @@ module TypeProf
         @method_defs = @prev_node.method_defs
         @sites = @prev_node.sites
 
-        children.each do |subnode|
+        subnodes.each do |subnode|
           subnode.reuse
         end
       end
 
       def hover(pos)
         if code_range.include?(pos)
-          children.each do |subnode|
+          subnodes.each do |subnode|
             ret = subnode.hover(pos)
             return ret if ret
           end
@@ -221,7 +221,7 @@ module TypeProf
             boxes << site
           end
         end
-        children.each do |subnode|
+        subnodes.each do |subnode|
           subnode.get_vertexes_and_boxes(vtxs, boxes)
         end
       end
@@ -247,7 +247,7 @@ module TypeProf
 
       attr_reader :tbl, :args, :body
 
-      def children
+      def subnodes
         # TODO: default expr for optional args
         [@body].compact
       end
@@ -306,7 +306,7 @@ module TypeProf
         @stmts = stmts.map {|n| AST.create_node(n, lenv) }
       end
 
-      def children
+      def subnodes
         @stmts
       end
 
@@ -373,7 +373,7 @@ module TypeProf
 
       attr_reader :name, :cpath, :static_cpath, :superclass_cpath, :static_superclass_cpath, :body
 
-      def children
+      def subnodes
         [@cpath, @body].compact
       end
 
@@ -420,7 +420,7 @@ module TypeProf
         end
       end
 
-      def children
+      def subnodes
         super + [@superclass_cpath].compact
       end
 
@@ -467,7 +467,7 @@ module TypeProf
         @cname, = raw_node.children
       end
 
-      def children
+      def subnodes
         []
       end
 
@@ -498,7 +498,7 @@ module TypeProf
         @cbase = cbase_raw ? AST.create_node(cbase_raw, lenv) : nil
       end
 
-      def children
+      def subnodes
         [@cbase].compact
       end
 
@@ -541,7 +541,7 @@ module TypeProf
         @rhs = AST.create_node(raw_rhs, lenv)
       end
 
-      def children
+      def subnodes
         [@cpath, @rhs].compact
       end
 
@@ -592,7 +592,7 @@ module TypeProf
         @reused = false
       end
 
-      def children
+      def subnodes
         @reused ? [] : [@scope]
       end
 
@@ -635,7 +635,7 @@ module TypeProf
         raise NotImplementedError if raw_node.children != [nil]
       end
 
-      def children
+      def subnodes
         []
       end
 
@@ -667,7 +667,7 @@ module TypeProf
         @block = nil
       end
 
-      def children
+      def subnodes
         [@recv, @a_args, @block].compact
       end
 
@@ -805,7 +805,7 @@ module TypeProf
         end
       end
 
-      def children
+      def subnodes
         @positional_args
       end
 
@@ -844,7 +844,7 @@ module TypeProf
         @call.block = AST.create_node(raw_scope, nlenv)
       end
 
-      def children
+      def subnodes
         [@call]
       end
 
@@ -875,7 +875,7 @@ module TypeProf
         @else = raw_else ? AST.create_node(raw_else, lenv) : nil
       end
 
-      def children
+      def subnodes
         [@cond, @then, @else].compact
       end
 
@@ -933,7 +933,7 @@ module TypeProf
         @e2 = AST.create_node(raw_e2, lenv)
       end
 
-      def children
+      def subnodes
         [@e1, @e2]
       end
 
@@ -972,7 +972,7 @@ module TypeProf
         # TODO: raw_rescue
       end
 
-      def children
+      def subnodes
         [@body]
       end
 
@@ -991,7 +991,7 @@ module TypeProf
         @lit = lit
       end
 
-      def children
+      def subnodes
         []
       end
 
@@ -1033,7 +1033,7 @@ module TypeProf
         @elems = raw_node.children.compact.map {|n| AST.create_node(n, lenv) }
       end
 
-      def children
+      def subnodes
         @elems
       end
 
@@ -1070,7 +1070,7 @@ module TypeProf
         @ivreadsite = nil
       end
 
-      def children
+      def subnodes
         []
       end
 
@@ -1105,7 +1105,7 @@ module TypeProf
         @rhs = AST.create_node(rhs, lenv)
       end
 
-      def children
+      def subnodes
         [@rhs]
       end
 
@@ -1142,7 +1142,7 @@ module TypeProf
         @var = var
       end
 
-      def children
+      def subnodes
         []
       end
 
@@ -1175,7 +1175,7 @@ module TypeProf
         @rhs = AST.create_node(rhs, lenv)
       end
 
-      def children
+      def subnodes
         [@rhs]
       end
 
@@ -1212,7 +1212,7 @@ module TypeProf
         @var = var
       end
 
-      def children
+      def subnodes
         []
       end
 
@@ -1250,7 +1250,7 @@ module TypeProf
         @rhs = AST.create_node(rhs, lenv)
       end
 
-      def children
+      def subnodes
         [@rhs]
       end
 

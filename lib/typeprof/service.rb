@@ -88,6 +88,34 @@ module TypeProf
         end
       end
 
+      mdecls = @genv.resolve_method([:Module], false, :attr_accessor)
+      mdecls.each do |mdecl|
+        mdecl.set_builtin do |node, ty, mid, a_args, ret|
+          edges = []
+          a_args.each do |a_arg|
+            a_arg.types.each do |ty, _source|
+              case ty
+              when Type::Symbol
+                ivar_name = :"@#{ ty.sym }"
+                site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
+                node.add_site(site)
+                mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
+                node.add_method_def(@genv, mdef)
+
+                ivar_name = :"@#{ ty.sym }"
+                site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
+                node.add_site(site)
+                mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
+                node.add_method_def(@genv, mdef)
+              else
+                puts "???"
+              end
+            end
+          end
+          edges
+        end
+      end
+
       #@genv.system_sigs_loaded
       @text_nodes = {}
     end
