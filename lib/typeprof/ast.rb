@@ -202,8 +202,12 @@ module TypeProf
 
       def hover(pos)
         if code_range.include?(pos)
-          hover0(pos)
+          children.each do |subnode|
+            ret = subnode.hover(pos)
+            return ret if ret
+          end
         end
+        return nil
       end
 
       def dump(dumper)
@@ -279,10 +283,6 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-        @body.hover(pos) if @body
-      end
-
       def dump(dumper) # intentionally not dump0
         @body ? @body.dump(dumper) : ""
       end
@@ -344,14 +344,6 @@ module TypeProf
             @prev_node = prev_node
           end
         end
-      end
-
-      def hover0(pos)
-        @stmts.each do |stmt|
-          ret = stmt.hover(pos)
-          return ret if ret
-        end
-        nil
       end
 
       def dump0(dumper)
@@ -631,11 +623,6 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-        # TODO: mid, f_args
-        @scope.hover(pos)
-      end
-
       def dump0(dumper)
         vtx = @scope.lenv.get_var(@scope.tbl[0])
         s = "def #{ @mid }(#{ @scope.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n"
@@ -719,14 +706,6 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-        [@recv, @a_args, @block].each do |node|
-          next unless node
-          ret = node.hover(pos)
-          return ret if ret
-        end
-      end
-
       def dump_call(prefix, suffix)
         s = prefix + "\e[33m[#{ @callsite }]\e[m" + suffix
         if @block
@@ -773,7 +752,7 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
+      def hover(pos)
         if @mid_code_range.include?(pos)
           @sites.to_a.first # TODO
         else
@@ -851,11 +830,6 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-        # TODO: op
-        @recv.hover(pos) || @a_args.hover(pos)
-      end
-
       def dump(dumper) # HACK: intentionally not dump0 because this node does not simply return a vertex
         @positional_args.map {|n| n.dump(dumper) }.join(", ")
       end
@@ -887,10 +861,6 @@ module TypeProf
           @call.diff(prev_node.call)
           @prev_node = prev_node if @call.prev_node
         end
-      end
-
-      def hover0(pos)
-        @call.hover(pos)
       end
 
       def dump0(dumper)
@@ -933,9 +903,6 @@ module TypeProf
           @else.diff(prev_node.else) if @else
           @prev_node = prev_node if @cond.prev_node && @then.prev_node && (@else ? @else.prev_node : true)
         end
-      end
-
-      def hover0(pos)
       end
 
       def dump0(dumper)
@@ -987,9 +954,6 @@ module TypeProf
           @e2.diff(prev_node.e2)
           @prev_node = prev_node if @e1.prev_node && @e2.prev_node
         end
-      end
-
-      def hover0(pos)
       end
 
       def dump0(dumper)
@@ -1060,9 +1024,6 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-      end
-
       def dump0(dumper)
         @lit.inspect
       end
@@ -1098,9 +1059,6 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-      end
-
       def dump0(dumper)
         "[#{ @elems.map {|elem| elem.dump(dumper) }.join(", ") }]"
       end
@@ -1132,8 +1090,8 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-        @ret
+      def hover(pos)
+        code_range.include?(pos) ? @ret : nil
       end
 
       def dump0(dumper)
@@ -1174,9 +1132,6 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-      end
-
       def dump0(dumper)
         "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
@@ -1205,8 +1160,8 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-        @ret
+      def hover(pos)
+        code_range.include?(pos) ? @ret : nil
       end
 
       def dump0(dumper)
@@ -1240,9 +1195,6 @@ module TypeProf
           @rhs.diff(prev_node.rhs)
           @prev_node = prev_node if @rhs.prev_node
         end
-      end
-
-      def hover0(pos)
       end
 
       def dump0(dumper)
@@ -1283,8 +1235,8 @@ module TypeProf
         end
       end
 
-      def hover0(pos)
-        @ret
+      def hover(pos)
+        code_range.include?(pos) ? @ret : nil
       end
 
       def dump0(dumper)
@@ -1326,9 +1278,6 @@ module TypeProf
           @rhs.diff(prev_node.rhs)
           @prev_node = prev_node if @rhs.prev_node
         end
-      end
-
-      def hover0(pos)
       end
 
       def dump0(dumper)
