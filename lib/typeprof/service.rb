@@ -78,7 +78,7 @@ module TypeProf
                 site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
                 node.add_site(site)
                 mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
-                node.add_method_def(@genv, mdef)
+                node.add_def(@genv, mdef)
               else
                 puts "???"
               end
@@ -96,17 +96,18 @@ module TypeProf
             a_arg.types.each do |ty, _source|
               case ty
               when Type::Symbol
+                vtx = Vertex.new("attr_writer-arg", node)
                 ivar_name = :"@#{ ty.sym }"
-                site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
-                node.add_site(site)
-                mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
-                node.add_method_def(@genv, mdef)
+                ivdef = IVarDef.new(node.lenv.cref.cpath, false, ivar_name, node, vtx)
+                node.add_def(@genv, ivdef)
+                mdef = MethodDef.new(node.lenv.cref.cpath, false, :"#{ ty.sym }=", node, [vtx], nil, vtx)
+                node.add_def(@genv, mdef)
 
                 ivar_name = :"@#{ ty.sym }"
                 site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
                 node.add_site(site)
                 mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
-                node.add_method_def(@genv, mdef)
+                node.add_def(@genv, mdef)
               else
                 puts "???"
               end
@@ -195,10 +196,16 @@ module TypeProf
             end
           end
         else
-          if event == :enter && !node.method_defs.empty?
-            node.method_defs.each do |mdef|
-              puts " " * depth + "# #{ mdef.node.code_range }"
-              puts " " * depth + "def #{ mdef.mid }: " + mdef.show
+          if event == :enter && !node.defs.empty?
+            node.defs.each do |d|
+              case d
+              when MethodDef
+                #puts " " * depth + "# #{ d.node.code_range }"
+                puts " " * depth + "def #{ d.mid }: " + d.show
+              when ConstDef
+                #puts " " * depth + "# #{ d.node.code_range }"
+                puts " " * depth + "#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show
+              end
             end
           end
         end

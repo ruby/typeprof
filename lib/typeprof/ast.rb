@@ -105,7 +105,7 @@ module TypeProf
         @prev_node = nil
         @ret = nil
         @text_di = lenv.text_id
-        @method_defs = nil
+        @defs = nil
         @sites = nil
       end
 
@@ -131,13 +131,20 @@ module TypeProf
         end
       end
 
-      def method_defs
-        @method_defs ||= Set[]
+      def defs
+        @defs ||= Set[]
       end
 
-      def add_method_def(genv, mdef)
-        method_defs << mdef
-        genv.add_method_def(mdef)
+      def add_def(genv, d)
+        defs << d
+        case d
+        when MethodDef
+          genv.add_method_def(d)
+        when ConstDef
+          genv.add_const_def(d)
+        when IVarDef
+          genv.add_ivar_def(d)
+        end
       end
 
       def sites
@@ -166,9 +173,16 @@ module TypeProf
           puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
         end
         unless @reused
-          if @method_defs
-            @method_defs.each do |mdef|
-              genv.remove_method_def(mdef)
+          if @defs
+            @defs.each do |d|
+              case d
+              when MethodDef
+                genv.remove_method_def(d)
+              when ConstDef
+                genv.remove_const_def(d)
+              when IVarDef
+                genv.remove_ivar_def(d)
+              end
             end
           end
           if @sites
@@ -211,7 +225,7 @@ module TypeProf
       def reuse
         @lenv = @prev_node.lenv
         @ret = @prev_node.ret
-        @method_defs = @prev_node.method_defs
+        @defs = @prev_node.defs
         @sites = @prev_node.sites
 
         subnodes.each_value do |subnode|
@@ -449,8 +463,8 @@ module TypeProf
           genv.add_module(@static_cpath, self, @static_superclass_cpath)
 
           val = Source.new(Type::Module.new(@static_cpath))
-          @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
-          genv.add_const_def(@cdef)
+          cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
+          add_def(genv, cdef)
 
           @body.install(genv)
         else
@@ -460,7 +474,6 @@ module TypeProf
 
       def uninstall0(genv)
         if @static_cpath && @static_superclass_cpath
-          genv.remove_const_def(@cdef)
           genv.remove_module(@static_cpath, self)
         end
         super
@@ -565,15 +578,10 @@ module TypeProf
         @cpath.install(genv) if @cpath
         val = @rhs.install(genv)
         if @static_cpath
-          @cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
-          genv.add_const_def(@cdef)
+          cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
+          add_def(genv, cdef)
         end
         val
-      end
-
-      def uninstall0(genv)
-        genv.remove_const_def(@cdef) if @static_cpath
-        super
       end
 
       def diff0(prev_node)
@@ -606,7 +614,7 @@ module TypeProf
         @reused ? {} : { scope: }
       end
 
-      attr_reader :mid, :scope, :mdef
+      attr_reader :mid, :scope
       attr_accessor :reused
 
       def install0(genv)
@@ -619,7 +627,7 @@ module TypeProf
           f_args = @scope.get_args
           block = @scope.get_block
           mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
-          add_method_def(genv, mdef)
+          add_def(genv, mdef)
         end
         Source.new(Type::Symbol.new(@mid))
       end
@@ -1084,14 +1092,9 @@ module TypeProf
 
       def install0(genv)
         val = @rhs.install(genv)
-        @ivdef = IVarDef.new(lenv.cref.cpath, lenv.cref.singleton, @var, self, val)
-        genv.add_ivar_def(@ivdef)
+        ivdef = IVarDef.new(lenv.cref.cpath, lenv.cref.singleton, @var, self, val)
+        add_def(genv, ivdef)
         val
-      end
-
-      def uninstall0(genv)
-        genv.remove_ivar_def(@ivdef)
-        super
       end
 
       def diff0(prev_node)

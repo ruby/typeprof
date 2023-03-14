@@ -44,5 +44,27 @@ Foo.new(1.0, 1)
         serv.get_method_sig([:Foo], false, :foo),
       )
     end
+
+    def test_attr_accessor
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+class Foo
+  attr_accessor :x
+
+  def foo
+    x
+  end
+end
+
+foo = Foo.new
+foo.x = "str"
+      END
+
+      assert_equal(
+        ["def foo: () -> String"],
+        serv.get_method_sig([:Foo], false, :foo),
+      )
+    end
   end
 end
