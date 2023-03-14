@@ -183,7 +183,10 @@ module TypeProf
         end
       end
 
-      def uninstall0(_)
+      def uninstall0(genv)
+        children.each do |subnode|
+          subnode.uninstall(genv)
+        end
       end
 
       def reuse
@@ -265,10 +268,6 @@ module TypeProf
         @lenv.get_var(@args[9])
       end
 
-      def uninstall0(genv)
-        @body.uninstall(genv) if @body
-      end
-
       def diff(prev_node)
         if prev_node.is_a?(SCOPE) && @tbl == prev_node.tbl && @args == prev_node.args
           if @body
@@ -325,12 +324,6 @@ module TypeProf
         ret
       end
 
-      def uninstall0(genv)
-        @stmts.each do |stmt|
-          stmt.uninstall(genv)
-        end
-      end
-
       def diff(prev_node)
         if prev_node.is_a?(BLOCK)
           i = 0
@@ -385,13 +378,22 @@ module TypeProf
         @cpath = AST.create_node(raw_cpath, lenv)
         @static_cpath = AST.parse_cpath(raw_cpath, lenv.cref.cpath)
 
-        ncref = CRef.new(@static_cpath, true, lenv.cref)
-        nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
+        # TODO: class Foo < Struct.new(:foo, :bar)
 
-        @body = SCOPE.new(raw_scope, nlenv)
+        if @static_cpath
+          ncref = CRef.new(@static_cpath, true, lenv.cref)
+          nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
+          @body = SCOPE.new(raw_scope, nlenv)
+        else
+          @body = nil
+        end
       end
 
       attr_reader :name, :cpath, :static_cpath, :superclass_cpath, :static_superclass_cpath, :body
+
+      def children
+        [@cpath, @body]
+      end
 
       def diff(prev_node)
         if prev_node.is_a?(CLASS) &&
@@ -408,21 +410,7 @@ module TypeProf
       def initialize(raw_node, lenv)
         raw_cpath, raw_scope = raw_node.children
         super(raw_node, lenv, raw_cpath, raw_scope)
-      end
-
-      def children
-        [@cpath, @body]
-      end
-
-      def install0(genv)
-        @cpath_node.install(genv)
-        genv.add_module(@static_cpath, self)
-        @body.install(genv)
-      end
-
-      def uninstall0(genv)
-        @body.uninstall(genv)
-        genv.remove_module(@cpath)
+        raise
       end
 
       def dump0(dumper)
@@ -439,18 +427,19 @@ module TypeProf
     class CLASS < ModuleNode
       def initialize(raw_node, lenv)
         raw_cpath, raw_superclass, raw_scope = raw_node.children
+        super(raw_node, lenv, raw_cpath, raw_scope)
         if raw_superclass
           @superclass_cpath = AST.create_node(raw_superclass, lenv)
           @static_superclass_cpath = AST.parse_cpath(raw_superclass, lenv.cref.cpath)
+          @body = nil unless @static_superclass_cpath
         else
           @superclass_cpath = nil
           @static_superclass_cpath = [:Object]
         end
-        super(raw_node, lenv, raw_cpath, raw_scope)
       end
 
       def children
-        [@cpath, @superclass_cpath, @body].compact
+        super + [@superclass_cpath].compact
       end
 
       def install0(genv)
@@ -470,7 +459,7 @@ module TypeProf
       end
 
       def uninstall0(genv)
-        if @static_cpath
+        if @static_cpath && @static_superclass_cpath
           @body.uninstall(genv)
           genv.remove_const_def(@cdef)
           genv.remove_module(@static_cpath, self)
@@ -590,8 +579,7 @@ module TypeProf
 
       def uninstall0(genv)
         genv.remove_const_def(@cdef) if @static_cpath
-        @cpath.uninstall(genv) if @cpath
-        @rhs.uninstall(genv)
+        super
       end
 
       def diff(prev_node)
@@ -644,12 +632,6 @@ module TypeProf
           add_method_def(genv, mdef)
         end
         Source.new(Type::Symbol.new(@mid))
-      end
-
-      def uninstall0(genv)
-        unless @reused
-          @scope.uninstall(genv)
-        end
       end
 
       def diff(prev_node)
@@ -735,11 +717,6 @@ module TypeProf
         site = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
         add_site(site)
         site.ret
-      end
-
-      def uninstall0(genv)
-        @recv.uninstall(genv) if @recv
-        @a_args.uninstall(genv) if @a_args
       end
 
       def diff(prev_node)
@@ -882,12 +859,6 @@ module TypeProf
         end
       end
 
-      def uninstall0(genv)
-        @positional_args.each do |node|
-          node.uninstall(genv)
-        end
-      end
-
       def diff(prev_node)
         if prev_node.is_a?(A_ARGS) && @positional_args.size == prev_node.positional_args.size
           not_changed = true
@@ -932,10 +903,6 @@ module TypeProf
 
       def install0(genv)
         @call.install(genv)
-      end
-
-      def uninstall0(genv)
-        @call.uninstall(genv)
       end
 
       def diff(prev_node)
@@ -984,12 +951,6 @@ module TypeProf
         end
         else_val.add_edge(genv, @ret)
         @ret
-      end
-
-      def uninstall0(genv)
-        @cond.uninstall(genv)
-        @then.uninstall(genv)
-        @else.uninstall(genv) if @else
       end
 
       def diff(prev_node)
@@ -1054,11 +1015,6 @@ module TypeProf
         @ret
       end
 
-      def uninstall0(genv)
-        @e1.uninstall(genv)
-        @e2.uninstall(genv)
-      end
-
       def diff(prev_node)
         if prev_node.is_a?(AND)
           @e1.diff(prev_node.e1)
@@ -1102,10 +1058,6 @@ module TypeProf
         @body.install(genv)
       end
 
-      def uninstall0(genv)
-        @body.uninstall(genv)
-      end
-
       def diff(prev_node)
         raise NotImplementedError
       end
@@ -1142,9 +1094,6 @@ module TypeProf
         end
       end
 
-      def uninstall0(genv)
-      end
-
       def diff(prev_node)
         if prev_node.is_a?(LIT) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
           @prev_node = prev_node
@@ -1179,12 +1128,6 @@ module TypeProf
         site = ArrayAllocSite.new(self, genv, args)
         add_site(site)
         site.ret
-      end
-
-      def uninstall0(genv)
-        @elems.each do |elem|
-          elem.uninstall(genv)
-        end
       end
 
       def diff(prev_node)
@@ -1264,7 +1207,7 @@ module TypeProf
 
       def uninstall0(genv)
         genv.remove_ivar_def(@ivdef)
-        @rhs.uninstall(genv)
+        super
       end
 
       def diff(prev_node)
@@ -1301,9 +1244,6 @@ module TypeProf
 
       def install0(genv)
         @lenv.get_var(@var) || raise
-      end
-
-      def uninstall0(genv)
       end
 
       def diff(prev_node)
@@ -1343,10 +1283,6 @@ module TypeProf
         @vtx = @lenv.def_var(@var, self)
         val.add_edge(genv, @vtx)
         val
-      end
-
-      def uninstall0(genv)
-        @rhs.uninstall(genv)
       end
 
       def diff(prev_node)
@@ -1395,9 +1331,6 @@ module TypeProf
         end
       end
 
-      def uninstall0(genv)
-      end
-
       def diff(prev_node)
         if prev_node.is_a?(DVAR) && @var == prev_node.var
           @prev_node = prev_node
@@ -1443,10 +1376,6 @@ module TypeProf
 
         val.add_edge(genv, @vtx)
         val
-      end
-
-      def uninstall0(genv)
-        @rhs.uninstall(genv)
       end
 
       def diff(prev_node)
