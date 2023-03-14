@@ -352,5 +352,26 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_toplevel_function
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(n)
+  n
+end
+
+class Foo
+  def bar
+    foo(1)
+  end
+end
+      END
+
+      assert_equal(
+        ["def foo: (Integer) -> Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

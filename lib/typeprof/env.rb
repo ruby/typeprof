@@ -197,6 +197,7 @@ module TypeProf
       @run_queue_set = Set[]
 
       @toplevel = ModuleDirectory.new
+      @toplevel.child_modules[:Object] = @toplevel
 
       loader = RBS::EnvironmentLoader.new
       @rbs_env = RBS::Environment.from_loader(loader).resolve_type_names
