@@ -8,7 +8,7 @@ module TypeProf
       raise unless args == nil
 
       cref = CRef.new([], false, nil)
-      lenv = LexicalScope.new(text_id, cref, nil)
+      lenv = LexicalScope.new(text_id, nil, cref, nil)
       @body = AST.create_node(raw_body, lenv)
     end
 
@@ -39,6 +39,8 @@ module TypeProf
         UNLESS.new(raw_node, lenv)
       when :AND
         AND.new(raw_node, lenv)
+      when :RETURN
+        RETURN.new(raw_node, lenv)
       when :RESCUE
         RESCUE.new(raw_node, lenv)
       when :LIT
@@ -367,7 +369,7 @@ module TypeProf
           raise unless args == nil
 
           ncref = CRef.new(@static_cpath, true, lenv.cref)
-          nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
+          nlenv = LexicalScope.new(lenv.text_id, self, ncref, nil)
           @body = AST.create_node(raw_body, nlenv)
         else
           @body = nil
@@ -432,7 +434,9 @@ module TypeProf
           cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           add_def(genv, cdef)
 
-          @body.install(genv)
+          ret = @body.lenv.get_ret
+          @body.install(genv).add_edge(genv, ret)
+          ret
         else
           # TODO: show error
         end
@@ -552,14 +556,14 @@ module TypeProf
         super(raw_node, lenv)
         @mid, raw_scope = raw_node.children
 
-        ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-        nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
-
         raise unless raw_scope.type == :SCOPE
         @tbl, raw_args, raw_body = raw_scope.children
 
         # TODO: default expression for optional args
         @args = raw_args.children
+
+        ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
+        nlenv = LexicalScope.new(lenv.text_id, self, ncref, nil)
         @body = AST.create_node(raw_body, nlenv)
 
         @args_code_ranges = []
@@ -593,7 +597,8 @@ module TypeProf
             blk_idx = @args[9]
             block = blk_idx ? @body.lenv.def_var(blk_idx, self) : nil
           end
-          ret = @body.install(genv)
+          ret = @body.lenv.get_ret
+          @body.install(genv).add_edge(genv, ret)
           mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
           add_def(genv, mdef)
         end
@@ -654,7 +659,7 @@ module TypeProf
           @block_tbl, raw_block_args, raw_block_body = raw_block_scope.children
           @block_f_args = raw_block_args.children
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-          nlenv = LexicalScope.new(lenv.text_id, ncref, lenv)
+          nlenv = LexicalScope.new(lenv.text_id, self, ncref, lenv)
           @block_body = AST.create_node(raw_block_body, nlenv)
         else
           @block_tbl = @block_f_args = @block_body = nil
@@ -884,6 +889,28 @@ module TypeProf
       end
     end
 
+    class RETURN < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_arg, = raw_node.children
+        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : nil
+      end
+
+      attr_reader :arg
+
+      def subnodes = { arg: }
+
+      def install0(genv)
+        ret = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
+        ret.add_edge(genv, @lenv.get_ret)
+        Vertex.new("dummy", self)
+      end
+
+      def dump0(dumper)
+        "return #{ @arg.dump(dumper) }"
+      end
+    end
+
     class RESCUE < Node
       def initialize(raw_node, lenv)
         super
@@ -1084,13 +1111,15 @@ module TypeProf
   end
 
   class LexicalScope
-    def initialize(text_id, cref, outer)
+    def initialize(text_id, node, cref, outer)
       @text_id = text_id
+      @node = node
       @cref = cref
       @tbl = {} # variable table
       @outer = outer
       # XXX
       @self = Source.new(@cref.get_self)
+      @ret = node ? Vertex.new("ret", node) : nil
     end
 
     attr_reader :text_id, :cref, :outer
@@ -1118,6 +1147,10 @@ module TypeProf
 
     def get_self
       @self
+    end
+
+    def get_ret
+      @ret
     end
   end
 

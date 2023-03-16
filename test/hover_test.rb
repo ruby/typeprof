@@ -15,7 +15,7 @@ def main(_)
 end
       END
 
-      assert_equal("Integer", serv.hover("test0.rb", TypeProf::CodePosition.new(2, 3)).show)
+      assert_equal("Integer", serv.hover("test0.rb", TypeProf::CodePosition.new(2, 3)))
     end
 
     def test_gotodefs
