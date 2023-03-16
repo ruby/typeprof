@@ -9,7 +9,13 @@ module TypeProf
 
       cref = CRef.new([], false, nil)
       lenv = LexicalScope.new(text_id, nil, cref, nil)
-      @body = AST.create_node(raw_body, lenv)
+      Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, (row1, col1, row2, col2)|
+        pos1 = CodePosition.new(row1, col1)
+        pos2 = CodePosition.new(row2, col2)
+        code_range = CodeRange.new(pos1, pos2)
+        [type, str, code_range]
+      end.sort_by {|_type, _str, code_range| code_range.first }
+      AST.create_node(raw_body, lenv)
     end
 
     def self.create_node(raw_node, lenv)
@@ -108,14 +114,13 @@ module TypeProf
       return base_cpath + names.reverse
     end
 
-    def self.find_sym_code_range(raw_node, start_pos, sym)
-      tokens = raw_node.tokens
-      until tokens.empty?
-        _idx, type, str, (row1, col1, row2, col2) = tokens.shift
-        pos1 = CodePosition.new(row1, col1)
-        pos2 = CodePosition.new(row2, col2)
-        next if pos1 < start_pos
-        return CodeRange.new(pos1, pos2) if type == :tIDENTIFIER && str == sym.to_s
+    def self.find_sym_code_range(start_pos, sym)
+      tokens = Fiber[:tokens]
+      i = tokens.bsearch_index {|_type, _str, code_range| start_pos <= code_range.first }
+      while tokens[i]
+        type, str, code_range = tokens[i]
+        return code_range if type == :tIDENTIFIER && str == sym.to_s
+        i += 1
       end
       return nil
     end
@@ -569,7 +574,7 @@ module TypeProf
         @args_code_ranges = []
         @args[0].times do |i|
           pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
-          @args_code_ranges << AST.find_sym_code_range(raw_node, pos, @tbl[i])
+          @args_code_ranges << AST.find_sym_code_range(pos, @tbl[i])
         end
 
         @reused = false
@@ -606,7 +611,7 @@ module TypeProf
       end
 
       def hover(pos)
-        i = @args_code_ranges.find_index {|cr| cr.include?(pos) }
+        i = @args_code_ranges.find_index {|cr| cr && cr.include?(pos) }
         if i
           @body.lenv.get_var(@tbl[i])
         else
@@ -711,7 +716,7 @@ module TypeProf
       def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
         pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
-        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
@@ -724,7 +729,7 @@ module TypeProf
       def initialize(raw_node, raw_block_scope, lenv)
         mid, = raw_node.children
         pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
-        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_block_scope, lenv, nil, mid, mid_code_range, nil)
       end
 
@@ -737,7 +742,7 @@ module TypeProf
       def initialize(raw_node, raw_block_scope, lenv)
         mid, raw_args = raw_node.children
         pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
-        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_block_scope, lenv, nil, mid, mid_code_range, raw_args)
       end
 
@@ -750,7 +755,7 @@ module TypeProf
       def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
         pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
-        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
@@ -768,7 +773,7 @@ module TypeProf
         raw_recv, mid, raw_args = raw_node.children
         # TODO
         pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
-        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
@@ -902,7 +907,9 @@ module TypeProf
 
       def install0(genv)
         ret = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
-        ret.add_edge(genv, @lenv.get_ret)
+        lenv = @lenv
+        lenv = lenv.outer while lenv.outer
+        ret.add_edge(genv, lenv.get_ret)
         Vertex.new("dummy", self)
       end
 

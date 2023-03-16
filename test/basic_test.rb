@@ -405,5 +405,41 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_return
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(x)
+  return if x
+  "str"
+end
+
+def bar(x)
+  return 1 if x
+  "str"
+end
+
+def baz(x)
+  1.times do |_|
+    return 1
+  end
+  "str"
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> NilClass | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+      assert_equal(
+        ["def bar: (untyped) -> Integer | String"],
+        serv.get_method_sig([], false, :bar),
+      )
+      assert_equal(
+        ["def baz: (untyped) -> Integer | String"],
+        serv.get_method_sig([], false, :baz),
+      )
+    end
   end
 end
