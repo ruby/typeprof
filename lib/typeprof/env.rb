@@ -85,8 +85,8 @@ module TypeProf
 
     attr_reader :rbs_member, :builtin
 
-    def resolve_overloads(genv, recv_ty, a_args, block)
-      ret_types = []
+    def resolve_overloads(genv, recv_ty, a_args, block, ret)
+      all_edges = Set[]
       map = {
         __self: (@singleton ? Type::Module : Type::Instance).new(@cpath),
       }
@@ -94,6 +94,7 @@ module TypeProf
         map[:Elem] = recv_ty.elem
       end
       @rbs_member.overloads.each do |overload|
+        edges = Set[]
         func = overload.method_type.type
         # func.optional_keywords
         # func.optional_positionals
@@ -106,22 +107,61 @@ module TypeProf
           Signatures.type(genv, f_arg.type, map)
         end
         # TODO: correct block match
-        block_match = !!block == !!overload.method_type.block
-        if a_args.size == f_args.size && block_match
+        if a_args.size == f_args.size
           match = a_args.zip(f_args).all? do |a_arg, f_arg|
-            a_arg.types.any? do |ty,|
-              f_arg.any? do |ty2|
+            a_arg.types.any? do |a_ty,|
+              f_arg.any? do |f_ty|
                 # TODO: type consistency
-                ty.match?(genv, ty2)
+                a_ty.match?(genv, f_ty)
               end
             end
           end
+          rbs_blk = overload.method_type.block
+          if block
+            blk = overload.method_type.block
+            if blk
+              blk_func = rbs_blk.type
+              # blk_func.optional_keywords
+              # ..
+              block.types.each do |ty, _source|
+                case ty
+                when Type::Proc
+                  blk_a_args = blk_func.required_positionals.map do |blk_a_arg|
+                    Signatures.type(genv, blk_a_arg.type, map)
+                  end
+                  blk_f_args = ty.block.f_args
+                  if blk_a_args.size == blk_f_args.size
+                    blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
+                      blk_a_arg.each do |a_ty|
+                        edges << [Source.new(a_ty), blk_f_arg]
+                      end
+                    end
+                  else
+                    match = false
+                  end
+                else
+                  "???"
+                end
+              end
+            else
+              match = false
+            end
+          else
+            if rbs_blk
+              match = false
+            end
+          end
           if match
-            ret_types.concat(Signatures.type(genv, func.return_type, map))
+            Signatures.type(genv, func.return_type, map).each do |ret_ty|
+              edges << [Source.new(ret_ty), ret]
+            end
+            edges.each do |src, dst|
+              all_edges << [src, dst]
+            end
           end
         end
       end
-      ret_types
+      all_edges
     end
 
     def set_builtin(&blk)
@@ -159,7 +199,7 @@ module TypeProf
         end
       end
       s = "(#{ @f_args.map {|arg| arg.show }.join(", ") })"
-      s << " (#{ block_show.join(" | ") })" unless block_show.empty?
+      s << " (#{ block_show.sort.join(" | ") })" unless block_show.empty?
       s << " -> #{ @ret.show }"
     end
   end

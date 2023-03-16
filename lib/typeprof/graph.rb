@@ -1,6 +1,7 @@
 module TypeProf
   class Source
     def initialize(ty)
+      raise ty.inspect unless ty.is_a?(Type)
       @types = { ty => nil }
     end
 
@@ -15,7 +16,7 @@ module TypeProf
     end
 
     def show
-      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.join(" | ")
+      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
     end
 
     def to_s
@@ -90,9 +91,9 @@ module TypeProf
         end
       end
       unless ary_elems.empty?
-        types << "Array[#{ ary_elems.join(" | ") }]"
+        types << "Array[#{ ary_elems.sort.join(" | ") }]"
       end
-      types.empty? ? "untyped" : types.join(" | ")
+      types.empty? ? "untyped" : types.sort.join(" | ")
     end
 
     @@new_id = 0
@@ -255,15 +256,11 @@ module TypeProf
             if md.builtin
               # TODO: block
               nedges = md.builtin[@node, ty, @mid, @a_args, @ret]
-              nedges.each {|src, dst| edges << [src, dst] }
             else
-              # TODO: block
-              ret_types = md.resolve_overloads(genv, ty, @a_args, @block)
               # TODO: handle Type::Union
-              ret_types.each do |ty|
-                edges << [Source.new(ty), @ret]
-              end
+              nedges = md.resolve_overloads(genv, ty, @a_args, @block, @ret)
             end
+            nedges.each {|src, dst| edges << [src, dst] }
           when MethodDef
             if @block && md.block
               edges << [@block, md.block]

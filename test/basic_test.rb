@@ -110,13 +110,13 @@ end
       serv = TypeProf::Service.new
 
       serv.update_file("test0.rb", <<-END)
-      def foo
-        1.times {|_| }
-      end
+def foo
+  1.times {|_| }
+end
 
-      def bar
-        1.times
-      end
+def bar
+  1.times
+end
       END
 
       assert_equal(
@@ -348,8 +348,40 @@ end
       END
 
       assert_equal(
-        ["def foo: () ({ (Integer) -> String | Integer }) -> String | Integer"],
+        ["def foo: () ({ (Integer) -> Integer | String }) -> Integer | String"],
         serv.get_method_sig([], false, :foo),
+      )
+    end
+
+    def test_dvar2
+      serv = TypeProf::Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(x)
+  x = "str"
+  1.times do |_|
+    x = 42
+  end
+  x
+end
+
+def bar(x)
+  x = "str"
+  1.times do |x|
+    x = 42
+  end
+  x
+end
+      END
+
+      assert_equal(
+        ["def foo: (Integer | String) -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: (String) -> String"],
+        serv.get_method_sig([], false, :bar),
       )
     end
 
