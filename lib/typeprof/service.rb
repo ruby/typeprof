@@ -128,9 +128,7 @@ module TypeProf
       version = prev_node ? prev_node.lenv.text_id.version + 1 : 0
 
       text_id = TextId.new(path, version)
-      cref = CRef.new([], false, nil)
-      lenv = LexicalScope.new(text_id, cref, nil)
-      node = AST.parse(code, lenv)
+      node = AST.parse(text_id, code)
 
       node.diff(@text_nodes[path]) if prev_node
       @text_nodes[path] = node

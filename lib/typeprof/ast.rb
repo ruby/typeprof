@@ -1,14 +1,19 @@
 module TypeProf
   class AST
-    def self.parse(src, lenv)
-      raw_node = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
-      AST.create_node(raw_node, lenv)
+    def self.parse(text_id, src)
+      raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
+
+      raise unless raw_scope.type == :SCOPE
+      _tbl, args, raw_body = raw_scope.children
+      raise unless args == nil
+
+      cref = CRef.new([], false, nil)
+      lenv = LexicalScope.new(text_id, cref, nil)
+      @body = AST.create_node(raw_body, lenv)
     end
 
     def self.create_node(raw_node, lenv)
       case raw_node.type
-      when :SCOPE
-        SCOPE.new(raw_node, lenv)
       when :BLOCK
         BLOCK.new(raw_node, lenv)
       when :MODULE
@@ -26,17 +31,8 @@ module TypeProf
       when :BEGIN
         BEGIN_.new(raw_node, lenv)
       when :ITER
-        handle_iter_node(raw_node, lenv)
-      when :CALL
-        CALL.new(raw_node, lenv)
-      when :VCALL
-        VCALL.new(raw_node, lenv)
-      when :FCALL
-        FCALL.new(raw_node, lenv)
-      when :OPCALL
-        OPCALL.new(raw_node, lenv)
-      when :ATTRASGN
-        ATTRASGN.new(raw_node, lenv)
+        raw_call, raw_block_scope = raw_node.children
+        AST.create_call_node(raw_call, raw_block_scope, lenv)
       when :IF
         IF.new(raw_node, lenv)
       when :UNLESS
@@ -61,29 +57,31 @@ module TypeProf
         IVAR.new(raw_node, lenv)
       when :IASGN
         IASGN.new(raw_node, lenv)
-      when :LVAR
+      when :LVAR, :DVAR
         LVAR.new(raw_node, lenv)
-      when :LASGN
+      when :LASGN, :DASGN
         LASGN.new(raw_node, lenv)
-      when :DVAR
-        DVAR.new(raw_node, lenv)
-      when :DASGN
-        DASGN.new(raw_node, lenv)
+      else
+        create_call_node(raw_node, nil, lenv)
+      end
+    end
+
+    def self.create_call_node(raw_node, raw_block, lenv)
+      case raw_node.type
+      when :CALL
+        CALL.new(raw_node, raw_block, lenv)
+      when :VCALL
+        VCALL.new(raw_node, raw_block, lenv)
+      when :FCALL
+        FCALL.new(raw_node, raw_block, lenv)
+      when :OPCALL
+        OPCALL.new(raw_node, raw_block, lenv)
+      when :ATTRASGN
+        ATTRASGN.new(raw_node, raw_block, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"
       end
-    end
-
-    def self.handle_iter_node(raw_node, lenv)
-      raw_call, raw_scope = raw_node.children
-      call = AST.create_node(raw_call, lenv)
-
-      ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-      nlenv = LexicalScope.new(lenv.text_id, ncref, lenv)
-      call.block = AST.create_node(raw_scope, nlenv)
-
-      call
     end
 
     def self.parse_cpath(raw_node, base_cpath)
@@ -286,67 +284,6 @@ module TypeProf
       end
     end
 
-    class SCOPE < Node
-      def initialize(raw_node, lenv)
-        raise if raw_node.type != :SCOPE
-        super
-        @tbl, raw_args, raw_body = raw_node.children
-
-        @tbl.each do |v|
-          lenv.allocate_var(v)
-        end
-
-        @args = raw_args ? raw_args.children : nil
-        @body = raw_body ? AST.create_node(raw_body, lenv) : nil
-      end
-
-      attr_reader :tbl, :args, :body
-
-      def subnodes
-        # TODO: default expr for optional args
-        { body: }
-      end
-
-      def attrs
-        { tbl:, args: }
-      end
-
-      def install0(genv)
-        if @args
-          @args[0].times do |i|
-            @lenv.def_var(@tbl[i], self)
-          end
-          blk = @args[9]
-          @lenv.def_var(blk, self) if blk
-        end
-        @body ? @body.install(genv) : Source.new(Type::Instance.new([:NilClass]))
-      end
-
-      def get_args
-        # XXX
-        @tbl[0, @args[0]].map {|v| @lenv.get_var(v) }
-      end
-
-      def get_block
-        @lenv.get_var(@args[9])
-      end
-
-      def dump(dumper) # intentionally not dump0
-        @body ? @body.dump(dumper) : ""
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        if @args
-          @args[0].times do |i|
-            vtxs << @lenv.get_var(@tbl[i])
-          end
-          blk = @args[9]
-          vtxs << @lenv.get_var(blk) if blk
-        end
-        super
-      end
-    end
-
     class BLOCK < Node
       def initialize(raw_node, lenv)
         super
@@ -413,9 +350,13 @@ module TypeProf
         # TODO: class Foo < Struct.new(:foo, :bar)
 
         if @static_cpath
+          raise unless raw_scope.type == :SCOPE
+          _tbl, args, raw_body = raw_scope.children
+          raise unless args == nil
+
           ncref = CRef.new(@static_cpath, true, lenv.cref)
           nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
-          @body = SCOPE.new(raw_scope, nlenv)
+          @body = AST.create_node(raw_body, nlenv)
         else
           @body = nil
         end
@@ -602,15 +543,20 @@ module TypeProf
         ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
         nlenv = LexicalScope.new(lenv.text_id, ncref, nil)
 
-        @scope = AST.create_node(raw_scope, nlenv)
+        raise unless raw_scope.type == :SCOPE
+        @tbl, raw_args, raw_body = raw_scope.children
+
+        # TODO: default expression for optional args
+        @args = raw_args.children
+        @body = AST.create_node(raw_body, nlenv)
 
         @reused = false
       end
 
-      attr_reader :mid, :scope
+      attr_reader :mid, :tbl, :args, :body
 
-      def subnodes = @reused ? {} : { scope: }
-      def attrs = { mid: }
+      def subnodes = @reused ? {} : { body: }
+      def attrs = { mid:, tbl:, args: }
 
       attr_accessor :reused
 
@@ -620,9 +566,16 @@ module TypeProf
           @prev_node.reused = true
         else
           # TODO: ユーザ定義 RBS があるときは検証する
-          ret = @scope.install(genv)
-          f_args = @scope.get_args
-          block = @scope.get_block
+          f_args = []
+          block = nil
+          if @args
+            @args[0].times do |i|
+              f_args << @body.lenv.def_var(@tbl[i], self)
+            end
+            blk_idx = @args[9]
+            block = blk_idx ? @body.lenv.def_var(blk_idx, self) : nil
+          end
+          ret = @body.install(genv)
           mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
           add_def(genv, mdef)
         end
@@ -630,9 +583,9 @@ module TypeProf
       end
 
       def dump0(dumper)
-        vtx = @scope.lenv.get_var(@scope.tbl[0])
-        s = "def #{ @mid }(#{ @scope.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n"
-        s << @scope.dump(dumper).gsub(/^/, "  ") + "\n"
+        vtx = @body.lenv.get_var(@body.tbl[0])
+        s = "def #{ @mid }(#{ @body.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n"
+        s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         s << "end"
       end
     end
@@ -662,27 +615,38 @@ module TypeProf
     end
 
     class CallNode < Node
-      def initialize(raw_node, lenv, raw_recv, mid, raw_args)
+      def initialize(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
         super(raw_node, lenv)
+
         @mid = mid
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
         @a_args = A_ARGS.new(raw_args, lenv) if raw_args
-        @block = nil
+
+        if raw_block_scope
+          @block_tbl, raw_block_args, raw_block_body = raw_block_scope.children
+          @block_f_args = raw_block_args.children
+          ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
+          nlenv = LexicalScope.new(lenv.text_id, ncref, lenv)
+          @block_body = AST.create_node(raw_block_body, nlenv)
+        else
+          @block_tbl = @block_f_args = @block_body = nil
+        end
       end
 
-      attr_accessor :block
-      attr_reader :recv, :mid, :a_args
+      attr_reader :recv, :mid, :a_args, :block_tbl, :block_f_args, :block_body
 
-      def subnodes = { recv:, a_args:, block: }
-      def attrs = { mid: }
+      def subnodes = { recv:, a_args:, block_body: }
+      def attrs = { mid:, block_tbl:, block_f_args: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @lenv.get_self
         a_args = @a_args ? @a_args.install(genv) : []
-        if @block
-          blk_ret = @block.install(genv)
-          blk_f_args = @block.get_args
-          #block = @lenv.get_block(self)
+        if @block_body
+          blk_f_args = []
+          @block_f_args[0].times do |i|
+            blk_f_args << @block_body.lenv.def_var(@block_tbl[i], self)
+          end
+          blk_ret = @block_body.install(genv)
           block = Block.new(@block, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         end
@@ -703,9 +667,9 @@ module TypeProf
     end
 
     class CALL < CallNode
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
-        super(raw_node, lenv, raw_recv, mid, raw_args)
+        super(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
       end
 
       def dump0(dumper)
@@ -714,9 +678,9 @@ module TypeProf
     end
 
     class VCALL < CallNode
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, raw_block_scope, lenv)
         mid, = raw_node.children
-        super(raw_node, lenv, nil, mid, nil)
+        super(raw_node, raw_block_scope, lenv, nil, mid, nil)
       end
 
       def dump0(dumper)
@@ -725,10 +689,10 @@ module TypeProf
     end
 
     class FCALL < CallNode
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, raw_block_scope, lenv)
         @mid, raw_args = raw_node.children
 
-        super(raw_node, lenv, nil, mid, raw_args)
+        super(raw_node, raw_block_scope, lenv, nil, mid, raw_args)
 
         token = raw_node.tokens.first
         if token[1] == :tIDENTIFIER && token[2] == @mid.to_s
@@ -751,9 +715,9 @@ module TypeProf
     end
 
     class OPCALL < CallNode
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
-        super(raw_node, lenv, raw_recv, mid, raw_args)
+        super(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
       end
 
       def dump0(dumper)
@@ -766,9 +730,9 @@ module TypeProf
     end
 
     class ATTRASGN < CallNode
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
-        super(raw_node, lenv, raw_recv, mid, raw_args)
+        super(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
       end
 
       def dump0(dumper)
@@ -1047,7 +1011,7 @@ module TypeProf
       def attrs = { var: }
 
       def install0(genv)
-        @lenv.get_var(@var) || raise
+        @lenv.resolve_var(@var).get_var(@var)
       end
 
       def hover(pos)
@@ -1074,74 +1038,15 @@ module TypeProf
 
       def install0(genv)
         val = @rhs.install(genv)
-        val.add_edge(genv, @lenv.def_var(@var, self))
+
+        lenv = @lenv.resolve_var(@var)
+        vtx = lenv ? lenv.get_var(@var) : @lenv.def_var(@var, self)
+        val.add_edge(genv, vtx)
         val
       end
 
       def dump0(dumper)
         "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
-      end
-    end
-
-    class DVAR < Node
-      def initialize(raw_node, lenv)
-        super
-        var, = raw_node.children
-        @var = var
-      end
-
-      attr_reader :var
-
-      def attrs = { var: }
-
-      def install0(genv)
-        lenv = @lenv
-        while lenv
-          vtx = lenv.get_var(@var)
-          return vtx if vtx
-          lenv = lenv.outer
-        end
-      end
-
-      def hover(pos)
-        code_range.include?(pos) ? @ret : nil
-      end
-
-      def dump0(dumper)
-        "#{ @var }"
-      end
-    end
-
-    class DASGN < Node
-      def initialize(raw_node, lenv)
-        super
-        var, rhs = raw_node.children
-        @var = var
-        @rhs = AST.create_node(rhs, lenv)
-      end
-
-      attr_reader :var, :rhs
-
-      def subnodes = { rhs: }
-      def attrs = { var: }
-
-      def resolve_lenv
-        lenv = @lenv
-        while lenv
-          break if lenv.var_exist?(@var)
-          lenv = lenv.outer
-        end
-        lenv
-      end
-
-      def install0(genv)
-        val = @rhs.install(genv)
-        val.add_edge(genv, resolve_lenv.def_var(@var, self))
-        val
-      end
-
-      def dump0(dumper)
-        "#{ @var }\e[34m:#{ resolve_lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
     end
   end
@@ -1158,12 +1063,16 @@ module TypeProf
 
     attr_reader :text_id, :cref, :outer
 
-    def allocate_var(name)
-      @tbl[name] = nil
+    def resolve_var(name)
+      lenv = self
+      while lenv
+        break if lenv.var_exist?(name)
+        lenv = lenv.outer
+      end
+      lenv
     end
 
     def def_var(name, node)
-      raise unless @tbl.key?(name)
       @tbl[name] ||= Vertex.new("var:#{ name }", node)
     end
 
