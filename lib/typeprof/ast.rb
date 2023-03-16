@@ -106,6 +106,18 @@ module TypeProf
       return base_cpath + names.reverse
     end
 
+    def self.find_sym_code_range(raw_node, start_pos, sym)
+      tokens = raw_node.tokens
+      until tokens.empty?
+        _idx, type, str, (row1, col1, row2, col2) = tokens.shift
+        pos1 = CodePosition.new(row1, col1)
+        pos2 = CodePosition.new(row2, col2)
+        next if pos1 < start_pos
+        return CodeRange.new(pos1, pos2) if type == :tIDENTIFIER && str == sym.to_s
+      end
+      return nil
+    end
+
     class Node
       def initialize(raw_node, lenv)
         @raw_node = raw_node
@@ -550,6 +562,12 @@ module TypeProf
         @args = raw_args.children
         @body = AST.create_node(raw_body, nlenv)
 
+        @args_code_ranges = []
+        @args[0].times do |i|
+          pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+          @args_code_ranges << AST.find_sym_code_range(raw_node, pos, @tbl[i])
+        end
+
         @reused = false
       end
 
@@ -580,6 +598,15 @@ module TypeProf
           add_def(genv, mdef)
         end
         Source.new(Type::Symbol.new(@mid))
+      end
+
+      def hover(pos)
+        i = @args_code_ranges.find_index {|cr| cr.include?(pos) }
+        if i
+          @body.lenv.get_var(@tbl[i])
+        else
+          super
+        end
       end
 
       def dump0(dumper)
@@ -615,11 +642,12 @@ module TypeProf
     end
 
     class CallNode < Node
-      def initialize(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
+      def initialize(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
         super(raw_node, lenv)
 
-        @mid = mid
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
+        @mid = mid
+        @mid_code_range = mid_code_range
         @a_args = A_ARGS.new(raw_args, lenv) if raw_args
 
         if raw_block_scope
@@ -655,6 +683,14 @@ module TypeProf
         site.ret
       end
 
+      def hover(pos)
+        if @mid_code_range && @mid_code_range.include?(pos)
+          @sites.to_a.first # TODO
+        else
+          super
+        end
+      end
+
       def dump_call(prefix, suffix)
         s = prefix + "\e[33m[#{ @callsite }]\e[m" + suffix
         if @block
@@ -669,7 +705,9 @@ module TypeProf
     class CALL < CallNode
       def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
-        super(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
+        pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
+        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)
@@ -680,7 +718,9 @@ module TypeProf
     class VCALL < CallNode
       def initialize(raw_node, raw_block_scope, lenv)
         mid, = raw_node.children
-        super(raw_node, raw_block_scope, lenv, nil, mid, nil)
+        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        super(raw_node, raw_block_scope, lenv, nil, mid, mid_code_range, nil)
       end
 
       def dump0(dumper)
@@ -690,23 +730,10 @@ module TypeProf
 
     class FCALL < CallNode
       def initialize(raw_node, raw_block_scope, lenv)
-        @mid, raw_args = raw_node.children
-
-        super(raw_node, raw_block_scope, lenv, nil, mid, raw_args)
-
-        token = raw_node.tokens.first
-        if token[1] == :tIDENTIFIER && token[2] == @mid.to_s
-          a = token[3]
-          @mid_code_range = CodeRange.new(CodePosition.new(a[0], a[1]), CodePosition.new(a[2], a[3]))
-        end
-      end
-
-      def hover(pos)
-        if @mid_code_range.include?(pos)
-          @sites.to_a.first # TODO
-        else
-          super
-        end
+        mid, raw_args = raw_node.children
+        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        super(raw_node, raw_block_scope, lenv, nil, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)
@@ -717,7 +744,9 @@ module TypeProf
     class OPCALL < CallNode
       def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
-        super(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
+        pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
+        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)
@@ -732,7 +761,10 @@ module TypeProf
     class ATTRASGN < CallNode
       def initialize(raw_node, raw_block_scope, lenv)
         raw_recv, mid, raw_args = raw_node.children
-        super(raw_node, raw_block_scope, lenv, raw_recv, mid, raw_args)
+        # TODO
+        pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
+        mid_code_range = AST.find_sym_code_range(raw_node, pos, mid)
+        super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)

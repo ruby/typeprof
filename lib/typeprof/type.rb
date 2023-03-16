@@ -15,7 +15,7 @@ module TypeProf
       attr_reader :cpath
 
       def show
-        "singleton(#{ @cpath.join("::" ) })"
+        "singleton(#{ @cpath.empty? ? "Object" : @cpath.join("::" ) })"
       end
 
       def get_instance_type
@@ -38,7 +38,7 @@ module TypeProf
       end
 
       def show
-        "#{ @cpath.join("::" )}"
+        "#{ @cpath.empty? ? "Object" : @cpath.join("::" )}"
       end
 
       def match?(genv, other)

@@ -254,7 +254,13 @@ module TypeProf
     end
 
     def hover(path, pos)
-      @text_nodes[path].hover(pos)
+      obj = @text_nodes[path].hover(pos)
+      case obj
+      when CallSite
+        obj.recv.show + "#" + obj.mid.to_s
+      when Vertex
+        obj.show
+      end
     end
 
     def gotodefs(path, pos)
