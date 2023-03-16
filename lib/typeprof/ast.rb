@@ -26,7 +26,7 @@ module TypeProf
       when :BEGIN
         BEGIN_.new(raw_node, lenv)
       when :ITER
-        ITER.new(raw_node, lenv)
+        handle_iter_node(raw_node, lenv)
       when :CALL
         CALL.new(raw_node, lenv)
       when :VCALL
@@ -75,6 +75,17 @@ module TypeProf
       end
     end
 
+    def self.handle_iter_node(raw_node, lenv)
+      raw_call, raw_scope = raw_node.children
+      call = AST.create_node(raw_call, lenv)
+
+      ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
+      nlenv = LexicalScope.new(lenv.text_id, ncref, lenv)
+      call.block = AST.create_node(raw_scope, nlenv)
+
+      call
+    end
+
     def self.parse_cpath(raw_node, base_cpath)
       names = []
       while raw_node
@@ -110,6 +121,14 @@ module TypeProf
       end
 
       attr_reader :lenv, :prev_node, :ret
+
+      def subnodes
+        {}
+      end
+
+      def attrs
+        {}
+      end
 
       def traverse(&blk)
         yield :enter, self
@@ -204,7 +223,7 @@ module TypeProf
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(self.class) && diff0(prev_node)
+        if prev_node.is_a?(self.class) && attrs.all? {|key, attr| attr == prev_node.send(key) }
           subnodes.each do |key, subnode|
             prev_subnode = prev_node.send(key)
             if subnode && prev_subnode
@@ -216,10 +235,6 @@ module TypeProf
           end
           @prev_node = prev_node
         end
-      end
-
-      def diff0(_)
-        true
       end
 
       def reuse
@@ -260,6 +275,7 @@ module TypeProf
             boxes << site
           end
         end
+        vtxs << @ret
         subnodes.each_value do |subnode|
           subnode.get_vertexes_and_boxes(vtxs, boxes) if subnode
         end
@@ -291,6 +307,10 @@ module TypeProf
         { body: }
       end
 
+      def attrs
+        { tbl:, args: }
+      end
+
       def install0(genv)
         if @args
           @args[0].times do |i|
@@ -309,10 +329,6 @@ module TypeProf
 
       def get_block
         @lenv.get_var(@args[9])
-      end
-
-      def diff0(prev_node)
-        @tbl == prev_node.tbl && @args == prev_node.args
       end
 
       def dump(dumper) # intentionally not dump0
@@ -338,13 +354,13 @@ module TypeProf
         @stmts = stmts.map {|n| AST.create_node(n, lenv) }
       end
 
+      attr_reader :stmts
+
       def subnodes
         h = {}
         @stmts.each_with_index {|stmt, i| h[i] = stmt }
         h
       end
-
-      attr_reader :stmts
 
       def install0(genv)
         ret = nil
@@ -405,17 +421,10 @@ module TypeProf
         end
       end
 
-      attr_reader :name, :cpath, :static_cpath, :superclass_cpath, :static_superclass_cpath, :body
+      attr_reader :cpath, :static_cpath, :body
 
-      def subnodes
-        { cpath:, body: }
-      end
-
-      def diff0(prev_node)
-        @static_cpath &&
-        @static_cpath == prev_node.static_cpath &&
-        @static_superclass_cpath == prev_node.static_superclass_cpath
-      end
+      def subnodes = { cpath:, body: }
+      def attrs = { static_cpath: }
     end
 
     class MODULE < ModuleNode
@@ -450,10 +459,14 @@ module TypeProf
         end
       end
 
-      attr_reader :superclass_cpath
+      attr_reader :superclass_cpath, :static_superclass_cpath
 
       def subnodes
         super.merge!({ superclass_cpath: })
+      end
+
+      def attrs
+        super.merge!({ static_superclass_cpath: })
       end
 
       def install0(genv)
@@ -498,21 +511,15 @@ module TypeProf
         @cname, = raw_node.children
       end
 
-      def subnodes
-        {}
-      end
-
       attr_reader :cname
+
+      def attrs = { cname: }
 
       def install0(genv)
         cref = @lenv.cref
         site = ConstReadSite.new(self, genv, cref, nil, @cname)
         add_site(site)
         site.ret
-      end
-
-      def diff0(prev_node)
-        @cname == prev_node.cname
       end
 
       def dump0(dumper)
@@ -527,21 +534,16 @@ module TypeProf
         @cbase = cbase_raw ? AST.create_node(cbase_raw, lenv) : nil
       end
 
-      def subnodes
-        { cbase: }
-      end
-
       attr_reader :cbase, :cname
+
+      def subnodes = { cbase: }
+      def attrs = { cname: }
 
       def install0(genv)
         cbase = @cbase ? @cbase.install(genv) : nil
         site = ConstReadSite.new(self, genv, @lenv.cref, cbase, @cname)
         add_site(site)
         site.ret
-      end
-
-      def diff0(prev_node)
-        @cname == prev_node.cname
       end
 
       def dump0(dumper)
@@ -568,11 +570,10 @@ module TypeProf
         @rhs = AST.create_node(raw_rhs, lenv)
       end
 
-      def subnodes
-        { cpath:, rhs: }
-      end
+      attr_reader :cpath, :rhs, :static_cpath
 
-      attr_reader :name, :cpath, :rhs, :static_cpath
+      def subnodes = { cpath:, rhs: }
+      def attrs = { static_cpath: }
 
       def install0(genv)
         @cpath.install(genv) if @cpath
@@ -582,10 +583,6 @@ module TypeProf
           add_def(genv, cdef)
         end
         val
-      end
-
-      def diff0(prev_node)
-        @static_cpath && @static_cpath == prev_node.static_cpath
       end
 
       def dump0(dumper)
@@ -610,11 +607,11 @@ module TypeProf
         @reused = false
       end
 
-      def subnodes
-        @reused ? {} : { scope: }
-      end
-
       attr_reader :mid, :scope
+
+      def subnodes = @reused ? {} : { scope: }
+      def attrs = { mid: }
+
       attr_accessor :reused
 
       def install0(genv)
@@ -632,10 +629,6 @@ module TypeProf
         Source.new(Type::Symbol.new(@mid))
       end
 
-      def diff0(prev_node)
-        @mid == prev_node.mid
-      end
-
       def dump0(dumper)
         vtx = @scope.lenv.get_var(@scope.tbl[0])
         s = "def #{ @mid }(#{ @scope.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n"
@@ -650,12 +643,9 @@ module TypeProf
         raise NotImplementedError if raw_node.children != [nil]
       end
 
-      def subnodes
-        {}
-      end
-
       def install0(genv)
         # TODO
+        Vertex.new("begin", self)
       end
 
       def uninstall0(genv)
@@ -680,13 +670,11 @@ module TypeProf
         @block = nil
       end
 
-      def subnodes
-        { recv:, a_args:, block: }
-      end
-
-      attr_reader :recv, :mid, :a_args
-      attr_reader :callsite
       attr_accessor :block
+      attr_reader :recv, :mid, :a_args
+
+      def subnodes = { recv:, a_args:, block: }
+      def attrs = { mid: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @lenv.get_self
@@ -701,10 +689,6 @@ module TypeProf
         site = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
         add_site(site)
         site.ret
-      end
-
-      def diff0(prev_node)
-        @mid == prev_node.mid
       end
 
       def dump_call(prefix, suffix)
@@ -808,13 +792,13 @@ module TypeProf
         end
       end
 
+      attr_reader :positional_args
+
       def subnodes
         h = {}
         @positional_args.each_with_index {|n, i| h[i] = n }
         h
       end
-
-      attr_reader :positional_args
 
       def install0(genv)
         @positional_args.map do |node|
@@ -837,32 +821,6 @@ module TypeProf
       end
     end
 
-    class ITER < Node
-      def initialize(raw_node, lenv)
-        super
-        raw_call, raw_scope = raw_node.children
-        @call = AST.create_node(raw_call, lenv)
-
-        ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-        nlenv = LexicalScope.new(lenv.text_id, ncref, lenv)
-        @call.block = AST.create_node(raw_scope, nlenv)
-      end
-
-      def subnodes
-        { call: }
-      end
-
-      attr_reader :call, :block
-
-      def install0(genv)
-        @call.install(genv)
-      end
-
-      def dump0(dumper)
-        @call.dump(dumper)
-      end
-    end
-
     class BranchNode < Node
       def initialize(raw_node, lenv)
         super
@@ -872,11 +830,9 @@ module TypeProf
         @else = raw_else ? AST.create_node(raw_else, lenv) : nil
       end
 
-      def subnodes
-        { cond:, then:, else: }
-      end
+      attr_reader :cond, :then, :else
 
-      attr_reader :cond, :then, :else, :ret
+      def subnodes = { cond:, then:, else: }
 
       def install0(genv)
         @ret = Vertex.new("if", self)
@@ -900,11 +856,6 @@ module TypeProf
         end
         s << "\nend"
       end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @ret
-        super
-      end
     end
 
     class IF < BranchNode
@@ -921,11 +872,9 @@ module TypeProf
         @e2 = AST.create_node(raw_e2, lenv)
       end
 
-      def subnodes
-        { e1:, e2: }
-      end
+      attr_reader :e1, :e2
 
-      attr_reader :e1, :e2, :ret
+      def subnodes = { e1:, e2: }
 
       def install0(genv)
         @ret = Vertex.new("and", self)
@@ -936,11 +885,6 @@ module TypeProf
 
       def dump0(dumper)
         "(#{ @e1.dump(dumper) } && #{ @e2.dump(dumper) })"
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @ret
-        super
       end
     end
 
@@ -954,9 +898,7 @@ module TypeProf
 
       attr_reader :body
 
-      def subnodes
-        { body: }
-      end
+      def subnodes = { body: }
 
       def install0(genv)
         @body.install(genv)
@@ -973,11 +915,9 @@ module TypeProf
         @lit = lit
       end
 
-      def subnodes
-        {}
-      end
-
       attr_reader :lit
+
+      def attrs = { lit: }
 
       def install0(genv)
         case @lit
@@ -998,8 +938,8 @@ module TypeProf
         end
       end
 
-      def diff0(prev_node)
-        @lit.class == prev_node.lit.class && @lit == prev_node.lit
+      def diff(prev_node)
+        @lit.class == prev_node.lit.class && @lit == prev_node.lit && super
       end
 
       def dump0(dumper)
@@ -1013,13 +953,13 @@ module TypeProf
         @elems = raw_node.children.compact.map {|n| AST.create_node(n, lenv) }
       end
 
+      attr_reader :elems
+
       def subnodes
         h = {}
         @elems.each_with_index {|elem, i| h[i] = elem }
         h
       end
-
-      attr_reader :elems
 
       def install0(genv)
         args = @elems.map {|elem| elem.install(genv) }
@@ -1051,20 +991,14 @@ module TypeProf
         @iv = nil
       end
 
-      def subnodes
-        {}
-      end
-
       attr_reader :var
+
+      def attrs = { var: }
 
       def install0(genv)
         site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
         add_site(site)
         site.ret
-      end
-
-      def diff0(prev_node)
-        @var == prev_node.var
       end
 
       def hover(pos)
@@ -1084,11 +1018,10 @@ module TypeProf
         @rhs = AST.create_node(rhs, lenv)
       end
 
-      def subnodes
-        { rhs: }
-      end
-
       attr_reader :var, :rhs
+
+      def subnodes = { rhs: }
+      def attrs = { var: }
 
       def install0(genv)
         val = @rhs.install(genv)
@@ -1097,12 +1030,8 @@ module TypeProf
         val
       end
 
-      def diff0(prev_node)
-        @var == prev_node.var
-      end
-
       def dump0(dumper)
-        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
+        "#{ @var } = #{ @rhs.dump(dumper) }"
       end
     end
 
@@ -1113,18 +1042,12 @@ module TypeProf
         @var = var
       end
 
-      def subnodes
-        {}
-      end
-
       attr_reader :var
+
+      def attrs = { var: }
 
       def install0(genv)
         @lenv.get_var(@var) || raise
-      end
-
-      def diff0(prev_node)
-        @var == prev_node.var
       end
 
       def hover(pos)
@@ -1144,30 +1067,19 @@ module TypeProf
         @rhs = AST.create_node(rhs, lenv)
       end
 
-      def subnodes
-        { rhs: }
-      end
-
       attr_reader :var, :rhs
+
+      def subnodes = { rhs: }
+      def attrs = { var: }
 
       def install0(genv)
         val = @rhs.install(genv)
-        @vtx = @lenv.def_var(@var, self)
-        val.add_edge(genv, @vtx)
+        val.add_edge(genv, @lenv.def_var(@var, self))
         val
       end
 
-      def diff0(prev_node)
-        @var == prev_node.var
-      end
-
       def dump0(dumper)
-        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @vtx
-        super
+        "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
     end
 
@@ -1178,11 +1090,9 @@ module TypeProf
         @var = var
       end
 
-      def subnodes
-        {}
-      end
-
       attr_reader :var
+
+      def attrs = { var: }
 
       def install0(genv)
         lenv = @lenv
@@ -1191,10 +1101,6 @@ module TypeProf
           return vtx if vtx
           lenv = lenv.outer
         end
-      end
-
-      def diff0(prev_node)
-        @var == prev_node.var
       end
 
       def hover(pos)
@@ -1214,38 +1120,28 @@ module TypeProf
         @rhs = AST.create_node(rhs, lenv)
       end
 
-      def subnodes
-        { rhs: }
-      end
-
       attr_reader :var, :rhs
 
-      def install0(genv)
-        val = @rhs.install(genv)
+      def subnodes = { rhs: }
+      def attrs = { var: }
 
+      def resolve_lenv
         lenv = @lenv
         while lenv
           break if lenv.var_exist?(@var)
           lenv = lenv.outer
         end
+        lenv
+      end
 
-        @vtx = lenv.def_var(@var, self)
-
-        val.add_edge(genv, @vtx)
+      def install0(genv)
+        val = @rhs.install(genv)
+        val.add_edge(genv, resolve_lenv.def_var(@var, self))
         val
       end
 
-      def diff0(prev_node)
-        @var == prev_node.var
-      end
-
       def dump0(dumper)
-        "#{ @var }\e[34m:#{ @vtx.inspect }\e[m = #{ @rhs.dump(dumper) }"
-      end
-
-      def get_vertexes_and_boxes(vtxs, boxes)
-        vtxs << @vtx
-        super
+        "#{ @var }\e[34m:#{ resolve_lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
     end
   end
