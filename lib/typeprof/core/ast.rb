@@ -1004,7 +1004,7 @@ module TypeProf::Core
             elem.diff(prev_elem)
             return unless elem.prev_node
           end
-          @prev_node = prev_node if match
+          @prev_node = prev_node
         end
       end
 

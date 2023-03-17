@@ -29,12 +29,25 @@ module TypeProf::Core
 
     attr_reader :genv
 
+    def add_workspaces(folders)
+      folders.each do |folder|
+        Dir.glob(folder + "/**/*.rb") do |path|
+          update_file(path, nil)
+        end
+      end
+    end
+
     def update_file(path, code)
       prev_node = @text_nodes[path]
       version = prev_node ? prev_node.lenv.text_id.version + 1 : 0
 
+      code = File.read(path) unless code
       text_id = TextId.new(path, version)
-      node = AST.parse(text_id, code)
+      begin
+        node = AST.parse(text_id, code)
+      rescue SyntaxError
+        return
+      end
 
       node.diff(@text_nodes[path]) if prev_node
       @text_nodes[path] = node

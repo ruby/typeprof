@@ -1,4 +1,4 @@
-module TypeProf
+module TypeProf::Core
   module StructuralEquality
     def self.included(klass)
       klass.instance_eval do

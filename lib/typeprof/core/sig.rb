@@ -85,6 +85,8 @@ module TypeProf::Core
         nil # TODO...
       when RBS::Types::Bases::Bool
         [Type::Instance.new([:TrueClass]), Type::Instance.new([:FalseClass])]
+      when RBS::Types::Bases::Nil
+        [Type::Instance.new([:NilClass])]
       when RBS::Types::Bases::Self
         [map[:__self]]
       when RBS::Types::Bases::Void
