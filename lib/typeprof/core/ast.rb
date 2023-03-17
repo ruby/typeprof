@@ -1103,10 +1103,10 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        val = @rhs.install(genv)
-
         lenv = @lenv.resolve_var(@var)
         vtx = lenv ? lenv.get_var(@var) : @lenv.def_var(@var, self)
+
+        val = @rhs.install(genv)
         val.add_edge(genv, vtx)
         val
       end

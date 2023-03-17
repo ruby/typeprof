@@ -441,5 +441,20 @@ end
         serv.get_method_sig([], false, :baz),
       )
     end
+
+    def test_pedantic_lvar
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-END)
+def foo
+  x = x + 1
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> untyped"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end
