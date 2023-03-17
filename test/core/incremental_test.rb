@@ -1,10 +1,10 @@
 require "test/unit"
-require_relative "../lib/typeprof"
+require_relative "../../lib/typeprof"
 
-module TypeProf
+module TypeProf::Core
   class IncrementalTest < Test::Unit::TestCase
     def test_incremental1
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(x)
@@ -47,7 +47,7 @@ end
     end
 
     def test_incremental2
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test.rb", <<-END)
 def foo(x)
@@ -82,7 +82,7 @@ end
     end
 
     def test_incremental3
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test.rb", <<-END)
 def foo(x)
@@ -119,7 +119,7 @@ end
     end
 
     def test_incremental4
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class C
@@ -173,7 +173,7 @@ end
     end
 
     def test_incremental5
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(n, &b)

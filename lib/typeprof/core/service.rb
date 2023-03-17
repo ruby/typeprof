@@ -1,4 +1,4 @@
-module TypeProf
+module TypeProf::Core
   class TextId
     def initialize(path, version)
       @path = path
@@ -22,102 +22,8 @@ module TypeProf
     def initialize
       @genv = GlobalEnv.new
       Signatures.build(genv)
+      Builtin.new(genv).deploy
 
-      mdecls = @genv.resolve_method([:Class], false, :new)
-      mdecls.each do |mdecl|
-        mdecl.set_builtin do |node, ty, mid, a_args, ret|
-          edges = []
-          ty = ty.get_instance_type
-          mds = genv.resolve_method(ty.cpath, ty.is_a?(Type::Module), :initialize)
-          if mds
-            mds.each do |md|
-              case md
-              when MethodDecl
-                # TODO?
-              when MethodDef
-                if a_args.size == md.f_args.size
-                  a_args.zip(md.f_args) do |a_arg, f_arg|
-                    edges << [a_arg, f_arg]
-                  end
-                end
-              end
-            end
-          end
-          edges << [Source.new(ty), ret]
-        end
-      end
-
-      mdecls = @genv.resolve_method([:Proc], false, :call)
-      mdecls.each do |mdecl|
-        mdecl.set_builtin do |node, ty, mid, a_args, ret|
-          edges = []
-          case ty
-          when Type::Proc
-            if a_args.size == ty.block.f_args.size
-              a_args.zip(ty.block.f_args) do |a_arg, f_arg|
-                edges << [a_arg, f_arg]
-              end
-            end
-            edges << [ty.block.ret, ret]
-          else
-            puts "???"
-          end
-          edges
-        end
-      end
-
-      mdecls = @genv.resolve_method([:Module], false, :attr_reader)
-      mdecls.each do |mdecl|
-        mdecl.set_builtin do |node, ty, mid, a_args, ret|
-          edges = []
-          a_args.each do |a_arg|
-            a_arg.types.each do |ty, _source|
-              case ty
-              when Type::Symbol
-                ivar_name = :"@#{ ty.sym }"
-                site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
-                node.add_site(site)
-                mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
-                node.add_def(@genv, mdef)
-              else
-                puts "???"
-              end
-            end
-          end
-          edges
-        end
-      end
-
-      mdecls = @genv.resolve_method([:Module], false, :attr_accessor)
-      mdecls.each do |mdecl|
-        mdecl.set_builtin do |node, ty, mid, a_args, ret|
-          edges = []
-          a_args.each do |a_arg|
-            a_arg.types.each do |ty, _source|
-              case ty
-              when Type::Symbol
-                vtx = Vertex.new("attr_writer-arg", node)
-                ivar_name = :"@#{ ty.sym }"
-                ivdef = IVarDef.new(node.lenv.cref.cpath, false, ivar_name, node, vtx)
-                node.add_def(@genv, ivdef)
-                mdef = MethodDef.new(node.lenv.cref.cpath, false, :"#{ ty.sym }=", node, [vtx], nil, vtx)
-                node.add_def(@genv, mdef)
-
-                ivar_name = :"@#{ ty.sym }"
-                site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
-                node.add_site(site)
-                mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
-                node.add_def(@genv, mdef)
-              else
-                puts "???"
-              end
-            end
-          end
-          edges
-        end
-      end
-
-      #@genv.system_sigs_loaded
       @text_nodes = {}
     end
 

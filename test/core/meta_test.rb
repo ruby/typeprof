@@ -1,10 +1,10 @@
 require "test/unit"
-require_relative "../lib/typeprof"
+require_relative "../../lib/typeprof"
 
-module TypeProf
+module TypeProf::Core
   class MetaTest < Test::Unit::TestCase
     def test_attr_reader
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class Foo
@@ -46,7 +46,7 @@ Foo.new(1.0, 1)
     end
 
     def test_attr_accessor
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class Foo

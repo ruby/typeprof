@@ -1,11 +1,11 @@
-module TypeProf
+module TypeProf::Core
   class Type
     def base_types(_)
       [self]
     end
 
     class Module < Type
-      include StructuralEquality
+      include TypeProf::StructuralEquality
 
       def initialize(cpath)
         # TODO: type_param
@@ -24,7 +24,7 @@ module TypeProf
     end
 
     class Instance < Type
-      include StructuralEquality
+      include TypeProf::StructuralEquality
 
       def initialize(cpath)
         raise unless cpath.is_a?(::Array)
@@ -50,7 +50,7 @@ module TypeProf
     end
 
     class Array < Type
-      include StructuralEquality
+      include TypeProf::StructuralEquality
 
       def initialize(elem)
         @elem = elem
@@ -84,7 +84,7 @@ module TypeProf
     end
 
     class Symbol < Type
-      include StructuralEquality
+      include TypeProf::StructuralEquality
 
       def initialize(sym)
         @sym = sym
@@ -102,7 +102,7 @@ module TypeProf
     end
 
     class RBS < Type
-      include StructuralEquality
+      include TypeProf::StructuralEquality
 
       def initialize(rbs_type)
         @rbs_type = rbs_type

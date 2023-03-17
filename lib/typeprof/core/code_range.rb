@@ -1,4 +1,4 @@
-module TypeProf
+module TypeProf::Core
   class CodePosition
     def initialize(lineno, column)
       @lineno = lineno

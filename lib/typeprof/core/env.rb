@@ -1,4 +1,4 @@
-module TypeProf
+module TypeProf::Core
   class ModuleDirectory
     def initialize
       @module_defs = Set[]

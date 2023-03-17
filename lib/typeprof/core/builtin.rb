@@ -1,4 +1,4 @@
-module TypeProf
+module TypeProf::Core
   class Builtin
     def initialize(genv)
       @genv = genv

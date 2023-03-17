@@ -1,19 +1,19 @@
 require "test/unit"
-require_relative "../lib/typeprof"
+require_relative "../../lib/typeprof"
 
-module TypeProf
+module TypeProf::Core
   class ArrayTest < Test::Unit::TestCase
     def test_array1
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
-def foo(a)
+  def foo(a)
   a
-end
+  end
       END
 
       serv.update_file("test1.rb", <<-END)
-foo([1, 2, 3])
+  foo([1, 2, 3])
       END
 
       assert_equal(
@@ -22,8 +22,8 @@ foo([1, 2, 3])
       )
 
       serv.update_file("test1.rb", <<-END)
-foo([1, 2, 3])
-foo(["str"])
+  foo([1, 2, 3])
+  foo(["str"])
       END
 
       assert_equal(
@@ -32,7 +32,7 @@ foo(["str"])
       )
 
       serv.update_file("test1.rb", <<-END)
-foo(["str"])
+  foo(["str"])
       END
 
       assert_equal(
@@ -42,16 +42,16 @@ foo(["str"])
     end
 
     def test_array2
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
-def bar(a)
+  def bar(a)
   [a]
-end
+  end
       END
 
       serv.update_file("test1.rb", <<-END)
-bar(1)
+  bar(1)
       END
 
       assert_equal(
@@ -60,8 +60,8 @@ bar(1)
       )
 
       serv.update_file("test1.rb", <<-END)
-bar(1)
-bar("str")
+  bar(1)
+  bar("str")
       END
 
       assert_equal(
@@ -70,7 +70,7 @@ bar("str")
       )
 
       serv.update_file("test1.rb", <<-END)
-bar("str")
+  bar("str")
       END
 
       assert_equal(
@@ -80,13 +80,13 @@ bar("str")
     end
 
     def test_aref
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
-def foo
+  def foo
   ary = [1, "str"]
   ary[0]
-end
+  end
       END
 
       assert_equal(

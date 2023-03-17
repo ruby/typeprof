@@ -1,10 +1,10 @@
 require "test/unit"
-require_relative "../lib/typeprof"
+require_relative "../../lib/typeprof"
 
-module TypeProf
+module TypeProf::Core
   class BasicTest < Test::Unit::TestCase
     def test_class1
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class C
@@ -30,7 +30,7 @@ C.new(1).foo("str")
     end
 
     def test_class2
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class C
@@ -50,7 +50,7 @@ C::D.new(1).foo("str")
     end
 
     def test_rbs_const
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(_)
@@ -65,7 +65,7 @@ end
     end
 
     def test_const
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class C
@@ -87,7 +87,7 @@ end
     end
 
     def test_block
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(n, &b)
@@ -107,7 +107,7 @@ end
     end
 
     def test_block2
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo
@@ -130,7 +130,7 @@ end
     end
 
     def test_branch
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(n)
@@ -188,7 +188,7 @@ end
     end
 
     def test_ivar
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class C
@@ -247,7 +247,7 @@ end
     end
 
     def test_multi_args
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class Foo
@@ -268,7 +268,7 @@ Foo.new(1, 1.0, "String")
     end
 
     def test_no_args
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo
@@ -288,7 +288,7 @@ end
     end
 
     def test_attrasgn
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 class C
@@ -313,7 +313,7 @@ f.foo = 42
     end
 
     def test_and
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(x, y)
@@ -330,7 +330,7 @@ foo(1, "s")
     end
 
     def test_dvar
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(&blk)
@@ -354,7 +354,7 @@ end
     end
 
     def test_dvar2
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(x)
@@ -386,7 +386,7 @@ end
     end
 
     def test_toplevel_function
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(n)
@@ -407,7 +407,7 @@ end
     end
 
     def test_return
-      serv = TypeProf::Service.new
+      serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
 def foo(x)

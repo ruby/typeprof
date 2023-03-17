@@ -1,7 +1,7 @@
 require "test/unit"
-require_relative "../lib/typeprof"
+require_relative "../../lib/typeprof"
 
-module TypeProf
+module TypeProf::Core
   class CodeRangeTest < Test::Unit::TestCase
     def test_position
       p1 = CodePosition.new(1, 1)

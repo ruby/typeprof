@@ -1,4 +1,4 @@
-module TypeProf
+module TypeProf::Core
   class AST
     def self.parse(text_id, src)
       raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)

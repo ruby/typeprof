@@ -1,4 +1,4 @@
-module TypeProf
+module TypeProf::Core
   class Source
     def initialize(ty)
       raise ty.inspect unless ty.is_a?(Type)
