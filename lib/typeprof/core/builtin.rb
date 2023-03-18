@@ -7,21 +7,10 @@ module TypeProf::Core
     def class_new(node, ty, mid, a_args, ret)
       edges = []
       ty = ty.get_instance_type
-      mds = @genv.resolve_method(ty.cpath, ty.is_a?(Type::Module), :initialize)
-      if mds
-        mds.each do |md|
-          case md
-          when MethodDecl
-            # TODO?
-          when MethodDef
-            if a_args.size == md.f_args.size
-              a_args.zip(md.f_args) do |a_arg, f_arg|
-                edges << [a_arg, f_arg]
-              end
-            end
-          end
-        end
-      end
+      recv = Source.new(ty)
+      site = CallSite.new(node, @genv, recv, :initialize, a_args, nil) # TODO: block
+      node.add_site(site)
+      # site.ret (the return value of initialize) is discarded
       edges << [Source.new(ty), ret]
     end
 
