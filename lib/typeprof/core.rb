@@ -1,5 +1,4 @@
 require_relative "core/util"
-require_relative "core/code_range"
 require_relative "core/ast"
 require_relative "core/type"
 require_relative "core/graph"

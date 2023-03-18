@@ -15,8 +15,8 @@ def main(_)
 end
       END
 
-      assert_equal("Integer", serv.hover("test0.rb", CodePosition.new(1, 10)))
-      assert_equal("Integer", serv.hover("test0.rb", CodePosition.new(2, 3)))
+      assert_equal("Integer", serv.hover("test0.rb", TypeProf::CodePosition.new(1, 10)))
+      assert_equal("Integer", serv.hover("test0.rb", TypeProf::CodePosition.new(2, 3)))
     end
 
     def test_block
@@ -31,7 +31,7 @@ end
 foo(42)
       END
 
-      assert_equal("Integer", serv.hover("test.rb", CodePosition.new(3, 4)))
+      assert_equal("Integer", serv.hover("test.rb", TypeProf::CodePosition.new(3, 4)))
     end
 
     def test_gotodefs
@@ -46,11 +46,11 @@ def main(_)
 end
       END
 
-      cr = CodeRange.new(
-        CodePosition.new(1, 0),
-        CodePosition.new(3, 3),
+      cr = TypeProf::CodeRange.new(
+        TypeProf::CodePosition.new(1, 0),
+        TypeProf::CodePosition.new(3, 3),
       )
-      assert_equal([cr], serv.gotodefs("test0.rb", CodePosition.new(6, 3)))
+      assert_equal([cr], serv.gotodefs("test0.rb", TypeProf::CodePosition.new(6, 3)))
     end
   end
 end

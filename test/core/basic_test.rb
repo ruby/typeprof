@@ -494,11 +494,11 @@ def foo
 end
       END
 
-      assert_equal("Integer", serv.hover("test.rb", CodePosition.new(5, 19)))
+      assert_equal("Integer", serv.hover("test.rb", TypeProf::CodePosition.new(5, 19)))
 
       serv.update_file("test.rb", src)
 
-      assert_equal("Integer", serv.hover("test.rb", CodePosition.new(5, 19)))
+      assert_equal("Integer", serv.hover("test.rb", TypeProf::CodePosition.new(5, 19)))
     end
   end
 end

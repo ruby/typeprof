@@ -1,8 +1,17 @@
-module TypeProf::Core
+module TypeProf
   class CodePosition
     def initialize(lineno, column)
       @lineno = lineno
       @column = column
+    end
+
+    def self.from_lsp(pos)
+      pos => { line: row, character: col }
+      new(row + 1, col)
+    end
+
+    def to_lsp
+      { line: @lineno - 1, character: @column }
     end
 
     attr_reader :lineno, :column
@@ -25,6 +34,16 @@ module TypeProf::Core
     def initialize(first, last)
       @first = first
       @last = last
+    end
+
+    def self.from_node(node)
+      pos1 = CodePosition.new(node.first_lineno, node.first_column)
+      pos2 = CodePosition.new(node.last_lineno, node.last_column)
+      new(pos1, pos2)
+    end
+
+    def to_lsp
+      { start: @first.to_lsp, end: @last.to_lsp }
     end
 
     attr_reader :first, :last

@@ -11,9 +11,9 @@ module TypeProf::Core
       lenv = LexicalScope.new(text_id, nil, cref, nil)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, (row1, col1, row2, col2)|
         if type == :tIDENTIFIER
-          pos1 = CodePosition.new(row1, col1)
-          pos2 = CodePosition.new(row2, col2)
-          code_range = CodeRange.new(pos1, pos2)
+          pos1 = TypeProf::CodePosition.new(row1, col1)
+          pos2 = TypeProf::CodePosition.new(row2, col2)
+          code_range = TypeProf::CodeRange.new(pos1, pos2)
           [type, str, code_range]
         end
       end.compact.sort_by {|_type, _str, code_range| code_range.first }
@@ -161,10 +161,7 @@ module TypeProf::Core
 
       def code_range
         if @raw_node
-          @code_range ||= CodeRange.new(
-            CodePosition.new(@raw_node.first_lineno, @raw_node.first_column),
-            CodePosition.new(@raw_node.last_lineno, @raw_node.last_column),
-          )
+          @code_range ||= TypeProf::CodeRange.from_node(@raw_node)
         else
           pp self
           nil
@@ -581,7 +578,7 @@ module TypeProf::Core
 
         @args_code_ranges = []
         @args[0].times do |i|
-          pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+          pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
           @args_code_ranges << AST.find_sym_code_range(pos, @tbl[i])
         end
 
@@ -729,7 +726,7 @@ module TypeProf::Core
     class CALL < CallNode
       def initialize(raw_node, raw_call, raw_block, lenv)
         raw_recv, mid, raw_args = raw_call.children
-        pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
+        pos = TypeProf::CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
@@ -742,7 +739,7 @@ module TypeProf::Core
     class VCALL < CallNode
       def initialize(raw_node, raw_call, raw_block, lenv)
         mid, = raw_node.children
-        pos = CodePosition.new(raw_call.first_lineno, raw_call.first_column)
+        pos = TypeProf::CodePosition.new(raw_call.first_lineno, raw_call.first_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_call, raw_block, lenv, nil, mid, mid_code_range, nil)
       end
@@ -755,7 +752,7 @@ module TypeProf::Core
     class FCALL < CallNode
       def initialize(raw_node, raw_call, raw_block, lenv)
         mid, raw_args = raw_call.children
-        pos = CodePosition.new(raw_call.first_lineno, raw_call.first_column)
+        pos = TypeProf::CodePosition.new(raw_call.first_lineno, raw_call.first_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_call, raw_block, lenv, nil, mid, mid_code_range, raw_args)
       end
@@ -768,7 +765,7 @@ module TypeProf::Core
     class OPCALL < CallNode
       def initialize(raw_node, raw_call, raw_block, lenv)
         raw_recv, mid, raw_args = raw_call.children
-        pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
+        pos = TypeProf::CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
@@ -786,7 +783,7 @@ module TypeProf::Core
       def initialize(raw_node, raw_call, raw_block, lenv)
         raw_recv, mid, raw_args = raw_call.children
         # TODO
-        pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
+        pos = TypeProf::CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
         super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
@@ -1061,7 +1058,7 @@ module TypeProf::Core
         @var = var
         @rhs = AST.create_node(rhs, lenv)
 
-        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
         @var_code_range = AST.find_sym_code_range(pos, @var)
       end
 
@@ -1121,7 +1118,7 @@ module TypeProf::Core
         @var = var
         @rhs = AST.create_node(rhs, lenv)
 
-        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
         @var_code_range = AST.find_sym_code_range(pos, @var)
       end
 

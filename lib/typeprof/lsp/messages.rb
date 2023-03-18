@@ -21,18 +21,6 @@ module TypeProf::LSP
       @server.send_response(id: @id, error: error)
     end
 
-    def from_lsp(pos)
-      pos => { line: row, character: col }
-      TypeProf::Core::CodePosition.new(row + 1, col)
-    end
-
-    def to_lsp(code_range)
-      {
-        start: { line: code_range.first.lineno - 1, character: code_range.first.column },
-        end: { line: code_range.last.lineno - 1, character: code_range.last.column },
-      }
-    end
-
     Classes = []
     def self.inherited(klass)
       Classes << klass
@@ -181,7 +169,7 @@ module TypeProf::LSP
         position: pos,
       }
       text = @server.open_texts[uri]
-      str = @server.core.hover(text.path, from_lsp(pos))
+      str = @server.core.hover(text.path, TypeProf::CodePosition.from_lsp(pos))
       if str
         respond(contents: { language: "ruby", value: str })
       else
@@ -198,14 +186,14 @@ module TypeProf::LSP
         position: pos,
       }
       text = @server.open_texts[uri]
-      defs = @server.core.definitions(text.path, from_lsp(pos))
+      defs = @server.core.definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
       if defs.empty?
         respond(nil)
       else
         respond(defs.map do |path, code_range|
           {
             uri: "file://" + path,
-            range: to_lsp(code_range),
+            range: code_range.to_lsp,
           }
         end)
       end
