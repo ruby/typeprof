@@ -9,7 +9,8 @@ module TypeProf::Core
       ty = ty.get_instance_type
       recv = Source.new(ty)
       site = CallSite.new(node, @genv, recv, :initialize, a_args, nil) # TODO: block
-      node.add_site(site)
+      # TODO: dup check
+      node.add_site(:class_new, site)
       # site.ret (the return value of initialize) is discarded
       edges << [Source.new(ty), ret]
     end
@@ -38,7 +39,8 @@ module TypeProf::Core
           when Type::Symbol
             ivar_name = :"@#{ ty.sym }"
             site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
-            node.add_site(site)
+            # TODO: dup check
+            node.add_site(:attr_reader, site)
             mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
             node.add_def(@genv, mdef)
           else
@@ -64,7 +66,8 @@ module TypeProf::Core
 
             ivar_name = :"@#{ ty.sym }"
             site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
-            node.add_site(site)
+            # TODO: dup check
+            node.add_site(:attr_writer, site)
             mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
             node.add_def(@genv, mdef)
           else

@@ -188,11 +188,11 @@ module TypeProf::Core
       end
 
       def sites
-        @sites ||= Set[]
+        @sites ||= {}
       end
 
-      def add_site(site)
-        sites << site
+      def add_site(key, site)
+        sites[key] = site
       end
 
       def install(genv)
@@ -226,7 +226,7 @@ module TypeProf::Core
             end
           end
           if @sites
-            @sites.each do |site|
+            @sites.each_value do |site|
               site.destroy(genv)
             end
           end
@@ -291,7 +291,7 @@ module TypeProf::Core
 
       def get_vertexes_and_boxes(vtxs, boxes)
         if @sites
-          @sites.each do |site|
+          @sites.each_value do |site|
             vtxs << site.ret
             boxes << site
           end
@@ -484,7 +484,7 @@ module TypeProf::Core
       def install0(genv)
         cref = @lenv.cref
         site = ConstReadSite.new(self, genv, cref, nil, @cname)
-        add_site(site)
+        add_site(:main, site)
         site.ret
       end
 
@@ -512,7 +512,7 @@ module TypeProf::Core
       def install0(genv)
         cbase = @cbase ? @cbase.install(genv) : nil
         site = ConstReadSite.new(self, genv, @lenv.cref, cbase, @cname)
-        add_site(site)
+        add_site(:main, site)
         site.ret
       end
 
@@ -703,20 +703,20 @@ module TypeProf::Core
           blk_ty = Source.new(Type::Proc.new(block))
         end
         site = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
-        add_site(site)
+        add_site(:main, site)
         site.ret
       end
 
       def hover(pos)
         if @mid_code_range && @mid_code_range.include?(pos)
-          @sites.to_a.first # TODO
+          @sites[:main] # TODO
         else
           super
         end
       end
 
       def dump_call(prefix, suffix)
-        s = prefix + "\e[33m[#{ @sites.to_a.join(",") }]\e[m" + suffix
+        s = prefix + "\e[33m[#{ @sites.values.join(",") }]\e[m" + suffix
         if @block
           s << " do |<TODO>|\n"
           s << @block.dump(nil).gsub(/^/, "  ")
@@ -1008,7 +1008,7 @@ module TypeProf::Core
       def install0(genv)
         args = @elems.map {|elem| elem.install(genv) }
         site = ArrayAllocSite.new(self, genv, args)
-        add_site(site)
+        add_site(:main, site)
         site.ret
       end
 
@@ -1041,7 +1041,7 @@ module TypeProf::Core
 
       def install0(genv)
         site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
-        add_site(site)
+        add_site(:main, site)
         site.ret
       end
 
