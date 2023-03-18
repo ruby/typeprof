@@ -7,6 +7,12 @@ module TypeProf::Core
 
     attr_reader :types
 
+    def new_vertex(genv, show_name, node)
+      nvtx = Vertex.new(show_name, node)
+      add_edge(genv, nvtx)
+      nvtx
+    end
+
     def add_edge(genv, nvtx)
       nvtx.on_type_added(genv, self, @types.keys)
     end
@@ -29,6 +35,7 @@ module TypeProf::Core
   class Vertex
     def initialize(show_name, node)
       @show_name = show_name
+      raise unless node.is_a?(AST::Node)
       @node = node
       @types = {}
       @next_vtxs = Set[]
@@ -44,6 +51,7 @@ module TypeProf::Core
           @types[ty] ||= Set[]
           new_added_types << ty
         end
+        raise "duplicated edge" if @types[ty].include?(src_var)
         @types[ty] << src_var
       end
       unless new_added_types.empty?
@@ -67,6 +75,12 @@ module TypeProf::Core
           nvtx.on_type_removed(genv, self, new_removed_types)
         end
       end
+    end
+
+    def new_vertex(genv, show_name, node)
+      nvtx = Vertex.new(show_name, node)
+      add_edge(genv, nvtx)
+      nvtx
     end
 
     def add_edge(genv, nvtx)
@@ -105,6 +119,8 @@ module TypeProf::Core
     alias inspect to_s
 
     def long_inspect
+      a = @node.lenv
+      a = a.text_id
       "#{ to_s } (#{ @show_name }; #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
@@ -229,15 +245,20 @@ module TypeProf::Core
     def initialize(node, genv, recv, mid, a_args, block)
       raise mid.to_s unless mid
       super(node)
-      @recv = recv
+      @recv = recv.new_vertex(genv, "recv:#{ mid }", node)
+      @recv.add_edge(genv, self)
       @mid = mid
-      @a_args = a_args
-      @block = block
+      @a_args = a_args.map do |a_arg|
+        a_arg = a_arg.new_vertex(genv, "arg:#{ mid }", node)
+        a_arg.add_edge(genv, self)
+        a_arg
+      end
+      if block
+        @block = block.new_vertex(genv, "block:#{ mid }", node)
+        @block.add_edge(genv, self) # needed?
+      end
       @ret = Vertex.new("ret:#{ mid }", node)
       genv.add_callsite(self)
-      @recv.add_edge(genv, self)
-      @a_args.each {|arg| arg.add_edge(genv, self)}
-      #@block.add_edge(genv, self) # needed?
     end
 
     def destroy(genv)
@@ -342,7 +363,7 @@ module TypeProf::Core
     def initialize(node, genv, args)
       super(node)
       @args = args
-      @args.each {|arg| arg.add_edge(genv, self) }
+      @args.each {|arg| arg.new_vertex(genv, "ary-elem", node).add_edge(genv, self) }
       @ret = Vertex.new("ary", node)
     end
 

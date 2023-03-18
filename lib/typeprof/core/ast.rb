@@ -10,11 +10,13 @@ module TypeProf::Core
       cref = CRef.new([], false, nil)
       lenv = LexicalScope.new(text_id, nil, cref, nil)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, (row1, col1, row2, col2)|
-        pos1 = CodePosition.new(row1, col1)
-        pos2 = CodePosition.new(row2, col2)
-        code_range = CodeRange.new(pos1, pos2)
-        [type, str, code_range]
-      end.sort_by {|_type, _str, code_range| code_range.first }
+        if type == :tIDENTIFIER
+          pos1 = CodePosition.new(row1, col1)
+          pos2 = CodePosition.new(row2, col2)
+          code_range = CodeRange.new(pos1, pos2)
+          [type, str, code_range]
+        end
+      end.compact.sort_by {|_type, _str, code_range| code_range.first }
       AST.create_node(raw_body, lenv)
     end
 
@@ -620,8 +622,9 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        vtx = @body.lenv.get_var(@body.tbl[0])
-        s = "def #{ @mid }(#{ @body.tbl[0] }\e[34m:#{ vtx.inspect }\e[m)\n"
+        s = "def #{ @mid }(#{
+          (0...@args[0]).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body.lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
+        })\n"
         s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         s << "end"
       end
@@ -702,7 +705,7 @@ module TypeProf::Core
       end
 
       def dump_call(prefix, suffix)
-        s = prefix + "\e[33m[#{ @callsite }]\e[m" + suffix
+        s = prefix + "\e[33m[#{ @sites.to_a.join(",") }]\e[m" + suffix
         if @block
           s << " do |<TODO>|\n"
           s << @block.dump(nil).gsub(/^/, "  ")
@@ -914,7 +917,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        "return #{ @arg.dump(dumper) }"
+        "return#{ @arg ? " " + @arg.dump(dumper) : "" }"
       end
     end
 

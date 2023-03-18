@@ -48,7 +48,7 @@ module TypeProf::Core
           case ty
           when Type::Symbol
             ivar_name = :"@#{ ty.sym }"
-            site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
+            site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
             node.add_site(site)
             mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
             node.add_def(@genv, mdef)
@@ -74,7 +74,7 @@ module TypeProf::Core
             node.add_def(@genv, mdef)
 
             ivar_name = :"@#{ ty.sym }"
-            site = IVarReadSite.new(self, @genv, node.lenv.cref.cpath, false, ivar_name)
+            site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
             node.add_site(site)
             mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
             node.add_def(@genv, mdef)
