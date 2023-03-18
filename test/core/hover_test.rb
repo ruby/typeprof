@@ -3,7 +3,7 @@ require_relative "../../lib/typeprof"
 
 module TypeProf::Core
   class HoverTest < Test::Unit::TestCase
-    def test_hover
+    def test_parameter
       serv = Service.new
       serv.update_file("test0.rb", <<-END)
 def foo(variable)
@@ -15,7 +15,23 @@ def main(_)
 end
       END
 
+      assert_equal("Integer", serv.hover("test0.rb", CodePosition.new(1, 10)))
       assert_equal("Integer", serv.hover("test0.rb", CodePosition.new(2, 3)))
+    end
+
+    def test_block
+      serv = Service.new
+      serv.update_file("test.rb", <<-END)
+def foo(nnn)
+  nnn.times do |var|
+    var
+  end
+end
+
+foo(42)
+      END
+
+      assert_equal("Integer", serv.hover("test.rb", CodePosition.new(3, 4)))
     end
 
     def test_gotodefs

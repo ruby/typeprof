@@ -119,10 +119,12 @@ module TypeProf::Core
     def self.find_sym_code_range(start_pos, sym)
       tokens = Fiber[:tokens]
       i = tokens.bsearch_index {|_type, _str, code_range| start_pos <= code_range.first }
-      while tokens[i]
-        type, str, code_range = tokens[i]
-        return code_range if type == :tIDENTIFIER && str == sym.to_s
-        i += 1
+      if i
+        while tokens[i]
+          type, str, code_range = tokens[i]
+          return code_range if type == :tIDENTIFIER && str == sym.to_s
+          i += 1
+        end
       end
       return nil
     end
@@ -486,6 +488,10 @@ module TypeProf::Core
         site.ret
       end
 
+      def hover(pos)
+        code_range.include?(pos) ? @ret : nil
+      end
+
       def dump0(dumper)
         "#{ @cname }"
       end
@@ -674,10 +680,10 @@ module TypeProf::Core
         end
       end
 
-      attr_reader :recv, :mid, :a_args, :block_tbl, :block_f_args, :block_body
+      attr_reader :recv, :mid, :a_args, :block_tbl, :block_f_args, :block_body, :mid_code_range
 
       def subnodes = { recv:, a_args:, block_body: }
-      def attrs = { mid:, block_tbl:, block_f_args: }
+      def attrs = { mid:, block_tbl:, block_f_args:, mid_code_range: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @lenv.get_self
@@ -700,7 +706,6 @@ module TypeProf::Core
         if @mid_code_range && @mid_code_range.include?(pos)
           @sites.to_a.first # TODO
         else
-          p [self.class, code_range]
           super
         end
       end
@@ -1050,18 +1055,29 @@ module TypeProf::Core
         var, rhs = raw_node.children
         @var = var
         @rhs = AST.create_node(rhs, lenv)
+
+        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        @var_code_range = AST.find_sym_code_range(pos, @var)
       end
 
-      attr_reader :var, :rhs
+      attr_reader :var, :rhs, :var_code_range
 
       def subnodes = { rhs: }
-      def attrs = { var: }
+      def attrs = { var:, var_code_range: }
 
       def install0(genv)
         val = @rhs.install(genv)
         ivdef = IVarDef.new(lenv.cref.cpath, lenv.cref.singleton, @var, self, val)
         add_def(genv, ivdef)
         val
+      end
+
+      def hover(pos)
+        if @var_code_range && @var_code_range.include?(pos)
+          @ret
+        else
+          super
+        end
       end
 
       def dump0(dumper)
@@ -1099,12 +1115,15 @@ module TypeProf::Core
         var, rhs = raw_node.children
         @var = var
         @rhs = AST.create_node(rhs, lenv)
+
+        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        @var_code_range = AST.find_sym_code_range(pos, @var)
       end
 
-      attr_reader :var, :rhs
+      attr_reader :var, :rhs, :var_code_range
 
       def subnodes = { rhs: }
-      def attrs = { var: }
+      def attrs = { var:, var_code_range: }
 
       def install0(genv)
         lenv = @lenv.resolve_var(@var)
@@ -1113,6 +1132,14 @@ module TypeProf::Core
         val = @rhs.install(genv)
         val.add_edge(genv, vtx)
         val
+      end
+
+      def hover(pos)
+        if @var_code_range && @var_code_range.include?(pos)
+          @ret
+        else
+          super
+        end
       end
 
       def dump0(dumper)
