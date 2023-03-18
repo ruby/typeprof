@@ -188,6 +188,25 @@ module TypeProf::Core
       end
     end
 
+    def definitions(path, pos)
+      obj = @text_nodes[path].hover(pos)
+      defs = []
+      case obj
+      when CallSite
+        obj.resolve(genv).each do |ty, mds|
+          mds.each do |md|
+            case md
+            when MethodDecl
+            when MethodDef
+              defs << [md.node.lenv.text_id.path, md.node.code_range]
+            end
+          end
+        end
+      when Vertex
+      end
+      defs
+    end
+
     def gotodefs(path, pos)
       obj = @text_nodes[path].hover(pos)
       case obj
