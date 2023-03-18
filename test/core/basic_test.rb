@@ -456,5 +456,21 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_empty_def
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-END)
+def foo(x)
+end
+
+foo(1)
+      END
+
+      assert_equal(
+        ["def foo: (Integer) -> NilClass"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

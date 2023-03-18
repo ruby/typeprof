@@ -576,8 +576,8 @@ module TypeProf::Core
         @args = raw_args.children
 
         ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-        nlenv = LexicalScope.new(lenv.text_id, self, ncref, nil)
-        @body = AST.create_node(raw_body, nlenv)
+        @body_lenv = LexicalScope.new(lenv.text_id, self, ncref, nil)
+        @body = raw_body ? AST.create_node(raw_body, @body_lenv) : nil
 
         @args_code_ranges = []
         @args[0].times do |i|
@@ -588,10 +588,10 @@ module TypeProf::Core
         @reused = false
       end
 
-      attr_reader :mid, :tbl, :args, :body
+      attr_reader :mid, :tbl, :args, :body, :body_lenv
 
       def subnodes = @reused ? {} : { body: }
-      def attrs = { mid:, tbl:, args: }
+      def attrs = { mid:, tbl:, args:, body_lenv: }
 
       attr_accessor :reused
 
@@ -605,13 +605,18 @@ module TypeProf::Core
           block = nil
           if @args
             @args[0].times do |i|
-              f_args << @body.lenv.def_var(@tbl[i], self)
+              f_args << @body_lenv.def_var(@tbl[i], self)
             end
             blk_idx = @args[9]
-            block = blk_idx ? @body.lenv.def_var(blk_idx, self) : nil
+            block = blk_idx ? @body_lenv.def_var(blk_idx, self) : nil
           end
-          ret = @body.lenv.get_ret
-          @body.install(genv).add_edge(genv, ret)
+          ret = @body_lenv.get_ret
+          if @body
+            body_ret = @body.install(genv)
+          else
+            body_ret = Source.new(Type::Instance.new([:NilClass]))
+          end
+          body_ret.add_edge(genv, ret)
           mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
           add_def(genv, mdef)
         end
@@ -621,7 +626,7 @@ module TypeProf::Core
       def hover(pos)
         i = @args_code_ranges.find_index {|cr| cr && cr.include?(pos) }
         if i
-          @body.lenv.get_var(@tbl[i])
+          @body_lenv.get_var(@tbl[i])
         else
           super
         end
@@ -629,7 +634,7 @@ module TypeProf::Core
 
       def dump0(dumper)
         s = "def #{ @mid }(#{
-          (0...@args[0]).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body.lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
+          (0...@args[0]).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body_lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
         })\n"
         s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         s << "end"
