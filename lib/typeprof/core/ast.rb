@@ -39,8 +39,8 @@ module TypeProf::Core
       when :BEGIN
         BEGIN_.new(raw_node, lenv)
       when :ITER
-        raw_call, raw_block_scope = raw_node.children
-        AST.create_call_node(raw_call, raw_block_scope, lenv)
+        raw_call, raw_block = raw_node.children
+        AST.create_call_node(raw_node, raw_call, raw_block, lenv)
       when :IF
         IF.new(raw_node, lenv)
       when :UNLESS
@@ -72,22 +72,22 @@ module TypeProf::Core
       when :LASGN, :DASGN
         LASGN.new(raw_node, lenv)
       else
-        create_call_node(raw_node, nil, lenv)
+        create_call_node(raw_node, raw_node, nil, lenv)
       end
     end
 
-    def self.create_call_node(raw_node, raw_block, lenv)
-      case raw_node.type
+    def self.create_call_node(raw_node, raw_call, raw_block, lenv)
+      case raw_call.type
       when :CALL
-        CALL.new(raw_node, raw_block, lenv)
+        CALL.new(raw_node, raw_call, raw_block, lenv)
       when :VCALL
-        VCALL.new(raw_node, raw_block, lenv)
+        VCALL.new(raw_node, raw_call, raw_block, lenv)
       when :FCALL
-        FCALL.new(raw_node, raw_block, lenv)
+        FCALL.new(raw_node, raw_call, raw_block, lenv)
       when :OPCALL
-        OPCALL.new(raw_node, raw_block, lenv)
+        OPCALL.new(raw_node, raw_call, raw_block, lenv)
       when :ATTRASGN
-        ATTRASGN.new(raw_node, raw_block, lenv)
+        ATTRASGN.new(raw_node, raw_call, raw_block, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"
@@ -655,7 +655,7 @@ module TypeProf::Core
     end
 
     class CallNode < Node
-      def initialize(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
+      def initialize(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
         super(raw_node, lenv)
 
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
@@ -663,8 +663,8 @@ module TypeProf::Core
         @mid_code_range = mid_code_range
         @a_args = A_ARGS.new(raw_args, lenv) if raw_args
 
-        if raw_block_scope
-          @block_tbl, raw_block_args, raw_block_body = raw_block_scope.children
+        if raw_block
+          @block_tbl, raw_block_args, raw_block_body = raw_block.children
           @block_f_args = raw_block_args.children
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
           nlenv = LexicalScope.new(lenv.text_id, self, ncref, lenv)
@@ -700,6 +700,7 @@ module TypeProf::Core
         if @mid_code_range && @mid_code_range.include?(pos)
           @sites.to_a.first # TODO
         else
+          p [self.class, code_range]
           super
         end
       end
@@ -716,11 +717,11 @@ module TypeProf::Core
     end
 
     class CALL < CallNode
-      def initialize(raw_node, raw_block_scope, lenv)
-        raw_recv, mid, raw_args = raw_node.children
+      def initialize(raw_node, raw_call, raw_block, lenv)
+        raw_recv, mid, raw_args = raw_call.children
         pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
+        super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)
@@ -729,11 +730,11 @@ module TypeProf::Core
     end
 
     class VCALL < CallNode
-      def initialize(raw_node, raw_block_scope, lenv)
+      def initialize(raw_node, raw_call, raw_block, lenv)
         mid, = raw_node.children
-        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        pos = CodePosition.new(raw_call.first_lineno, raw_call.first_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_block_scope, lenv, nil, mid, mid_code_range, nil)
+        super(raw_node, raw_call, raw_block, lenv, nil, mid, mid_code_range, nil)
       end
 
       def dump0(dumper)
@@ -742,11 +743,11 @@ module TypeProf::Core
     end
 
     class FCALL < CallNode
-      def initialize(raw_node, raw_block_scope, lenv)
-        mid, raw_args = raw_node.children
-        pos = CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+      def initialize(raw_node, raw_call, raw_block, lenv)
+        mid, raw_args = raw_call.children
+        pos = CodePosition.new(raw_call.first_lineno, raw_call.first_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_block_scope, lenv, nil, mid, mid_code_range, raw_args)
+        super(raw_node, raw_call, raw_block, lenv, nil, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)
@@ -755,11 +756,11 @@ module TypeProf::Core
     end
 
     class OPCALL < CallNode
-      def initialize(raw_node, raw_block_scope, lenv)
-        raw_recv, mid, raw_args = raw_node.children
+      def initialize(raw_node, raw_call, raw_block, lenv)
+        raw_recv, mid, raw_args = raw_call.children
         pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
+        super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)
@@ -772,12 +773,12 @@ module TypeProf::Core
     end
 
     class ATTRASGN < CallNode
-      def initialize(raw_node, raw_block_scope, lenv)
-        raw_recv, mid, raw_args = raw_node.children
+      def initialize(raw_node, raw_call, raw_block, lenv)
+        raw_recv, mid, raw_args = raw_call.children
         # TODO
         pos = CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
         mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_block_scope, lenv, raw_recv, mid, mid_code_range, raw_args)
+        super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
       end
 
       def dump0(dumper)

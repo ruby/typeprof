@@ -8,7 +8,7 @@
                     "type": "rdbg",
                     "name": "Debug",
                     "request": "launch",
-                    "script": "ao_test.rb",
+                    "script": "test.rb",
                     "args": [],
                     "askParameters": false,
                     "useTerminal": true
