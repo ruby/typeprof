@@ -232,23 +232,21 @@ module TypeProf::Core
   end
 
   class GlobalEnv
-    def initialize
+    def initialize(rbs_builder)
       @run_queue = []
       @run_queue_set = Set[]
 
       @toplevel = ModuleDirectory.new
       @toplevel.child_modules[:Object] = @toplevel
 
-      loader = RBS::EnvironmentLoader.new
-      @rbs_env = RBS::Environment.from_loader(loader).resolve_type_names
-      @rbs_builder = RBS::DefinitionBuilder.new(env: rbs_env)
+      @rbs_builder = rbs_builder
 
       @creadsites_by_name = {}
       @callsites_by_name = {}
       @ivreadsites_by_name = {}
     end
 
-    attr_reader :rbs_env, :rbs_builder
+    attr_reader :rbs_builder
 
     def add_run(obj)
       unless @run_queue_set.include?(obj)

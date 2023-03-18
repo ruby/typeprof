@@ -3,7 +3,7 @@ require "rbs"
 module TypeProf::Core
   class Signatures
     def self.build(genv)
-      genv.rbs_env.declarations.each do |decl|
+      genv.rbs_builder.env.declarations.each do |decl|
         case decl
         when RBS::AST::Declarations::Class
           name = decl.name

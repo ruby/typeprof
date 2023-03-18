@@ -20,7 +20,13 @@ module TypeProf::Core
 
   class Service
     def initialize
-      @genv = GlobalEnv.new
+      unless defined?($rbs_builder)
+        loader = RBS::EnvironmentLoader.new
+        rbs_env = RBS::Environment.from_loader(loader).resolve_type_names
+        $rbs_builder = RBS::DefinitionBuilder.new(env: rbs_env)
+      end
+
+      @genv = GlobalEnv.new($rbs_builder)
       Signatures.build(genv)
       Builtin.new(genv).deploy
 
