@@ -538,5 +538,40 @@ end
         serv.get_method_sig([:C], false, :bar),
       )
     end
+
+    def test_defs
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-END)
+class Foo
+  def self.foo
+    1
+  end
+
+  def self.bar
+    foo
+  end
+end
+
+def test
+  Foo.foo
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> Integer"],
+        serv.get_method_sig([:Foo], true, :foo),
+      )
+
+      assert_equal(
+        ["def bar: () -> Integer"],
+        serv.get_method_sig([:Foo], true, :bar),
+      )
+
+      assert_equal(
+        ["def test: () -> Integer"],
+        serv.get_method_sig([], false, :test),
+      )
+    end
   end
 end

@@ -36,6 +36,8 @@ module TypeProf::Core
         CDECL.new(raw_node, lenv)
       when :DEFN
         DEFN.new(raw_node, lenv)
+      when :DEFS
+        DEFS.new(raw_node, lenv)
       when :BEGIN
         BEGIN_.new(raw_node, lenv)
       when :ITER
@@ -51,6 +53,8 @@ module TypeProf::Core
         RETURN.new(raw_node, lenv)
       when :RESCUE
         RESCUE.new(raw_node, lenv)
+      when :SELF
+        SELF.new(raw_node, lenv)
       when :LIT
         lit, = raw_node.children
         LIT.new(raw_node, lenv, lit)
@@ -136,7 +140,7 @@ module TypeProf::Core
         @raw_children = raw_node.children
         @prev_node = nil
         @ret = nil
-        @text_di = lenv.text_id
+        @text_id = lenv.text_id
         @defs = nil
         @sites = nil
       end
@@ -434,6 +438,7 @@ module TypeProf::Core
           ret
         else
           # TODO: show error
+          check
         end
       end
 
@@ -494,6 +499,7 @@ module TypeProf::Core
           ret
         else
           # TODO: show error
+          check
         end
       end
 
@@ -579,7 +585,7 @@ module TypeProf::Core
           raw_rhs = children[1]
         else # children.size == 3
           # expr::C = expr
-          @cpath = children[0]
+          @cpath = AST.create_node(children[0], lenv)
           @static_cpath = AST.parse_cpath(@cpath, lenv.cref.cpath)
           raw_rhs = children[2]
         end
@@ -610,10 +616,12 @@ module TypeProf::Core
       end
     end
 
-    class DEFN < Node
-      def initialize(raw_node, lenv)
+    class DefNode < Node
+      def initialize(raw_node, lenv, singleton, mid, raw_scope)
         super(raw_node, lenv)
-        @mid, raw_scope = raw_node.children
+
+        @singleton = singleton
+        @mid = mid
 
         raise unless raw_scope.type == :SCOPE
         @tbl, raw_args, raw_body = raw_scope.children
@@ -621,7 +629,7 @@ module TypeProf::Core
         # TODO: default expression for optional args
         @args = raw_args.children
 
-        ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
+        ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
         @body_lenv = LexicalScope.new(lenv.text_id, self, ncref, nil)
         @body = raw_body ? AST.create_node(raw_body, @body_lenv) : nil
 
@@ -634,10 +642,10 @@ module TypeProf::Core
         @reused = false
       end
 
-      attr_reader :mid, :tbl, :args, :body, :body_lenv
+      attr_reader :singleton, :mid, :tbl, :args, :body, :body_lenv
 
       def subnodes = @reused ? {} : { body: }
-      def attrs = { mid:, tbl:, args:, body_lenv: }
+      def attrs = { singleton:, mid:, tbl:, args:, body_lenv: }
 
       attr_accessor :reused
 
@@ -663,7 +671,7 @@ module TypeProf::Core
             body_ret = Source.new(Type::Instance.new([:NilClass]))
           end
           body_ret.add_edge(genv, ret)
-          mdef = MethodDef.new(@lenv.cref.cpath, false, @mid, self, f_args, block, ret)
+          mdef = MethodDef.new(@lenv.cref.cpath, @singleton, @mid, self, f_args, block, ret)
           add_def(genv, mdef)
         end
         Source.new(Type::Symbol.new(@mid))
@@ -685,6 +693,24 @@ module TypeProf::Core
         })\n"
         s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         s << "end"
+      end
+    end
+
+    class DEFN < DefNode
+      def initialize(raw_node, lenv)
+        mid, raw_scope = raw_node.children
+        super(raw_node, lenv, false, mid, raw_scope)
+      end
+    end
+
+    class DEFS < DefNode
+      def initialize(raw_node, lenv)
+        raw_recv, mid, raw_scope = raw_node.children
+        @recv = AST.create_node(raw_recv, lenv)
+        unless @recv.is_a?(SELF)
+          puts "???"
+        end
+        super(raw_node, lenv, true, mid, raw_scope)
       end
     end
 
@@ -994,6 +1020,12 @@ module TypeProf::Core
 
       def diff(prev_node)
         raise NotImplementedError
+      end
+    end
+
+    class SELF < Node
+      def install0(genv)
+        @lenv.get_self
       end
     end
 

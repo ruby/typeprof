@@ -124,7 +124,7 @@ module TypeProf::Core
               case d
               when MethodDef
                 #puts " " * depth + "# #{ d.node.code_range }"
-                puts " " * depth + "def #{ d.mid }: " + d.show
+                puts " " * depth + "def #{ d.singleton ? "self." : "" }#{ d.mid }: " + d.show
               when ConstDef
                 #puts " " * depth + "# #{ d.node.code_range }"
                 puts " " * depth + "#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show
