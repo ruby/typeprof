@@ -101,7 +101,7 @@ module TypeProf::Core
         when AST::MODULE
           if node.static_cpath
             if event == :enter
-              puts " " * depth + "module #{ node.static_path.join("::") }"
+              puts " " * depth + "module #{ node.static_cpath.join("::") }"
               depth += 2
             else
               depth -= 2

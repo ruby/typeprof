@@ -31,6 +31,27 @@ module TypeProf::Core
       edges
     end
 
+    def module_include(node, ty, mid, a_args, ret)
+      case ty
+      when Type::Module
+        cpath = ty.cpath
+        a_args.each do |a_arg|
+          a_arg.types.each do |ty, _source|
+            case ty
+            when Type::Module
+              # TODO: undo
+              @genv.add_module_include(cpath, ty.cpath)
+            else
+              puts "???"
+            end
+          end
+        end
+      else
+        puts "???"
+      end
+      []
+    end
+
     def module_attr_reader(node, ty, mid, a_args, ret)
       edges = []
       a_args.each do |a_arg|
@@ -99,6 +120,7 @@ module TypeProf::Core
       {
         class_new: [[:Class], false, :new],
         proc_call: [[:Proc], false, :call],
+        module_include: [[:Module], false, :include],
         module_attr_reader: [[:Module], false, :attr_reader],
         module_attr_accessor: [[:Module], false, :attr_accessor],
         array_aset: [[:Array], false, :[]=],

@@ -418,7 +418,30 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         raw_cpath, raw_scope = raw_node.children
         super(raw_node, lenv, raw_cpath, raw_scope)
-        raise
+      end
+
+      def install0(genv)
+        @cpath.install(genv)
+        if @static_cpath
+          genv.add_module(@static_cpath, self, nil)
+
+          val = Source.new(Type::Module.new(@static_cpath))
+          cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
+          add_def(genv, cdef)
+
+          ret = @body.lenv.get_ret
+          @body.install(genv).add_edge(genv, ret)
+          ret
+        else
+          # TODO: show error
+        end
+      end
+
+      def uninstall0(genv)
+        if @static_cpath && @static_superclass_cpath
+          genv.remove_module(@static_cpath, self)
+        end
+        super
       end
 
       def dump0(dumper)
