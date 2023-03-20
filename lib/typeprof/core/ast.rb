@@ -61,7 +61,7 @@ module TypeProf::Core
         LIT.new(raw_node, lenv, true) # Using LIT is OK?
       when :FALSE
         LIT.new(raw_node, lenv, false) # Using LIT is OK?
-      when :LIST
+      when :ZLIST, :LIST
         LIST.new(raw_node, lenv)
       when :IVAR
         IVAR.new(raw_node, lenv)
@@ -1003,10 +1003,9 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        args = @elems.map {|elem| elem.install(genv) }
-        site = ArrayAllocSite.new(self, genv, args)
-        add_site(:main, site)
-        site.ret
+        elem = Vertex.new("aryelem", self)
+        @elems.each {|e| e.install(genv).add_edge(genv, elem) }
+        Source.new(Type::Array.new(elem))
       end
 
       def diff(prev_node)

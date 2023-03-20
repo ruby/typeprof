@@ -78,12 +78,30 @@ module TypeProf::Core
       edges
     end
 
+    def array_aset(node, ty, mid, a_args, ret)
+      edges = []
+      if a_args.size == 2
+        case ty
+        when Type::Array
+          idx = a_args[0].types
+          val = a_args[1]
+          edges << [val, ty.elem]
+        else
+          puts "???"
+        end
+      else
+        puts "???"
+      end
+      edges
+    end
+
     def deploy
       {
         class_new: [[:Class], false, :new],
         proc_call: [[:Proc], false, :call],
         module_attr_reader: [[:Module], false, :attr_reader],
         module_attr_accessor: [[:Module], false, :attr_accessor],
+        array_aset: [[:Array], false, :[]=],
       }.each do |key, (cpath, singleton, mid)|
         mdecls = @genv.resolve_method(cpath, singleton, mid)
         m = method(key)

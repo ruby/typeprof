@@ -1,4 +1,6 @@
 module TypeProf::Core
+  Fiber[:show_rec] = Set[]
+
   class Source
     def initialize(ty)
       raise ty.inspect unless ty.is_a?(Type)
@@ -22,7 +24,16 @@ module TypeProf::Core
     end
 
     def show
-      @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
+      if Fiber[:show_rec].include?(self)
+        "...(recursive)..."
+      else
+        begin
+          Fiber[:show_rec] << self
+          @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
+        ensure
+          Fiber[:show_rec].delete(self)
+        end
+      end
     end
 
     def to_s
@@ -39,7 +50,6 @@ module TypeProf::Core
       @node = node
       @types = {}
       @next_vtxs = Set[]
-      @decls = Set[]
     end
 
     attr_reader :show_name, :next_vtxs, :types
@@ -94,20 +104,29 @@ module TypeProf::Core
     end
 
     def show
-      types = []
-      ary_elems = []
-      @types.each do |ty, _source|
-        case ty
-        when Type::Array
-          ary_elems << ty.elem.show
-        else
-          types << ty.show
+      if Fiber[:show_rec].include?(self)
+        "...(recursive)..."
+      else
+        begin
+          Fiber[:show_rec] << self
+          types = []
+          ary_elems = []
+          @types.each do |ty, _source|
+            case ty
+            when Type::Array
+              ary_elems << ty.elem.show
+            else
+              types << ty.show
+            end
+          end
+          unless ary_elems.empty?
+            types << "Array[#{ ary_elems.sort.join(" | ") }]"
+          end
+          types.empty? ? "untyped" : types.sort.join(" | ")
+        ensure
+          Fiber[:show_rec].delete(self)
         end
       end
-      unless ary_elems.empty?
-        types << "Array[#{ ary_elems.sort.join(" | ") }]"
-      end
-      types.empty? ? "untyped" : types.sort.join(" | ")
     end
 
     @@new_id = 0
@@ -356,42 +375,6 @@ module TypeProf::Core
 
     def long_inspect
       "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
-    end
-  end
-
-  class ArrayAllocSite < Box
-    def initialize(node, genv, args)
-      super(node)
-      @args = args
-      @args.each {|arg| arg.new_vertex(genv, "ary-elem", node).add_edge(genv, self) }
-      @ret = Vertex.new("ary", node)
-    end
-
-    attr_reader :args, :ret
-
-    def run0(genv)
-      edges = Set[]
-      @args.each do |arg|
-        arg.types.each do |ty, _source|
-          edges << [Source.new(Type::Array.new(ty)), @ret]
-        end
-      end
-      edges
-    end
-
-    def resolve(genv)
-      ret = []
-      @recv.types.each do |ty, _source|
-        ty.base_types(genv).each do |base_ty|
-          mds = genv.resolve_method(base_ty.cpath, base_ty.is_a?(Type::Class), @mid)
-          ret << [ty, mds] if mds
-        end
-      end
-      ret
-    end
-
-    def long_inspect
-      "#{ to_s } (mid:#{ @mid }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
 end

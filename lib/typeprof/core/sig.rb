@@ -88,11 +88,11 @@ module TypeProf::Core
       when RBS::Types::Bases::Nil
         [Type::Instance.new([:NilClass])]
       when RBS::Types::Bases::Self
-        [map[:__self]]
+        map[:__self]
       when RBS::Types::Bases::Void
         [Type::Instance.new([:Object])] # TODO
       when RBS::Types::Variable
-        [map[type.name] || raise]
+        map[type.name] || raise
       when RBS::Types::Optional
         self.type(genv, type.type, map) + [Type::Instance.new([:NilClass])]
       else
