@@ -514,5 +514,29 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_module
+      serv = Service.new
+
+      serv.update_file("test.rb", src = <<-END)
+module M
+  def foo
+    42
+  end
+end
+
+class C
+  include M
+  def bar
+    foo
+  end
+end
+      END
+
+      assert_equal(
+        ["def bar: () -> Integer"],
+        serv.get_method_sig([:C], false, :bar),
+      )
+    end
   end
 end

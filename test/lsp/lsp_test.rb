@@ -61,6 +61,13 @@ module TypeProf::LSP
       @id
     end
 
+    def expect_request(m)
+      json = @dummy_io.write_buffer.shift
+      json => { method:, id:, params: }
+      assert_equal(m, method)
+      yield params
+    end
+
     def expect_response(id)
       json = @dummy_io.write_buffer.shift
       json => { id: id2, result: }
@@ -90,6 +97,7 @@ foo(1)
         END
       )
 
+      expect_request("workspace/codeLens/refresh") {|json| }
       expect_notification("textDocument/publishDiagnostics") do |json|
         assert_equal([], json[:diagnostics])
       end
@@ -114,6 +122,7 @@ foo(1)
         END
       )
 
+      expect_request("workspace/codeLens/refresh") {|json| }
       expect_notification("textDocument/publishDiagnostics") do |json|
         assert_equal([], json[:diagnostics])
       end
@@ -139,6 +148,7 @@ foo(1)
         ]
       )
 
+      expect_request("workspace/codeLens/refresh") {|json| }
       expect_notification("textDocument/publishDiagnostics") do |json|
         assert_equal([], json[:diagnostics])
       end
@@ -167,6 +177,7 @@ foo(1, 2)
         END
       )
 
+      expect_request("workspace/codeLens/refresh") {|json| }
       expect_notification("textDocument/publishDiagnostics") do |json|
         assert_equal([
           {
@@ -206,8 +217,8 @@ test(Foo.new)
         END
       )
 
-      expect_notification("textDocument/publishDiagnostics") do |json|
-      end
+      expect_request("workspace/codeLens/refresh") {|json| }
+      expect_notification("textDocument/publishDiagnostics") {|json| }
 
       id = request(
         "textDocument/completion",
