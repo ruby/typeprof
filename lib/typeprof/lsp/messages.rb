@@ -11,6 +11,9 @@ module TypeProf::LSP
       p [:ignored, @method]
     end
 
+    def log(msg)
+    end
+
     def respond(result)
       raise "do not respond to notification" if @id == nil
       @server.send_response(id: @id, result: result)
@@ -38,16 +41,15 @@ module TypeProf::LSP
     end
   end
 
-  module ErrorCodes
-    ParseError = -32700
-    InvalidRequest = -32600
-    MethodNotFound = -32601
-    InvalidParams = -32602
-    InternalError = -32603
+  class Message::CancelRequest < Message
+    METHOD = "$/cancelRequest" # notification
+    def run
+      @server.cancel_request(@params[:id])
+    end
   end
 
   class Message::Initialize < Message
-    METHOD = "initialize"
+    METHOD = "initialize" # request (required)
     def run
       folders = @params[:workspaceFolders].map do |folder|
         folder => { uri:, }
@@ -70,10 +72,6 @@ module TypeProf::LSP
           #signatureHelpProvider: {
           #  triggerCharacters: ["(", ","],
           #},
-          #codeActionProvider: {
-          #  codeActionKinds: ["quickfix", "refactor"],
-          #  resolveProvider: false,
-          #},
           #codeLensProvider: {
           #  resolveProvider: true,
           #},
@@ -93,38 +91,27 @@ module TypeProf::LSP
         },
       )
 
-      puts "TypeProf for IDE is started successfully"
+      log "TypeProf for IDE is started successfully"
     end
   end
 
   class Message::Initialized < Message
-    METHOD = "initialized"
+    METHOD = "initialized" # notification
     def run
     end
   end
 
   class Message::Shutdown < Message
-    METHOD = "shutdown"
+    METHOD = "shutdown" # request (required)
     def run
       respond(nil)
     end
   end
 
   class Message::Exit < Message
-    METHOD = "exit"
+    METHOD = "exit" # notification
     def run
-      exit
-    end
-  end
-
-  module Message::Workspace
-  end
-
-  class Message::Workspace::DidChangeWatchedFiles < Message
-    METHOD = "workspace/didChangeWatchedFiles"
-    def run
-      #p "workspace/didChangeWatchedFiles"
-      #pp @params
+      @server.exit
     end
   end
 
@@ -132,18 +119,18 @@ module TypeProf::LSP
   end
 
   class Message::TextDocument::DidOpen < Message
-    METHOD = "textDocument/didOpen"
+    METHOD = "textDocument/didOpen" # notification
     def run
       @params => { textDocument: { uri:, version:, text: } }
 
-      text = Text.new(@server, URI(uri).path, text, version)
+      text = Text.new(URI(uri).path, text, version)
       @server.open_texts[uri] = text
       @server.core.update_file(text.path, text.text)
     end
   end
 
   class Message::TextDocument::DidChange < Message
-    METHOD = "textDocument/didChange"
+    METHOD = "textDocument/didChange" # notification
     def run
       @params => { textDocument: { uri:, version: }, contentChanges: changes }
       text = @server.open_texts[uri]
@@ -152,34 +139,23 @@ module TypeProf::LSP
     end
   end
 
+  # textDocument/willSave notification
+  # textDocument/willSaveWaitUntil request
+  # textDocument/didSave notification
+
   class Message::TextDocument::DidClose < Message
-    METHOD = "textDocument/didClose"
+    METHOD = "textDocument/didClose" # notification
     def run
       @params => { textDocument: { uri: } }
-      @server.open_texts.delete(uri)
+      text = @server.open_texts.delete(uri)
       @server.core.update_file(text.path, nil)
     end
   end
 
-  class Message::TextDocument::Hover < Message
-    METHOD = "textDocument/hover"
-    def run
-      @params => {
-        textDocument: { uri: },
-        position: pos,
-      }
-      text = @server.open_texts[uri]
-      str = @server.core.hover(text.path, TypeProf::CodePosition.from_lsp(pos))
-      if str
-        respond(contents: { language: "ruby", value: str })
-      else
-        respond(nil)
-      end
-    end
-  end
+  # textDocument/declaration request
 
   class Message::TextDocument::Definition < Message
-    METHOD = "textDocument/definition"
+    METHOD = "textDocument/definition" # request
     def run
       @params => {
         textDocument: { uri: },
@@ -200,12 +176,50 @@ module TypeProf::LSP
     end
   end
 
-  class Message::CancelRequest < Message
-    METHOD = "$/cancelRequest"
+  # textDocument/references request
+
+  class Message::TextDocument::Hover < Message
+    METHOD = "textDocument/hover" # request
     def run
-      @server.cancel_request(@params[:id])
+      @params => {
+        textDocument: { uri: },
+        position: pos,
+      }
+      text = @server.open_texts[uri]
+      str = @server.core.hover(text.path, TypeProf::CodePosition.from_lsp(pos))
+      if str
+        respond(contents: { language: "ruby", value: str })
+      else
+        respond(nil)
+      end
     end
   end
+
+  # textDocument/codeLens request
+  # workspace/codeLens/refresh request (server-to-client)
+
+  # textDocument/documentSymbol request
+
+  # textDocument/publishDiagnostics notification (server-to-client)
+
+  # textDocument/diagnostic request
+  # workspace/diagnostic request
+  #   workspace/diagnostic/refresh request
+
+  # textDocument/completion request
+  #   completionItem/resolve request
+
+  # textDocument/signatureHelp request
+
+  # textDocument/rename request
+  # textDocument/prepareRename request
+
+  # workspace/symbol request
+  #   workspaceSymbol/resolve request
+
+  # workspace/didChangeWatchedFiles notification
+
+  # workspace/executeCommand request
 
   Message.build_table
 end

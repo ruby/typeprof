@@ -37,7 +37,7 @@ module TypeProf::Core
 
     def add_workspaces(folders)
       folders.each do |folder|
-        Dir.glob(folder + "/**/*.rb") do |path|
+        Dir.glob(File.expand_path(folder + "/**/*.rb")) do |path|
           update_file(path, nil)
         end
       end

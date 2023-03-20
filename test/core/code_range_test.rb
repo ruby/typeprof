@@ -1,5 +1,4 @@
-require "test/unit"
-require_relative "../../lib/typeprof"
+require_relative "../helper"
 
 module TypeProf
   class CodeRangeTest < Test::Unit::TestCase

@@ -1,5 +1,4 @@
-require "test/unit"
-require_relative "../../lib/typeprof"
+require_relative "../helper"
 
 module TypeProf::Core
   class BasicTest < Test::Unit::TestCase

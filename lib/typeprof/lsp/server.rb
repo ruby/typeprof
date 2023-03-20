@@ -1,4 +1,12 @@
 module TypeProf::LSP
+  module ErrorCodes
+    ParseError = -32700
+    InvalidRequest = -32600
+    MethodNotFound = -32601
+    InvalidParams = -32602
+    InternalError = -32603
+  end
+
   class Server
     def self.start_stdio(core)
       $stdin.binmode
@@ -36,8 +44,6 @@ module TypeProf::LSP
       end
     end
 
-    class Exit < StandardError; end
-
     def initialize(core, reader, writer)
       @core = core
       @reader = reader
@@ -46,6 +52,7 @@ module TypeProf::LSP
       @running_requests_from_client = {}
       @running_requests_from_server = {}
       @open_texts = {}
+      @exit = false
     end
 
     attr_reader :core, :open_texts
@@ -54,16 +61,21 @@ module TypeProf::LSP
       @reader.read do |json|
         if json[:method]
           # request or notification
-          msg = Message.find(json[:method]).new(self, json)
-          @running_requests_from_client[json[:id]] = msg if json[:id]
-          msg.run
+          msg_class = Message.find(json[:method])
+          if msg_class
+            msg = msg_class.new(self, json)
+            @running_requests_from_client[json[:id]] = msg if json[:id]
+            msg.run
+          else
+
+          end
         else
           # response
           callback = @running_requests_from_server.delete(json[:id])
           callback&.call(json[:params])
         end
+        break if @exit
       end
-    rescue Exit
     end
 
     def send_response(**msg)
@@ -84,6 +96,10 @@ module TypeProf::LSP
     def cancel_request(id)
       req = @running_requests_from_client[id]
       req.cancel if req.respond_to?(:cancel)
+    end
+
+    def exit
+      @exit = true
     end
   end
 

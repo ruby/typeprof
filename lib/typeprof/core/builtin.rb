@@ -83,7 +83,7 @@ module TypeProf::Core
       if a_args.size == 2
         case ty
         when Type::Array
-          idx = a_args[0].types
+          #idx = a_args[0].types
           val = a_args[1]
           edges << [val, ty.elem]
         else
