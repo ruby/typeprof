@@ -499,5 +499,20 @@ end
 
       assert_equal("Integer", serv.hover("test.rb", TypeProf::CodePosition.new(5, 19)))
     end
+
+    def test_rbs_module
+      serv = Service.new
+
+      serv.update_file("test.rb", src = <<-END)
+def foo
+  rand # Kernel#rand
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> Float"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

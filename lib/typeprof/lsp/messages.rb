@@ -227,8 +227,6 @@ module TypeProf::LSP
   # workspace/diagnostic request
   #   workspace/diagnostic/refresh request
 
-  # textDocument/completion request
-  #   completionItem/resolve request
   class Message::TextDocument::Completion < Message
     METHOD = "textDocument/completion"
     def run
@@ -236,7 +234,7 @@ module TypeProf::LSP
         textDocument: { uri: },
         position: pos,
       }
-      trigger_kind = @params.key?(:context) ? @params[:context][:triggerKind] : 1 # Invoked
+      #trigger_kind = @params.key?(:context) ? @params[:context][:triggerKind] : 1 # Invoked
       text = @server.open_texts[uri]
       items = []
       sort = "aaaa"

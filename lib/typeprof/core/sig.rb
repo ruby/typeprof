@@ -51,11 +51,20 @@ module TypeProf::Core
         case member
         when RBS::AST::Members::MethodDefinition
           mid = member.name
-          mdecl = MethodDecl.new(cpath, member.singleton?, mid, member)
           # TODO: もしすでに MethodDef があったら、
           # この RBS を前提に再解析する
-          genv.add_method_decl(mdecl)
+          if member.singleton?
+            mdecl = MethodDecl.new(cpath, true, mid, member)
+            genv.add_method_decl(mdecl)
+          end
+          if member.instance?
+            mdecl = MethodDecl.new(cpath, false, mid, member)
+            genv.add_method_decl(mdecl)
+          end
         when RBS::AST::Members::Include
+          name = member.name
+          mod_cpath = name.namespace.path + [name.name]
+          genv.add_module_include(cpath, mod_cpath)
         when RBS::AST::Members::Public
         when RBS::AST::Members::Private
         when RBS::AST::Members::Alias

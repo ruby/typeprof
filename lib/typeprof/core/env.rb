@@ -8,6 +8,7 @@ module TypeProf::Core
       @consts = {}
       @singleton_methods = {}
       @instance_methods = {}
+      @include_module_cpaths = Set[]
       @singleton_ivars = {}
       @instance_ivars = {}
     end
@@ -19,6 +20,7 @@ module TypeProf::Core
     attr_reader :module_defs, :child_modules
     attr_accessor :superclass_cpath
     attr_reader :consts
+    attr_reader :include_module_cpaths
 
     def methods(singleton)
       singleton ? @singleton_methods : @instance_methods
@@ -366,6 +368,11 @@ module TypeProf::Core
       e.decls << mdecl
     end
 
+    def add_module_include(cpath, mod_cpath)
+      dir = resolve_cpath(cpath)
+      dir.include_module_cpaths << mod_cpath
+    end
+
     # TODO: remove_method_decl
 
     def add_method_def(mdef)
@@ -390,6 +397,16 @@ module TypeProf::Core
           return e.decls unless e.decls.empty?
           return e.defs unless e.defs.empty?
         end
+        unless singleton # TODO
+          dir.include_module_cpaths.each do |mod_cpath|
+            mod_dir = resolve_cpath(mod_cpath)
+            e = mod_dir.methods(false)[mid]
+            if e
+              return e.decls unless e.decls.empty?
+              return e.defs unless e.defs.empty?
+            end
+          end
+        end
         if cpath == [:BasicObject]
           if singleton
             singleton = false
@@ -407,6 +424,12 @@ module TypeProf::Core
       while true
         dir = resolve_cpath(cpath)
         yield cpath, singleton, dir.methods(singleton)
+        unless singleton # TODO
+          dir.include_module_cpaths.each do |mod_cpath|
+            mod_dir = resolve_cpath(mod_cpath)
+            yield mod_cpath, false, mod_dir.methods(false)
+          end
+        end
         if cpath == [:BasicObject]
           if singleton
             singleton = false
