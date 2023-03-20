@@ -239,8 +239,6 @@ module TypeProf::LSP
 
   # textDocument/documentSymbol request
 
-  # textDocument/publishDiagnostics notification (server-to-client)
-
   # textDocument/diagnostic request
   # workspace/diagnostic request
   #   workspace/diagnostic/refresh request
