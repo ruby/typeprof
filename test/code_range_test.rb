@@ -1,4 +1,4 @@
-require_relative "../helper"
+require_relative "helper"
 
 module TypeProf
   class CodeRangeTest < Test::Unit::TestCase
@@ -36,6 +36,20 @@ module TypeProf
       assert_equal(false, cr.include?(p0))
       assert_equal(true, cr.include?(p2))
       assert_equal(false, cr.include?(p4))
+    end
+
+    def test_inspect
+      p1 = CodePosition.new(1, 1)
+      p2 = CodePosition.new(2, 2)
+      cr = CodeRange.new(p1, p2)
+      assert_equal("(1,1)-(2,2)", cr.inspect)
+    end
+
+    def test_to_lsp
+      p1 = CodePosition.new(1, 1)
+      p2 = CodePosition.new(2, 2)
+      cr = CodeRange.new(p1, p2)
+      assert_equal({ start: { line: 0, character: 1 }, end: { line: 1, character: 2 } }, cr.to_lsp)
     end
   end
 end

@@ -83,7 +83,7 @@ module TypeProf::LSP
       @writer.write(**msg)
     end
 
-    def send_notification(method, params = nil)
+    def send_notification(method, **params)
       @writer.write(method: method, params: params)
     end
 

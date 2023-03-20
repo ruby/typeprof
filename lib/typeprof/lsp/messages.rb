@@ -24,6 +24,25 @@ module TypeProf::LSP
       @server.send_response(id: @id, error: error)
     end
 
+    def notify(method, **params)
+      @server.send_notification(method, **params)
+    end
+
+    def publish_diagnostics(uri)
+      text = @server.open_texts[uri]
+      diags = []
+      if text
+        @server.core.diagnostics(text.path) do |diag|
+          diags << diag.to_lsp
+        end
+      end
+      notify(
+        "textDocument/publishDiagnostics",
+        uri: uri,
+        diagnostics: diags
+      )
+    end
+
     Classes = []
     def self.inherited(klass)
       Classes << klass
@@ -126,6 +145,7 @@ module TypeProf::LSP
       text = Text.new(URI(uri).path, text, version)
       @server.open_texts[uri] = text
       @server.core.update_file(text.path, text.text)
+      publish_diagnostics(uri)
     end
   end
 
@@ -136,6 +156,7 @@ module TypeProf::LSP
       text = @server.open_texts[uri]
       text.apply_changes(changes, version)
       @server.core.update_file(text.path, text.text)
+      publish_diagnostics(uri)
     end
   end
 

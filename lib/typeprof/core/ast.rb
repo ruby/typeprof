@@ -286,6 +286,18 @@ module TypeProf::Core
         s
       end
 
+      def diagnostics(genv, &blk)
+        if @sites
+          @sites.each_value do |site|
+            next unless site.respond_to?(:diagnostics) # XXX
+            site.diagnostics(genv, &blk)
+          end
+        end
+        subnodes.each_value do |subnode|
+          subnode.diagnostics(genv, &blk) if subnode
+        end
+      end
+
       def get_vertexes_and_boxes(vtxs, boxes)
         if @sites
           @sites.each_value do |site|

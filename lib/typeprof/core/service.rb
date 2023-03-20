@@ -188,12 +188,17 @@ module TypeProf::Core
       end
     end
 
+    def diagnostics(path, &blk)
+      @text_nodes[path].diagnostics(@genv, &blk)
+    end
+
     def definitions(path, pos)
       obj = @text_nodes[path].hover(pos)
       defs = []
       case obj
       when CallSite
-        obj.resolve(genv).each do |ty, mds|
+        obj.resolve(genv) do |_ty, mds|
+          next unless mds
           mds.each do |md|
             case md
             when MethodDecl

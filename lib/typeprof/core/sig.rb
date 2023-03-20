@@ -95,6 +95,12 @@ module TypeProf::Core
         map[type.name] || raise
       when RBS::Types::Optional
         self.type(genv, type.type, map) + [Type::Instance.new([:NilClass])]
+      when RBS::Types::Literal
+        if type.literal.is_a?(::Symbol)
+          Type::Symbol.new(type.literal)
+        else
+          raise
+        end
       else
         raise "unknown RBS type: #{ type.class }"
       end

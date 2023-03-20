@@ -278,6 +278,7 @@ module TypeProf::Core
       end
       @ret = Vertex.new("ret:#{ mid }", node)
       genv.add_callsite(self)
+      @diagnostics = nil
     end
 
     def destroy(genv)
@@ -289,7 +290,8 @@ module TypeProf::Core
 
     def run0(genv)
       edges = Set[]
-      resolve(genv).each do |ty, mds|
+      resolve(genv) do |ty, mds|
+        next unless mds
         mds.each do |md|
           case md
           when MethodDecl
@@ -306,12 +308,9 @@ module TypeProf::Core
               edges << [@block, md.block]
             end
             # check arity
-            if @a_args.size == md.f_args.size
-              @a_args.zip(md.f_args) do |a_arg, f_arg|
-                raise unless a_arg
-                raise unless f_arg
-                edges << [a_arg, f_arg]
-              end
+            @a_args.zip(md.f_args) do |a_arg, f_arg|
+              break unless f_arg
+              edges << [a_arg, f_arg]
             end
             edges << [md.ret, @ret]
           end
@@ -321,14 +320,31 @@ module TypeProf::Core
     end
 
     def resolve(genv)
-      ret = []
       @recv.types.each do |ty, _source|
         ty.base_types(genv).each do |base_ty|
           mds = genv.resolve_method(base_ty.cpath, base_ty.is_a?(Type::Module), @mid)
-          ret << [ty, mds] if mds
+          yield ty, mds
         end
       end
-      ret
+    end
+
+    def diagnostics(genv)
+      resolve(genv) do |ty, mds|
+        if mds
+          mds.each do |md|
+            case md
+            when MethodDecl
+            when MethodDef
+              if @a_args.size != md.f_args.size
+                yield TypeProf::Diagnostic.new(@node, "wrong number of arguments (#{ @a_args.size } for #{ md.f_args.size })")
+              end
+            end
+          end
+          # TODO: arity error, type error
+        else
+          yield TypeProf::Diagnostic.new(@node, "undefined method: #{ ty.show }##{ @mid }")
+        end
+      end
     end
 
     def long_inspect

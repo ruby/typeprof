@@ -33,34 +33,47 @@ module TypeProf::LSP
 
     def init(fixture)
       @folder = "file://" + File.expand_path(File.join(__dir__, "fixtures", fixture)) + "/"
-      req("initialize", workspaceFolders: [{ uri: @folder }]) do |recv|
+      id = request("initialize", workspaceFolders: [{ uri: @folder }])
+      expect_response(id) do |recv|
         assert_equal({ name: "typeprof", version: TypeProf::VERSION }, recv[:serverInfo])
       end
       notify("initialized")
     end
 
     def teardown
-      req("shutdown") do |recv|
+      id = request("shutdown")
+      expect_response(id) do |recv|
         assert_nil(recv)
       end
       notify("exit")
       @th.join
     end
 
-    def req(method, **params)
-      @id += 1
-      json = { method:, id: @id, params: }
-      @dummy_io.read_buffer << json
-
-      json = @dummy_io.write_buffer.shift
-      json => { id:, result: }
-      raise "unexpected id: #{ id }" if @id != id
-      yield result
-    end
-
     def notify(method, **params)
       json = { method:, params: }
       @dummy_io.read_buffer << json
+    end
+
+    def request(method, **params)
+      @id += 1
+      json = { method:, id: @id, params: }
+      @dummy_io.read_buffer << json
+      @id
+    end
+
+    def expect_response(id)
+      json = @dummy_io.write_buffer.shift
+      json => { id: id2, result: }
+      assert_equal(id, id2, "unexpected method id (expected: #{ id }, actual: #{ id2 })")
+      yield result
+    end
+
+    def expect_notification(m)
+      json = @dummy_io.write_buffer.shift
+      assert_nil(json[:id], "notification is expected but response is returned")
+      json => { method:, params: }
+      assert_equal(m, method)
+      yield params
     end
 
     def test_basic
@@ -77,11 +90,41 @@ foo(1)
         END
       )
 
-      req(
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal([], json[:diagnostics])
+      end
+
+      notify(
+        "textDocument/didClose",
+        textDocument: { uri: @folder + "basic.rb" },
+      )
+    end
+
+    def test_hover
+      init("basic")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic.rb", version: 0, text: <<-END },
+def foo(nnn)
+  nnn
+end
+
+foo(1)
+        END
+      )
+
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal([], json[:diagnostics])
+      end
+
+      id = request(
         "textDocument/hover",
         textDocument: { uri: @folder + "basic.rb" },
         position: { line: 0, character: 9 },
-      ) do |json|
+      )
+
+      expect_response(id) do |json|
         assert_equal({ contents: { language: "ruby", value: "Integer" }}, json)
       end
 
@@ -96,18 +139,47 @@ foo(1)
         ]
       )
 
-      req(
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal([], json[:diagnostics])
+      end
+
+      id = request(
         "textDocument/hover",
         textDocument: { uri: @folder + "basic.rb" },
         position: { line: 0, character: 9 },
-      ) do |json|
+      )
+      expect_response(id) do |json|
         assert_equal({ contents: { language: "ruby", value: "Float" }}, json)
       end
+    end
+
+    def test_diagnostics
+      init("basic")
 
       notify(
-        "textDocument/didClose",
-        textDocument: { uri: @folder + "basic.rb" },
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic.rb", version: 0, text: <<-END },
+def foo(nnn)
+  nnn
+end
+
+foo(1, 2)
+        END
       )
+
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal([
+          {
+            message: "wrong number of arguments (2 for 1)",
+            range: {
+              start: { line: 4, character: 0 },
+              end: { line: 4, character: 9 },
+            },
+            severity: 1,
+            source: "TypeProf",
+          }
+        ], json[:diagnostics])
+      end
     end
   end
 end
