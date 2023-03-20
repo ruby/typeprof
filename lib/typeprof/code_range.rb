@@ -28,6 +28,15 @@ module TypeProf
     end
 
     alias inspect to_s
+
+    def left
+      raise if @column == 0
+      CodePosition.new(@lineno, @column - 1)
+    end
+
+    def right
+      CodePosition.new(@lineno, @column + 1)
+    end
   end
 
   class CodeRange

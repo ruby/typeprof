@@ -266,13 +266,13 @@ module TypeProf::Core
         end
       end
 
-      def hover(pos)
+      def hover(pos, &blk)
         if code_range.include?(pos)
           subnodes.each_value do |subnode|
             next unless subnode
-            ret = subnode.hover(pos)
-            return ret if ret
+            subnode.hover(pos, &blk)
           end
+          yield self
         end
         return nil
       end
@@ -313,6 +313,20 @@ module TypeProf::Core
 
       def pretty_print_instance_variables
         super - [:@raw_node, :@raw_children, :@lenv, :@prev_node]
+      end
+    end
+
+    class DummySymbolNode
+      def initialize(sym, code_range, ret)
+        @sym = sym
+        @code_range = code_range
+        @ret = ret
+      end
+
+      attr_reader :lenv, :prev_node, :ret
+
+      def sites
+        {}
       end
     end
 
@@ -498,7 +512,7 @@ module TypeProf::Core
       end
 
       def hover(pos)
-        code_range.include?(pos) ? @ret : nil
+        yield self if code_range.include?(pos)
       end
 
       def dump0(dumper)
@@ -633,12 +647,13 @@ module TypeProf::Core
       end
 
       def hover(pos)
-        i = @args_code_ranges.find_index {|cr| cr && cr.include?(pos) }
-        if i
-          @body_lenv.get_var(@tbl[i])
-        else
-          super
+        @args_code_ranges.each_with_index do |cr, i|
+          if cr.include?(pos)
+            yield DummySymbolNode.new(@tbl[i], cr, @body_lenv.get_var(@tbl[i]))
+            break
+          end
         end
+        super
       end
 
       def dump0(dumper)
@@ -717,11 +732,8 @@ module TypeProf::Core
       end
 
       def hover(pos)
-        if @mid_code_range && @mid_code_range.include?(pos)
-          @sites[:main] # TODO
-        else
-          super
-        end
+        yield self if @mid_code_range && @mid_code_range.include?(pos)
+        super
       end
 
       def dump_call(prefix, suffix)
@@ -1054,7 +1066,7 @@ module TypeProf::Core
       end
 
       def hover(pos)
-        code_range.include?(pos) ? @ret : nil
+        yield self if code_range.include?(pos)
       end
 
       def dump0(dumper)
@@ -1086,11 +1098,8 @@ module TypeProf::Core
       end
 
       def hover(pos)
-        if @var_code_range && @var_code_range.include?(pos)
-          @ret
-        else
-          super
-        end
+        yield self if @var_code_range && @var_code_range.include?(pos)
+        super
       end
 
       def dump0(dumper)
@@ -1114,7 +1123,7 @@ module TypeProf::Core
       end
 
       def hover(pos)
-        code_range.include?(pos) ? @ret : nil
+        yield self if code_range.include?(pos)
       end
 
       def dump0(dumper)
@@ -1148,11 +1157,8 @@ module TypeProf::Core
       end
 
       def hover(pos)
-        if @var_code_range && @var_code_range.include?(pos)
-          @ret
-        else
-          super
-        end
+        yield self if @var_code_range && @var_code_range.include?(pos)
+        super
       end
 
       def dump0(dumper)

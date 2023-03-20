@@ -2,15 +2,23 @@ module TypeProf::LSP
   class Text
     def initialize(path, text, version)
       @path = path
-      @text = text
+      @lines = Text.split(text)
       @version = version
     end
 
-    attr_reader :path, :text, :version
+    attr_reader :path, :lines, :version
+
+    def self.split(str)
+      lines = str.lines
+      lines << "" if lines.empty? || lines.last.include?("\n")
+      lines
+    end
+
+    def string
+      @lines.join
+    end
 
     def apply_changes(changes, version)
-      lines = @text.empty? ? [] : @text.lines
-
       changes.each do |change|
         change => {
           range: {
@@ -20,28 +28,42 @@ module TypeProf::LSP
           text: new_text,
         }
 
-        lines << "" if start_row == lines.size
-        lines << "" if end_row == lines.size
+        new_text = Text.split(new_text)
 
-        if start_row == end_row
-          lines[start_row][start_col...end_col] = new_text
+        prefix = @lines[start_row][0...start_col]
+        suffix = @lines[end_row][end_col...]
+        if new_text.size == 1
+          new_text[0] = prefix + new_text[0] + suffix
         else
-          lines[start_row][start_col..] = ""
-          lines[end_row][...end_col] = ""
-          new_text = new_text.lines
-          if new_text.size <= 1
-            new_text = new_text.first || ""
-            lines[start_row .. end_row] = [lines[start_row] + new_text + lines[end_row]]
-          else
-            lines[start_row] = lines[start_row] + new_text.shift
-            lines[end_row] = new_text.pop + lines[end_row]
-            lines[start_row + 1 .. end_row - 1] = new_text
-          end
+          new_text[0] = prefix + new_text[0]
+          new_text[-1] = new_text[-1] + suffix
         end
+        @lines[start_row .. end_row] = new_text
       end
 
-      @text = lines.join
+      validate
+
       @version = version
+    end
+
+    def validate
+      raise unless @lines[0..-2].all? {|s| s.count("\n") == 1 && s.end_with?("\n") }
+      raise unless @lines[-1].count("\n") == 0
+    end
+
+    def modify_for_completion(changes, pos)
+      pos => { line: row, character: col }
+      if col >= 2 && @lines[row][col - 1] == "." && (col == 1 || @lines[row][col - 2] != ".")
+        @lines[row][col - 1] = " "
+        yield string, ".", { line: row, character: col - 2}
+        @lines[row][col - 1] = "."
+      elsif col >= 3 && @lines[row][col - 2, 2] == "::"
+        @lines[row][col - 2, 2] = "  "
+        yield string, "::", { line: row, character: col - 3 }
+        @lines[row][col - 2, 2] = "::"
+      else
+        yield string, nil, { line: row, character: col }
+      end
     end
   end
 end

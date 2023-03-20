@@ -178,57 +178,66 @@ module TypeProf::Core
       end
     end
 
-    def hover(path, pos)
-      obj = @text_nodes[path].hover(pos)
-      case obj
-      when CallSite
-        obj.recv.show + "#" + obj.mid.to_s
-      when Vertex
-        obj.show
-      end
-    end
-
     def diagnostics(path, &blk)
       @text_nodes[path].diagnostics(@genv, &blk)
     end
 
     def definitions(path, pos)
-      obj = @text_nodes[path].hover(pos)
       defs = []
-      case obj
-      when CallSite
-        obj.resolve(genv) do |_ty, mds|
-          next unless mds
-          mds.each do |md|
-            case md
-            when MethodDecl
-            when MethodDef
-              defs << [md.node.lenv.text_id.path, md.node.code_range]
+      @text_nodes[path].hover(pos) do |node|
+        site = node.sites[:main]
+        if site.is_a?(CallSite)
+          site.resolve(genv) do |_ty, mds|
+            next unless mds
+            mds.each do |md|
+              case md
+              when MethodDecl
+              when MethodDef
+                defs << [md.node.lenv.text_id.path, md.node.code_range]
+              end
             end
           end
         end
-      when Vertex
+        return defs
       end
-      defs
     end
 
-    def gotodefs(path, pos)
-      obj = @text_nodes[path].hover(pos)
-      case obj
-      when CallSite
-        code_ranges = []
-        obj.recv.types.each_key do |ty|
-          me = MethodEntry.new(ty.cpath, ty.is_a?(Type::Module), obj.mid)
-          mdefs = genv.get_method_entity(me).defs
-          if mdefs
-            mdefs.each do |mdef|
-              code_ranges << mdef.node&.code_range
+    def hover(path, pos)
+      @text_nodes[path].hover(pos) do |node|
+        site = node.sites[:main]
+        if site.is_a?(CallSite)
+          return site.recv.show + "#" + site.mid.to_s
+        else
+          return node.ret.show
+        end
+      end
+    end
+
+    def completion(path, trigger, pos)
+      @text_nodes[path].hover(pos) do |node|
+        if node.code_range.last == pos.right
+          node.ret.types.map do |ty, _source|
+            ty.base_types(genv).each do |base_ty|
+              genv.enumerate_methods(base_ty.cpath, base_ty.is_a?(Type::Module)) do |cpath, singleton, mdefs|
+                mdefs.each do |mid, entity|
+                  sig = nil
+                  entity.decls.each do |mdecl|
+                    sig = mdecl.rbs_member.overloads.map {|overload| overload.method_type.to_s }.join(" | ")
+                    break
+                  end
+                  unless sig
+                    entity.defs.each do |mdef|
+                      sig = mdef.show
+                      break
+                    end
+                  end
+                  yield mid, "#{ cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
+                end
+              end
             end
           end
+          return
         end
-        code_ranges.compact
-      when Vertex
-        # TODO
       end
     end
 

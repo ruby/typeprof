@@ -403,6 +403,23 @@ module TypeProf::Core
       end
     end
 
+    def enumerate_methods(cpath, singleton)
+      while true
+        dir = resolve_cpath(cpath)
+        yield cpath, singleton, dir.methods(singleton)
+        if cpath == [:BasicObject]
+          if singleton
+            singleton = false
+            cpath = [:Class]
+          else
+            break
+          end
+        else
+          cpath = dir.superclass_cpath
+        end
+      end
+    end
+
     def add_callsite(callsite)
       (@callsites_by_name[callsite.mid] ||= Set[]) << callsite
       add_run(callsite)

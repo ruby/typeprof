@@ -181,5 +181,46 @@ foo(1, 2)
         ], json[:diagnostics])
       end
     end
+
+    def test_completion
+      init("basic")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic.rb", version: 0, text: <<-END },
+class Foo
+  def foo(n)
+    1
+  end
+  def bar(n)
+    "str"
+  end
+end
+
+def test(x)
+  x.
+end
+
+Foo.new.foo(1.0)
+test(Foo.new)
+        END
+      )
+
+      expect_notification("textDocument/publishDiagnostics") do |json|
+      end
+
+      id = request(
+        "textDocument/completion",
+        textDocument: { uri: @folder + "basic.rb" },
+        position: { line: 10, character: 4 },
+      )
+      expect_response(id) do |json|
+        items = json[:items]
+        assert_equal(:foo, items[0][:label])
+        assert_equal("Foo#foo : (Float) -> Integer", items[0][:detail])
+        assert_equal(:bar, items[1][:label])
+        assert_equal("Foo#bar : (untyped) -> String", items[1][:detail])
+      end
+    end
   end
 end

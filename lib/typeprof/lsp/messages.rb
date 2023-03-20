@@ -85,9 +85,9 @@ module TypeProf::LSP
           },
           hoverProvider: true,
           definitionProvider: true,
-          #completionProvider: {
-          #  triggerCharacters: ["."],
-          #},
+          completionProvider: {
+            triggerCharacters: [".", ":"],
+          },
           #signatureHelpProvider: {
           #  triggerCharacters: ["(", ","],
           #},
@@ -144,7 +144,7 @@ module TypeProf::LSP
 
       text = Text.new(URI(uri).path, text, version)
       @server.open_texts[uri] = text
-      @server.core.update_file(text.path, text.text)
+      @server.core.update_file(text.path, text.string)
       publish_diagnostics(uri)
     end
   end
@@ -155,7 +155,7 @@ module TypeProf::LSP
       @params => { textDocument: { uri:, version: }, contentChanges: changes }
       text = @server.open_texts[uri]
       text.apply_changes(changes, version)
-      @server.core.update_file(text.path, text.text)
+      @server.core.update_file(text.path, text.string)
       publish_diagnostics(uri)
     end
   end
@@ -229,6 +229,37 @@ module TypeProf::LSP
 
   # textDocument/completion request
   #   completionItem/resolve request
+  class Message::TextDocument::Completion < Message
+    METHOD = "textDocument/completion"
+    def run
+      @params => {
+        textDocument: { uri: },
+        position: pos,
+      }
+      trigger_kind = @params.key?(:context) ? @params[:context][:triggerKind] : 1 # Invoked
+      text = @server.open_texts[uri]
+      items = []
+      sort = "aaaa"
+      text.modify_for_completion(text, pos) do |string, trigger, pos|
+        @server.core.update_file(text.path, string)
+        pos = TypeProf::CodePosition.from_lsp(pos)
+        @server.core.completion(text.path, trigger, pos) do |mid, hint|
+          items << {
+            label: mid,
+            kind: 2, # Method
+            sortText: sort,
+            detail: hint,
+          }
+          sort = sort.succ
+        end
+      end
+      respond(
+        isIncomplete: false,
+        items: items,
+      )
+      @server.core.update_file(text.path, text.string)
+    end
+  end
 
   # textDocument/signatureHelp request
 

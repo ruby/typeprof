@@ -32,24 +32,5 @@ foo(42)
 
       assert_equal("Integer", serv.hover("test.rb", TypeProf::CodePosition.new(3, 4)))
     end
-
-    def test_gotodefs
-      serv = Service.new
-      serv.update_file("test0.rb", <<-END)
-def foo(variable)
-  variable + 1
-end
-
-def main(_)
-  foo(2)
-end
-      END
-
-      cr = TypeProf::CodeRange.new(
-        TypeProf::CodePosition.new(1, 0),
-        TypeProf::CodePosition.new(3, 3),
-      )
-      assert_equal([cr], serv.gotodefs("test0.rb", TypeProf::CodePosition.new(6, 3)))
-    end
   end
 end
