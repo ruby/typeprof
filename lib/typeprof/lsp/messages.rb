@@ -91,9 +91,9 @@ module TypeProf::LSP
           #signatureHelpProvider: {
           #  triggerCharacters: ["(", ","],
           #},
-          #codeLensProvider: {
-          #  resolveProvider: true,
-          #},
+          codeLensProvider: {
+            resolveProvider: false,
+          },
           executeCommandProvider: {
             commands: [
               "typeprof.createPrototypeRBS",
@@ -145,6 +145,7 @@ module TypeProf::LSP
       text = Text.new(URI(uri).path, text, version)
       @server.open_texts[uri] = text
       @server.core.update_file(text.path, text.string)
+      @server.send_request("workspace/codeLens/refresh")
       publish_diagnostics(uri)
     end
   end
@@ -156,6 +157,7 @@ module TypeProf::LSP
       text = @server.open_texts[uri]
       text.apply_changes(changes, version)
       @server.core.update_file(text.path, text.string)
+      @server.send_request("workspace/codeLens/refresh")
       publish_diagnostics(uri)
     end
   end
@@ -216,8 +218,24 @@ module TypeProf::LSP
     end
   end
 
-  # textDocument/codeLens request
-  # workspace/codeLens/refresh request (server-to-client)
+  class Message::TextDocument::CodeLens < Message
+    METHOD = "textDocument/codeLens"
+    def run
+      @params => { textDocument: { uri: } }
+      text = @server.open_texts[uri]
+      ret = []
+      @server.core.code_lens(text.path) do |code_range, title|
+        ret << {
+          range: code_range.to_lsp,
+          command: {
+            title: title,
+            command: "typeprof.jumpToRBS",
+          },
+        }
+      end
+      respond(ret)
+    end
+  end
 
   # textDocument/documentSymbol request
 

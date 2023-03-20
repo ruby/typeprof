@@ -401,6 +401,7 @@ module TypeProf::Core
           dir.include_module_cpaths.each do |mod_cpath|
             mod_dir = resolve_cpath(mod_cpath)
             e = mod_dir.methods(false)[mid]
+            # TODO: recursive include: mod_dir.include_module_cpaths
             if e
               return e.decls unless e.decls.empty?
               return e.defs unless e.defs.empty?
@@ -409,13 +410,17 @@ module TypeProf::Core
         end
         if cpath == [:BasicObject]
           if singleton
-            singleton = false
             cpath = [:Class]
+            singleton = false
           else
             return nil
           end
         else
           cpath = dir.superclass_cpath
+          unless cpath
+            cpath = [:Module]
+            singleton = false
+          end
         end
       end
     end

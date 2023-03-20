@@ -213,6 +213,38 @@ module TypeProf::Core
       end
     end
 
+    def code_lens(path)
+      cpaths = []
+      @text_nodes[path].traverse do |event, node|
+        case node
+        when AST::MODULE, AST::CLASS
+          if node.static_cpath
+            if event == :enter
+              cpaths << node.static_cpath
+            else
+              cpaths.pop
+            end
+          end
+        else
+          if event == :enter && !node.defs.empty?
+            node.defs.each do |d|
+              case d
+              when MethodDef
+                #puts " " * depth + "# #{ d.node.code_range }"
+                hint = "def #{ d.mid }: " + d.show
+              when ConstDef
+                hint = "#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show
+              end
+              if hint
+                pos = d.node.code_range.first
+                yield TypeProf::CodeRange.new(pos, pos.right), hint
+              end
+            end
+          end
+        end
+      end
+    end
+
     def completion(path, trigger, pos)
       @text_nodes[path].hover(pos) do |node|
         if node.code_range.last == pos.right
