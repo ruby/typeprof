@@ -52,11 +52,19 @@ module TypeProf::Core
     class Array < Type
       include StructuralEquality
 
-      def initialize(elem)
-        @elem = elem
+      def initialize(elems, unified_elem)
+        @elems = elems
+        @unified_elem = unified_elem
       end
 
-      attr_reader :elem
+      def get_elem(idx = nil)
+        if idx && @elems
+          @elems[idx] || Source.new(Type::Instance.new([:NilClass]))
+        else
+          @elems = nil
+          @unified_elem
+        end
+      end
 
       def base_types(genv)
         [Type::Instance.new([:Array])]

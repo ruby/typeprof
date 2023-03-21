@@ -94,7 +94,7 @@ module TypeProf::Core
       }
       if recv_ty.is_a?(Type::Array)
         # TODO: This is wrong. We need to return the vertex itself
-        map[:Elem] = recv_ty.elem.types.keys
+        map[:Elem] = recv_ty.get_elem.types.keys
       end
       @rbs_member.overloads.each do |overload|
         edges = Set[]

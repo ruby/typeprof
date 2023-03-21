@@ -82,15 +82,26 @@ module TypeProf::Core
       serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
-  def foo
+def foo
   ary = [1, "str"]
   ary[0]
-  end
-      END
+end
+
+def bar
+  ary = [1, "str"]
+  i = 0
+  ary[i]
+end
+            END
 
       assert_equal(
-        ["def foo: () -> Integer | String"],
+        ["def foo: () -> Integer"],
         serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: () -> Integer | String"],
+        serv.get_method_sig([], false, :bar),
       )
     end
   end

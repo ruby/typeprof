@@ -99,6 +99,27 @@ module TypeProf::Core
       edges
     end
 
+    def array_aref(node, ty, mid, a_args, ret)
+      edges = []
+      if a_args.size == 1
+        case ty
+        when Type::Array
+          idx = node.a_args.positional_args[0]
+          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer)
+            idx = idx.lit
+          else
+            idx = nil
+          end
+          edges << [ty.get_elem(idx), ret]
+        else
+          puts "???"
+        end
+      else
+        puts "???"
+      end
+      edges
+    end
+
     def array_aset(node, ty, mid, a_args, ret)
       edges = []
       if a_args.size == 2
@@ -123,6 +144,7 @@ module TypeProf::Core
         module_include: [[:Module], false, :include],
         module_attr_reader: [[:Module], false, :attr_reader],
         module_attr_accessor: [[:Module], false, :attr_accessor],
+        array_aref: [[:Array], false, :[]],
         array_aset: [[:Array], false, :[]=],
       }.each do |key, (cpath, singleton, mid)|
         mdecls = @genv.resolve_method(cpath, singleton, mid)

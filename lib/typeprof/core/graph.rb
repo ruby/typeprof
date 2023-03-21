@@ -114,7 +114,7 @@ module TypeProf::Core
           @types.each do |ty, _source|
             case ty
             when Type::Array
-              ary_elems << ty.elem.show
+              ary_elems << ty.get_elem.show
             else
               types << ty.show
             end
