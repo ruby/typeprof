@@ -2,12 +2,22 @@ module TypeProf::Core
   Fiber[:show_rec] = Set[]
 
   class Source
-    def initialize(ty)
-      raise ty.inspect unless ty.is_a?(Type)
-      @types = { ty => nil }
+    def initialize(*tys)
+      @types = {}
+      tys.each do |ty|
+        raise ty.inspect unless ty.is_a?(Type)
+        @types[ty] = true
+      end
     end
 
     attr_reader :types
+
+    def on_type_added(genv, src_var, added_types)
+      # TODO: need to report error
+    end
+
+    def on_type_removed(genv, src_var, removed_types)
+    end
 
     def new_vertex(genv, show_name, node)
       nvtx = Vertex.new(show_name, node)
@@ -34,6 +44,15 @@ module TypeProf::Core
           Fiber[:show_rec].delete(self)
         end
       end
+    end
+
+    def match?(genv, other)
+      @types.each do |ty1, _source|
+        other.types.each do |ty2, _source|
+          return true if ty1.match?(genv, ty2)
+        end
+      end
+      return false
     end
 
     def to_s
@@ -110,23 +129,23 @@ module TypeProf::Core
         begin
           Fiber[:show_rec] << self
           types = []
-          ary_elems = []
           @types.each do |ty, _source|
-            case ty
-            when Type::Array
-              ary_elems << ty.get_elem.show
-            else
-              types << ty.show
-            end
+            types << ty.show
           end
-          unless ary_elems.empty?
-            types << "Array[#{ ary_elems.sort.join(" | ") }]"
-          end
-          types.empty? ? "untyped" : types.sort.join(" | ")
+          types.empty? ? "untyped" : types.uniq.sort.join(" | ")
         ensure
           Fiber[:show_rec].delete(self)
         end
       end
+    end
+
+    def match?(genv, other)
+      @types.each do |ty1, _source|
+        other.types.each do |ty2, _source|
+          return true if ty1.match?(genv, ty2)
+        end
+      end
+      return false
     end
 
     @@new_id = 0
@@ -300,7 +319,7 @@ module TypeProf::Core
               nedges = md.builtin[@node, ty, @mid, @a_args, @ret]
             else
               # TODO: handle Type::Union
-              nedges = md.resolve_overloads(genv, ty, @a_args, @block, @ret)
+              nedges = md.resolve_overloads(@node, genv, ty, @a_args, @block, @ret)
             end
             nedges.each {|src, dst| edges << [src, dst] }
           when MethodDef

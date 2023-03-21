@@ -12,7 +12,7 @@ module TypeProf::Core
       END
 
       serv.update_file("test1.rb", <<-END)
-  foo([1, 2, 3])
+  foo([1, 2, 3].to_a)
       END
 
       assert_equal(
@@ -21,17 +21,17 @@ module TypeProf::Core
       )
 
       serv.update_file("test1.rb", <<-END)
-  foo([1, 2, 3])
-  foo(["str"])
+  foo([1, 2, 3].to_a)
+  foo(["str"].to_a)
       END
 
       assert_equal(
-        ["def foo: (Array[Integer | String]) -> Array[Integer | String]"],
+        ["def foo: (Array[Integer] | Array[String]) -> Array[Integer] | Array[String]"],
         serv.get_method_sig([], false, :foo),
       )
 
       serv.update_file("test1.rb", <<-END)
-  foo(["str"])
+  foo(["str"].to_a)
       END
 
       assert_equal(
@@ -44,13 +44,13 @@ module TypeProf::Core
       serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
-  def bar(a)
-  [a]
-  end
+def bar(a)
+  [a].to_a
+end
       END
 
       serv.update_file("test1.rb", <<-END)
-  bar(1)
+bar(1)
       END
 
       assert_equal(
@@ -59,8 +59,8 @@ module TypeProf::Core
       )
 
       serv.update_file("test1.rb", <<-END)
-  bar(1)
-  bar("str")
+bar(1)
+bar("str")
       END
 
       assert_equal(
@@ -69,7 +69,7 @@ module TypeProf::Core
       )
 
       serv.update_file("test1.rb", <<-END)
-  bar("str")
+bar("str")
       END
 
       assert_equal(

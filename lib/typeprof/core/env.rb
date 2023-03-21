@@ -87,14 +87,14 @@ module TypeProf::Core
 
     attr_reader :rbs_member, :builtin
 
-    def resolve_overloads(genv, recv_ty, a_args, block, ret)
+    def resolve_overloads(node, genv, recv_ty, a_args, block, ret)
       all_edges = Set[]
+      self_ty = (@singleton ? Type::Module : Type::Instance).new(@cpath)
       map = {
-        __self: [(@singleton ? Type::Module : Type::Instance).new(@cpath)],
+        __self: [Source.new(self_ty)],
       }
       if recv_ty.is_a?(Type::Array)
-        # TODO: This is wrong. We need to return the vertex itself
-        map[:Elem] = recv_ty.get_elem.types.keys
+        map[:Elem] = [recv_ty.get_elem]
       end
       @rbs_member.overloads.each do |overload|
         edges = Set[]
@@ -105,19 +105,17 @@ module TypeProf::Core
         # func.rest_keywords
         # func.rest_positionals
         # func.trailing_positionals
-        # TODO: only one argument!
+        map2 = map.dup
+        overload.method_type.type_params.map do |param|
+          map2[param.name] = [Vertex.new("type-param:#{ param.name }", node)]
+        end
         f_args = func.required_positionals.map do |f_arg|
-          Signatures.type(genv, f_arg.type, map)
+          Signatures.type(genv, f_arg.type, map2)
         end
         # TODO: correct block match
         if a_args.size == f_args.size
           match = a_args.zip(f_args).all? do |a_arg, f_arg|
-            a_arg.types.any? do |a_ty,|
-              f_arg.any? do |f_ty|
-                # TODO: type consistency
-                a_ty.match?(genv, f_ty)
-              end
-            end
+            f_arg.any? {|t| a_arg.match?(genv, t) }
           end
           rbs_blk = overload.method_type.block
           if block
@@ -130,14 +128,18 @@ module TypeProf::Core
                 case ty
                 when Type::Proc
                   blk_a_args = blk_func.required_positionals.map do |blk_a_arg|
-                    Signatures.type(genv, blk_a_arg.type, map)
+                    Signatures.type(genv, blk_a_arg.type, map2)
                   end
                   blk_f_args = ty.block.f_args
                   if blk_a_args.size == blk_f_args.size
                     blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
-                      blk_a_arg.each do |a_ty|
-                        edges << [Source.new(a_ty), blk_f_arg]
+                      blk_a_arg.each do |a_vtx|
+                        edges << [a_vtx, blk_f_arg]
                       end
+                    end
+                    blk_f_ret = Signatures.type(genv, blk_func.return_type, map2)
+                    blk_f_ret.each do |r|
+                      ty.block.ret.add_edge(genv, r)
                     end
                   else
                     match = false
@@ -155,8 +157,8 @@ module TypeProf::Core
             end
           end
           if match
-            Signatures.type(genv, func.return_type, map).each do |ret_ty|
-              edges << [Source.new(ret_ty), ret]
+            Signatures.type(genv, func.return_type, map2).each do |ret_vtx|
+              edges << [ret_vtx, ret]
             end
             edges.each do |src, dst|
               all_edges << [src, dst]

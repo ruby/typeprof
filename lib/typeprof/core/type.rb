@@ -54,6 +54,7 @@ module TypeProf::Core
 
       def initialize(elems, unified_elem)
         @elems = elems
+        raise unless unified_elem
         @unified_elem = unified_elem
       end
 
@@ -71,7 +72,11 @@ module TypeProf::Core
       end
 
       def show
-        "Array[#{ @elem.show }]"
+        if @elems
+          "[#{ @elems.map {|e| e.show }.join(", ") }]"
+        else
+          "Array[#{ @unified_elem.show }]"
+        end
       end
     end
 
@@ -119,8 +124,12 @@ module TypeProf::Core
       attr_reader :rbs_type
 
       def base_types(genv)
-        map = {} # is this OK?
-        Signatures.type(genv, @rbs_type, map)
+        # XXX: We need to consider this
+        map = {}
+        vtxs = Signatures.type(genv, @rbs_type, map)
+        vtxs.flat_map do |vtx|
+          vtx.types.keys
+        end.uniq
       end
 
       def inspect

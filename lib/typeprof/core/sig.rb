@@ -89,26 +89,41 @@ module TypeProf::Core
         end.compact
       when RBS::Types::ClassInstance
         name = type.name
-        [Type::Instance.new(name.namespace.path + [name.name])]
+        cpath = name.namespace.path + [name.name]
+        if cpath == [:Array]
+          raise if type.args.size != 1
+          elem = type.args.first
+          map[elem.name].map do |vtx|
+            Source.new(Type::Array.new(nil, vtx))
+          end
+        else
+          [Source.new(Type::Instance.new(cpath))]
+        end
       when RBS::Types::Interface
         nil # TODO...
       when RBS::Types::Bases::Bool
-        [Type::Instance.new([:TrueClass]), Type::Instance.new([:FalseClass])]
+        [
+          Source.new(Type::Instance.new([:TrueClass])),
+          Source.new(Type::Instance.new([:FalseClass])),
+        ]
       when RBS::Types::Bases::Nil
-        [Type::Instance.new([:NilClass])]
+        [Source.new(Type::Instance.new([:NilClass]))]
       when RBS::Types::Bases::Self
         map[:__self]
       when RBS::Types::Bases::Void
-        [Type::Instance.new([:Object])] # TODO
+        [Source.new(Type::Instance.new([:Object]))] # TODO
       when RBS::Types::Variable
         map[type.name] || raise
       when RBS::Types::Optional
-        self.type(genv, type.type, map) + [Type::Instance.new([:NilClass])]
+        self.type(genv, type.type, map) + [Source.new(Type::Instance.new([:NilClass]))]
       when RBS::Types::Literal
-        if type.literal.is_a?(::Symbol)
-          Type::Symbol.new(type.literal)
+        case type.literal
+        when ::Symbol
+          [Source.new(Type::Symbol.new(type.literal))]
+        when ::Integer
+          [Source.new(Type::Instance.new([:Integer]))]
         else
-          raise
+          raise "unknown RBS literal: #{ type.literal.inspect }"
         end
       else
         raise "unknown RBS type: #{ type.class }"

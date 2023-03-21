@@ -354,7 +354,7 @@ module TypeProf::Core
         @stmts.each do |stmt|
           ret = stmt.install(genv)
         end
-        ret
+        ret || Source.new(Type::Instance.new([:NilClass]))
       end
 
       def diff(prev_node)
@@ -925,16 +925,16 @@ module TypeProf::Core
       def subnodes = { cond:, then:, else: }
 
       def install0(genv)
-        @ret = Vertex.new("if", self)
+        ret = Vertex.new("if", self)
         @cond.install(genv)
-        @then.install(genv).add_edge(genv, @ret)
+        @then.install(genv).add_edge(genv, ret)
         if @else
           else_val = @else.install(genv)
         else
           else_val = Source.new(Type::Instance.new([:NilClass]))
         end
-        else_val.add_edge(genv, @ret)
-        @ret
+        else_val.add_edge(genv, ret)
+        ret
       end
 
       def dump0(dumper)
@@ -967,10 +967,10 @@ module TypeProf::Core
       def subnodes = { e1:, e2: }
 
       def install0(genv)
-        @ret = Vertex.new("and", self)
-        @e1.install(genv).add_edge(genv, @ret)
-        @e2.install(genv).add_edge(genv, @ret)
-        @ret
+        ret = Vertex.new("and", self)
+        @e1.install(genv).add_edge(genv, ret)
+        @e2.install(genv).add_edge(genv, ret)
+        ret
       end
 
       def dump0(dumper)
