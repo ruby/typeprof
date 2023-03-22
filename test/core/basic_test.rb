@@ -801,5 +801,34 @@ end
         serv.get_method_sig([], false, :baz),
       )
     end
+
+    def test_break
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-'END')
+def foo
+  yield 1
+  "str"
+end
+
+def bar
+  foo do |n|
+    break
+    1.0
+  end
+end
+      END
+
+      # TODO: These expectation are wrong! Need to implement break correctly
+      assert_equal(
+        ["def foo: () ({ (Integer) -> Float }) -> String"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: () -> String"],
+        serv.get_method_sig([], false, :bar),
+      )
+    end
   end
 end

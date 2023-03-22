@@ -74,6 +74,27 @@ module TypeProf::Core
     class UNTIL < LoopNode
     end
 
+    class BREAK < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_arg, = raw_node.children
+        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : nil
+      end
+
+      attr_reader :arg
+
+      def subnodes = { arg: }
+
+      def install0(genv)
+        _arg = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
+        # TODO: implement!
+      end
+
+      def dump0(dumper)
+        "break #{ @cond.dump(dumper) }"
+      end
+    end
+
     class CASE < Node
       def initialize(raw_node, lenv)
         super

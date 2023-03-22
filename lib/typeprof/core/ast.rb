@@ -41,6 +41,7 @@ module TypeProf::Core
       when :UNLESS then UNLESS.new(raw_node, lenv)
       when :WHILE then WHILE.new(raw_node, lenv)
       when :UNTIL then UNTIL.new(raw_node, lenv)
+      when :BREAK then BREAK.new(raw_node, lenv)
       when :CASE then CASE.new(raw_node, lenv)
       when :AND then AND.new(raw_node, lenv)
       when :RETURN then RETURN.new(raw_node, lenv)
