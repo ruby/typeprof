@@ -43,6 +43,85 @@ module TypeProf::Core
     class UNLESS < BranchNode
     end
 
+    class CASE < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_pivot, raw_when = raw_node.children
+        @pivot = AST.create_node(raw_pivot, lenv)
+        @clauses = []
+        while raw_when && raw_when.type == :WHEN
+          raw_vals, raw_clause, raw_when = raw_when.children
+          @clauses << [
+            AST.create_node(raw_vals, lenv),
+            AST.create_node(raw_clause, lenv),
+          ]
+        end
+        @else_clause = raw_when ? AST.create_node(raw_when, lenv) : nil
+      end
+
+      attr_reader :pivot, :clauses, :else_clause
+
+      def subnodes
+        h = { pivot:, else_clause: }
+        clauses.each_with_index do |(vals, clause), i|
+          h[i * 2] = vals
+          h[i * 2 + 1] = clause
+        end
+        h
+      end
+
+      def install0(genv)
+        ret = Vertex.new("case", self)
+        @pivot.install(genv)
+        @clauses.each do |vals, clause|
+          vals.install(genv)
+          clause.install(genv).add_edge(genv, ret)
+        end
+        if @else_clause
+          @else_clause.install(genv).add_edge(genv, ret)
+        else
+          Source.new(Type::Instance.new([:NilClass])).add_edge(genv, ret)
+        end
+        ret
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(CASE) && @clauses.size == prev_node.clauses.size
+          @pivot.diff(prev_node.pivot)
+          return unless @pivot.prev_node
+
+          @clauses.zip(prev_node.clauses) do |(vals, clause), (prev_vals, prev_clause)|
+            vals.diff(prev_vals)
+            return unless vals.prev_node
+            clause.diff(prev_clause)
+            return unless clause.prev_node
+          end
+
+          if @else_clause
+            @else_clause.diff(prev_node.else_clause)
+            return unless @else_clause.prev_node
+          else
+            return if @else_clause != prev_node.else_clause
+          end
+
+          @prev_node = prev_node
+        end
+      end
+
+      def dump0(dumper)
+        s = "case #{ @pivot.dump(dumper) }"
+        @clauses.each do |vals, clause|
+          s << "\nwhen #{ vals.dump(dumper) }\n"
+          s << clause.dump(dumper).gsub(/^/, "  ")
+        end
+        if @else_clause
+          s << "\nelse\n"
+          s << @else_clause.dump(dumper).gsub(/^/, "  ")
+        end
+        s << "\nend"
+      end
+    end
+
     class AND < Node
       def initialize(raw_node, lenv)
         super

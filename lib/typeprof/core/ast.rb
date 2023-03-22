@@ -39,6 +39,7 @@ module TypeProf::Core
       # control
       when :IF then IF.new(raw_node, lenv)
       when :UNLESS then UNLESS.new(raw_node, lenv)
+      when :CASE then CASE.new(raw_node, lenv)
       when :AND then AND.new(raw_node, lenv)
       when :RETURN then RETURN.new(raw_node, lenv)
       when :RESCUE then RESCUE.new(raw_node, lenv)

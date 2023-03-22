@@ -639,5 +639,41 @@ end
         serv.get_method_sig([], false, :baz),
       )
     end
+
+    def test_case
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-END)
+def foo(n)
+  case n
+  when 1
+    1
+  when 2
+    "str"
+  else
+    1.0
+  end
+end
+
+def bar(n)
+  case n
+  when 1
+    1
+  when 2
+    "str"
+  end
+end
+      END
+
+      assert_equal(
+        ["def foo: (untyped) -> Float | Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: (untyped) -> Integer | NilClass | String"],
+        serv.get_method_sig([], false, :bar),
+      )
+    end
   end
 end

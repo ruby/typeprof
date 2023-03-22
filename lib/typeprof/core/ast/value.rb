@@ -119,7 +119,15 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        raise NotImplementedError
+        if prev_node.is_a?(HASH) && @elems.size == prev_node.elems.size
+          @elems.zip(prev_node.elems) do |(key, val), (prev_key, prev_val)|
+            key.diff(prev_key)
+            return unless key.prev_node
+            val.diff(prev_val)
+            return unless val.prev_node
+          end
+          @prev_node = prev_node
+        end
       end
 
       def dump0(dumper)
