@@ -125,9 +125,57 @@ module TypeProf::Core
       if a_args.size == 2
         case ty
         when Type::Array
-          #idx = a_args[0].types
           val = a_args[1]
-          edges << [val, ty.elem]
+          idx = node.a_args.positional_args[0]
+          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(idx.lit)
+            edges << [val, ty.get_elem(idx.lit)]
+          else
+            edges << [val, ty.get_elem]
+          end
+        else
+          puts "???"
+        end
+      else
+        puts "???"
+      end
+      edges
+    end
+
+    def hash_aref(node, ty, mid, a_args, ret)
+      edges = []
+      if a_args.size == 1
+        case ty
+        when Type::Hash
+          idx = node.a_args.positional_args[0]
+          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol)
+            idx = idx.lit
+          else
+            idx = nil
+          end
+          edges << [ty.get_value(idx), ret]
+        else
+          puts "???"
+        end
+      else
+        puts "???"
+      end
+      edges
+    end
+
+    def hash_aset(node, ty, mid, a_args, ret)
+      edges = []
+      if a_args.size == 2
+        case ty
+        when Type::Hash
+          val = a_args[1]
+          idx = node.a_args.positional_args[0]
+          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol) && ty.get_value(idx.lit)
+            # TODO: how to handle new key?
+            edges << [val, ty.get_value(idx.lit)]
+          else
+            # TODO: literal_pairs will not be updated
+            edges << [val, ty.get_value]
+          end
         else
           puts "???"
         end
@@ -146,6 +194,8 @@ module TypeProf::Core
         module_attr_accessor: [[:Module], false, :attr_accessor],
         array_aref: [[:Array], false, :[]],
         array_aset: [[:Array], false, :[]=],
+        hash_aref: [[:Hash], false, :[]],
+        hash_aset: [[:Hash], false, :[]=],
       }.each do |key, (cpath, singleton, mid)|
         mdecls = @genv.resolve_method(cpath, singleton, mid)
         m = method(key)

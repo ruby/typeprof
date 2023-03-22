@@ -54,6 +54,7 @@ module TypeProf::Core
       when :TRUE then LIT.new(raw_node, lenv, true) # Using LIT is OK?
       when :FALSE then LIT.new(raw_node, lenv, false) # Using LIT is OK?
       when :ZLIST, :LIST then LIST.new(raw_node, lenv)
+      when :HASH then HASH.new(raw_node, lenv)
 
       # call
       when :ITER

@@ -142,7 +142,8 @@ module TypeProf::Core
     def match?(genv, other)
       @types.each do |ty1, _source|
         other.types.each do |ty2, _source|
-          return true if ty1.match?(genv, ty2)
+          # XXX
+          return true if ty1.base_types(genv).first.match?(genv, ty2.base_types(genv).first)
         end
       end
       return false

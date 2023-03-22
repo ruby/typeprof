@@ -93,8 +93,12 @@ module TypeProf::Core
       map = {
         __self: [Source.new(self_ty)],
       }
-      if recv_ty.is_a?(Type::Array)
+      case recv_ty
+      when Type::Array
         map[:Elem] = [recv_ty.get_elem]
+      when Type::Hash
+        map[:K] = [recv_ty.get_key]
+        map[:V] = [recv_ty.get_value]
       end
       @rbs_member.overloads.each do |overload|
         edges = Set[]

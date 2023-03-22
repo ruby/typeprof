@@ -62,7 +62,6 @@ module TypeProf::Core
         if idx && @elems
           @elems[idx] || Source.new(Type::Instance.new([:NilClass]))
         else
-          @elems = nil
           @unified_elem
         end
       end
@@ -77,6 +76,32 @@ module TypeProf::Core
         else
           "Array[#{ @unified_elem.show }]"
         end
+      end
+    end
+
+    class Hash < Type
+      include StructuralEquality
+
+      def initialize(literal_pairs, unified_key, unified_val)
+        @literal_pairs = literal_pairs
+        @unified_key = unified_key
+        @unified_val = unified_val
+      end
+
+      def get_key
+        @unified_key
+      end
+
+      def get_value(key = nil)
+        @literal_pairs[key] || @unified_val
+      end
+
+      def base_types(genv)
+        [Type::Instance.new([:Hash])]
+      end
+
+      def show
+        "Hash[#{ @unified_key.show }, #{ @unified_val.show }]"
       end
     end
 

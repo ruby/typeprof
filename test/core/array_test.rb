@@ -104,5 +104,22 @@ end
         serv.get_method_sig([], false, :bar),
       )
     end
+
+    def test_aset
+      serv = Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo
+  ary = [1, "str"]
+  ary[0] = 1.0
+  ary[0]
+end
+            END
+
+      assert_equal(
+        ["def foo: () -> Float | Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end
