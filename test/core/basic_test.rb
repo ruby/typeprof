@@ -390,7 +390,24 @@ f.foo = 42
 
       serv.update_file("test0.rb", <<-END)
 def foo(x, y)
-  x and y
+  x && y
+end
+
+foo(1, "s")
+      END
+
+      assert_equal(
+        ["def foo: (Integer, String) -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
+
+    def test_or
+      serv = Service.new
+
+      serv.update_file("test0.rb", <<-END)
+def foo(x, y)
+  x || y
 end
 
 foo(1, "s")

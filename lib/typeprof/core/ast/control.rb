@@ -219,6 +219,30 @@ module TypeProf::Core
       end
     end
 
+    class OR < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_e1, raw_e2 = raw_node.children
+        @e1 = AST.create_node(raw_e1, lenv)
+        @e2 = AST.create_node(raw_e2, lenv)
+      end
+
+      attr_reader :e1, :e2
+
+      def subnodes = { e1:, e2: }
+
+      def install0(genv)
+        ret = Vertex.new("or", self)
+        @e1.install(genv).add_edge(genv, ret)
+        @e2.install(genv).add_edge(genv, ret)
+        ret
+      end
+
+      def dump0(dumper)
+        "(#{ @e1.dump(dumper) } && #{ @e2.dump(dumper) })"
+      end
+    end
+
     class RETURN < Node
       def initialize(raw_node, lenv)
         super

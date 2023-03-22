@@ -45,6 +45,7 @@ module TypeProf::Core
       when :NEXT then NEXT.new(raw_node, lenv)
       when :CASE then CASE.new(raw_node, lenv)
       when :AND then AND.new(raw_node, lenv)
+      when :OR then OR.new(raw_node, lenv)
       when :RETURN then RETURN.new(raw_node, lenv)
       when :RESCUE then RESCUE.new(raw_node, lenv)
 
