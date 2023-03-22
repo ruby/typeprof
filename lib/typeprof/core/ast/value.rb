@@ -22,16 +22,14 @@ module TypeProf::Core
           Source.new(Type::Instance.new([:NilClass]))
         when Integer
           Source.new(Type::Instance.new([:Integer]))
-        when String
-          Source.new(Type::Instance.new([:String]))
         when Float
           Source.new(Type::Instance.new([:Float]))
         when Symbol
           Source.new(Type::Symbol.new(@lit))
         when TrueClass
-          Source.new(Type::Instance.new([:TrueClss]))
+          Source.new(Type::Instance.new([:TrueClass]))
         when FalseClass
-          Source.new(Type::Instance.new([:FalseClss]))
+          Source.new(Type::Instance.new([:FalseClass]))
         else
           raise "not supported yet: #{ @lit.inspect }"
         end
@@ -39,7 +37,64 @@ module TypeProf::Core
 
       def diff(prev_node)
         # Need to compare their classes to distinguish between 1 and 1.0 (or use equal?)
-        @lit.class == prev_node.lit.class && @lit == prev_node.lit && super
+        prev_node.is_a?(LIT) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
+      end
+
+      def dump0(dumper)
+        @lit.inspect
+      end
+    end
+
+    class STR < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        str, raw_evstr, raw_list = raw_node.children
+        raise if raw_evstr && raw_evstr.type != :EVSTR
+        @strs = [str]
+        @interpolations = []
+        if raw_evstr
+          @interpolations << AST.create_node(raw_evstr.children.first, lenv)
+          if raw_list
+            raw_list.children.compact.each do |node|
+              case node.type
+              when :EVSTR
+                @interpolations << AST.create_node(node.children.first, lenv)
+              when :STR
+                @strs << node.children.first
+              else
+                raise "#{ node.type } in DSTR??"
+              end
+            end
+          end
+        end
+      end
+
+      attr_reader :interpolations, :strs
+
+      def subnodes
+        h = {}
+        @interpolations.each_with_index do |subnode, i|
+          h[i] = subnode
+        end
+        h
+      end
+      def attrs = { strs: }
+
+      def install0(genv)
+        @interpolations.each do |subnode|
+          subnode.install(genv)
+        end
+        Source.new(Type::Instance.new([:String]))
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(STR) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations
+          @interpolations.zip(prev_node.interpolations) do |n, prev_n|
+            n.diff(prev_n)
+            return unless n.prev_node
+          end
+          @prev_node = prev_node
+        end
       end
 
       def dump0(dumper)

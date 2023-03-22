@@ -59,10 +59,10 @@ module TypeProf::Core
       # value
       when :SELF then SELF.new(raw_node, lenv)
       when :LIT then LIT.new(raw_node, lenv, raw_node.children.first)
-      when :STR then LIT.new(raw_node, lenv, raw_node.children.first) # Using LIT is OK?
       when :NIL then LIT.new(raw_node, lenv, nil)
       when :TRUE then LIT.new(raw_node, lenv, true) # Using LIT is OK?
       when :FALSE then LIT.new(raw_node, lenv, false) # Using LIT is OK?
+      when :STR, :DSTR then STR.new(raw_node, lenv)
       when :ZLIST, :LIST then LIST.new(raw_node, lenv)
       when :HASH then HASH.new(raw_node, lenv)
 
