@@ -889,6 +889,26 @@ end
       )
     end
 
+    def test_next
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-'END')
+def foo
+  yield 42
+end
+
+foo do |n|
+  next 1
+  "str"
+end
+      END
+
+      assert_equal(
+        ["def foo: () ({ (Integer) -> Integer | String }) -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
+
     def test_op_asgn_or
       serv = Service.new
 

@@ -46,7 +46,8 @@ module TypeProf::Core
           @block_f_args[0].times do |i|
             blk_f_args << @block_body.lenv.def_var(@block_tbl[i], self)
           end
-          blk_ret = @block_body.install(genv)
+          blk_ret = @block_body.lenv.get_ret
+          @block_body.install(genv).add_edge(genv, blk_ret)
           block = Block.new(@block_body, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         elsif @block_pass

@@ -95,6 +95,27 @@ module TypeProf::Core
       end
     end
 
+    class NEXT < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_arg, = raw_node.children
+        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : nil
+      end
+
+      attr_reader :arg
+
+      def subnodes = { arg: }
+
+      def install0(genv)
+        arg = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
+        arg.add_edge(genv, @lenv.get_ret)
+      end
+
+      def dump0(dumper)
+        "next #{ @cond.dump(dumper) }"
+      end
+    end
+
     class CASE < Node
       def initialize(raw_node, lenv)
         super
