@@ -69,6 +69,7 @@ module TypeProf::Core
       when :HASH then HASH.new(raw_node, lenv)
 
       # call
+      when :YIELD then YIELD.new(raw_node, lenv)
       when :ITER
         raw_call, raw_block = raw_node.children
         AST.create_call_node(raw_node, raw_call, raw_block, lenv)
@@ -356,6 +357,10 @@ module TypeProf::Core
 
     def def_var(name, node)
       @tbl[name] ||= Vertex.new("var:#{ name }", node)
+    end
+
+    def def_alias_var(name, old_name, node)
+      @tbl[name] = @tbl[old_name]
     end
 
     def get_var(name)

@@ -103,6 +103,22 @@ end
         ["def foo: (Integer) ({ (Float) -> String }) -> String"],
         serv.get_method_sig([], false, :foo),
       )
+
+      serv.update_file("test1.rb", <<-END)
+def bar(n)
+  yield 1.0
+end
+
+bar(12) do |n|
+  "str"
+end
+      END
+
+      #serv.dump_graph("test0.rb")
+      assert_equal(
+        ["def bar: (Integer) ({ (Float) -> String }) -> String"],
+        serv.get_method_sig([], false, :bar),
+      )
     end
 
     def test_block2

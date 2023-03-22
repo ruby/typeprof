@@ -234,8 +234,9 @@ module TypeProf::Core
             @args[0].times do |i|
               f_args << @body_lenv.def_var(@tbl[i], self)
             end
-            blk_idx = @args[9]
-            block = blk_idx ? @body_lenv.def_var(blk_idx, self) : nil
+            # &block
+            block = @body_lenv.def_var(:&, self)
+            @body_lenv.def_alias_var(@args[9], :&, self) if @args[9]
           end
           ret = @body_lenv.get_ret
           if @body

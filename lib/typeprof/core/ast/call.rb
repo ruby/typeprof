@@ -18,15 +18,17 @@ module TypeProf::Core
         else
           @block_tbl = @block_f_args = @block_body = nil
         end
+
+        @yield = raw_recv == false
       end
 
-      attr_reader :recv, :mid, :a_args, :block_tbl, :block_f_args, :block_body, :mid_code_range
+      attr_reader :recv, :mid, :a_args, :block_tbl, :block_f_args, :block_body, :mid_code_range, :yield
 
       def subnodes = { recv:, a_args:, block_body: }
-      def attrs = { mid:, block_tbl:, block_f_args:, mid_code_range: }
+      def attrs = { mid:, block_tbl:, block_f_args:, mid_code_range:, yield: }
 
       def install0(genv)
-        recv = @recv ? @recv.install(genv) : @lenv.get_self
+        recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:&) : @lenv.get_self
         a_args = @a_args ? @a_args.install(genv) : []
         if @block_body
           blk_f_args = []
@@ -125,6 +127,17 @@ module TypeProf::Core
 
       def dump0(dumper)
         dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ @a_args.dump(dumper) })")
+      end
+    end
+
+    class YIELD < CallNode
+      def initialize(raw_node, lenv)
+        raw_args, = raw_node.children
+        super(raw_node, raw_node, nil, lenv, false, :call, nil, raw_args)
+      end
+
+      def dump0(dumper)
+        dump_call("yield(#{ @a_args ? @a_args.dump(dumper) : "" })")
       end
     end
 
