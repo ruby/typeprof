@@ -40,6 +40,9 @@ module TypeProf::Core
           # TODO: check
         when RBS::AST::Declarations::Interface
         when RBS::AST::Declarations::Global
+          ty = Type::RBS.new(decl.type)
+          gvdecl = GVarDecl.new(decl.name, ty)
+          genv.add_gvar_decl(gvdecl)
         else
           raise "unsupported: #{ decl.class }"
         end

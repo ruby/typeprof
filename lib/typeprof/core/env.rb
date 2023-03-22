@@ -223,6 +223,37 @@ module TypeProf::Core
     attr_reader :node, :f_args, :ret
   end
 
+  class GVarEntry
+    def initialize(name)
+      @name = name
+    end
+
+    attr_reader :name
+  end
+
+  class GVarDecl < GVarEntry
+    def initialize(name, type)
+      super(name)
+      @type = type
+    end
+
+    attr_reader :type
+  end
+
+  class GVarDef < GVarEntry
+    def initialize(name, node, val)
+      super(name)
+      @node = node
+      @val = val
+    end
+
+    attr_reader :node, :val
+
+    def show
+      "<TODO GVarDef>"
+    end
+  end
+
   class IVarDef
     def initialize(cpath, singleton, name, node, val)
       @cpath = cpath
@@ -232,8 +263,7 @@ module TypeProf::Core
       @val = val
     end
 
-    attr_reader :cpath, :singleton, :name
-    attr_reader :node, :val
+    attr_reader :cpath, :singleton, :name, :node, :val
 
     def show
       "<TODO IVarDef>"
@@ -248,11 +278,14 @@ module TypeProf::Core
       @toplevel = ModuleDirectory.new
       @toplevel.child_modules[:Object] = @toplevel
 
+      @gvars = {}
+
       @rbs_builder = rbs_builder
 
       @creadsites_by_name = {}
       @callsites_by_name = {}
       @ivreadsites_by_name = {}
+      @gvreadsites_by_name = {}
     end
 
     attr_reader :rbs_builder
@@ -469,6 +502,58 @@ module TypeProf::Core
       if callsites
         callsites.each do |callsite|
           add_run(callsite)
+        end
+      end
+    end
+
+    # global variables
+
+    def get_gvar_entity(gve)
+      @gvars[gve.name] ||= Entity.new
+    end
+
+    def add_gvar_decl(gvdecl)
+      e = get_gvar_entity(gvdecl)
+      e.decls << gvdecl
+    end
+
+    def add_gvar_def(gvdef)
+      e = get_gvar_entity(gvdef)
+      e.defs << gvdef
+
+      run_gvreadsite(gvdef.name)
+    end
+
+    def remove_gvar_def(gvdef)
+      e = get_gvar_entity(gvdef)
+      e.defs.delete(gvdef)
+
+      run_gvreadsite(gvdef.name)
+    end
+
+    def resolve_gvar(name)
+      e = @gvars[name]
+      if e
+        return e.decls unless e.decls.empty?
+        return e.defs unless e.defs.empty?
+      end
+      return nil
+    end
+
+    def add_gvreadsite(gvreadsite)
+      (@gvreadsites_by_name[gvreadsite.name] ||= Set[]) << gvreadsite
+      add_run(gvreadsite)
+    end
+
+    def remove_gvreadsite(gvreadsite)
+      @gvreadsites_by_name[gvreadsite.name].delete(gvreadsite)
+    end
+
+    def run_gvreadsite(name)
+      gvreadsites = @gvreadsites_by_name[name]
+      if gvreadsites
+        gvreadsites.each do |gvreadsite|
+          add_run(gvreadsite)
         end
       end
     end

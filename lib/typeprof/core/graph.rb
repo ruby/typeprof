@@ -372,6 +372,50 @@ module TypeProf::Core
     end
   end
 
+  class GVarReadSite < Box
+    def initialize(node, genv, name)
+      super(node)
+      @name = name
+      @ret = Vertex.new("gvar:#{ name }", node)
+      genv.add_gvreadsite(self)
+    end
+
+    def destroy(genv)
+      genv.remove_gvreadsite(self)
+      super
+    end
+
+    attr_reader :name, :ret
+
+    def run0(genv)
+      edges = Set[]
+      resolve(genv).each do |gves|
+        gves.each do |gve|
+          case gve
+          when GVarDecl
+            gve.type.base_types(genv).each do |base_ty|
+              edges << [Source.new(base_ty), @ret]
+            end
+          when GVarDef
+            edges << [gve.val, @ret]
+          end
+        end
+      end
+      edges
+    end
+
+    def resolve(genv)
+      ret = []
+      gves = genv.resolve_gvar(@name)
+      ret << gves if gves && !gves.empty?
+      ret
+    end
+
+    def long_inspect
+      "#{ to_s } (name:#{ @name }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+    end
+  end
+
   class IVarReadSite < Box
     def initialize(node, genv, cpath, singleton, name)
       super(node)
@@ -394,6 +438,7 @@ module TypeProf::Core
       resolve(genv).each do |ives|
         ives.each do |ive|
           case ive
+          #when IVarDecl
           when IVarDef
             edges << [ive.val, @ret]
           end
@@ -410,7 +455,7 @@ module TypeProf::Core
     end
 
     def long_inspect
-      "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+      "#{ to_s } (cpath:#{ @cpath.join("::") }, name:#{ name }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
     end
   end
 

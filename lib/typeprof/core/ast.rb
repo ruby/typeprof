@@ -47,6 +47,8 @@ module TypeProf::Core
       when :CONST then CONST.new(raw_node, lenv)
       when :COLON2 then COLON2.new(raw_node, lenv)
       when :CDECL then CDECL.new(raw_node, lenv)
+      when :GVAR then GVAR.new(raw_node, lenv)
+      when :GASGN then GASGN.new(raw_node, lenv)
       when :IVAR then IVAR.new(raw_node, lenv)
       when :IASGN then IASGN.new(raw_node, lenv)
       when :LVAR, :DVAR then LVAR.new(raw_node, lenv)
@@ -170,6 +172,8 @@ module TypeProf::Core
           genv.add_method_def(d)
         when ConstDef
           genv.add_const_def(d)
+        when GVarDef
+          genv.add_gvar_def(d)
         when IVarDef
           genv.add_ivar_def(d)
         end
@@ -208,6 +212,8 @@ module TypeProf::Core
                 genv.remove_method_def(d)
               when ConstDef
                 genv.remove_const_def(d)
+              when GVarDef
+                genv.remove_gvar_def(d)
               when IVarDef
                 genv.remove_ivar_def(d)
               end

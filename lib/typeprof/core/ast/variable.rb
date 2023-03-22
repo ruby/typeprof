@@ -93,6 +93,66 @@ module TypeProf::Core
       end
     end
 
+    class GVAR < Node
+      def initialize(raw_node, lenv)
+        super
+        var, = raw_node.children
+        @var = var
+        @iv = nil
+      end
+
+      attr_reader :var
+
+      def attrs = { var: }
+
+      def install0(genv)
+        site = GVarReadSite.new(self, genv, @var)
+        add_site(:main, site)
+        site.ret
+      end
+
+      def hover(pos)
+        yield self if code_range.include?(pos)
+      end
+
+      def dump0(dumper)
+        "#{ @var }"
+      end
+    end
+
+    class GASGN < Node
+      def initialize(raw_node, lenv)
+        super
+        var, raw_rhs = raw_node.children
+        @var = var
+        @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
+
+        pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        @var_code_range = AST.find_sym_code_range(pos, @var)
+      end
+
+      attr_reader :var, :rhs, :var_code_range
+
+      def subnodes = { rhs: }
+      def attrs = { var:, var_code_range: }
+
+      def install0(genv)
+        val = @rhs.install(genv)
+        gvdef = GVarDef.new(@var, self, val)
+        add_def(genv, gvdef)
+        val
+      end
+
+      def hover(pos)
+        yield self if @var_code_range && @var_code_range.include?(pos)
+        super
+      end
+
+      def dump0(dumper)
+        "#{ @var } = #{ @rhs.dump(dumper) }"
+      end
+    end
+
     class IVAR < Node
       def initialize(raw_node, lenv)
         super

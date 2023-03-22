@@ -606,5 +606,38 @@ end
         serv.get_method_sig([], false, :bar),
       )
     end
+
+    def test_gvar
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-END)
+def foo
+  $foo = "str"
+end
+
+def bar
+  $foo
+end
+
+def baz
+  $VERBOSE
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> String"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: () -> String"],
+        serv.get_method_sig([], false, :bar),
+      )
+
+      assert_equal(
+        ["def baz: () -> FalseClass | NilClass | TrueClass"],
+        serv.get_method_sig([], false, :baz),
+      )
+    end
   end
 end
