@@ -338,6 +338,15 @@ module TypeProf::Core
       dir.superclass_cpath = superclass_cpath
     end
 
+    # module inclusion
+
+    def add_module_include(cpath, mod_cpath)
+      dir = resolve_cpath(cpath)
+      dir.include_module_cpaths << mod_cpath
+    end
+
+    # TODO: remove_method_decl
+
     # consts
 
     def get_const_entity(ce)
@@ -407,12 +416,14 @@ module TypeProf::Core
       e.decls << mdecl
     end
 
-    def add_module_include(cpath, mod_cpath)
-      dir = resolve_cpath(cpath)
-      dir.include_module_cpaths << mod_cpath
-    end
+    def add_method_alias(mdecl_new, mdecl_old)
+      e_new = get_method_entity(mdecl_new)
+      e_old = get_method_entity(mdecl_old)
 
-    # TODO: remove_method_decl
+      # TODO: This does not support the following pathological alias
+      # class C; def foo; end; end; class D < C; alias bar foo; end
+      e_old.decls.each {|mdecl| e_new.decls << mdecl }
+    end
 
     def add_method_def(mdef)
       e = get_method_entity(mdef)
@@ -452,7 +463,7 @@ module TypeProf::Core
             cpath = [:Class]
             singleton = false
           else
-            return nil
+            return
           end
         else
           cpath = dir.superclass_cpath

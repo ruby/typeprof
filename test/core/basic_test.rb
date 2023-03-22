@@ -675,5 +675,20 @@ end
         serv.get_method_sig([], false, :bar),
       )
     end
+
+    def test_rbs_alias
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-END)
+def foo
+  1.0.phase
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> Float | Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end
