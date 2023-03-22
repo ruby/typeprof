@@ -125,6 +125,33 @@ end
       serv = Service.new
 
       serv.update_file("test0.rb", <<-END)
+def foo
+  yield 42
+end
+
+def proxy(&blk)
+  foo(&blk)
+end
+
+def bar
+  ret = nil
+  foo do |n|
+    ret = n
+  end
+  ret
+end
+      END
+
+      assert_equal(
+        ["def foo: () ({ (Integer) -> Integer }) -> Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+      assert_equal(
+        ["def bar: () -> Integer | NilClass"],
+        serv.get_method_sig([], false, :bar),
+      )
+
+      serv.update_file("test0.rb", <<-END)
 def foo(x)
   yield 42
 end

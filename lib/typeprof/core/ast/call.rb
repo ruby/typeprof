@@ -7,15 +7,16 @@ module TypeProf::Core
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
         @mid = mid
         @mid_code_range = mid_code_range
+        @a_args = nil
         @block_pass = nil
         if raw_args
           if raw_args.type == :BLOCK_PASS
             raw_args, raw_block_pass = raw_args.children
             @block_pass = AST.create_node(raw_block_pass, lenv)
           end
-          @a_args = A_ARGS.new(raw_args, lenv)
-        else
-          @a_args = nil
+          if raw_args
+            @a_args = A_ARGS.new(raw_args, lenv)
+          end
         end
 
         if raw_block
