@@ -63,7 +63,7 @@ module TypeProf::LSP
 
     def expect_request(m)
       json = @dummy_io.write_buffer.shift
-      json => { method:, id:, params: }
+      json => { method:, id: _, params: }
       assert_equal(m, method)
       yield params
     end
