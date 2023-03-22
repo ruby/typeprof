@@ -706,5 +706,39 @@ end
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_dstr
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-'END')
+def foo
+  "foo#{ bar(1) }"
+  "foo#{ bar(1) }baz#{ qux(1.0) }"
+end
+
+def bar(n)
+  "bar"
+end
+
+def qux(n)
+  "qux"
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> String"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: (Integer) -> String"],
+        serv.get_method_sig([], false, :bar),
+      )
+
+      assert_equal(
+        ["def qux: (Float) -> String"],
+        serv.get_method_sig([], false, :qux),
+      )
+    end
   end
 end
