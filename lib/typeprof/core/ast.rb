@@ -88,6 +88,7 @@ module TypeProf::Core
       when :FCALL then FCALL.new(raw_node, raw_call, raw_block, lenv)
       when :OPCALL then OPCALL.new(raw_node, raw_call, raw_block, lenv)
       when :ATTRASGN then ATTRASGN.new(raw_node, raw_call, raw_block, lenv)
+      when :SUPER, :ZSUPER then SUPER.new(raw_node, raw_call, raw_block, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"

@@ -144,6 +144,19 @@ module TypeProf::Core
       end
     end
 
+    class SUPER < Node # CallNode
+      def initialize(raw_node, raw_call, raw_block, lenv)
+      end
+
+      def install0(genv)
+        Source.new(Type::Instance.new([:NilClass]))
+      end
+
+      def dump0(dumper)
+        dump("super(...)")
+      end
+    end
+
     class YIELD < CallNode
       def initialize(raw_node, lenv)
         raw_args, = raw_node.children
