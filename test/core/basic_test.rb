@@ -740,5 +740,50 @@ end
         serv.get_method_sig([], false, :qux),
       )
     end
+
+    def test_loop
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-'END')
+def foo
+  a = [[nil]]
+  while a
+    a = a[0]
+  end
+  a
+end
+
+def bar
+  a = [[nil]]
+  until a
+    a = a[0]
+  end
+  a
+end
+
+def baz
+  a = [[nil]]
+  begin a
+    a = a[0]
+  end while a
+  a
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> NilClass | [NilClass] | [[NilClass]]"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: () -> NilClass | [NilClass] | [[NilClass]]"],
+        serv.get_method_sig([], false, :bar),
+      )
+
+      assert_equal(
+        ["def baz: () -> NilClass | [NilClass] | [[NilClass]]"],
+        serv.get_method_sig([], false, :baz),
+      )
+    end
   end
 end

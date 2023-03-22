@@ -43,6 +43,37 @@ module TypeProf::Core
     class UNLESS < BranchNode
     end
 
+    class LoopNode < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_cond, raw_body, _do_while_flag = raw_node.children
+        @cond = AST.create_node(raw_cond, lenv)
+        @body = AST.create_node(raw_body, lenv)
+      end
+
+      attr_reader :cond, :body
+
+      def subnodes = { cond:, body: }
+
+      def install0(genv)
+        @cond.install(genv)
+        @body.install(genv)
+        Source.new(Type::Instance.new([:NilClass]))
+      end
+
+      def dump0(dumper)
+        s = "while #{ @cond.dump(dumper) }\n"
+        s << @body.dump(dumper).gsub(/^/, "  ")
+        s << "\nend"
+      end
+    end
+
+    class WHILE < LoopNode
+    end
+
+    class UNTIL < LoopNode
+    end
+
     class CASE < Node
       def initialize(raw_node, lenv)
         super
