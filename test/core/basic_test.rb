@@ -926,5 +926,22 @@ $x ||= "str"
         serv.get_method_sig([], false, :foo),
       )
     end
+
+    def test_op_asgn1
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-'END')
+def foo
+  ary = [0]
+  ary[0] ||= "str"
+  ary
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> [Integer | String]"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

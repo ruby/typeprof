@@ -73,6 +73,7 @@ module TypeProf::Core
 
       # call
       when :YIELD then YIELD.new(raw_node, lenv)
+      when :OP_ASGN1 then OP_ASGN_AREF.new(raw_node, lenv)
       when :ITER
         raw_call, raw_block = raw_node.children
         AST.create_call_node(raw_node, raw_call, raw_block, lenv)

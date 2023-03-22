@@ -1,7 +1,7 @@
 module TypeProf::Core
   class AST
     class CallNode < Node
-      def initialize(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
+      def initialize(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args, raw_last_arg = nil)
         super(raw_node, lenv)
 
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
@@ -15,7 +15,7 @@ module TypeProf::Core
             @block_pass = AST.create_node(raw_block_pass, lenv)
           end
           if raw_args
-            @a_args = A_ARGS.new(raw_args, lenv)
+            @a_args = A_ARGS.new(raw_args, raw_last_arg, lenv)
           end
         end
 
@@ -144,11 +144,25 @@ module TypeProf::Core
       end
     end
 
+    class OP_ASGN_AREF < CallNode
+      def initialize(raw_node, lenv)
+        raw_recv, _raw_op, raw_args, raw_rhs = raw_node.children
+        # Consider `ary[idx] ||= rhs` as `ary[idx] = rhs`
+        super(raw_node, nil, nil, lenv, raw_recv, :[]=, nil, raw_args, raw_rhs)
+      end
+
+      def dump0(dumper)
+        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ @a_args.dump(dumper) })")
+      end
+    end
+
     class SUPER < Node # CallNode
       def initialize(raw_node, raw_call, raw_block, lenv)
+        # completely dummy
       end
 
       def install0(genv)
+        # completely dummy
         Source.new(Type::Instance.new([:NilClass]))
       end
 
@@ -169,8 +183,8 @@ module TypeProf::Core
     end
 
     class A_ARGS < Node
-      def initialize(raw_node, lenv)
-        super
+      def initialize(raw_node, raw_last_arg, lenv)
+        super(raw_node, lenv)
         @positional_args = []
         # TODO
         case raw_node.type
@@ -181,6 +195,9 @@ module TypeProf::Core
           raise NotImplementedError
         else
           raise "not supported yet: #{ raw_node.type }"
+        end
+        if raw_last_arg
+          @positional_args << AST.create_node(raw_last_arg, lenv)
         end
       end
 
