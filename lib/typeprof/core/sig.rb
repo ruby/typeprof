@@ -125,6 +125,8 @@ module TypeProf::Core
         map[:__self]
       when RBS::Types::Bases::Void
         [Source.new(Type::Instance.new([:Object]))] # TODO
+      when RBS::Types::Bases::Bottom
+        [Source.new()] # TODO
       when RBS::Types::Variable
         map[type.name] || raise
       when RBS::Types::Optional

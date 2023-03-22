@@ -663,6 +663,17 @@ def bar(n)
     "str"
   end
 end
+
+def baz(n)
+  case n
+  when 1
+    1
+  when 2
+    "str"
+  else
+    raise
+  end
+end
       END
 
       assert_equal(
@@ -673,6 +684,11 @@ end
       assert_equal(
         ["def bar: (untyped) -> Integer | NilClass | String"],
         serv.get_method_sig([], false, :bar),
+      )
+
+      assert_equal(
+        ["def baz: (untyped) -> Integer | String"],
+        serv.get_method_sig([], false, :baz),
       )
     end
 
