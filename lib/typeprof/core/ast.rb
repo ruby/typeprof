@@ -1,7 +1,12 @@
 module TypeProf::Core
   class AST
     def self.parse(text_id, src)
-      raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
+      begin
+        verbose_back, $VERBOSE = $VERBOSE, nil
+        raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
+      rescue
+        $VERBOSE = verbose_back
+      end
 
       raise unless raw_scope.type == :SCOPE
       _tbl, args, raw_body = raw_scope.children
@@ -46,11 +51,13 @@ module TypeProf::Core
       when :IASGN then IASGN.new(raw_node, lenv)
       when :LVAR, :DVAR then LVAR.new(raw_node, lenv)
       when :LASGN, :DASGN then LASGN.new(raw_node, lenv)
+      when :MASGN then MASGN.new(raw_node, lenv)
 
       # value
       when :SELF then SELF.new(raw_node, lenv)
       when :LIT then LIT.new(raw_node, lenv, raw_node.children.first)
       when :STR then LIT.new(raw_node, lenv, raw_node.children.first) # Using LIT is OK?
+      when :NIL then LIT.new(raw_node, lenv, nil)
       when :TRUE then LIT.new(raw_node, lenv, true) # Using LIT is OK?
       when :FALSE then LIT.new(raw_node, lenv, false) # Using LIT is OK?
       when :ZLIST, :LIST then LIST.new(raw_node, lenv)

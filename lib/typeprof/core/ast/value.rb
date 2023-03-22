@@ -18,6 +18,8 @@ module TypeProf::Core
 
       def install0(genv)
         case @lit
+        when NilClass
+          Source.new(Type::Instance.new([:NilClass]))
         when Integer
           Source.new(Type::Instance.new([:Integer]))
         when String

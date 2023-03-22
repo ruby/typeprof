@@ -573,5 +573,38 @@ end
         serv.get_method_sig([], false, :test),
       )
     end
+
+    def test_masgn_for_lasgn
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-END)
+def baz
+  [1, 1.0, "str"]
+end
+
+def foo
+  x, y, z, w = baz
+  x
+end
+
+def bar
+  x = nil
+  1.times do |_|
+    x, y, z, w = baz
+  end
+  x
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> Integer"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: () -> Integer | NilClass"],
+        serv.get_method_sig([], false, :bar),
+      )
+    end
   end
 end

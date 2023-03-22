@@ -387,7 +387,7 @@ module TypeProf::Core
       super
     end
 
-    attr_reader :node, :cpath, :singleton, :name, :ret
+    attr_reader :cpath, :singleton, :name, :ret
 
     def run0(genv)
       edges = Set[]
@@ -411,6 +411,38 @@ module TypeProf::Core
 
     def long_inspect
       "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+    end
+  end
+
+  class MAsgnSite < Box
+    def initialize(node, genv, rhs, lhss)
+      super(node)
+      @rhs = rhs
+      @lhss = lhss
+      @rhs.add_edge(genv, self)
+    end
+
+    attr_reader :node, :rhs, :lhss
+
+    def ret = @rhs
+
+    def run0(genv)
+      edges = []
+      @rhs.types.each do |ty, _source|
+        case ty
+        when Type::Array
+          @lhss.each_with_index do |lhs, i|
+            edges << [ty.get_elem(i), lhs]
+          end
+        else
+          edges << [@rhs, @lhss[0]]
+        end
+      end
+      edges
+    end
+
+    def long_inspect
+      "#{ to_s } (masgn)"
     end
   end
 end

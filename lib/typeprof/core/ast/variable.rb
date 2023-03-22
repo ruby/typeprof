@@ -66,7 +66,7 @@ module TypeProf::Core
           @static_cpath = AST.parse_cpath(@cpath, lenv.cref.cpath)
           raw_rhs = children[2]
         end
-        @rhs = AST.create_node(raw_rhs, lenv)
+        @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
       end
 
       attr_reader :cpath, :rhs, :static_cpath
@@ -123,9 +123,9 @@ module TypeProf::Core
     class IASGN < Node
       def initialize(raw_node, lenv)
         super
-        var, rhs = raw_node.children
+        var, raw_rhs = raw_node.children
         @var = var
-        @rhs = AST.create_node(rhs, lenv)
+        @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
 
         pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
         @var_code_range = AST.find_sym_code_range(pos, @var)
@@ -180,26 +180,81 @@ module TypeProf::Core
     class LASGN < Node
       def initialize(raw_node, lenv)
         super
-        var, rhs = raw_node.children
+        var, raw_rhs = raw_node.children
         @var = var
-        @rhs = AST.create_node(rhs, lenv)
+        @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
 
         pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
         @var_code_range = AST.find_sym_code_range(pos, @var)
       end
 
-      attr_reader :var, :rhs, :var_code_range
+      def set_dummy_rhs(dummy_rhs)
+        @dummy_rhs = dummy_rhs
+      end
+
+      attr_reader :var, :rhs, :var_code_range, :dummy_rhs
 
       def subnodes = { rhs: }
-      def attrs = { var:, var_code_range: }
+      def attrs = { var:, var_code_range:, dummy_rhs: }
 
       def install0(genv)
         lenv = @lenv.resolve_var(@var)
         vtx = lenv ? lenv.get_var(@var) : @lenv.def_var(@var, self)
 
-        val = @rhs.install(genv)
+        val = (@rhs || @dummy_rhs).install(genv)
         val.add_edge(genv, vtx)
         val
+      end
+
+      def hover(pos)
+        yield self if @var_code_range && @var_code_range.include?(pos)
+        super
+      end
+
+      def dump0(dumper)
+        "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
+      end
+    end
+
+    class DummyRHS
+      def initialize(vtx)
+        @vtx = vtx
+      end
+
+      def install(genv)
+        @vtx
+      end
+    end
+
+    class MASGN < Node
+      def initialize(raw_node, lenv)
+        super
+        rhs, lhss = raw_node.children
+        @rhs = AST.create_node(rhs, lenv)
+        raise if lhss.type != :LIST # TODO: ARGSPUSH, ARGSCAT
+        @lhss = lhss.children.compact.map {|node| AST.create_node(node, lenv) }
+      end
+
+      attr_reader :var, :rhs, :lhss, :var_code_range
+
+      def subnodes
+        h = { rhs: }
+        @lhss.each_with_index do |lhs, i|
+          h[i] = lhs
+        end
+        h
+      end
+
+      def install0(genv)
+        lhss = @lhss.map do |lhs|
+          vtx = Vertex.new("masgn-rhs", self)
+          lhs.set_dummy_rhs(DummyRHS.new(vtx))
+          vtx
+        end
+        rhs = @rhs.install(genv)
+        site = MAsgnSite.new(self, genv, rhs, lhss)
+        @lhss.each {|lhs| lhs.install(genv) }
+        site.ret
       end
 
       def hover(pos)
