@@ -7,9 +7,19 @@ module TypeProf::Core
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
         @mid = mid
         @mid_code_range = mid_code_range
-        @a_args = A_ARGS.new(raw_args, lenv) if raw_args
+        @block_pass = nil
+        if raw_args
+          if raw_args.type == :BLOCK_PASS
+            raw_args, raw_block_pass = raw_args.children
+            @block_pass = AST.create_node(raw_block_pass, lenv)
+          end
+          @a_args = A_ARGS.new(raw_args, lenv)
+        else
+          @a_args = nil
+        end
 
         if raw_block
+          raise if @block_pass
           @block_tbl, raw_block_args, raw_block_body = raw_block.children
           @block_f_args = raw_block_args.children
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
@@ -38,6 +48,8 @@ module TypeProf::Core
           blk_ret = @block_body.install(genv)
           block = Block.new(@block_body, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
+        elsif @block_pass
+          blk_ty = @block_pass.install(genv)
         end
         site = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
         add_site(:main, site)

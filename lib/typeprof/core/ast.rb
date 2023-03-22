@@ -141,13 +141,8 @@ module TypeProf::Core
 
       attr_reader :lenv, :prev_node, :ret
 
-      def subnodes
-        {}
-      end
-
-      def attrs
-        {}
-      end
+      def subnodes = {}
+      def attrs = {}
 
       def traverse(&blk)
         yield :enter, self

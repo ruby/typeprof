@@ -142,12 +142,19 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         cs = raw_node.children
-        raise "HASH???" if cs.size != 1 && cs.first.type != :LIST
-        elems = {}
-        cs.first.children.compact.each_slice(2) do |key, val|
-          elems[AST.create_node(key, lenv)] = AST.create_node(val, lenv)
+        raise "HASH???" if cs.size != 1
+        contents = cs.first
+        @elems = {}
+        if contents
+          case contents.type
+          when :LIST
+            cs.first.children.compact.each_slice(2) do |key, val|
+              @elems[AST.create_node(key, lenv)] = AST.create_node(val, lenv)
+            end
+          else
+             raise "not supported hash: #{ contents.type }"
+          end
         end
-        @elems = elems
       end
 
       def subnodes

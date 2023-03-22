@@ -3,7 +3,7 @@ module TypeProf::Core
     class BLOCK < Node
       def initialize(raw_node, lenv)
         super
-        stmts = raw_node.children
+        stmts = raw_node.children.compact
         @stmts = stmts.map {|n| AST.create_node(n, lenv) }
       end
 
