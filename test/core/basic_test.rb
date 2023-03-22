@@ -888,5 +888,23 @@ end
         serv.get_method_sig([], false, :bar),
       )
     end
+
+    def test_op_asgn_or
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-'END')
+def foo
+  $x
+end
+
+$x ||= 1
+$x ||= "str"
+      END
+
+      assert_equal(
+        ["def foo: () -> Integer | String"],
+        serv.get_method_sig([], false, :foo),
+      )
+    end
   end
 end

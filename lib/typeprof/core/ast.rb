@@ -58,6 +58,7 @@ module TypeProf::Core
       when :LVAR, :DVAR then LVAR.new(raw_node, lenv)
       when :LASGN, :DASGN then LASGN.new(raw_node, lenv)
       when :MASGN then MASGN.new(raw_node, lenv)
+      when :OP_ASGN_OR then OP_ASGN_OR.new(raw_node, lenv)
 
       # value
       when :SELF then SELF.new(raw_node, lenv)

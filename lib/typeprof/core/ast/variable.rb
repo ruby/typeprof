@@ -326,5 +326,28 @@ module TypeProf::Core
         "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
     end
+
+    class OP_ASGN_OR < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_read, _raw_op, raw_write = raw_node.children
+        @read = AST.create_node(raw_read, lenv)
+        @write = AST.create_node(raw_write, lenv)
+      end
+
+      attr_reader :read, :write
+
+      def subnodes = { read:, write: }
+
+      def install0(genv)
+        ret = @read.install(genv)
+        @write.install(genv)
+        ret
+      end
+
+      def dump0(dumper)
+        "#{ @read.dump(dumper) } || #{ @write.dump(dumper) }"
+      end
+    end
   end
 end
