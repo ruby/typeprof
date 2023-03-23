@@ -115,7 +115,7 @@ module TypeProf::Core
         elems = @elems.map {|e| e.install(genv).new_vertex(genv, "ary-elem", self) }
         unified_elem = Vertex.new("ary-elems-unified", self)
         elems.each {|vtx| vtx.add_edge(genv, unified_elem) }
-        Source.new(Type::Array.new(elems, unified_elem))
+        Source.new(Type::Array.new(elems, unified_elem, Type.ary))
       end
 
       def diff(prev_node)

@@ -52,22 +52,23 @@ module TypeProf::Core
     class Array < Type
       include StructuralEquality
 
-      def initialize(elems, unified_elem)
+      def initialize(elems, unified_elem, base_type)
         @elems = elems
         raise unless unified_elem
         @unified_elem = unified_elem
+        @base_type = base_type
       end
 
       def get_elem(idx = nil)
         if idx && @elems
-          @elems[idx] || Source.new(Type::Instance.new([:NilClass]))
+          @elems[idx] || Source.new(Type.nil)
         else
           @unified_elem
         end
       end
 
       def base_types(genv)
-        [Type::Instance.new([:Array])]
+        [@base_type]
       end
 
       def show
@@ -169,5 +170,6 @@ module TypeProf::Core
     def self.str = Type::Instance.new([:String])
     def self.int = Type::Instance.new([:Integer])
     def self.float = Type::Instance.new([:Float])
+    def self.ary = Type::Instance.new([:Array])
   end
 end

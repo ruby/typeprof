@@ -113,7 +113,7 @@ module TypeProf::Core
           raise if type.args.size != 1
           elem = type.args.first
           elem_vtx = type_to_vtx(genv, node, elem, param_map)
-          Source.new(Type::Array.new(nil, elem_vtx)).add_edge(genv, vtx)
+          Source.new(Type::Array.new(nil, elem_vtx, Type.ary)).add_edge(genv, vtx)
         else
           Source.new(Type::Instance.new(cpath)).add_edge(genv, vtx)
         end
@@ -124,7 +124,7 @@ module TypeProf::Core
           nvtx.add_edge(genv, unified_elem)
           nvtx
         end
-        Source.new(Type::Array.new(elems, unified_elem)).add_edge(genv, vtx)
+        Source.new(Type::Array.new(elems, unified_elem, Type.ary)).add_edge(genv, vtx)
       when RBS::Types::Interface
         # TODO...
       when RBS::Types::Bases::Bool
@@ -185,7 +185,7 @@ module TypeProf::Core
             [Source.new(Type.obj)] # TODO!!!
           else
             map[elem.name].map do |vtx|
-              Source.new(Type::Array.new(nil, vtx))
+              Source.new(Type::Array.new(nil, vtx, Type.ary))
             end
           end
         else
