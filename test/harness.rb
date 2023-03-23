@@ -4,7 +4,7 @@ module TypeProf::Core
   def self.test_harness(smoke, interactive)
     core = Service.new
     file = "test.rb"
-    File.read(smoke).scan(/^#(.*)\n((?:.|\n)*?)(?=^#|\z)/) do |cmd, code|
+    File.read(smoke).scan(/^#(?!#)(.*)\n((?:.|\n)*?)(?=^#|\z)/) do |cmd, code|
       code = code.gsub(/\s+\z/, "")
       case cmd.strip
       when /^update(?::(.*))?$/

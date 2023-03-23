@@ -127,40 +127,6 @@ f.foo = 42
       )
     end
 
-    def test_and
-      serv = Service.new
-
-      serv.update_file("test0.rb", <<-END)
-def foo(x, y)
-  x && y
-end
-
-foo(1, "s")
-      END
-
-      assert_equal(
-        ["def foo: (Integer, String) -> (Integer | String)"],
-        serv.get_method_sig([], false, :foo),
-      )
-    end
-
-    def test_or
-      serv = Service.new
-
-      serv.update_file("test0.rb", <<-END)
-def foo(x, y)
-  x || y
-end
-
-foo(1, "s")
-      END
-
-      assert_equal(
-        ["def foo: (Integer, String) -> (Integer | String)"],
-        serv.get_method_sig([], false, :foo),
-      )
-    end
-
     def test_dvar
       serv = Service.new
 
@@ -235,42 +201,6 @@ end
       assert_equal(
         ["def foo: (Integer) -> Integer"],
         serv.get_method_sig([], false, :foo),
-      )
-    end
-
-    def test_return
-      serv = Service.new
-
-      serv.update_file("test0.rb", <<-END)
-def foo(x)
-  return if x
-  "str"
-end
-
-def bar(x)
-  return 1 if x
-  "str"
-end
-
-def baz(x)
-  1.times do |_|
-    return 1
-  end
-  "str"
-end
-      END
-
-      assert_equal(
-        ["def foo: (untyped) -> String?"],
-        serv.get_method_sig([], false, :foo),
-      )
-      assert_equal(
-        ["def bar: (untyped) -> (Integer | String)"],
-        serv.get_method_sig([], false, :bar),
-      )
-      assert_equal(
-        ["def baz: (untyped) -> (Integer | String)"],
-        serv.get_method_sig([], false, :baz),
       )
     end
 
@@ -473,58 +403,6 @@ end
       )
     end
 
-    def test_case
-      serv = Service.new
-
-      serv.update_file("test.rb", <<-END)
-def foo(n)
-  case n
-  when 1
-    1
-  when 2
-    "str"
-  else
-    1.0
-  end
-end
-
-def bar(n)
-  case n
-  when 1
-    1
-  when 2
-    "str"
-  end
-end
-
-def baz(n)
-  case n
-  when 1
-    1
-  when 2
-    "str"
-  else
-    raise
-  end
-end
-      END
-
-      assert_equal(
-        ["def foo: (untyped) -> (Float | Integer | String)"],
-        serv.get_method_sig([], false, :foo),
-      )
-
-      assert_equal(
-        ["def bar: (untyped) -> (Integer | String)?"],
-        serv.get_method_sig([], false, :bar),
-      )
-
-      assert_equal(
-        ["def baz: (untyped) -> (Integer | String)"],
-        serv.get_method_sig([], false, :baz),
-      )
-    end
-
     def test_rbs_alias
       serv = Service.new
 
@@ -571,100 +449,6 @@ end
       assert_equal(
         ["def qux: (Float) -> String"],
         serv.get_method_sig([], false, :qux),
-      )
-    end
-
-    def test_loop
-      serv = Service.new
-
-      serv.update_file("test.rb", <<-'END')
-def foo
-  a = [[nil]]
-  while a
-    a = a[0]
-  end
-  a
-end
-
-def bar
-  a = [[nil]]
-  until a
-    a = a[0]
-  end
-  a
-end
-
-def baz
-  a = [[nil]]
-  begin a
-    a = a[0]
-  end while a
-  a
-end
-      END
-
-      assert_equal(
-        ["def foo: () -> ([[nil]] | [nil])?"],
-        serv.get_method_sig([], false, :foo),
-      )
-
-      assert_equal(
-        ["def bar: () -> ([[nil]] | [nil])?"],
-        serv.get_method_sig([], false, :bar),
-      )
-
-      assert_equal(
-        ["def baz: () -> ([[nil]] | [nil])?"],
-        serv.get_method_sig([], false, :baz),
-      )
-    end
-
-    def test_break
-      serv = Service.new
-
-      serv.update_file("test.rb", <<-'END')
-def foo
-  yield 1
-  "str"
-end
-
-def bar
-  foo do |n|
-    break
-    1.0
-  end
-end
-      END
-
-      # TODO: These expectation are wrong! Need to implement break correctly
-      assert_equal(
-        ["def foo: () ({ (Integer) -> Float }) -> String"],
-        serv.get_method_sig([], false, :foo),
-      )
-
-      assert_equal(
-        ["def bar: () -> String"],
-        serv.get_method_sig([], false, :bar),
-      )
-    end
-
-    def test_next
-      serv = Service.new
-
-      serv.update_file("test.rb", <<-'END')
-def foo
-  yield 42
-end
-
-foo do |n|
-  next 1
-  "str"
-end
-      END
-
-      assert_equal(
-        ["def foo: () ({ (Integer) -> (Integer | String) }) -> (Integer | String)"],
-        serv.get_method_sig([], false, :foo),
       )
     end
 
