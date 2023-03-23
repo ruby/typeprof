@@ -77,14 +77,12 @@ module TypeProf::Core
         when RBS::AST::Members::Private
         when RBS::AST::Members::Alias
           if member.singleton?
-            mdecl_new = MethodDecl.new(cpath, true, member.new_name, member)
-            mdecl_old = MethodDecl.new(cpath, true, member.old_name, nil)
-            genv.add_method_alias(mdecl_new, mdecl_old)
+            malias = MethodAlias.new(cpath, true, member.new_name, member.old_name, member)
+            genv.add_method_alias(malias)
           end
           if member.instance?
-            mdecl_new = MethodDecl.new(cpath, false, member.new_name, member)
-            mdecl_old = MethodDecl.new(cpath, false, member.old_name, nil)
-            genv.add_method_alias(mdecl_new, mdecl_old)
+            malias = MethodAlias.new(cpath, false, member.new_name, member.old_name, member)
+            genv.add_method_alias(malias)
           end
         when
           RBS::AST::Declarations::TypeAlias,

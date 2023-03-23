@@ -288,6 +288,41 @@ module TypeProf::Core
       end
     end
 
+    class ALIAS < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        raw_new_mid, raw_old_mid = raw_node.children
+        @new_mid = AST.create_node(raw_new_mid, lenv)
+        @old_mid = AST.create_node(raw_old_mid, lenv)
+      end
+
+      attr_reader :new_name, :old_name, :malias
+
+      def subnodes = { new_name:, old_name: }
+      def attrs = { malias: }
+
+      def install0(genv)
+        @new_mid.install(genv)
+        @old_mid.install(genv)
+        if @new_mid.is_a?(LIT) && @old_mid.is_a?(LIT)
+          new_mid = @new_mid.lit
+          old_mid = @old_mid.lit
+          @malias = MethodAlias.new(@lenv.cref.cpath, false, new_mid, old_mid, self)
+          genv.add_method_alias(@malias)
+        end
+        Source.new(Type.nil)
+      end
+
+      def uninstall0(genv)
+        genv.remove_method_alias(@malias)
+        super
+      end
+
+      def dump0(dumper)
+        "alias #{ @new_name.dump(dumper) } #{ @old_name.dump(dumper) }"
+      end
+    end
+
     class BEGIN_ < Node
       def initialize(raw_node, lenv)
         super

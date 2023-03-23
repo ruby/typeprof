@@ -35,9 +35,10 @@ module TypeProf::Core
     def initialize
       @decls = Set[]
       @defs = Set[]
+      @aliases = Set[]
     end
 
-    attr_reader :decls, :defs
+    attr_reader :decls, :defs, :aliases
   end
 
   class ConstEntry
@@ -208,6 +209,16 @@ module TypeProf::Core
       s << "-> #{ @ret.show }"
       s.join(" ")
     end
+  end
+
+  class MethodAlias < MethodEntry
+    def initialize(cpath, singleton, new_mid, old_mid, source)
+      super(cpath, singleton, new_mid)
+      @old_mid = old_mid
+      @source = source
+    end
+
+    attr_reader :old_mid, :source
   end
 
   class Block
@@ -413,15 +424,6 @@ module TypeProf::Core
       e.decls << mdecl
     end
 
-    def add_method_alias(mdecl_new, mdecl_old)
-      e_new = get_method_entity(mdecl_new)
-      e_old = get_method_entity(mdecl_old)
-
-      # TODO: This does not support the following pathological alias
-      # class C; def foo; end; end; class D < C; alias bar foo; end
-      e_old.decls.each {|mdecl| e_new.decls << mdecl }
-    end
-
     def add_method_def(mdef)
       e = get_method_entity(mdef)
       e.defs << mdef
@@ -436,12 +438,31 @@ module TypeProf::Core
       run_callsite(mdef.mid)
     end
 
+    def add_method_alias(malias)
+      e = get_method_entity(malias)
+      e.aliases << malias
+
+      run_callsite(malias.mid)
+    end
+
+    def remove_method_alias(malias)
+      e = get_method_entity(malias)
+      e.aliases.delete(malias)
+
+      run_callsite(malias.mid)
+    end
+
     def resolve_method(cpath, singleton, mid)
-      enumerate_methods(cpath, singleton) do |_, _, methods|
+      enumerate_methods(cpath, singleton) do |_cpath, _singleton, methods|
         e = methods[mid]
         if e
           return e.decls unless e.decls.empty?
           return e.defs unless e.defs.empty?
+          unless e.aliases.empty?
+            # TODO
+            mid = e.aliases.to_a.first.old_mid
+            redo
+          end
         end
       end
     end

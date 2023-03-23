@@ -33,6 +33,7 @@ module TypeProf::Core
       when :CLASS then CLASS.new(raw_node, lenv)
       when :DEFN then DEFN.new(raw_node, lenv)
       when :DEFS then DEFS.new(raw_node, lenv)
+      when :ALIAS then ALIAS.new(raw_node, lenv)
       when :BEGIN then BEGIN_.new(raw_node, lenv)
 
       # control
