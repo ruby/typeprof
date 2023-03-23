@@ -52,6 +52,7 @@ module TypeProf::Core
       # variable
       when :CONST then CONST.new(raw_node, lenv)
       when :COLON2 then COLON2.new(raw_node, lenv)
+      when :COLON3 then COLON3.new(raw_node, lenv)
       when :CDECL then CDECL.new(raw_node, lenv)
       when :GVAR then GVAR.new(raw_node, lenv)
       when :GASGN then GASGN.new(raw_node, lenv)

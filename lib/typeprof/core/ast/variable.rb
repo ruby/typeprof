@@ -11,8 +11,7 @@ module TypeProf::Core
       def attrs = { cname: }
 
       def install0(genv)
-        cref = @lenv.cref
-        site = ConstReadSite.new(self, genv, cref, nil, @cname)
+        site = ConstReadSite.new(self, genv, @lenv.cref, nil, @cname)
         add_site(:main, site)
         site.ret
       end
@@ -47,6 +46,27 @@ module TypeProf::Core
 
       def dump0(dumper)
         s = @cbase ? @cbase.dump(dumper) : ""
+        s << "::#{ @cname }"
+      end
+    end
+
+    class COLON3 < Node
+      def initialize(raw_node, lenv)
+        super
+        @cname, = raw_node.children
+      end
+
+      attr_reader :cname
+
+      def attrs = { cname: }
+
+      def install0(genv)
+        site = ConstReadSite.new(self, genv, CRef.new([], false, nil), nil, @cname)
+        add_site(:main, site)
+        site.ret
+      end
+
+      def dump0(dumper)
         s << "::#{ @cname }"
       end
     end
