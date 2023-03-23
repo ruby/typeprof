@@ -196,7 +196,7 @@ end
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def foo: (Integer) ({ (Float) -> String } | { (Float) -> String }) -> String"],
+        ["def foo: (Integer) { (Float) -> String } | { (Float) -> String } -> String"],
         serv.get_method_sig([], false, :foo),
       )
 
@@ -216,7 +216,7 @@ end
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def foo: (Integer) ({ (Float) -> Integer } | { (Float) -> String }) -> (Integer | String)"],
+        ["def foo: (Integer) { (Float) -> Integer } | { (Float) -> String } -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
 
@@ -236,7 +236,7 @@ end
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def foo: (Integer) ({ (Float) -> Integer } | { (Float) -> Integer }) -> Integer"],
+        ["def foo: (Integer) { (Float) -> Integer } | { (Float) -> Integer } -> Integer"],
         serv.get_method_sig([], false, :foo),
       )
     end
