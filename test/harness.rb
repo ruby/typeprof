@@ -19,6 +19,7 @@ module TypeProf::Core
         else
           yield code, actual
         end
+        RBS::Parser.parse_signature(actual)
       else
         raise "unknown directive: #{ cmd.strip.inspect }"
       end

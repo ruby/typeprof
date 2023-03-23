@@ -6,4 +6,6 @@ def foo
 end
 
 # assert
-def foo: () -> (Float | Integer)
+class Object
+  def foo: () -> (Float | Integer)
+end

@@ -16,4 +16,6 @@ class C
 end
 class D < C
 end
-def foo: (untyped) -> Integer
+class Object
+  def foo: (untyped) -> Integer
+end

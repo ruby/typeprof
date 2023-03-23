@@ -7,17 +7,23 @@ end
 bar(1)
 
 # assert: test0.rb
-def bar: (Integer) -> Array[Integer]
+class Object
+  def bar: (Integer) -> Array[Integer]
+end
 
 # update: test1.rb
 bar(1)
 bar("str")
 
 # assert: test0.rb
-def bar: (Integer | String) -> Array[Integer | String]
+class Object
+  def bar: (Integer | String) -> Array[Integer | String]
+end
 
 # update: test1.rb
 bar("str")
 
 # assert: test0.rb
-def bar: (String) -> Array[String]
+class Object
+  def bar: (String) -> Array[String]
+end

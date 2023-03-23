@@ -8,4 +8,6 @@ bar(12) do |n|
 end
 
 # assert
-def bar: (Integer) ({ (Float) -> String }) -> String
+class Object
+  def bar: (Integer) { (Float) -> String } -> String
+end

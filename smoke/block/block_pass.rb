@@ -16,9 +16,11 @@ def bar
 end
 
 # assert
-def foo: () ({ (Integer) -> Integer }) -> Integer
-def proxy: () -> Integer
-def bar: () -> Integer?
+class Object
+  def foo: () { (Integer) -> Integer } -> Integer
+  def proxy: () -> Integer
+  def bar: () -> Integer?
+end
 
 # update
 def foo(x)
@@ -38,6 +40,8 @@ def bar
 end
 
 # assert
-def foo: (Integer) ({ (Integer) -> Integer }) -> Integer
-def proxy: () -> Integer
-def bar: () -> Integer?
+class Object
+  def foo: (Integer) { (Integer) -> Integer } -> Integer
+  def proxy: () -> Integer
+  def bar: () -> Integer?
+end

@@ -275,6 +275,13 @@ module TypeProf::Core
           end
         end
       end
+      out_buffer = out_buffer.chunk {|s| s.start_with?("def ") }.flat_map do |toplevel, lines|
+        if toplevel
+          ["class Object\n", *lines.map {|line| "  " + line }, "end\n"]
+        else
+          lines
+        end
+      end
       out_buffer.join
     end
 

@@ -19,6 +19,8 @@ def baz
 end
 
 # assert
-def foo: () -> Array[[:a | :b, Integer | String]]
-def bar: () -> [Integer?, Integer?]
-def baz: () -> Integer?
+class Object
+  def foo: () -> Array[[:a | :b, Integer | String]]
+  def bar: () -> [Integer?, Integer?]
+  def baz: () -> Integer?
+end

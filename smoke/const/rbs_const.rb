@@ -4,4 +4,6 @@ def foo(_)
 end
 
 # assert
-def foo: (untyped) -> String
+class Object
+  def foo: (untyped) -> String
+end

@@ -192,7 +192,6 @@ module TypeProf::Core
 
     def show
       block_show = []
-      # just for debug
       if @block
         @block.types.each_key do |ty|
           case ty
@@ -204,7 +203,7 @@ module TypeProf::Core
         end
       end
       s = "(#{ @f_args.map {|arg| Type.strip_parens(arg.show) }.join(", ") })"
-      s << " (#{ block_show.sort.join(" | ") })" unless block_show.empty?
+      s << " #{ block_show.sort.join(" | ") }" unless block_show.empty?
       s << " -> #{ @ret.show }"
     end
   end

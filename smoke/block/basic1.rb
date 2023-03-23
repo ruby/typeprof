@@ -8,4 +8,6 @@ foo(12) do |n|
 end
 
 # assert
-def foo: (Integer) ({ (Float) -> String }) -> String
+class Object
+  def foo: (Integer) { (Float) -> String } -> String
+end

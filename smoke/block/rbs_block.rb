@@ -8,5 +8,7 @@ def bar
 end
 
 # assert
-def foo: () -> Integer
-def bar: () -> Enumerator
+class Object
+  def foo: () -> Integer
+  def bar: () -> Enumerator
+end
