@@ -205,6 +205,10 @@ module TypeProf::Core
         @ret
       end
 
+      def install0(_)
+        raise "should override"
+      end
+
       def uninstall(genv)
         debug = ENV["TYPEPROF_DEBUG"]
         if debug

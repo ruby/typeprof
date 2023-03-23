@@ -1,9 +1,14 @@
 # update
-def foo(_)
+def foo
   RUBY_VERSION
+end
+
+def bar
+  ENV["foo"]
 end
 
 # assert
 class Object
-  def foo: (untyped) -> String
+  def foo: -> String
+  def bar: -> String?
 end

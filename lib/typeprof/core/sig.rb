@@ -4,48 +4,52 @@ module TypeProf::Core
   class Signatures
     def self.build(genv)
       genv.rbs_builder.env.declarations.each do |decl|
-        case decl
-        when RBS::AST::Declarations::Class
-          name = decl.name
-          cpath = name.namespace.path + [name.name]
-          # TODO: decl.type_params
-          # TODO: decl.super_class.args
-          superclass = decl.super_class&.name
-          if superclass
-            superclass_cpath = superclass.namespace.path + [superclass.name]
-          else
-            superclass_cpath = [:Object]
-          end
-          genv.add_module(cpath, decl, superclass_cpath)
-          ty = Type::Module.new(cpath)
-          cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
-          genv.add_const_decl(cdecl)
-          members(genv, cpath, decl.members)
-        when RBS::AST::Declarations::Module
-          name = decl.name
-          cpath = name.namespace.path + [name.name]
-          genv.add_module(cpath, decl)
-          ty = Type::Module.new(cpath)
-          cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
-          genv.add_const_decl(cdecl)
-          members(genv, cpath, decl.members)
-        when RBS::AST::Declarations::Constant
-          name = decl.name
-          cpath = name.namespace.path + [name.name]
-          ty = Type::RBS.new(decl.type)
-          cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
-          genv.add_const_decl(cdecl)
-        when RBS::AST::Declarations::AliasDecl
-        when RBS::AST::Declarations::TypeAlias
-          # TODO: check
-        when RBS::AST::Declarations::Interface
-        when RBS::AST::Declarations::Global
-          ty = Type::RBS.new(decl.type)
-          gvdecl = GVarDecl.new(decl.name, ty)
-          genv.add_gvar_decl(gvdecl)
+        declaration(genv, decl)
+      end
+    end
+
+    def self.declaration(genv, decl)
+      case decl
+      when RBS::AST::Declarations::Class
+        name = decl.name
+        cpath = name.namespace.path + [name.name]
+        # TODO: decl.type_params
+        # TODO: decl.super_class.args
+        superclass = decl.super_class&.name
+        if superclass
+          superclass_cpath = superclass.namespace.path + [superclass.name]
         else
-          raise "unsupported: #{ decl.class }"
+          superclass_cpath = [:Object]
         end
+        genv.add_module(cpath, decl, superclass_cpath)
+        ty = Type::Module.new(cpath)
+        cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
+        genv.add_const_decl(cdecl)
+        members(genv, cpath, decl.members)
+      when RBS::AST::Declarations::Module
+        name = decl.name
+        cpath = name.namespace.path + [name.name]
+        genv.add_module(cpath, decl)
+        ty = Type::Module.new(cpath)
+        cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
+        genv.add_const_decl(cdecl)
+        members(genv, cpath, decl.members)
+      when RBS::AST::Declarations::Constant
+        name = decl.name
+        cpath = name.namespace.path + [name.name]
+        ty = Type::RBS.new(decl.type)
+        cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
+        genv.add_const_decl(cdecl)
+      when RBS::AST::Declarations::AliasDecl
+      when RBS::AST::Declarations::TypeAlias
+        # TODO: check
+      when RBS::AST::Declarations::Interface
+      when RBS::AST::Declarations::Global
+        ty = Type::RBS.new(decl.type)
+        gvdecl = GVarDecl.new(decl.name, ty)
+        genv.add_gvar_decl(gvdecl)
+      else
+        raise "unsupported: #{ decl.class }"
       end
     end
 
@@ -68,6 +72,7 @@ module TypeProf::Core
           name = member.name
           mod_cpath = name.namespace.path + [name.name]
           genv.add_module_include(cpath, mod_cpath)
+        when RBS::AST::Members::Extend
         when RBS::AST::Members::Public
         when RBS::AST::Members::Private
         when RBS::AST::Members::Alias
@@ -81,11 +86,14 @@ module TypeProf::Core
             mdecl_old = MethodDecl.new(cpath, false, member.old_name, nil)
             genv.add_method_alias(mdecl_new, mdecl_old)
           end
-        when RBS::AST::Declarations::TypeAlias
-        when RBS::AST::Declarations::Constant
-        when RBS::AST::Declarations::Class
-        when RBS::AST::Declarations::Module
-        when RBS::AST::Declarations::Interface
+        when
+          RBS::AST::Declarations::TypeAlias,
+          RBS::AST::Declarations::Constant,
+          RBS::AST::Declarations::Class,
+          RBS::AST::Declarations::Module,
+          RBS::AST::Declarations::Interface
+
+          declaration(genv, member)
         else
           raise "unsupported: #{ member.class }"
         end
@@ -136,7 +144,7 @@ module TypeProf::Core
       when RBS::Types::Bases::Void
         Source.new(Type.obj).add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Any
-        Source.new(Type.obj).add_edge(genv, vtx) # TODO
+        Source.new().add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Bottom
         # TODO...
       when RBS::Types::Variable

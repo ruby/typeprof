@@ -159,6 +159,7 @@ module TypeProf::Core
     class SUPER < Node # CallNode
       def initialize(raw_node, raw_call, raw_block, lenv)
         # completely dummy
+        super(raw_node, lenv)
       end
 
       def install0(genv)
