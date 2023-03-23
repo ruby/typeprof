@@ -32,7 +32,7 @@ end
         serv.get_method_sig([], false, :bar),
       )
       assert_equal(
-        ["def baz: () -> Float | Integer | String"],
+        ["def baz: () -> (Float | Integer | String)"],
         serv.get_method_sig([], false, :baz),
       )
     end

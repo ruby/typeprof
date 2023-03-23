@@ -147,7 +147,7 @@ end
         serv.get_method_sig([], false, :foo),
       )
       assert_equal(
-        ["def bar: () -> Integer | NilClass"],
+        ["def bar: () -> Integer?"],
         serv.get_method_sig([], false, :bar),
       )
 
@@ -174,7 +174,7 @@ end
         serv.get_method_sig([], false, :foo),
       )
       assert_equal(
-        ["def bar: () -> Integer | NilClass"],
+        ["def bar: () -> Integer?"],
         serv.get_method_sig([], false, :bar),
       )
     end
@@ -220,7 +220,7 @@ end
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def foo: (untyped) -> Integer | String"],
+        ["def foo: (untyped) -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
       assert_equal(
@@ -228,7 +228,7 @@ end
         serv.get_method_sig([], false, :bar),
       )
       assert_equal(
-        ["def baz: (Integer) -> Integer | NilClass"],
+        ["def baz: (Integer) -> Integer?"],
         serv.get_method_sig([], false, :baz),
       )
 
@@ -247,7 +247,7 @@ end
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def foo: (untyped) -> Integer | String"],
+        ["def foo: (untyped) -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
       assert_equal(
@@ -255,7 +255,7 @@ end
         serv.get_method_sig([], false, :bar),
       )
       assert_equal(
-        ["def baz: (Integer) -> Integer | NilClass"],
+        ["def baz: (Integer) -> Integer?"],
         serv.get_method_sig([], false, :baz),
       )
     end
@@ -397,7 +397,7 @@ foo(1, "s")
       END
 
       assert_equal(
-        ["def foo: (Integer, String) -> Integer | String"],
+        ["def foo: (Integer, String) -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -414,7 +414,7 @@ foo(1, "s")
       END
 
       assert_equal(
-        ["def foo: (Integer, String) -> Integer | String"],
+        ["def foo: (Integer, String) -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -438,7 +438,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () ({ (Integer) -> Integer | String }) -> Integer | String"],
+        ["def foo: () ({ (Integer) -> (Integer | String) }) -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -465,7 +465,7 @@ end
       END
 
       assert_equal(
-        ["def foo: (Integer | String) -> Integer | String"],
+        ["def foo: (Integer | String) -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
 
@@ -519,15 +519,15 @@ end
       END
 
       assert_equal(
-        ["def foo: (untyped) -> NilClass | String"],
+        ["def foo: (untyped) -> String?"],
         serv.get_method_sig([], false, :foo),
       )
       assert_equal(
-        ["def bar: (untyped) -> Integer | String"],
+        ["def bar: (untyped) -> (Integer | String)"],
         serv.get_method_sig([], false, :bar),
       )
       assert_equal(
-        ["def baz: (untyped) -> Integer | String"],
+        ["def baz: (untyped) -> (Integer | String)"],
         serv.get_method_sig([], false, :baz),
       )
     end
@@ -558,7 +558,7 @@ foo(1)
       END
 
       assert_equal(
-        ["def foo: (Integer) -> NilClass"],
+        ["def foo: (Integer) -> nil"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -693,7 +693,7 @@ end
       )
 
       assert_equal(
-        ["def bar: () -> Integer | NilClass"],
+        ["def bar: () -> Integer?"],
         serv.get_method_sig([], false, :bar),
       )
     end
@@ -726,7 +726,7 @@ end
       )
 
       assert_equal(
-        ["def baz: () -> FalseClass | NilClass | TrueClass"],
+        ["def baz: () -> bool?"],
         serv.get_method_sig([], false, :baz),
       )
     end
@@ -768,17 +768,17 @@ end
       END
 
       assert_equal(
-        ["def foo: (untyped) -> Float | Integer | String"],
+        ["def foo: (untyped) -> (Float | Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
 
       assert_equal(
-        ["def bar: (untyped) -> Integer | NilClass | String"],
+        ["def bar: (untyped) -> (Integer | String)?"],
         serv.get_method_sig([], false, :bar),
       )
 
       assert_equal(
-        ["def baz: (untyped) -> Integer | String"],
+        ["def baz: (untyped) -> (Integer | String)"],
         serv.get_method_sig([], false, :baz),
       )
     end
@@ -793,7 +793,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> Float | Integer"],
+        ["def foo: () -> (Float | Integer)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -862,17 +862,17 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> NilClass | [NilClass] | [[NilClass]]"],
+        ["def foo: () -> ([[nil]] | [nil])?"],
         serv.get_method_sig([], false, :foo),
       )
 
       assert_equal(
-        ["def bar: () -> NilClass | [NilClass] | [[NilClass]]"],
+        ["def bar: () -> ([[nil]] | [nil])?"],
         serv.get_method_sig([], false, :bar),
       )
 
       assert_equal(
-        ["def baz: () -> NilClass | [NilClass] | [[NilClass]]"],
+        ["def baz: () -> ([[nil]] | [nil])?"],
         serv.get_method_sig([], false, :baz),
       )
     end
@@ -921,7 +921,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () ({ (Integer) -> Integer | String }) -> Integer | String"],
+        ["def foo: () ({ (Integer) -> (Integer | String) }) -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -939,7 +939,7 @@ $x ||= "str"
       END
 
       assert_equal(
-        ["def foo: () -> Integer | String"],
+        ["def foo: () -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
     end

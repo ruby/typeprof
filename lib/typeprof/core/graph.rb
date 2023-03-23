@@ -124,15 +124,28 @@ module TypeProf::Core
 
     def show
       if Fiber[:show_rec].include?(self)
-        "...(recursive)..."
+        "untyped"
       else
         begin
           Fiber[:show_rec] << self
           types = []
+          optional = @types.include?(Type.nil)
+          bool = @types.include?(Type.true) && @types.include?(Type.false)
+          types << "bool" if bool
           @types.each do |ty, _source|
+            next if ty == Type.nil
+            next if bool && (ty == Type.true || ty == Type.false)
             types << ty.show
           end
-          types.empty? ? "untyped" : types.uniq.sort.join(" | ")
+          types = types.uniq.sort
+          case types.size
+          when 0
+            optional ? "nil" : "untyped"
+          when 1
+            types.first + (optional ? "?" : "")
+          else
+            "(#{ types.join(" | ") })" + (optional ? "?" : "")
+          end
         ensure
           Fiber[:show_rec].delete(self)
         end

@@ -4,6 +4,10 @@ module TypeProf::Core
       [self]
     end
 
+    def Type.strip_parens(s)
+      s =~ /\A\((.*)\)\z/ ? $1 : s
+    end
+
     class Module < Type
       include StructuralEquality
 
@@ -38,7 +42,13 @@ module TypeProf::Core
       end
 
       def show
-        "#{ @cpath.empty? ? "Object" : @cpath.join("::" )}"
+        case @cpath
+        when [:NilClass] then "nil"
+        when [:TrueClass] then "true"
+        when [:FalseClass] then "false"
+        else
+          "#{ @cpath.empty? ? "Object" : @cpath.join("::" )}"
+        end
       end
 
       def match?(genv, other)
@@ -73,9 +83,9 @@ module TypeProf::Core
 
       def show
         if @elems
-          "[#{ @elems.map {|e| e.show }.join(", ") }]"
+          "[#{ @elems.map {|e| Type.strip_parens(e.show) }.join(", ") }]"
         else
-          "Array[#{ @unified_elem.show }]"
+          "Array[#{ Type.strip_parens(@unified_elem.show) }]"
         end
       end
     end
@@ -102,7 +112,7 @@ module TypeProf::Core
       end
 
       def show
-        "Hash[#{ @unified_key.show }, #{ @unified_val.show }]"
+        "Hash[#{ Type.strip_parens(@unified_key.show) }, #{ Type.strip_parens(@unified_val.show) }]"
       end
     end
 

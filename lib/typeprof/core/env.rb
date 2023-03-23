@@ -203,7 +203,7 @@ module TypeProf::Core
           end
         end
       end
-      s = "(#{ @f_args.map {|arg| arg.show }.join(", ") })"
+      s = "(#{ @f_args.map {|arg| Type.strip_parens(arg.show) }.join(", ") })"
       s << " (#{ block_show.sort.join(" | ") })" unless block_show.empty?
       s << " -> #{ @ret.show }"
     end

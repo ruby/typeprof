@@ -26,7 +26,7 @@ module TypeProf::Core
       END
 
       assert_equal(
-        ["def foo: (Array[Integer] | Array[String]) -> Array[Integer] | Array[String]"],
+        ["def foo: (Array[Integer] | Array[String]) -> (Array[Integer] | Array[String])"],
         serv.get_method_sig([], false, :foo),
       )
 
@@ -100,7 +100,7 @@ end
       )
 
       assert_equal(
-        ["def bar: () -> Integer | String"],
+        ["def bar: () -> (Integer | String)"],
         serv.get_method_sig([], false, :bar),
       )
     end
@@ -117,7 +117,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> Float | Integer"],
+        ["def foo: () -> (Float | Integer)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -152,12 +152,12 @@ end
       )
 
       assert_equal(
-        ["def bar: () -> [Integer | NilClass, Integer | NilClass]"],
+        ["def bar: () -> [Integer?, Integer?]"],
         serv.get_method_sig([], false, :bar),
       )
 
       assert_equal(
-        ["def baz: () -> Integer | NilClass"],
+        ["def baz: () -> Integer?"],
         serv.get_method_sig([], false, :baz),
       )
     end
