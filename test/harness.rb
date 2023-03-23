@@ -20,6 +20,15 @@ module TypeProf::Core
           yield code, actual
         end
         RBS::Parser.parse_signature(actual)
+      when /^hover: *\( *(\d+), *(\d+) *\)$/
+        row, col = $1.to_i, $2.to_i
+        pos = TypeProf::CodePosition.new(row, col)
+        actual = core.hover(file, pos)
+        if interactive
+          raise "unmatch\nexpected: %p\nactual:   %p" % [code, actual] if code != actual
+        else
+          yield code, actual
+        end
       else
         raise "unknown directive: #{ cmd.strip.inspect }"
       end

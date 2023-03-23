@@ -105,34 +105,6 @@ foo(1)
       )
     end
 
-    def test_initialize
-      serv = Service.new
-
-      serv.update_file("test.rb", src = <<-END)
-class A
-end
-
-class B
-  def initialize(xxx)
-    @xxx = xxx
-  end
-end
-
-class C
-end
-
-def foo
-  B.new(1)
-end
-      END
-
-      assert_equal("Integer", serv.hover("test.rb", TypeProf::CodePosition.new(5, 19)))
-
-      serv.update_file("test.rb", src)
-
-      assert_equal("Integer", serv.hover("test.rb", TypeProf::CodePosition.new(5, 19)))
-    end
-
     def test_rbs_module
       serv = Service.new
 
