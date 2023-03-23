@@ -15,13 +15,11 @@ module TypeProf::Core
       cref = CRef.new([], false, nil)
       lenv = LexicalScope.new(text_id, nil, cref, nil)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
-        if type == :tIDENTIFIER
-          row1, col1, row2, col2 = cr
-          pos1 = TypeProf::CodePosition.new(row1, col1)
-          pos2 = TypeProf::CodePosition.new(row2, col2)
-          code_range = TypeProf::CodeRange.new(pos1, pos2)
-          [type, str, code_range]
-        end
+        row1, col1, row2, col2 = cr
+        pos1 = TypeProf::CodePosition.new(row1, col1)
+        pos2 = TypeProf::CodePosition.new(row2, col2)
+        code_range = TypeProf::CodeRange.new(pos1, pos2)
+        [type, str, code_range]
       end.compact.sort_by {|_type, _str, code_range| code_range.first }
       AST.create_node(raw_body, lenv)
     end
@@ -121,12 +119,13 @@ module TypeProf::Core
     end
 
     def self.find_sym_code_range(start_pos, sym)
+      return nil if sym == :[] || sym == :[]=
       tokens = Fiber[:tokens]
       i = tokens.bsearch_index {|_type, _str, code_range| start_pos <= code_range.first }
       if i
         while tokens[i]
           type, str, code_range = tokens[i]
-          return code_range if type == :tIDENTIFIER && str == sym.to_s
+          return code_range if (type == :tIDENTIFIER || type == :tFID) && str == sym.to_s
           i += 1
         end
       end
@@ -291,6 +290,10 @@ module TypeProf::Core
         end
         s += "\e[34m:#{ @ret.inspect }\e[m"
         s
+      end
+
+      def dump0(dumper)
+        raise "should override"
       end
 
       def diagnostics(genv, &blk)

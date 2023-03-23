@@ -367,6 +367,7 @@ module TypeProf::Core
           mds.each do |md|
             case md
             when MethodDecl
+              # TODO: type error
             when MethodDef
               if @a_args.size != md.f_args.size
                 yield TypeProf::Diagnostic.new(@node, "wrong number of arguments (#{ @a_args.size } for #{ md.f_args.size })")
@@ -375,7 +376,8 @@ module TypeProf::Core
           end
           # TODO: arity error, type error
         else
-          yield TypeProf::Diagnostic.new(@node, "undefined method: #{ ty.show }##{ @mid }")
+          cr = @node.mid_code_range || @node
+          yield TypeProf::Diagnostic.new(cr, "undefined method: #{ ty.show }##{ @mid }")
         end
       end
     end
