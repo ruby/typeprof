@@ -437,37 +437,11 @@ module TypeProf::Core
     end
 
     def resolve_method(cpath, singleton, mid)
-      while true
-        dir = resolve_cpath(cpath)
-        e = dir.methods(singleton)[mid]
+      enumerate_methods(cpath, singleton) do |_, _, methods|
+        e = methods[mid]
         if e
           return e.decls unless e.decls.empty?
           return e.defs unless e.defs.empty?
-        end
-        unless singleton # TODO
-          dir.include_module_cpaths.each do |mod_cpath|
-            mod_dir = resolve_cpath(mod_cpath)
-            e = mod_dir.methods(false)[mid]
-            # TODO: recursive include: mod_dir.include_module_cpaths
-            if e
-              return e.decls unless e.decls.empty?
-              return e.defs unless e.defs.empty?
-            end
-          end
-        end
-        if cpath == [:BasicObject]
-          if singleton
-            cpath = [:Class]
-            singleton = false
-          else
-            return
-          end
-        else
-          cpath = dir.superclass_cpath
-          unless cpath
-            cpath = [:Module]
-            singleton = false
-          end
         end
       end
     end
@@ -491,6 +465,10 @@ module TypeProf::Core
           end
         else
           cpath = dir.superclass_cpath
+          unless cpath
+            cpath = [:Module]
+            singleton = false
+          end
         end
       end
     end
