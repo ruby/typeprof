@@ -6,8 +6,7 @@ module TypeProf
     end
 
     def self.from_lsp(pos)
-      pos => { line: row, character: col }
-      new(row + 1, col)
+      new(pos[:line] + 1, pos[:character])
     end
 
     def to_lsp
