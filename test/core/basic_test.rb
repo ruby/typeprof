@@ -38,7 +38,7 @@ end
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def bar: () -> Integer"],
+        ["def bar: -> Integer"],
         serv.get_method_sig([], false, :bar),
       )
     end
@@ -63,7 +63,7 @@ f.foo = 42
 
       #serv.dump_graph("test0.rb")
       assert_equal(
-        ["def foo: () -> Integer"],
+        ["def foo: -> Integer"],
         serv.get_method_sig([:C], false, :foo),
       )
     end
@@ -115,7 +115,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> Float"],
+        ["def foo: -> Float"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -139,7 +139,7 @@ end
       END
 
       assert_equal(
-        ["def bar: () -> Integer"],
+        ["def bar: -> Integer"],
         serv.get_method_sig([:C], false, :bar),
       )
     end
@@ -164,17 +164,17 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> Integer"],
+        ["def foo: -> Integer"],
         serv.get_method_sig([:Foo], true, :foo),
       )
 
       assert_equal(
-        ["def bar: () -> Integer"],
+        ["def bar: -> Integer"],
         serv.get_method_sig([:Foo], true, :bar),
       )
 
       assert_equal(
-        ["def test: () -> Integer"],
+        ["def test: -> Integer"],
         serv.get_method_sig([], false, :test),
       )
     end
@@ -189,7 +189,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> (Float | Integer)"],
+        ["def foo: -> (Float | Integer)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -213,7 +213,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> String"],
+        ["def foo: -> String"],
         serv.get_method_sig([], false, :foo),
       )
 
@@ -241,7 +241,7 @@ $x ||= "str"
       END
 
       assert_equal(
-        ["def foo: () -> (Integer | String)"],
+        ["def foo: -> (Integer | String)"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -258,7 +258,7 @@ end
       END
 
       assert_equal(
-        ["def foo: () -> [Integer | String]"],
+        ["def foo: -> [Integer | String]"],
         serv.get_method_sig([], false, :foo),
       )
     end

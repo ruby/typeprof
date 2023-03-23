@@ -25,7 +25,7 @@ end
 
 # assert
 class Object
-  def foo: () -> ([[nil]] | [nil])?
-  def bar: () -> ([[nil]] | [nil])?
-  def baz: () -> ([[nil]] | [nil])?
+  def foo: -> ([[nil]] | [nil])?
+  def bar: -> ([[nil]] | [nil])?
+  def baz: -> ([[nil]] | [nil])?
 end

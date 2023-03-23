@@ -7,5 +7,5 @@ end
 
 # assert
 class Object
-  def foo: () -> (Float | Integer)
+  def foo: -> (Float | Integer)
 end

@@ -18,7 +18,7 @@ end
 
 # assert
 class Object
-  def baz: () -> [Integer, Float, String]
-  def foo: () -> Integer
-  def bar: () -> Integer?
+  def baz: -> [Integer, Float, String]
+  def foo: -> Integer
+  def bar: -> Integer?
 end

@@ -12,6 +12,6 @@ end
 
 # assert
 class Object
-  def foo: () -> Integer
-  def bar: () -> (Integer | String)
+  def foo: -> Integer
+  def bar: -> (Integer | String)
 end

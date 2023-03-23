@@ -13,7 +13,7 @@ end
 
 # assert
 class Object
-  def foo: () -> String
-  def bar: () -> String
-  def baz: () -> bool?
+  def foo: -> String
+  def bar: -> String
+  def baz: -> bool?
 end

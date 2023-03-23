@@ -13,6 +13,6 @@ foo.x = "str"
 # assert
 class Foo
   def x=: (String) -> String
-  def x: () -> String
-  def foo: () -> String
+  def x: -> String
+  def foo: -> String
 end

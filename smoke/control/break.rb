@@ -15,6 +15,6 @@ end
 
 # assert
 class Object
-  def foo: () { (Integer) -> Float } -> String
-  def bar: () -> String
+  def foo: { (Integer) -> Float } -> String
+  def bar: -> String
 end

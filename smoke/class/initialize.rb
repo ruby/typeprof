@@ -24,7 +24,7 @@ end
 class C
 end
 class Object
-  def foo: () -> B
+  def foo: -> B
 end
 
 # hover: (5, 19)

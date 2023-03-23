@@ -20,7 +20,7 @@ end
 
 # assert
 class Object
-  def foo: () -> Array[[:a | :b, Integer | String]]
-  def bar: () -> [Integer?, Integer?]
-  def baz: () -> Integer?
+  def foo: -> Array[[:a | :b, Integer | String]]
+  def bar: -> [Integer?, Integer?]
+  def baz: -> Integer?
 end

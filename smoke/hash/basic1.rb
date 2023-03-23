@@ -17,7 +17,7 @@ end
 
 # assert
 class Object
-  def foo: () -> Hash[:a | :b, Float | Integer | String]
-  def bar: () -> Integer
-  def baz: () -> (Float | Integer | String)
+  def foo: -> Hash[:a | :b, Float | Integer | String]
+  def bar: -> Integer
+  def baz: -> (Float | Integer | String)
 end

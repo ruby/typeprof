@@ -5,5 +5,5 @@ end
 
 # assert
 class Object
-  def foo: () -> untyped
+  def foo: -> untyped
 end

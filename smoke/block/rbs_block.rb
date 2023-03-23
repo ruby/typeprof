@@ -9,6 +9,6 @@ end
 
 # assert
 class Object
-  def foo: () -> Integer
-  def bar: () -> Enumerator
+  def foo: -> Integer
+  def bar: -> Enumerator
 end
