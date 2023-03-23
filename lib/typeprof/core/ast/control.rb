@@ -20,7 +20,7 @@ module TypeProf::Core
         if @else
           else_val = @else.install(genv)
         else
-          else_val = Source.new(Type::Instance.new([:NilClass]))
+          else_val = Source.new(Type.nil)
         end
         else_val.add_edge(genv, ret)
         ret
@@ -58,7 +58,7 @@ module TypeProf::Core
       def install0(genv)
         @cond.install(genv)
         @body.install(genv)
-        Source.new(Type::Instance.new([:NilClass]))
+        Source.new(Type.nil)
       end
 
       def dump0(dumper)
@@ -86,7 +86,7 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        _arg = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
+        _arg = @arg ? @arg.install(genv) : Source.new(Type.nil)
         # TODO: implement!
       end
 
@@ -107,7 +107,7 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        arg = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
+        arg = @arg ? @arg.install(genv) : Source.new(Type.nil)
         arg.add_edge(genv, @lenv.get_ret)
         Source.new()
       end
@@ -154,7 +154,7 @@ module TypeProf::Core
         if @else_clause
           @else_clause.install(genv).add_edge(genv, ret)
         else
-          Source.new(Type::Instance.new([:NilClass])).add_edge(genv, ret)
+          Source.new(Type.nil).add_edge(genv, ret)
         end
         ret
       end
@@ -256,7 +256,7 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        ret = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
+        ret = @arg ? @arg.install(genv) : Source.new(Type.nil)
         lenv = @lenv
         lenv = lenv.outer while lenv.outer
         ret.add_edge(genv, lenv.get_ret)

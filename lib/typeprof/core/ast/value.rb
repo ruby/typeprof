@@ -18,18 +18,13 @@ module TypeProf::Core
 
       def install0(genv)
         case @lit
-        when NilClass
-          Source.new(Type::Instance.new([:NilClass]))
-        when Integer
-          Source.new(Type::Instance.new([:Integer]))
-        when Float
-          Source.new(Type::Instance.new([:Float]))
+        when NilClass then Source.new(Type.nil)
+        when TrueClass then Source.new(Type.true)
+        when FalseClass then Source.new(Type.false)
+        when Integer then Source.new(Type.int)
+        when Float then Source.new(Type.float)
         when Symbol
           Source.new(Type::Symbol.new(@lit))
-        when TrueClass
-          Source.new(Type::Instance.new([:TrueClass]))
-        when FalseClass
-          Source.new(Type::Instance.new([:FalseClass]))
         else
           raise "not supported yet: #{ @lit.inspect }"
         end

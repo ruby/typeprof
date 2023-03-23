@@ -161,5 +161,13 @@ module TypeProf::Core
         "#<Type::RBS ...>"
       end
     end
+
+    def self.obj = Type::Instance.new([:Object])
+    def self.nil = Type::Instance.new([:NilClass])
+    def self.true = Type::Instance.new([:TrueClass])
+    def self.false = Type::Instance.new([:FalseClass])
+    def self.str = Type::Instance.new([:String])
+    def self.int = Type::Instance.new([:Integer])
+    def self.float = Type::Instance.new([:Float])
   end
 end

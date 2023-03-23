@@ -163,7 +163,7 @@ module TypeProf::Core
 
       def install0(genv)
         # completely dummy
-        Source.new(Type::Instance.new([:NilClass]))
+        Source.new(Type.nil)
       end
 
       def dump0(dumper)

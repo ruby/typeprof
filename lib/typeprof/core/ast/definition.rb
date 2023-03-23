@@ -20,7 +20,7 @@ module TypeProf::Core
         @stmts.each do |stmt|
           ret = stmt.install(genv)
         end
-        ret || Source.new(Type::Instance.new([:NilClass]))
+        ret || Source.new(Type.nil)
       end
 
       def diff(prev_node)
@@ -242,7 +242,7 @@ module TypeProf::Core
           if @body
             body_ret = @body.install(genv)
           else
-            body_ret = Source.new(Type::Instance.new([:NilClass]))
+            body_ret = Source.new(Type.nil)
           end
           body_ret.add_edge(genv, ret)
           mdef = MethodDef.new(@lenv.cref.cpath, @singleton, @mid, self, f_args, block, ret)

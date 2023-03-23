@@ -128,18 +128,15 @@ module TypeProf::Core
       when RBS::Types::Interface
         # TODO...
       when RBS::Types::Bases::Bool
-        Source.new(
-          Type::Instance.new([:TrueClass]),
-          Type::Instance.new([:FalseClass]),
-        ).add_edge(genv, vtx)
+        Source.new(Type.true, Type.false).add_edge(genv, vtx)
       when RBS::Types::Bases::Nil
-        Source.new(Type::Instance.new([:NilClass])).add_edge(genv, vtx)
+        Source.new(Type.nil).add_edge(genv, vtx)
       when RBS::Types::Bases::Self
         param_map[:__self].add_edge(genv, vtx)
       when RBS::Types::Bases::Void
-        Source.new(Type::Instance.new([:Object])).add_edge(genv, vtx) # TODO
+        Source.new(Type.obj).add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Any
-        Source.new(Type::Instance.new([:Object])).add_edge(genv, vtx) # TODO
+        Source.new(Type.obj).add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Bottom
         # TODO...
       when RBS::Types::Variable
@@ -150,19 +147,15 @@ module TypeProf::Core
         end
       when RBS::Types::Optional
         type_to_vtx0(genv, node, type.type, vtx, param_map)
-        Source.new(Type::Instance.new([:NilClass])).add_edge(genv, vtx)
+        Source.new(Type.nil).add_edge(genv, vtx)
       when RBS::Types::Literal
         ty = case type.literal
         when ::Symbol
           Type::Symbol.new(type.literal)
-        when ::Integer
-          Type::Instance.new([:Integer])
-        when ::String
-          Type::Instance.new([:String])
-        when ::TrueClass
-          Type::Instance.new([:TrueClass])
-        when ::FalseClass
-          Type::Instance.new([:FalseClass])
+        when ::Integer then Type.int
+        when ::String then Type.str
+        when ::TrueClass then Type.true
+        when ::FalseClass then Type.false
         else
           raise "unknown RBS literal: #{ type.literal.inspect }"
         end
@@ -189,7 +182,7 @@ module TypeProf::Core
           if elem.is_a?(RBS::Types::Tuple)
             # TODO!!!
             raise
-            [Source.new(Type::Instance.new([:Object]))] # TODO!!!
+            [Source.new(Type.obj)] # TODO!!!
           else
             map[elem.name].map do |vtx|
               Source.new(Type::Array.new(nil, vtx))
@@ -200,40 +193,40 @@ module TypeProf::Core
         end
       when RBS::Types::Tuple
         raise
-        [Source.new(Type::Instance.new([:Object]))] # TODO!!!
+        [Source.new(Type.obj)] # TODO!!!
       when RBS::Types::Interface
         nil # TODO...
       when RBS::Types::Bases::Bool
         [
-          Source.new(Type::Instance.new([:TrueClass])),
-          Source.new(Type::Instance.new([:FalseClass])),
+          Source.new(Type.true),
+          Source.new(Type.false),
         ]
       when RBS::Types::Bases::Nil
-        [Source.new(Type::Instance.new([:NilClass]))]
+        [Source.new(Type.nil)]
       when RBS::Types::Bases::Self
         map[:__self]
       when RBS::Types::Bases::Void
-        [Source.new(Type::Instance.new([:Object]))] # TODO
+        [Source.new(Type.obj)] # TODO
       when RBS::Types::Bases::Any
-        [Source.new(Type::Instance.new([:Object]))] # TODO
+        [Source.new(Type.obj)] # TODO
       when RBS::Types::Bases::Bottom
         [Source.new()] # TODO
       when RBS::Types::Variable
         map[type.name] || [Source.new()] # TODO
       when RBS::Types::Optional
-        self.type(genv, type.type, map) + [Source.new(Type::Instance.new([:NilClass]))]
+        self.type(genv, type.type, map) + [Source.new(Type.nil)]
       when RBS::Types::Literal
         case type.literal
         when ::Symbol
           [Source.new(Type::Symbol.new(type.literal))]
         when ::Integer
-          [Source.new(Type::Instance.new([:Integer]))]
+          [Source.new(Type.int)]
         when ::String
-          [Source.new(Type::Instance.new([:String]))]
+          [Source.new(Type.str)]
         when ::TrueClass
-          [Source.new(Type::Instance.new([:TrueClass]))]
+          [Source.new(Type.true)]
         when ::FalseClass
-          [Source.new(Type::Instance.new([:FalseClass]))]
+          [Source.new(Type.false)]
         else
           raise "unknown RBS literal: #{ type.literal.inspect }"
         end
