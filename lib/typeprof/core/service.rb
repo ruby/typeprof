@@ -94,47 +94,6 @@ module TypeProf::Core
       end
     end
 
-    def dump_declarations(path)
-      depth = 0
-      @text_nodes[path].traverse do |event, node|
-        case node
-        when AST::MODULE
-          if node.static_cpath
-            if event == :enter
-              puts " " * depth + "module #{ node.static_cpath.join("::") }"
-              depth += 2
-            else
-              depth -= 2
-              puts " " * depth + "end"
-            end
-          end
-        when AST::CLASS
-          if node.static_cpath && node.static_superclass_cpath
-            if event == :enter
-              puts " " * depth + "class #{ node.static_cpath.join("::") } < #{ node.static_superclass_cpath.join("::") }"
-              depth += 2
-            else
-              depth -= 2
-              puts " " * depth + "end"
-            end
-          end
-        else
-          if event == :enter && !node.defs.empty?
-            node.defs.each do |d|
-              case d
-              when MethodDef
-                #puts " " * depth + "# #{ d.node.code_range }"
-                puts " " * depth + "def #{ d.singleton ? "self." : "" }#{ d.mid }: " + d.show
-              when ConstDef
-                #puts " " * depth + "# #{ d.node.code_range }"
-                puts " " * depth + "#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show
-              end
-            end
-          end
-        end
-      end
-    end
-
     def dump_graph(path)
       node = @text_nodes[path]
 
@@ -271,6 +230,48 @@ module TypeProf::Core
           return
         end
       end
+    end
+
+    def dump_declarations(path)
+      depth = 0
+      out_buffer = []
+      out = -> line { out_buffer << ("  " * depth + line + "\n") }
+      @text_nodes[path].traverse do |event, node|
+        case node
+        when AST::MODULE
+          if node.static_cpath
+            if event == :enter
+              out["module #{ node.static_cpath.join("::") }"]
+              depth += 1
+            else
+              depth -= 1
+              out["end"]
+            end
+          end
+        when AST::CLASS
+          if node.static_cpath && node.static_superclass_cpath
+            if event == :enter
+              out["class #{ node.static_cpath.join("::") } < #{ node.static_superclass_cpath.join("::") }"]
+              depth += 1
+            else
+              depth -= 1
+              out["end"]
+            end
+          end
+        else
+          if event == :enter && !node.defs.empty?
+            node.defs.each do |d|
+              case d
+              when MethodDef
+                out["def #{ d.singleton ? "self." : "" }#{ d.mid }: " + d.show]
+              when ConstDef
+                out["#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show]
+              end
+            end
+          end
+        end
+      end
+      out_buffer.join
     end
 
     def get_method_sig(cpath, singleton, mid)
