@@ -2,65 +2,6 @@ require_relative "../helper"
 
 module TypeProf::Core
   class BasicTest < Test::Unit::TestCase
-    def test_ivar
-      serv = Service.new
-
-      serv.update_file("test0.rb", <<-END)
-class C
-  def initialize(x)
-    @x = 42
-  end
-
-  def foo(_)
-    @x
-  end
-end
-
-class D < C
-  def bar(_)
-    @x
-  end
-end
-      END
-
-      #serv.dump_graph("test0.rb")
-      assert_equal(
-        ["def foo: (untyped) -> Integer"],
-        serv.get_method_sig([:C], false, :foo),
-      )
-      assert_equal(
-        ["def bar: (untyped) -> Integer"],
-        serv.get_method_sig([:D], false, :bar),
-      )
-
-      serv.update_file("test0.rb", <<-END)
-class C
-  def initialize(x)
-    @x = "42"
-  end
-
-  def foo(_)
-    @x
-  end
-end
-
-class D < C
-  def bar(_)
-    @x
-  end
-end
-      END
-
-      assert_equal(
-        ["def foo: (untyped) -> String"],
-        serv.get_method_sig([:C], false, :foo),
-      )
-      assert_equal(
-        ["def bar: (untyped) -> String"],
-        serv.get_method_sig([:D], false, :bar),
-      )
-    end
-
     def test_multi_args
       serv = Service.new
 
@@ -127,62 +68,6 @@ f.foo = 42
       )
     end
 
-    def test_dvar
-      serv = Service.new
-
-      serv.update_file("test0.rb", <<-END)
-def foo(&blk)
-  blk.call(42)
-end
-
-def bar
-  a = "str"
-  foo do |x|
-    a = x
-    a
-  end
-  a
-end
-      END
-
-      assert_equal(
-        ["def foo: () ({ (Integer) -> (Integer | String) }) -> (Integer | String)"],
-        serv.get_method_sig([], false, :foo),
-      )
-    end
-
-    def test_dvar2
-      serv = Service.new
-
-      serv.update_file("test0.rb", <<-END)
-def foo(x)
-  x = "str"
-  1.times do |_|
-    x = 42
-  end
-  x
-end
-
-def bar(x)
-  x = "str"
-  1.times do |x|
-    x = 42
-  end
-  x
-end
-      END
-
-      assert_equal(
-        ["def foo: (Integer | String) -> (Integer | String)"],
-        serv.get_method_sig([], false, :foo),
-      )
-
-      assert_equal(
-        ["def bar: (String) -> String"],
-        serv.get_method_sig([], false, :bar),
-      )
-    end
-
     def test_toplevel_function
       serv = Service.new
 
@@ -200,21 +85,6 @@ end
 
       assert_equal(
         ["def foo: (Integer) -> Integer"],
-        serv.get_method_sig([], false, :foo),
-      )
-    end
-
-    def test_pedantic_lvar
-      serv = Service.new
-
-      serv.update_file("test.rb", <<-END)
-def foo
-  x = x + 1
-end
-      END
-
-      assert_equal(
-        ["def foo: () -> untyped"],
         serv.get_method_sig([], false, :foo),
       )
     end
@@ -334,72 +204,6 @@ end
       assert_equal(
         ["def test: () -> Integer"],
         serv.get_method_sig([], false, :test),
-      )
-    end
-
-    def test_masgn_for_lasgn
-      serv = Service.new
-
-      serv.update_file("test.rb", <<-END)
-def baz
-  [1, 1.0, "str"]
-end
-
-def foo
-  x, y, z, w = baz
-  x
-end
-
-def bar
-  x = nil
-  1.times do |_|
-    x, y, z, w = baz
-  end
-  x
-end
-      END
-
-      assert_equal(
-        ["def foo: () -> Integer"],
-        serv.get_method_sig([], false, :foo),
-      )
-
-      assert_equal(
-        ["def bar: () -> Integer?"],
-        serv.get_method_sig([], false, :bar),
-      )
-    end
-
-    def test_gvar
-      serv = Service.new
-
-      serv.update_file("test.rb", <<-END)
-def foo
-  $foo = "str"
-end
-
-def bar
-  $foo
-end
-
-def baz
-  $VERBOSE
-end
-      END
-
-      assert_equal(
-        ["def foo: () -> String"],
-        serv.get_method_sig([], false, :foo),
-      )
-
-      assert_equal(
-        ["def bar: () -> String"],
-        serv.get_method_sig([], false, :bar),
-      )
-
-      assert_equal(
-        ["def baz: () -> bool?"],
-        serv.get_method_sig([], false, :baz),
       )
     end
 

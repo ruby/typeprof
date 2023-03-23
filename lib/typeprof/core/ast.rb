@@ -160,7 +160,7 @@ module TypeProf::Core
 
       def code_range
         if @raw_node
-          @code_range ||= TypeProf::CodeRange.from_node(@raw_node)
+          TypeProf::CodeRange.from_node(@raw_node)
         else
           pp self
           nil
