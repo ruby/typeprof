@@ -14,8 +14,9 @@ module TypeProf::Core
 
       cref = CRef.new([], false, nil)
       lenv = LexicalScope.new(text_id, nil, cref, nil)
-      Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, (row1, col1, row2, col2)|
+      Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         if type == :tIDENTIFIER
+          row1, col1, row2, col2 = cr
           pos1 = TypeProf::CodePosition.new(row1, col1)
           pos2 = TypeProf::CodePosition.new(row2, col2)
           code_range = TypeProf::CodeRange.new(pos1, pos2)

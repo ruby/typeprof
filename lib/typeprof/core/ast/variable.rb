@@ -131,13 +131,17 @@ module TypeProf::Core
         @var_code_range = AST.find_sym_code_range(pos, @var)
       end
 
-      attr_reader :var, :rhs, :var_code_range
+      def set_dummy_rhs(dummy_rhs)
+        @dummy_rhs = dummy_rhs
+      end
+
+      attr_reader :var, :rhs, :var_code_range, :dummy_rhs
 
       def subnodes = { rhs: }
-      def attrs = { var:, var_code_range: }
+      def attrs = { var:, var_code_range:, dummy_rhs: }
 
       def install0(genv)
-        val = @rhs.install(genv)
+        val = (@rhs || @dummy_rhs).install(genv)
         gvdef = GVarDef.new(@var, self, val)
         add_def(genv, gvdef)
         val

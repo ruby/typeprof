@@ -92,6 +92,86 @@ module TypeProf::Core
       end
     end
 
+    def self.type_to_vtx(genv, node, type, param_map)
+      vtx = Vertex.new("type_to_vtx", node)
+      type_to_vtx0(genv, node, type, vtx, param_map)
+      vtx
+    end
+
+    def self.type_to_vtx0(genv, node, type, vtx, param_map)
+      case type
+      when RBS::Types::Alias
+        type_to_vtx0(genv, node, genv.rbs_builder.expand_alias(type.name), vtx, param_map)
+      when RBS::Types::Union
+        type.types.each do |ty|
+          type_to_vtx0(genv, node, ty, vtx, param_map)
+        end
+      when RBS::Types::ClassInstance
+        name = type.name
+        cpath = name.namespace.path + [name.name]
+        if cpath == [:Array]
+          raise if type.args.size != 1
+          elem = type.args.first
+          elem_vtx = type_to_vtx(genv, node, elem, param_map)
+          Source.new(Type::Array.new(nil, elem_vtx)).add_edge(genv, vtx)
+        else
+          Source.new(Type::Instance.new(cpath)).add_edge(genv, vtx)
+        end
+      when RBS::Types::Tuple
+        unified_elem = Vertex.new("ary-unified", node)
+        elems = type.types.map do |type|
+          nvtx = type_to_vtx(genv, node, type, param_map)
+          nvtx.add_edge(genv, unified_elem)
+          nvtx
+        end
+        Source.new(Type::Array.new(elems, unified_elem)).add_edge(genv, vtx)
+      when RBS::Types::Interface
+        # TODO...
+      when RBS::Types::Bases::Bool
+        Source.new(
+          Type::Instance.new([:TrueClass]),
+          Type::Instance.new([:FalseClass]),
+        ).add_edge(genv, vtx)
+      when RBS::Types::Bases::Nil
+        Source.new(Type::Instance.new([:NilClass])).add_edge(genv, vtx)
+      when RBS::Types::Bases::Self
+        param_map[:__self].add_edge(genv, vtx)
+      when RBS::Types::Bases::Void
+        Source.new(Type::Instance.new([:Object])).add_edge(genv, vtx) # TODO
+      when RBS::Types::Bases::Any
+        Source.new(Type::Instance.new([:Object])).add_edge(genv, vtx) # TODO
+      when RBS::Types::Bases::Bottom
+        # TODO...
+      when RBS::Types::Variable
+        if param_map[type.name]
+          param_map[type.name].add_edge(genv, vtx)
+        else
+          puts "unknown type param: #{ type.name }"
+        end
+      when RBS::Types::Optional
+        type_to_vtx0(genv, node, type.type, vtx, param_map)
+        Source.new(Type::Instance.new([:NilClass])).add_edge(genv, vtx)
+      when RBS::Types::Literal
+        ty = case type.literal
+        when ::Symbol
+          Type::Symbol.new(type.literal)
+        when ::Integer
+          Type::Instance.new([:Integer])
+        when ::String
+          Type::Instance.new([:String])
+        when ::TrueClass
+          Type::Instance.new([:TrueClass])
+        when ::FalseClass
+          Type::Instance.new([:FalseClass])
+        else
+          raise "unknown RBS literal: #{ type.literal.inspect }"
+        end
+        Source.new(ty).add_edge(genv, vtx)
+      else
+        raise "unknown RBS type: #{ type.class }"
+      end
+    end
+
     def self.type(genv, type, map)
       case type
       when RBS::Types::Alias
@@ -106,12 +186,21 @@ module TypeProf::Core
         if cpath == [:Array]
           raise if type.args.size != 1
           elem = type.args.first
-          map[elem.name].map do |vtx|
-            Source.new(Type::Array.new(nil, vtx))
+          if elem.is_a?(RBS::Types::Tuple)
+            # TODO!!!
+            raise
+            [Source.new(Type::Instance.new([:Object]))] # TODO!!!
+          else
+            map[elem.name].map do |vtx|
+              Source.new(Type::Array.new(nil, vtx))
+            end
           end
         else
           [Source.new(Type::Instance.new(cpath))]
         end
+      when RBS::Types::Tuple
+        raise
+        [Source.new(Type::Instance.new([:Object]))] # TODO!!!
       when RBS::Types::Interface
         nil # TODO...
       when RBS::Types::Bases::Bool
@@ -125,10 +214,12 @@ module TypeProf::Core
         map[:__self]
       when RBS::Types::Bases::Void
         [Source.new(Type::Instance.new([:Object]))] # TODO
+      when RBS::Types::Bases::Any
+        [Source.new(Type::Instance.new([:Object]))] # TODO
       when RBS::Types::Bases::Bottom
         [Source.new()] # TODO
       when RBS::Types::Variable
-        map[type.name] || raise
+        map[type.name] || [Source.new()] # TODO
       when RBS::Types::Optional
         self.type(genv, type.type, map) + [Source.new(Type::Instance.new([:NilClass]))]
       when RBS::Types::Literal
@@ -137,6 +228,12 @@ module TypeProf::Core
           [Source.new(Type::Symbol.new(type.literal))]
         when ::Integer
           [Source.new(Type::Instance.new([:Integer]))]
+        when ::String
+          [Source.new(Type::Instance.new([:String]))]
+        when ::TrueClass
+          [Source.new(Type::Instance.new([:TrueClass]))]
+        when ::FalseClass
+          [Source.new(Type::Instance.new([:FalseClass]))]
         else
           raise "unknown RBS literal: #{ type.literal.inspect }"
         end

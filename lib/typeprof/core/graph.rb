@@ -320,7 +320,7 @@ module TypeProf::Core
               nedges = md.builtin[@node, ty, @mid, @a_args, @ret]
             else
               # TODO: handle Type::Union
-              nedges = md.resolve_overloads(@node, genv, ty, @a_args, @block, @ret)
+              nedges = md.resolve_overloads(genv, @node, ty, @a_args, @block, @ret)
             end
             nedges.each {|src, dst| edges << [src, dst] }
           when MethodDef

@@ -87,18 +87,18 @@ module TypeProf::Core
 
     attr_reader :rbs_member, :builtin
 
-    def resolve_overloads(node, genv, recv_ty, a_args, block, ret)
+    def resolve_overloads(genv, node, recv_ty, a_args, block, ret)
       all_edges = Set[]
       self_ty = (@singleton ? Type::Module : Type::Instance).new(@cpath)
-      map = {
-        __self: [Source.new(self_ty)],
+      param_map = {
+        __self: Source.new(self_ty),
       }
       case recv_ty
       when Type::Array
-        map[:Elem] = [recv_ty.get_elem]
+        param_map[:Elem] = recv_ty.get_elem
       when Type::Hash
-        map[:K] = [recv_ty.get_key]
-        map[:V] = [recv_ty.get_value]
+        param_map[:K] = recv_ty.get_key
+        param_map[:V] = recv_ty.get_value
       end
       @rbs_member.overloads.each do |overload|
         edges = Set[]
@@ -109,17 +109,18 @@ module TypeProf::Core
         # func.rest_keywords
         # func.rest_positionals
         # func.trailing_positionals
-        map2 = map.dup
+        param_map0 = param_map.dup
         overload.method_type.type_params.map do |param|
-          map2[param.name] = [Vertex.new("type-param:#{ param.name }", node)]
+          param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
         end
+        #puts; p [@cpath, @singleton, @mid]
         f_args = func.required_positionals.map do |f_arg|
-          Signatures.type(genv, f_arg.type, map2)
+          Signatures.type_to_vtx(genv, node, f_arg.type, param_map0)
         end
         # TODO: correct block match
-        if a_args.size == f_args.size
+        if a_args.size == f_args.size && f_args.all? # skip interface type
           match = a_args.zip(f_args).all? do |a_arg, f_arg|
-            f_arg.any? {|t| a_arg.match?(genv, t) }
+            a_arg.match?(genv, f_arg)
           end
           rbs_blk = overload.method_type.block
           if block
@@ -132,19 +133,15 @@ module TypeProf::Core
                 case ty
                 when Type::Proc
                   blk_a_args = blk_func.required_positionals.map do |blk_a_arg|
-                    Signatures.type(genv, blk_a_arg.type, map2)
+                    Signatures.type_to_vtx(genv, node, blk_a_arg.type, param_map0)
                   end
                   blk_f_args = ty.block.f_args
                   if blk_a_args.size == blk_f_args.size
                     blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
-                      blk_a_arg.each do |a_vtx|
-                        edges << [a_vtx, blk_f_arg]
-                      end
+                      edges << [blk_a_arg, blk_f_arg]
                     end
-                    blk_f_ret = Signatures.type(genv, blk_func.return_type, map2)
-                    blk_f_ret.each do |r|
-                      ty.block.ret.add_edge(genv, r)
-                    end
+                    blk_f_ret = Signatures.type_to_vtx(genv, node, blk_func.return_type, param_map0)
+                    ty.block.ret.add_edge(genv, blk_f_ret)
                   else
                     match = false
                   end
@@ -161,9 +158,8 @@ module TypeProf::Core
             end
           end
           if match
-            Signatures.type(genv, func.return_type, map2).each do |ret_vtx|
-              edges << [ret_vtx, ret]
-            end
+            ret_vtx = Signatures.type_to_vtx(genv, node, func.return_type, param_map0)
+            edges << [ret_vtx, ret]
             edges.each do |src, dst|
               all_edges << [src, dst]
             end

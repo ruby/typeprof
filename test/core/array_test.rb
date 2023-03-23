@@ -114,11 +114,51 @@ def foo
   ary[0] = 1.0
   ary[0]
 end
-            END
+      END
 
       assert_equal(
         ["def foo: () -> Float | Integer"],
         serv.get_method_sig([], false, :foo),
+      )
+    end
+
+    def test_rbs_tuple
+      serv = Service.new
+
+      serv.update_file("test.rb", <<-'END')
+def foo
+  {
+    a: 1,
+    b: "str",
+  }.to_a
+end
+
+def bar
+  [1, 2, 3].minmax
+end
+
+def baz
+  ret = nil
+  %w(foo bar baz).each_with_index do |x, i|
+    ret = i
+  end
+  ret
+end
+      END
+
+      assert_equal(
+        ["def foo: () -> Array[[:a | :b, Integer | String]]"],
+        serv.get_method_sig([], false, :foo),
+      )
+
+      assert_equal(
+        ["def bar: () -> [Integer | NilClass, Integer | NilClass]"],
+        serv.get_method_sig([], false, :bar),
+      )
+
+      assert_equal(
+        ["def baz: () -> Integer | NilClass"],
+        serv.get_method_sig([], false, :baz),
       )
     end
   end

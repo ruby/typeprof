@@ -109,6 +109,7 @@ module TypeProf::Core
       def install0(genv)
         arg = @arg ? @arg.install(genv) : Source.new(Type::Instance.new([:NilClass]))
         arg.add_edge(genv, @lenv.get_ret)
+        Source.new()
       end
 
       def dump0(dumper)
