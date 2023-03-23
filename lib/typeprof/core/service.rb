@@ -251,7 +251,11 @@ module TypeProf::Core
         when AST::CLASS
           if node.static_cpath && node.static_superclass_cpath
             if event == :enter
-              out["class #{ node.static_cpath.join("::") } < #{ node.static_superclass_cpath.join("::") }"]
+              s = "class #{ node.static_cpath.join("::") }"
+              unless node.static_superclass_cpath == [:Object]
+                s << " < #{ node.static_superclass_cpath.join("::") }"
+              end
+              out[s]
               depth += 1
             else
               depth -= 1
