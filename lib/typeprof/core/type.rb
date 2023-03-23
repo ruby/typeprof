@@ -4,7 +4,7 @@ module TypeProf::Core
       [self]
     end
 
-    def Type.strip_parens(s)
+    def self.strip_parens(s)
       s =~ /\A\((.*)\)\z/ ? $1 : s
     end
 
