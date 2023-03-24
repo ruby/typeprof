@@ -24,7 +24,7 @@ module TypeProf::Core
           @block_tbl, raw_block_args, raw_block_body = raw_block.children
           @block_f_args = raw_block_args.children
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-          nlenv = LexicalScope.new(lenv.text_id, self, ncref, lenv)
+          nlenv = LexicalScope.new(self, ncref, lenv)
           @block_body = AST.create_node(raw_block_body, nlenv)
         else
           @block_tbl = @block_f_args = @block_body = nil

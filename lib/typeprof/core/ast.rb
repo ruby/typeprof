@@ -1,6 +1,6 @@
 module TypeProf::Core
   class AST
-    def self.parse(text_id, src)
+    def self.parse(src)
       begin
         verbose_back, $VERBOSE = $VERBOSE, nil
         raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
@@ -13,7 +13,7 @@ module TypeProf::Core
       raise unless args == nil
 
       cref = CRef.new([], false, nil)
-      lenv = LexicalScope.new(text_id, nil, cref, nil)
+      lenv = LexicalScope.new(nil, cref, nil)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         row1, col1, row2, col2 = cr
         pos1 = TypeProf::CodePosition.new(row1, col1)
@@ -141,7 +141,6 @@ module TypeProf::Core
         @raw_children = raw_node.children
         @prev_node = nil
         @ret = nil
-        @text_id = lenv.text_id
         @defs = nil
         @sites = nil
       end
@@ -344,8 +343,7 @@ module TypeProf::Core
   end
 
   class LexicalScope
-    def initialize(text_id, node, cref, outer)
-      @text_id = text_id
+    def initialize(node, cref, outer)
       @node = node
       @cref = cref
       @tbl = {} # variable table
@@ -355,7 +353,7 @@ module TypeProf::Core
       @ret = node ? Vertex.new("ret", node) : nil
     end
 
-    attr_reader :text_id, :cref, :outer
+    attr_reader :cref, :outer
 
     def resolve_var(name)
       lenv = self

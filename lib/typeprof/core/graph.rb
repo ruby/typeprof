@@ -171,9 +171,7 @@ module TypeProf::Core
     alias inspect to_s
 
     def long_inspect
-      a = @node.lenv
-      a = a.text_id
-      "#{ to_s } (#{ @show_name }; #{ @node.lenv.text_id } @ #{ @node.code_range })"
+      "#{ to_s } (#{ @show_name } @ #{ @node.code_range })"
     end
   end
 
@@ -289,7 +287,7 @@ module TypeProf::Core
     end
 
     def long_inspect
-      "#{ to_s } (cname:#{ @cname }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+      "#{ to_s } (cname:#{ @cname } @ #{ @node.code_range })"
     end
   end
 
@@ -383,7 +381,7 @@ module TypeProf::Core
     end
 
     def long_inspect
-      "#{ to_s } (mid:#{ @mid }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+      "#{ to_s } (mid:#{ @mid } @ #{ @node.code_range })"
     end
   end
 
@@ -427,7 +425,7 @@ module TypeProf::Core
     end
 
     def long_inspect
-      "#{ to_s } (name:#{ @name }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+      "#{ to_s } (name:#{ @name } @ #{ @node.code_range })"
     end
   end
 
@@ -470,7 +468,7 @@ module TypeProf::Core
     end
 
     def long_inspect
-      "#{ to_s } (cpath:#{ @cpath.join("::") }, name:#{ name }, #{ @node.lenv.text_id } @ #{ @node.code_range })"
+      "#{ to_s } (cpath:#{ @cpath.join("::") }, name:#{ name } @ #{ @node.code_range })"
     end
   end
 

@@ -45,12 +45,10 @@ module TypeProf::Core
 
     def update_file(path, code)
       prev_node = @text_nodes[path]
-      version = prev_node ? prev_node.lenv.text_id.version + 1 : 0
 
       code = File.read(path) unless code
-      text_id = TextId.new(path, version)
       begin
-        node = AST.parse(text_id, code)
+        node = AST.parse(code)
       rescue SyntaxError
         return
       end
@@ -152,7 +150,7 @@ module TypeProf::Core
               case md
               when MethodDecl
               when MethodDef
-                defs << [md.node.lenv.text_id.path, md.node.code_range]
+                defs << md.node.code_range
               end
             end
           end

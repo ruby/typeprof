@@ -189,9 +189,9 @@ module TypeProf::LSP
       if defs.empty?
         respond(nil)
       else
-        respond(defs.map do |path, code_range|
+        respond(defs.map do |code_range|
           {
-            uri: "file://" + path,
+            uri: "file://" + text.path,
             range: code_range.to_lsp,
           }
         end)

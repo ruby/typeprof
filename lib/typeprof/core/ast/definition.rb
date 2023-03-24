@@ -71,7 +71,7 @@ module TypeProf::Core
           raise unless args == nil
 
           ncref = CRef.new(@static_cpath, true, lenv.cref)
-          nlenv = LexicalScope.new(lenv.text_id, self, ncref, nil)
+          nlenv = LexicalScope.new(self, ncref, nil)
           @body = AST.create_node(raw_body, nlenv)
         else
           @body = nil
@@ -203,7 +203,7 @@ module TypeProf::Core
         @args = raw_args.children
 
         ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
-        @body_lenv = LexicalScope.new(lenv.text_id, self, ncref, nil)
+        @body_lenv = LexicalScope.new(self, ncref, nil)
         @body = raw_body ? AST.create_node(raw_body, @body_lenv) : nil
 
         @args_code_ranges = []
