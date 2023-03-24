@@ -344,7 +344,6 @@ module TypeProf::Core
 
   class LexicalScope
     def initialize(node, cref, outer)
-      @node = node
       @cref = cref
       @tbl = {} # variable table
       @outer = outer
