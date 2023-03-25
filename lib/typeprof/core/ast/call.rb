@@ -7,7 +7,6 @@ module TypeProf::Core
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
         @mid = mid
         @mid_code_range = mid_code_range
-        @a_args = nil
         @block_pass = nil
         if raw_args
           if raw_args.type == :BLOCK_PASS
@@ -15,7 +14,20 @@ module TypeProf::Core
             @block_pass = AST.create_node(raw_block_pass, lenv)
           end
           if raw_args
-            @a_args = A_ARGS.new(raw_args, raw_last_arg, lenv)
+            @positional_args = []
+            # TODO
+            case raw_args.type
+            when :LIST
+              args = raw_args.children.compact
+              @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
+            when :ARGSPUSH, :ARGSCAT
+              raise NotImplementedError
+            else
+              raise "not supported yet: #{ raw_args.type }"
+            end
+            if raw_last_arg
+              @positional_args << AST.create_node(raw_last_arg, lenv)
+            end
           end
         end
 
@@ -35,14 +47,26 @@ module TypeProf::Core
         @yield = raw_recv == false
       end
 
-      attr_reader :recv, :mid, :a_args, :block_tbl, :block_f_args, :block_body, :mid_code_range, :yield
+      attr_reader :recv, :mid, :positional_args, :block_tbl, :block_f_args, :block_body, :mid_code_range, :yield
 
-      def subnodes = { recv:, a_args:, block_body: }
+      def subnodes
+        h = { recv:, block_body: }
+        if @positional_args
+          @positional_args.each_with_index {|n, i| h[i] = n }
+        end
+        h
+      end
       def attrs = { mid:, block_tbl:, block_f_args:, mid_code_range:, yield: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:&) : @lenv.get_self
-        a_args = @a_args ? @a_args.install(genv) : []
+        if @positional_args
+          positional_args = @positional_args.map do |node|
+            node.install(genv)
+          end
+        else
+          positional_args = []
+        end
         if @block_body
           blk_f_args = []
           @block_f_args[0].times do |i|
@@ -73,7 +97,7 @@ module TypeProf::Core
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
         end
-        site = CallSite.new(self, genv, recv, @mid, a_args, blk_ty)
+        site = CallSite.new(self, genv, recv, @mid, positional_args, blk_ty)
         add_site(:main, site)
         site.ret
       end
@@ -81,6 +105,36 @@ module TypeProf::Core
       def hover(pos)
         yield self if @mid_code_range && @mid_code_range.include?(pos)
         super
+      end
+
+      def diff(prev_node)
+        return if self.class != prev_node.class
+        return unless attrs.all? {|key, attr| attr == prev_node.send(key) }
+
+        if @recv
+          @recv.diff(prev_node.recv)
+          return unless @recv.prev_node
+        else
+          return if @recv != prev_node.recv
+        end
+
+        if @block_body
+          @block_body.diff(prev_node.block_body)
+          return unless @block_body.prev_node
+        else
+          return if @block_body != prev_node.block_body
+        end
+
+        if @positional_args
+          if @positional_args.size == prev_node.positional_args.size
+            @positional_args.zip(prev_node.positional_args) do |node, prev_node|
+              node.diff(prev_node)
+              return unless node.prev_node
+            end
+          end
+        else
+          return if @positional_args != prev_node.positional_args
+        end
       end
 
       def dump_call(prefix, suffix)
@@ -103,7 +157,8 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ @a_args ? @a_args.dump(dumper) : "" })")
+        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ args })")
       end
     end
 
@@ -129,7 +184,8 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        dump_call("#{ @mid }", "(#{ @a_args.dump(dumper) })")
+        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        dump_call("#{ @mid }", "(#{ args })")
       end
     end
 
@@ -142,8 +198,9 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        if @a_args
-          dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ @a_args.dump(dumper) })")
+        if @positional_args
+          args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+          dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ args })")
         else
           dump_call("(#{ @mid }", "#{ @recv.dump(dumper) })")
         end
@@ -160,7 +217,8 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ @a_args.dump(dumper) })")
+        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ args })")
       end
     end
 
@@ -172,7 +230,8 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ @a_args.dump(dumper) })")
+        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ args })")
       end
     end
 
@@ -199,11 +258,12 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        dump_call("yield(#{ @a_args ? @a_args.dump(dumper) : "" })")
+        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        dump_call("yield(#{ args })")
       end
     end
 
-    class A_ARGS < Node
+    class A_ARGS
       def initialize(raw_node, raw_last_arg, lenv)
         super(raw_node, lenv)
         @positional_args = []

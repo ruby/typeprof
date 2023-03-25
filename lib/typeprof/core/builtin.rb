@@ -104,7 +104,7 @@ module TypeProf::Core
       if a_args.size == 1
         case ty
         when Type::Array
-          idx = node.a_args.positional_args[0]
+          idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer)
             idx = idx.lit
           else
@@ -126,7 +126,7 @@ module TypeProf::Core
         case ty
         when Type::Array
           val = a_args[1]
-          idx = node.a_args.positional_args[0]
+          idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(idx.lit)
             edges << [val, ty.get_elem(idx.lit)]
           else
@@ -146,7 +146,7 @@ module TypeProf::Core
       if a_args.size == 1
         case ty
         when Type::Hash
-          idx = node.a_args.positional_args[0]
+          idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol)
             idx = idx.lit
           else
@@ -168,7 +168,7 @@ module TypeProf::Core
         case ty
         when Type::Hash
           val = a_args[1]
-          idx = node.a_args.positional_args[0]
+          idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol) && ty.get_value(idx.lit)
             # TODO: how to handle new key?
             edges << [val, ty.get_value(idx.lit)]
