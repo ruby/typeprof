@@ -1,9 +1,10 @@
 # update
 def foo
-  x = x + 1
+  x = x.nil?
+  x
 end
 
 # assert
 class Object
-  def foo: -> untyped
+  def foo: -> true
 end
