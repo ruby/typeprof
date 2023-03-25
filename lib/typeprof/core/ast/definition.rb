@@ -67,11 +67,13 @@ module TypeProf::Core
 
         if @static_cpath
           raise unless raw_scope.type == :SCOPE
-          _tbl, args, raw_body = raw_scope.children
+          tbl, args, raw_body = raw_scope.children
           raise unless args == nil
 
           ncref = CRef.new(@static_cpath, true, lenv.cref)
-          nlenv = LexicalScope.new(self, ncref, nil)
+          locals = {}
+          tbl.each {|var| locals[var] = Source.new(Type.nil) }
+          nlenv = LexicalScope.new(self, ncref, locals, nil)
           @body = AST.create_node(raw_body, nlenv)
         else
           @body = nil
@@ -203,7 +205,9 @@ module TypeProf::Core
         @args = raw_args.children
 
         ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
-        @body_lenv = LexicalScope.new(self, ncref, nil)
+        locals = {}
+        @tbl.each {|var| locals[var] = Source.new(Type.nil) }
+        @body_lenv = LexicalScope.new(self, ncref, locals, nil)
         @body = raw_body ? AST.create_node(raw_body, @body_lenv) : nil
 
         @args_code_ranges = []
@@ -232,10 +236,10 @@ module TypeProf::Core
           block = nil
           if @args
             @args[0].times do |i|
-              f_args << @body_lenv.def_var(@tbl[i], self)
+              f_args << @body_lenv.set_var(@tbl[i], self)
             end
             # &block
-            block = @body_lenv.def_var(:&, self)
+            block = @body_lenv.set_var(:&, self)
             @body_lenv.def_alias_var(@args[9], :&, self) if @args[9]
           end
           ret = @body_lenv.get_ret

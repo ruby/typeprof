@@ -17,6 +17,6 @@ end
 
 # assert
 class Object
-  def foo: (Integer | String) -> (Integer | String)
-  def bar: (String) -> String
+  def foo: (untyped) -> (Integer | String)
+  def bar: (untyped) -> String
 end

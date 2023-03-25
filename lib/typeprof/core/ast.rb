@@ -9,11 +9,13 @@ module TypeProf::Core
       end
 
       raise unless raw_scope.type == :SCOPE
-      _tbl, args, raw_body = raw_scope.children
+      tbl, args, raw_body = raw_scope.children
       raise unless args == nil
 
       cref = CRef.new([], false, nil)
-      lenv = LexicalScope.new(nil, cref, nil)
+      locals = {}
+      tbl.each {|var| locals[var] = Source.new(Type.nil) }
+      lenv = LexicalScope.new(nil, cref, locals, nil)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         row1, col1, row2, col2 = cr
         pos1 = TypeProf::CodePosition.new(row1, col1)
@@ -322,6 +324,27 @@ module TypeProf::Core
         end
       end
 
+      def modified_vars(tbl, vars)
+        case self
+        when LASGN
+          vars << self.var if tbl.include?(self.var)
+        when ModuleNode, DefNode
+          # skip
+        when CallNode
+          subnodes.each do |key, subnode|
+            if key == :block_body
+              subnode.modified_vars(tbl - self.block_tbl, vars) if subnode
+            else
+              subnode.modified_vars(tbl, vars) if subnode
+            end
+          end
+        else
+          subnodes.each_value do |subnode|
+            subnode.modified_vars(tbl, vars) if subnode
+          end
+        end
+      end
+
       def pretty_print_instance_variables
         super - [:@raw_node, :@raw_children, :@lenv, :@prev_node]
       end
@@ -343,40 +366,31 @@ module TypeProf::Core
   end
 
   class LexicalScope
-    def initialize(node, cref, outer)
+    def initialize(node, cref, locals, outer)
       @cref = cref
-      @tbl = {} # variable table
+      @locals = locals
       @outer = outer
       # XXX
       @self = Source.new(@cref.get_self)
       @ret = node ? Vertex.new("ret", node) : nil
     end
 
-    attr_reader :cref, :outer
+    attr_reader :cref, :locals, :outer
 
-    def resolve_var(name)
-      lenv = self
-      while lenv
-        break if lenv.var_exist?(name)
-        lenv = lenv.outer
-      end
-      lenv
+    def set_var(name, node)
+      @locals[name] = Vertex.new("var:#{ name }", node)
     end
 
-    def def_var(name, node)
-      @tbl[name] ||= Vertex.new("var:#{ name }", node)
+    def update_var(name, vtx)
+      @locals[name] = vtx
     end
 
     def def_alias_var(name, old_name, node)
-      @tbl[name] = @tbl[old_name]
+      @locals[name] = @locals[old_name]
     end
 
     def get_var(name)
-      @tbl[name]
-    end
-
-    def var_exist?(name)
-      @tbl.key?(name)
+      @locals[name] || raise
     end
 
     def get_self

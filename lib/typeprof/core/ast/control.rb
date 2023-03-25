@@ -56,8 +56,25 @@ module TypeProf::Core
       def subnodes = { cond:, body: }
 
       def install0(genv)
+        vars = Set[]
+        @cond.modified_vars(@lenv.locals.keys, vars)
+        @body.modified_vars(@lenv.locals.keys, vars)
+        old_vtxs = {}
+        vars.each do |var|
+          vtx = @lenv.get_var(var)
+          nvtx = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
+          old_vtxs[var] = nvtx
+          @lenv.update_var(var, nvtx)
+        end
+
         @cond.install(genv)
         @body.install(genv)
+
+        vars.each do |var|
+          @lenv.get_var(var).add_edge(genv, old_vtxs[var])
+          @lenv.update_var(var, old_vtxs[var])
+        end
+
         Source.new(Type.nil)
       end
 
@@ -127,7 +144,7 @@ module TypeProf::Core
           raw_vals, raw_clause, raw_when = raw_when.children
           @clauses << [
             AST.create_node(raw_vals, lenv),
-            AST.create_node(raw_clause, lenv),
+            raw_clause ? AST.create_node(raw_clause, lenv) : nil,
           ]
         end
         @else_clause = raw_when ? AST.create_node(raw_when, lenv) : nil
@@ -149,7 +166,11 @@ module TypeProf::Core
         @pivot.install(genv)
         @clauses.each do |vals, clause|
           vals.install(genv)
-          clause.install(genv).add_edge(genv, ret)
+          if clause
+            clause.install(genv).add_edge(genv, ret)
+          else
+            Source.new(Type.nil).add_edge(genv, ret)
+          end
         end
         if @else_clause
           @else_clause.install(genv).add_edge(genv, ret)

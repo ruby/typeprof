@@ -249,7 +249,7 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        @lenv.resolve_var(@var).get_var(@var)
+        @lenv.get_var(@var)
       end
 
       def hover(pos)
@@ -282,10 +282,9 @@ module TypeProf::Core
       def attrs = { var:, var_code_range:, dummy_rhs: }
 
       def install0(genv)
-        lenv = @lenv.resolve_var(@var)
-        vtx = lenv ? lenv.get_var(@var) : @lenv.def_var(@var, self)
-
         val = (@rhs || @dummy_rhs).install(genv)
+
+        vtx = @lenv.set_var(@var, self)
         val.add_edge(genv, vtx)
         val
       end

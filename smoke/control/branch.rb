@@ -13,8 +13,8 @@ end
 # assert
 class Object
   def foo: (untyped) -> (Integer | String)
-  def bar: (Integer) -> Integer
-  def baz: (Integer) -> Integer?
+  def bar: (untyped) -> Integer
+  def baz: (untyped) -> Integer?
 end
 
 # update
@@ -32,6 +32,6 @@ end
 # assert
 class Object
   def foo: (untyped) -> (Integer | String)
-  def bar: (Integer) -> Integer
-  def baz: (Integer) -> Integer?
+  def bar: (untyped) -> Integer
+  def baz: (untyped) -> Integer?
 end

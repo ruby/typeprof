@@ -24,7 +24,9 @@ module TypeProf::Core
           @block_tbl, raw_block_args, raw_block_body = raw_block.children
           @block_f_args = raw_block_args.children
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-          nlenv = LexicalScope.new(self, ncref, lenv)
+          locals = lenv.locals.dup
+          @block_tbl.each {|var| locals[var] = Source.new(Type.nil) }
+          nlenv = LexicalScope.new(self, ncref, locals, lenv)
           @block_body = AST.create_node(raw_block_body, nlenv)
         else
           @block_tbl = @block_f_args = @block_body = nil
@@ -44,10 +46,25 @@ module TypeProf::Core
         if @block_body
           blk_f_args = []
           @block_f_args[0].times do |i|
-            blk_f_args << @block_body.lenv.def_var(@block_tbl[i], self)
+            blk_f_args << @block_body.lenv.set_var(@block_tbl[i], self)
           end
           blk_ret = @block_body.lenv.get_ret
+
+          vars = Set[]
+          @block_body.modified_vars(@lenv.locals.keys - @block_tbl, vars)
+          vars.each do |var|
+            vtx = @lenv.get_var(var)
+            nvtx = vtx.new_vertex(genv, "#{ vtx.show_name }'", self)
+            @lenv.update_var(var, nvtx)
+            @block_body.lenv.update_var(var, nvtx)
+          end
+
           @block_body.install(genv).add_edge(genv, blk_ret)
+
+          vars.each do |var|
+            @block_body.lenv.get_var(var).add_edge(genv, @lenv.get_var(var))
+          end
+
           block = Block.new(@block_body, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         elsif @block_pass
