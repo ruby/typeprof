@@ -244,7 +244,7 @@ module TypeProf::Core
         if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
           # ignore
         else
-          @next_vtx.on_type_added(genv, self, added_types)
+          @next_vtx.on_type_added(genv, self, added_types - @next_vtx.types.keys) # XXX: smoke/control/bot4.rb
         end
       end
     end
@@ -254,7 +254,7 @@ module TypeProf::Core
         if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
           # ignore
         else
-          @next_vtx.on_type_added(genv, self, @types.keys)
+          @next_vtx.on_type_added(genv, self, @types.keys - @next_vtx.types.keys) # XXX: smoke/control/bot4.rb
         end
       else
         removed_types.each do |ty|
@@ -271,7 +271,7 @@ module TypeProf::Core
     @@new_id = 0
 
     def to_s
-      "F#{ @id ||= @@new_id += 1 } -> #{ @next_vtx }"
+      "BF#{ @id ||= @@new_id += 1 } -> #{ @next_vtx }"
     end
   end
 
