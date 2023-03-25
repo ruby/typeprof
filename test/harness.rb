@@ -33,7 +33,12 @@ module TypeProf::Core
         raise "unknown directive: #{ cmd.strip.inspect }"
       end
     end
-    puts core.dump_declarations(file) if interactive
+    if interactive
+      puts core.dump_declarations(file)
+      core.diagnostics(file) do |diag|
+        pp diag
+      end
+    end
   end
 end
 
