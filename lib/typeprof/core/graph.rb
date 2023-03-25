@@ -222,8 +222,8 @@ module TypeProf::Core
       @prev_vtx = prev_vtx
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:botfilter", node)
       @base_vtx = base_vtx
-      prev_vtx.add_edge(genv, self)
       base_vtx.add_edge(genv, self)
+      prev_vtx.add_edge(genv, self)
     end
 
     attr_reader :node, :types, :prev_vtx, :next_vtx, :base_vtx
@@ -235,7 +235,7 @@ module TypeProf::Core
     def on_type_added(genv, src_var, added_types)
       if src_var == @base_vtx
         if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
-          @next_vtx.on_type_removed(genv, self, @prev_vtx.types.keys)
+          @next_vtx.on_type_removed(genv, self, @types.keys & @next_vtx.types.keys) # XXX: smoke/control/bot2.rb
         end
       else
         added_types.each do |ty|
@@ -263,7 +263,7 @@ module TypeProf::Core
         if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
           # ignore
         else
-          @next_vtx.on_type_removed(genv, self, removed_types)
+          @next_vtx.on_type_removed(genv, self, removed_types & @next_vtx.types.keys) # XXX: smoke/control/bot2.rb
         end
       end
     end
