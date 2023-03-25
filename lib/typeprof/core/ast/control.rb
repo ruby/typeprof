@@ -5,7 +5,7 @@ module TypeProf::Core
         super
         raw_cond, raw_then, raw_else = raw_node.children
         @cond = AST.create_node(raw_cond, lenv)
-        @then = AST.create_node(raw_then, lenv)
+        @then = raw_then ? AST.create_node(raw_then, lenv) : nil
         @else = raw_else ? AST.create_node(raw_else, lenv) : nil
       end
 
@@ -20,7 +20,7 @@ module TypeProf::Core
 
         vars = Set[]
         vars << @cond.var if @cond.is_a?(LVAR)
-        @then.modified_vars(@lenv.locals.keys, vars)
+        @then.modified_vars(@lenv.locals.keys, vars) if @then
         @else.modified_vars(@lenv.locals.keys, vars) if @else
         modified_vtxs = {}
         vars.each do |var|
@@ -36,14 +36,18 @@ module TypeProf::Core
           modified_vtxs[@cond.var] = nvtx_then, nvtx_else
         end
 
-        modified_vtxs.each do |var, (nvtx_then, _)|
-          @lenv.update_var(var, nvtx_then)
+        if @then
+          modified_vtxs.each do |var, (nvtx_then, _)|
+            @lenv.update_var(var, nvtx_then)
+          end
+          then_val = @then.install(genv)
+          modified_vtxs.each do |var, ary|
+            ary[0] = @lenv.get_var(var)
+          end
+        else
+          then_val = Source.new(Type.nil)
         end
-        then_val = @then.install(genv)
         then_val.add_edge(genv, ret)
-        modified_vtxs.each do |var, ary|
-          ary[0] = @lenv.get_var(var)
-        end
 
         if @else
           modified_vtxs.each do |var, (_, nvtx_else)|
