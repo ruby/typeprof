@@ -35,6 +35,7 @@ module TypeProf::Core
     end
     if interactive
       puts core.dump_declarations(file)
+      #core.dump_graph(file)
       core.diagnostics(file) do |diag|
         pp diag
       end

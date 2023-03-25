@@ -165,7 +165,7 @@ module TypeProf::Core
         if site.is_a?(CallSite)
           return site.recv.show + "#" + site.mid.to_s
         else
-          return node.ret.is_a?(Vertex) ? node.ret.show : "..."
+          return node.ret.show
         end
       end
     end

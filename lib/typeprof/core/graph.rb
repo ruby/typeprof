@@ -1,19 +1,56 @@
 module TypeProf::Core
   Fiber[:show_rec] = Set[]
 
-  class Source
-    def initialize(*tys)
-      @types = {}
-      tys.each do |ty|
-        raise ty.inspect unless ty.is_a?(Type)
-        @types[ty] = true
-      end
+  class BasicVertex
+    def initialize(types)
+      @types = types
     end
 
     attr_reader :types
 
+    def show
+      if Fiber[:show_rec].include?(self)
+        "untyped"
+      else
+        begin
+          Fiber[:show_rec] << self
+          types = []
+          optional = @types.include?(Type.nil)
+          bool = @types.include?(Type.true) && @types.include?(Type.false)
+          types << "bool" if bool
+          @types.each do |ty, _source|
+            next if ty == Type.nil
+            next if bool && (ty == Type.true || ty == Type.false)
+            types << ty.show
+          end
+          types = types.uniq.sort
+          case types.size
+          when 0
+            optional ? "nil" : "untyped"
+          when 1
+            types.first + (optional ? "?" : "")
+          else
+            "(#{ types.join(" | ") })" + (optional ? "?" : "")
+          end
+        ensure
+          Fiber[:show_rec].delete(self)
+        end
+      end
+    end
+  end
+
+  class Source < BasicVertex
+    def initialize(*tys)
+      types = {}
+      tys.each do |ty|
+        raise ty.inspect unless ty.is_a?(Type)
+        types[ty] = true
+      end
+      super(types)
+    end
+
     def on_type_added(genv, src_var, added_types)
-      # TODO: need to report error
+      # TODO: need to report error?
     end
 
     def on_type_removed(genv, src_var, removed_types)
@@ -62,13 +99,13 @@ module TypeProf::Core
     alias inspect to_s
   end
 
-  class Vertex
+  class Vertex < BasicVertex
     def initialize(show_name, node)
       @show_name = show_name
       raise unless node.is_a?(AST::Node)
       @node = node
-      @types = {}
       @next_vtxs = Set[]
+      super({})
     end
 
     attr_reader :show_name, :next_vtxs, :types
@@ -120,36 +157,6 @@ module TypeProf::Core
     def remove_edge(genv, nvtx)
       @next_vtxs.delete(nvtx)
       nvtx.on_type_removed(genv, self, @types.keys) unless @types.empty?
-    end
-
-    def show
-      if Fiber[:show_rec].include?(self)
-        "untyped"
-      else
-        begin
-          Fiber[:show_rec] << self
-          types = []
-          optional = @types.include?(Type.nil)
-          bool = @types.include?(Type.true) && @types.include?(Type.false)
-          types << "bool" if bool
-          @types.each do |ty, _source|
-            next if ty == Type.nil
-            next if bool && (ty == Type.true || ty == Type.false)
-            types << ty.show
-          end
-          types = types.uniq.sort
-          case types.size
-          when 0
-            optional ? "nil" : "untyped"
-          when 1
-            types.first + (optional ? "?" : "")
-          else
-            "(#{ types.join(" | ") })" + (optional ? "?" : "")
-          end
-        ensure
-          Fiber[:show_rec].delete(self)
-        end
-      end
     end
 
     def match?(genv, other)

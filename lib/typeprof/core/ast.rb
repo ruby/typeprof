@@ -217,8 +217,9 @@ module TypeProf::Core
           puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
         end
         unless @reused
-          if @defs
-            @defs.each do |d|
+          defs = @defs # annoation
+          if defs
+            defs.each do |d|
               case d
               when MethodDef
                 genv.remove_method_def(d)
@@ -231,8 +232,9 @@ module TypeProf::Core
               end
             end
           end
-          if @sites
-            @sites.each_value do |site|
+          sites = @sites # annotation
+          if sites
+            sites.each_value do |site|
               site.destroy(genv)
             end
           end
@@ -265,10 +267,13 @@ module TypeProf::Core
       end
 
       def reuse
-        @lenv = @prev_node.lenv
-        @ret = @prev_node.ret
-        @defs = @prev_node.defs
-        @sites = @prev_node.sites
+        prev_node = @prev_node # annotation
+        if prev_node
+          @lenv = prev_node.lenv
+          @ret = prev_node.ret
+          @defs = prev_node.defs
+          @sites = prev_node.sites
+        end
 
         subnodes.each_value do |subnode|
           subnode.reuse if subnode
@@ -288,8 +293,11 @@ module TypeProf::Core
 
       def dump(dumper)
         s = dump0(dumper)
-        if @sites && !@sites.empty?
-          s += "\e[32m:#{ @sites.to_a.join(",") }\e[m"
+        sites = @sites # annotation
+        if sites
+          if !sites.empty? # want to avoid this nesting
+            s += "\e[32m:#{ @sites.to_a.join(",") }\e[m"
+          end
         end
         s += "\e[34m:#{ @ret.inspect }\e[m"
         s
@@ -300,8 +308,9 @@ module TypeProf::Core
       end
 
       def diagnostics(genv, &blk)
-        if @sites
-          @sites.each_value do |site|
+        sites = @sites # annotation
+        if sites
+          sites.each_value do |site|
             next unless site.respond_to?(:diagnostics) # XXX
             site.diagnostics(genv, &blk)
           end
@@ -312,8 +321,9 @@ module TypeProf::Core
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
-        if @sites
-          @sites.each_value do |site|
+        sites = @sites # annotation
+        if sites
+          sites.each_value do |site|
             vtxs << site.ret
             boxes << site
           end

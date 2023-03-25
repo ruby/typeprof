@@ -50,6 +50,9 @@ module TypeProf::Core
           end
           blk_ret = @block_body.lenv.get_ret
 
+          @lenv.locals.each do |var, vtx|
+            @block_body.lenv.update_var(var, vtx)
+          end
           vars = Set[]
           @block_body.modified_vars(@lenv.locals.keys - @block_tbl, vars)
           vars.each do |var|
@@ -82,9 +85,9 @@ module TypeProf::Core
 
       def dump_call(prefix, suffix)
         s = prefix + "\e[33m[#{ @sites.values.join(",") }]\e[m" + suffix
-        if @block
+        if @block_body
           s << " do |<TODO>|\n"
-          s << @block.dump(nil).gsub(/^/, "  ")
+          s << @block_body.dump(nil).gsub(/^/, "  ")
           s << "\nend"
         end
         s
