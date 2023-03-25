@@ -232,18 +232,17 @@ module TypeProf::Core
 
     def dump_declarations(path)
       depth = 0
-      out_buffer = []
-      out = -> line { out_buffer << ("  " * depth + line + "\n") }
+      out = []
       @text_nodes[path].traverse do |event, node|
         case node
         when AST::MODULE
           if node.static_cpath
             if event == :enter
-              out["module #{ node.static_cpath.join("::") }"]
+              out << "  " * depth + "module #{ node.static_cpath.join("::") }"
               depth += 1
             else
               depth -= 1
-              out["end"]
+              out << "  " * depth + "end"
             end
           end
         when AST::CLASS
@@ -253,11 +252,11 @@ module TypeProf::Core
               unless node.static_superclass_cpath == [:Object]
                 s << " < #{ node.static_superclass_cpath.join("::") }"
               end
-              out[s]
+              out << "  " * depth + s
               depth += 1
             else
               depth -= 1
-              out["end"]
+              out << "  " * depth + "end"
             end
           end
         else
@@ -265,22 +264,22 @@ module TypeProf::Core
             node.defs.each do |d|
               case d
               when MethodDef
-                out["def #{ d.singleton ? "self." : "" }#{ d.mid }: " + d.show]
+                out << "  " * depth + "def #{ d.singleton ? "self." : "" }#{ d.mid }: " + d.show
               when ConstDef
-                out["#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show]
+                out << "  " * depth + "#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show
               end
             end
           end
         end
       end
-      out_buffer = out_buffer.chunk {|s| s.start_with?("def ") }.flat_map do |toplevel, lines|
+      out = out.map {|s| s + "\n" }.chunk {|s| s.start_with?("def ") }.flat_map do |toplevel, lines|
         if toplevel
-          ["class Object\n", *lines.map {|line| "  " + line }, "end\n"]
+          ["class Object\n"] + lines.map {|line| "  " + line } + ["end\n"]
         else
           lines
         end
       end
-      out_buffer.join
+      out.join
     end
 
     def get_method_sig(cpath, singleton, mid)
