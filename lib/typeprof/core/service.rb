@@ -48,7 +48,7 @@ module TypeProf::Core
 
       code = File.read(path) unless code
       begin
-        node = AST.parse(code)
+        node = AST.parse(path, code)
       rescue SyntaxError
         return
       end
@@ -150,7 +150,7 @@ module TypeProf::Core
               case md
               when MethodDecl
               when MethodDef
-                defs << md.node.code_range
+                defs << [md.node.lenv.path, md.node.code_range]
               end
             end
           end

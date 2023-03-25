@@ -40,7 +40,7 @@ module TypeProf::Core
           @block_tbl.each {|var| locals[var] = Source.new(Type.nil) }
           locals[:"*self"] = Source.new(ncref.get_self)
           locals[:"*block_ret"] = Vertex.new("block_ret", self)
-          nlenv = LocalEnv.new(ncref, locals)
+          nlenv = LocalEnv.new(@lenv.path, ncref, locals)
           @block_body = AST.create_node(raw_block_body, nlenv)
         else
           @block_tbl = @block_f_args = @block_body = nil

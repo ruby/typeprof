@@ -1,6 +1,6 @@
 module TypeProf::Core
   class AST
-    def self.parse(src)
+    def self.parse(path, src)
       begin
         verbose_back, $VERBOSE = $VERBOSE, nil
         raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
@@ -17,7 +17,7 @@ module TypeProf::Core
       tbl.each {|var| locals[var] = Source.new(Type.nil) }
       locals[:"*self"] = Source.new(cref.get_self)
       locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
-      lenv = LocalEnv.new(cref, locals)
+      lenv = LocalEnv.new(path, cref, locals)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         row1, col1, row2, col2 = cr
         pos1 = TypeProf::CodePosition.new(row1, col1)
@@ -382,12 +382,13 @@ module TypeProf::Core
   end
 
   class LocalEnv
-    def initialize(cref, locals)
+    def initialize(path, cref, locals)
+      @path = path
       @cref = cref
       @locals = locals
     end
 
-    attr_reader :cref, :locals
+    attr_reader :path, :cref, :locals
 
     def new_var(name, node)
       @locals[name] = Vertex.new("var:#{ name }", node)
