@@ -15,14 +15,47 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new("if", self)
+
         @cond.install(genv)
+
+        vars = Set[]
+        @then.modified_vars(@lenv.locals.keys, vars)
+        @else.modified_vars(@lenv.locals.keys, vars) if @else
+        modified_vtxs = {}
+        vars.each do |var|
+          vtx = @lenv.get_var(var)
+          nvtx_then = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
+          nvtx_else = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
+          modified_vtxs[var] = [nvtx_then, nvtx_else]
+        end
+
+        modified_vtxs.each do |var, (nvtx_then, _)|
+          @lenv.update_var(var, nvtx_then)
+        end
         @then.install(genv).add_edge(genv, ret)
+        modified_vtxs.each do |var, ary|
+          ary[0] = @lenv.get_var(var)
+        end
+
         if @else
+          modified_vtxs.each do |var, (_, nvtx_else)|
+            @lenv.update_var(var, nvtx_else)
+          end
           else_val = @else.install(genv)
+          modified_vtxs.each do |var, ary|
+            ary[1] = @lenv.get_var(var)
+          end
         else
           else_val = Source.new(Type.nil)
         end
         else_val.add_edge(genv, ret)
+
+        modified_vtxs.each do |var, (nvtx_then, nvtx_else)|
+          nvtx_join = nvtx_then.new_vertex(genv, "xxx", self)
+          nvtx_else.add_edge(genv, nvtx_join)
+          @lenv.update_var(var, nvtx_join)
+        end
+
         ret
       end
 
