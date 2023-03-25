@@ -75,6 +75,9 @@ module TypeProf::Core
       when :ZLIST, :LIST then LIST.new(raw_node, lenv)
       when :HASH then HASH.new(raw_node, lenv)
 
+      # misc
+      when :DEFINED then DEFINED.new(raw_node, lenv)
+
       # call
       when :YIELD then YIELD.new(raw_node, lenv)
       when :OP_ASGN1 then OP_ASGN_AREF.new(raw_node, lenv)

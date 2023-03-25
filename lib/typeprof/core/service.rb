@@ -82,7 +82,7 @@ module TypeProf::Core
         end
 
         if live_vtxs.to_a & dead_vtxs.to_a != []
-          dump_graph("test0.rb")
+          dump_graph(path)
           raise (live_vtxs.to_a & dead_vtxs.to_a).to_s
         end
 
