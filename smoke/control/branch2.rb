@@ -13,5 +13,5 @@ foo(nil)
 
 # assert
 class Object
-  def foo: (Integer?) -> (Integer | String)?
+  def foo: (Integer?) -> (Integer | String)
 end

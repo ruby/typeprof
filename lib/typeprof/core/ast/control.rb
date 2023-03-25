@@ -19,6 +19,7 @@ module TypeProf::Core
         @cond.install(genv)
 
         vars = Set[]
+        vars << @cond.var if @cond.is_a?(LVAR)
         @then.modified_vars(@lenv.locals.keys, vars)
         @else.modified_vars(@lenv.locals.keys, vars) if @else
         modified_vtxs = {}
@@ -27,6 +28,12 @@ module TypeProf::Core
           nvtx_then = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
           nvtx_else = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
           modified_vtxs[var] = [nvtx_then, nvtx_else]
+        end
+        if @cond.is_a?(LVAR)
+          nvtx_then, nvtx_else = modified_vtxs[@cond.var]
+          nvtx_then = Filter.new(genv, self, nvtx_then, !self.is_a?(IF)).next_vtx
+          nvtx_else = Filter.new(genv, self, nvtx_else, self.is_a?(IF)).next_vtx
+          modified_vtxs[@cond.var] = nvtx_then, nvtx_else
         end
 
         modified_vtxs.each do |var, (nvtx_then, _)|
