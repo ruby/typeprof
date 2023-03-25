@@ -284,7 +284,7 @@ module TypeProf::Core
       def install0(genv)
         val = (@rhs || @dummy_rhs).install(genv)
 
-        vtx = @lenv.set_var(@var, self)
+        vtx = @lenv.new_var(@var, self)
         val.add_edge(genv, vtx)
         val
       end

@@ -2,7 +2,7 @@ module TypeProf::Core
   class AST
     class SELF < Node
       def install0(genv)
-        @lenv.get_self
+        @lenv.get_var(:"*self")
       end
     end
 

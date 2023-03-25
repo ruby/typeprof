@@ -38,7 +38,7 @@ module TypeProf::Core
 
         if @then
           modified_vtxs.each do |var, (nvtx_then, _)|
-            @lenv.update_var(var, nvtx_then)
+            @lenv.set_var(var, nvtx_then)
           end
           then_val = @then.install(genv)
           modified_vtxs.each do |var, ary|
@@ -51,7 +51,7 @@ module TypeProf::Core
 
         if @else
           modified_vtxs.each do |var, (_, nvtx_else)|
-            @lenv.update_var(var, nvtx_else)
+            @lenv.set_var(var, nvtx_else)
           end
           else_val = @else.install(genv)
           modified_vtxs.each do |var, ary|
@@ -67,7 +67,7 @@ module TypeProf::Core
           nvtx_else = BotFilter.new(genv, self, nvtx_else, else_val).next_vtx
           nvtx_join = nvtx_then.new_vertex(genv, "xxx", self)
           nvtx_else.add_edge(genv, nvtx_join)
-          @lenv.update_var(var, nvtx_join)
+          @lenv.set_var(var, nvtx_join)
         end
 
         ret
@@ -111,7 +111,7 @@ module TypeProf::Core
           vtx = @lenv.get_var(var)
           nvtx = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
           old_vtxs[var] = nvtx
-          @lenv.update_var(var, nvtx)
+          @lenv.set_var(var, nvtx)
         end
 
         @cond.install(genv)
@@ -119,7 +119,7 @@ module TypeProf::Core
 
         vars.each do |var|
           @lenv.get_var(var).add_edge(genv, old_vtxs[var])
-          @lenv.update_var(var, old_vtxs[var])
+          @lenv.set_var(var, old_vtxs[var])
         end
 
         Source.new(Type.nil)
@@ -172,7 +172,7 @@ module TypeProf::Core
 
       def install0(genv)
         arg = @arg ? @arg.install(genv) : Source.new(Type.nil)
-        arg.add_edge(genv, @lenv.get_ret)
+        arg.add_edge(genv, @lenv.get_var(:"*block_ret"))
         Source.new()
       end
 
@@ -340,9 +340,7 @@ module TypeProf::Core
 
       def install0(genv)
         ret = @arg ? @arg.install(genv) : Source.new(Type.nil)
-        lenv = @lenv
-        lenv = lenv.outer while lenv.outer
-        ret.add_edge(genv, lenv.get_ret)
+        ret.add_edge(genv, @lenv.get_var(:"*ret"))
         Vertex.new("dummy", self)
       end
 

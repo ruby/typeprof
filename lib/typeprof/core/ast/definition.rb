@@ -73,6 +73,8 @@ module TypeProf::Core
           ncref = CRef.new(@static_cpath, true, lenv.cref)
           locals = {}
           tbl.each {|var| locals[var] = Source.new(Type.nil) }
+          locals[:"*self"] = Source.new(ncref.get_self)
+          locals[:"*ret"] = Vertex.new("module_ret", self)
           nlenv = LexicalScope.new(self, ncref, locals, nil)
           @body = AST.create_node(raw_body, nlenv)
         else
@@ -101,7 +103,7 @@ module TypeProf::Core
           cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           add_def(genv, cdef)
 
-          ret = @body.lenv.get_ret
+          ret = @body.lenv.get_var(:"*ret")
           @body.install(genv).add_edge(genv, ret)
           ret
         else
@@ -162,7 +164,7 @@ module TypeProf::Core
           cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           add_def(genv, cdef)
 
-          ret = @body.lenv.get_ret
+          ret = @body.lenv.get_var(:"*ret")
           @body.install(genv).add_edge(genv, ret)
           ret
         else
@@ -207,6 +209,8 @@ module TypeProf::Core
         ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
         locals = {}
         @tbl.each {|var| locals[var] = Source.new(Type.nil) }
+        locals[:"*self"] = Source.new(ncref.get_self)
+        locals[:"*ret"] = Vertex.new("method_ret", self)
         @body_lenv = LexicalScope.new(self, ncref, locals, nil)
         @body = raw_body ? AST.create_node(raw_body, @body_lenv) : nil
 
@@ -236,13 +240,13 @@ module TypeProf::Core
           block = nil
           if @args
             @args[0].times do |i|
-              f_args << @body_lenv.set_var(@tbl[i], self)
+              f_args << @body_lenv.new_var(@tbl[i], self)
             end
             # &block
-            block = @body_lenv.set_var(:&, self)
-            @body_lenv.def_alias_var(@args[9], :&, self) if @args[9]
+            block = @body_lenv.new_var(:"*given_block", self)
+            @body_lenv.set_var(@args[9], block) if @args[9]
           end
-          ret = @body_lenv.get_ret
+          ret = @body_lenv.get_var(:"*ret")
           if @body
             body_ret = @body.install(genv)
           else

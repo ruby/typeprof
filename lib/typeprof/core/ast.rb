@@ -15,6 +15,8 @@ module TypeProf::Core
       cref = CRef.new([], false, nil)
       locals = {}
       tbl.each {|var| locals[var] = Source.new(Type.nil) }
+      locals[:"*self"] = Source.new(cref.get_self)
+      locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
       lenv = LexicalScope.new(nil, cref, locals, nil)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         row1, col1, row2, col2 = cr
@@ -391,28 +393,16 @@ module TypeProf::Core
 
     attr_reader :cref, :locals, :outer
 
-    def set_var(name, node)
+    def new_var(name, node)
       @locals[name] = Vertex.new("var:#{ name }", node)
     end
 
-    def update_var(name, vtx)
+    def set_var(name, vtx)
       @locals[name] = vtx
-    end
-
-    def def_alias_var(name, old_name, node)
-      @locals[name] = @locals[old_name]
     end
 
     def get_var(name)
       @locals[name] || raise
-    end
-
-    def get_self
-      @self
-    end
-
-    def get_ret
-      @ret
     end
   end
 

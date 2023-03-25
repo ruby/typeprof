@@ -38,6 +38,8 @@ module TypeProf::Core
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
           locals = lenv.locals.dup
           @block_tbl.each {|var| locals[var] = Source.new(Type.nil) }
+          locals[:"*self"] = Source.new(ncref.get_self)
+          locals[:"*block_ret"] = Vertex.new("block_ret", self)
           nlenv = LexicalScope.new(self, ncref, locals, lenv)
           @block_body = AST.create_node(raw_block_body, nlenv)
         else
@@ -59,7 +61,7 @@ module TypeProf::Core
       def attrs = { mid:, block_tbl:, block_f_args:, mid_code_range:, yield: }
 
       def install0(genv)
-        recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:&) : @lenv.get_self
+        recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")
         if @positional_args
           positional_args = @positional_args.map do |node|
             node.install(genv)
@@ -70,20 +72,20 @@ module TypeProf::Core
         if @block_body
           blk_f_args = []
           @block_f_args[0].times do |i|
-            blk_f_args << @block_body.lenv.set_var(@block_tbl[i], self)
+            blk_f_args << @block_body.lenv.new_var(@block_tbl[i], self)
           end
-          blk_ret = @block_body.lenv.get_ret
+          blk_ret = @block_body.lenv.get_var(:"*block_ret")
 
           @lenv.locals.each do |var, vtx|
-            @block_body.lenv.update_var(var, vtx)
+            @block_body.lenv.set_var(var, vtx)
           end
           vars = Set[]
           @block_body.modified_vars(@lenv.locals.keys - @block_tbl, vars)
           vars.each do |var|
             vtx = @lenv.get_var(var)
             nvtx = vtx.new_vertex(genv, "#{ vtx.show_name }'", self)
-            @lenv.update_var(var, nvtx)
-            @block_body.lenv.update_var(var, nvtx)
+            @lenv.set_var(var, nvtx)
+            @block_body.lenv.set_var(var, nvtx)
           end
 
           @block_body.install(genv).add_edge(genv, blk_ret)
