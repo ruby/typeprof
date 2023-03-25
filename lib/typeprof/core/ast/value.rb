@@ -23,6 +23,7 @@ module TypeProf::Core
         when FalseClass then Source.new(Type.false)
         when Integer then Source.new(Type.int)
         when Float then Source.new(Type.float)
+        when Regexp then Source.new(Type::Instance.new([:Regexp]))
         when Symbol
           Source.new(Type::Symbol.new(@lit))
         else

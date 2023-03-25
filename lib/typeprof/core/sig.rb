@@ -156,7 +156,7 @@ module TypeProf::Core
         if param_map[type.name]
           param_map[type.name].add_edge(genv, vtx)
         else
-          puts "unknown type param: #{ type.name }"
+          #puts "unknown type param: #{ type.name }"
         end
       when RBS::Types::Optional
         type_to_vtx0(genv, node, type.type, vtx, param_map)

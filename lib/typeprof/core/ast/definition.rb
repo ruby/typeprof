@@ -271,7 +271,7 @@ module TypeProf::Core
 
       def dump0(dumper)
         s = "def #{ @mid }(#{
-          (0...@args[0]).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body_lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
+          (0..@args[0]-1).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body_lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
         })\n"
         s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         s << "end"

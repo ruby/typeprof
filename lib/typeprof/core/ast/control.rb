@@ -75,7 +75,9 @@ module TypeProf::Core
 
       def dump0(dumper)
         s = "#{ self.is_a?(IF) ? "if" : "unless" } #{ @cond.dump(dumper) }\n"
-        s << @then.dump(dumper).gsub(/^/, "  ")
+        if @then
+          s << @then.dump(dumper).gsub(/^/, "  ")
+        end
         if @else
           s << "\nelse\n"
           s << @else.dump(dumper).gsub(/^/, "  ")

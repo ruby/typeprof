@@ -26,7 +26,7 @@ module TypeProf::Core
             types << ty.show
           end
           types = types.uniq.sort
-          case types.size
+          ret = case types.size
           when 0
             optional ? "nil" : bot ? "bot" : "untyped"
           when 1
@@ -34,8 +34,9 @@ module TypeProf::Core
           else
             "(#{ types.join(" | ") })" + (optional ? "?" : "")
           end
-        ensure
+        #ensure
           Fiber[:show_rec].delete(self)
+          ret
         end
       end
     end
@@ -78,9 +79,10 @@ module TypeProf::Core
       else
         begin
           Fiber[:show_rec] << self
-          @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
-        ensure
+          ret = @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
+        #ensure
           Fiber[:show_rec].delete(self)
+          ret
         end
       end
     end
@@ -171,10 +173,10 @@ module TypeProf::Core
       return false
     end
 
-    @@new_id = 0
+    $new_id = 0 # TODO: Use class variable
 
     def to_s
-      "v#{ @id ||= @@new_id += 1 }"
+      "v#{ @id ||= $new_id += 1 }"
     end
 
     alias inspect to_s
@@ -208,10 +210,10 @@ module TypeProf::Core
       @next_vtx.on_type_removed(genv, self, types) unless types.empty?
     end
 
-    @@new_id = 0
+    #@@new_id = 0
 
     def to_s
-      "NF#{ @id ||= @@new_id += 1 } -> #{ @next_vtx }"
+      "NF#{ @id ||= $new_id += 1 } -> #{ @next_vtx }"
     end
   end
 
@@ -268,10 +270,10 @@ module TypeProf::Core
       end
     end
 
-    @@new_id = 0
+    #@@new_id = 0
 
     def to_s
-      "BF#{ @id ||= @@new_id += 1 } -> #{ @next_vtx }"
+      "BF#{ @id ||= $new_id += 1 } -> #{ @next_vtx }"
     end
   end
 
@@ -316,10 +318,10 @@ module TypeProf::Core
       @edges = new_edges
     end
 
-    @@new_id = 0
+    #@@new_id = 0
 
     def to_s
-      "#{ self.class.to_s.split("::").last[0] }#{ @id ||= @@new_id += 1 }"
+      "#{ self.class.to_s.split("::").last[0] }#{ @id ||= $new_id += 1 }"
     end
 
     alias inspect to_s

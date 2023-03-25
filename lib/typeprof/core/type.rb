@@ -5,7 +5,8 @@ module TypeProf::Core
     end
 
     def self.strip_parens(s)
-      s =~ /\A\((.*)\)\z/ ? $1 : s
+      #s =~ /\A\((.*)\)\z/ ? $1 : s
+      s.start_with?("(") && s.end_with?(")") ? s[1..-2] : s
     end
 
     class Module < Type

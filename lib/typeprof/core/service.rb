@@ -36,6 +36,7 @@ module TypeProf::Core
     attr_reader :genv
 
     def add_workspaces(folders)
+      return # TODO
       folders.each do |folder|
         Dir.glob(File.expand_path(folder + "/**/*.rb")) do |path|
           update_file(path, nil)

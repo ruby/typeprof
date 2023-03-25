@@ -57,6 +57,14 @@ module TypeProf::LSP
 
     attr_reader :core, :open_texts
 
+    def target_path?(path)
+      # XXX: hard-coded for dog-fooding
+      p path
+      return false unless path.start_with?(File.dirname(__dir__))
+      return false if path.start_with?(File.join(File.dirname(__dir__), "lsp"))
+      return true
+    end
+
     def run
       @reader.read do |json|
         if json[:method]

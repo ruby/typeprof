@@ -58,7 +58,7 @@ module TypeProf::Core
         a_arg.types.each do |ty, _source|
           case ty
           when Type::Symbol
-            ivar_name = :"@#{ ty.sym }"
+            ivar_name = "@#{ ty.sym }".to_sym # TODO: use DSYM
             site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
             # TODO: dup check
             node.add_site(:attr_reader, site)
@@ -79,13 +79,13 @@ module TypeProf::Core
           case ty
           when Type::Symbol
             vtx = Vertex.new("attr_writer-arg", node)
-            ivar_name = :"@#{ ty.sym }"
+            ivar_name = "@#{ ty.sym }".to_sym
             ivdef = IVarDef.new(node.lenv.cref.cpath, false, ivar_name, node, vtx)
             node.add_def(@genv, ivdef)
-            mdef = MethodDef.new(node.lenv.cref.cpath, false, :"#{ ty.sym }=", node, [vtx], nil, vtx)
+            mdef = MethodDef.new(node.lenv.cref.cpath, false, "#{ ty.sym }=".to_sym, node, [vtx], nil, vtx)
             node.add_def(@genv, mdef)
 
-            ivar_name = :"@#{ ty.sym }"
+            ivar_name = "@#{ ty.sym }".to_sym
             site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
             # TODO: dup check
             node.add_site(:attr_writer, site)

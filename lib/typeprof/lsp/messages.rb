@@ -142,7 +142,10 @@ module TypeProf::LSP
     def run
       @params => { textDocument: { uri:, version:, text: } }
 
-      text = Text.new(URI(uri).path, text, version)
+      path = URI(uri).path
+      return unless @server.target_path?(path)
+
+      text = Text.new(path, text, version)
       @server.open_texts[uri] = text
       @server.core.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
@@ -155,6 +158,7 @@ module TypeProf::LSP
     def run
       @params => { textDocument: { uri:, version: }, contentChanges: changes }
       text = @server.open_texts[uri]
+      return unless text
       text.apply_changes(changes, version)
       @server.core.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
@@ -171,6 +175,7 @@ module TypeProf::LSP
     def run
       @params => { textDocument: { uri: } }
       text = @server.open_texts.delete(uri)
+      return unless text
       @server.core.update_file(text.path, nil)
     end
   end
@@ -185,6 +190,10 @@ module TypeProf::LSP
         position: pos,
       }
       text = @server.open_texts[uri]
+      unless text
+        respond(nil)
+        return
+      end
       defs = @server.core.definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
       if defs.empty?
         respond(nil)
@@ -209,6 +218,10 @@ module TypeProf::LSP
         position: pos,
       }
       text = @server.open_texts[uri]
+      unless text
+        respond(nil)
+        return
+      end
       str = @server.core.hover(text.path, TypeProf::CodePosition.from_lsp(pos))
       if str
         respond(contents: { language: "ruby", value: str })
@@ -223,6 +236,10 @@ module TypeProf::LSP
     def run
       @params => { textDocument: { uri: } }
       text = @server.open_texts[uri]
+      unless text
+        respond(nil)
+        return
+      end
       ret = []
       @server.core.code_lens(text.path) do |code_range, title|
         ret << {
@@ -252,6 +269,10 @@ module TypeProf::LSP
       }
       #trigger_kind = @params.key?(:context) ? @params[:context][:triggerKind] : 1 # Invoked
       text = @server.open_texts[uri]
+      unless text
+        respond(nil)
+        return
+      end
       items = []
       sort = "aaaa"
       text.modify_for_completion(text, pos) do |string, trigger, pos|

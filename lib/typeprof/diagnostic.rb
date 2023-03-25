@@ -1,10 +1,10 @@
 module TypeProf
   class Diagnostic
-    def initialize(code_range, msg, severity: :error, tags: nil)
+    def initialize(code_range, msg)
       @code_range = code_range.is_a?(TypeProf::CodeRange) ? code_range : code_range.code_range
       @msg = msg
-      @severity = severity
-      @tags = tags
+      @severity = :error # TODO: keyword argument
+      @tags = nil # TODO: keyword argument
     end
 
     attr_reader :msg, :severity, :code_range
