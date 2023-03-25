@@ -31,15 +31,16 @@ module TypeProf::Core
         end
         if @cond.is_a?(LVAR)
           nvtx_then, nvtx_else = modified_vtxs[@cond.var]
-          nvtx_then = Filter.new(genv, self, nvtx_then, !self.is_a?(IF)).next_vtx
-          nvtx_else = Filter.new(genv, self, nvtx_else, self.is_a?(IF)).next_vtx
+          nvtx_then = NilFilter.new(genv, self, nvtx_then, !self.is_a?(IF)).next_vtx
+          nvtx_else = NilFilter.new(genv, self, nvtx_else, self.is_a?(IF)).next_vtx
           modified_vtxs[@cond.var] = nvtx_then, nvtx_else
         end
 
         modified_vtxs.each do |var, (nvtx_then, _)|
           @lenv.update_var(var, nvtx_then)
         end
-        @then.install(genv).add_edge(genv, ret)
+        then_val = @then.install(genv)
+        then_val.add_edge(genv, ret)
         modified_vtxs.each do |var, ary|
           ary[0] = @lenv.get_var(var)
         end
@@ -58,6 +59,8 @@ module TypeProf::Core
         else_val.add_edge(genv, ret)
 
         modified_vtxs.each do |var, (nvtx_then, nvtx_else)|
+          nvtx_then = BotFilter.new(genv, self, nvtx_then, then_val).next_vtx
+          nvtx_else = BotFilter.new(genv, self, nvtx_else, else_val).next_vtx
           nvtx_join = nvtx_then.new_vertex(genv, "xxx", self)
           nvtx_else.add_edge(genv, nvtx_join)
           @lenv.update_var(var, nvtx_join)

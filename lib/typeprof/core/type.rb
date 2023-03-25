@@ -150,6 +150,18 @@ module TypeProf::Core
       end
     end
 
+    class Bot < Type
+      include StructuralEquality
+
+      def base_types(genv)
+        [Type::Instance.new([:Object])]
+      end
+
+      def show
+        "bot"
+      end
+    end
+
     class RBS < Type
       include StructuralEquality
 

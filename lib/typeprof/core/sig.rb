@@ -144,7 +144,7 @@ module TypeProf::Core
       when RBS::Types::Bases::Any
         Source.new().add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Bottom
-        # TODO...
+        Source.new(Type::Bot.new).add_edge(genv, vtx)
       when RBS::Types::Variable
         if param_map[type.name]
           param_map[type.name].add_edge(genv, vtx)
@@ -216,7 +216,7 @@ module TypeProf::Core
       when RBS::Types::Bases::Any
         [Source.new(Type.obj)] # TODO
       when RBS::Types::Bases::Bottom
-        [Source.new()] # TODO
+        [Source.new(Type::Bot.new)] # TODO
       when RBS::Types::Variable
         map[type.name] || [Source.new()] # TODO
       when RBS::Types::Optional

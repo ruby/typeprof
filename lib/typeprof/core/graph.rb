@@ -15,18 +15,20 @@ module TypeProf::Core
         begin
           Fiber[:show_rec] << self
           types = []
+          bot = @types.include?(Type::Bot.new)
           optional = @types.include?(Type.nil)
           bool = @types.include?(Type.true) && @types.include?(Type.false)
           types << "bool" if bool
           @types.each do |ty, _source|
             next if ty == Type.nil
             next if bool && (ty == Type.true || ty == Type.false)
+            next if ty == Type::Bot.new
             types << ty.show
           end
           types = types.uniq.sort
           case types.size
           when 0
-            optional ? "nil" : "untyped"
+            optional ? "nil" : bot ? "bot" : "untyped"
           when 1
             types.first + (optional ? "?" : "")
           else
@@ -182,7 +184,7 @@ module TypeProf::Core
     end
   end
 
-  class Filter
+  class NilFilter
     def initialize(genv, node, prev_vtx, allow_nil)
       @node = node
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
@@ -204,6 +206,66 @@ module TypeProf::Core
     def on_type_removed(genv, src_var, removed_types)
       types = filter(removed_types)
       @next_vtx.on_type_removed(genv, self, types) unless types.empty?
+    end
+
+    @@new_id = 0
+
+    def to_s
+      "NF#{ @id ||= @@new_id += 1 } -> #{ @next_vtx }"
+    end
+  end
+
+  class BotFilter
+    def initialize(genv, node, prev_vtx, base_vtx)
+      @node = node
+      @types = {}
+      @prev_vtx = prev_vtx
+      @next_vtx = Vertex.new("#{ prev_vtx.show_name }:botfilter", node)
+      @base_vtx = base_vtx
+      prev_vtx.add_edge(genv, self)
+      base_vtx.add_edge(genv, self)
+    end
+
+    attr_reader :node, :types, :prev_vtx, :next_vtx, :base_vtx
+
+    def filter(types)
+      types.select {|ty| (ty == Type.nil) == @allow_nil }
+    end
+
+    def on_type_added(genv, src_var, added_types)
+      if src_var == @base_vtx
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
+          @next_vtx.on_type_removed(genv, self, @prev_vtx.types.keys)
+        end
+      else
+        added_types.each do |ty|
+          @types[ty] = true
+        end
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
+          # ignore
+        else
+          @next_vtx.on_type_added(genv, self, added_types)
+        end
+      end
+    end
+
+    def on_type_removed(genv, src_var, removed_types)
+      if src_var == @base_vtx
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
+          # ignore
+        else
+          @next_vtx.on_type_added(genv, self, @types.keys)
+        end
+      else
+        removed_types.each do |ty|
+          @types.delete(ty) || raise
+        end
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new)
+          # ignore
+        else
+          @next_vtx.on_type_removed(genv, self, removed_types)
+        end
+      end
     end
 
     @@new_id = 0
