@@ -181,6 +181,21 @@ module TypeProf::Core
       end
     end
 
+    class REDO < Node
+      def initialize(raw_node, lenv)
+        super
+      end
+
+      def install0(genv)
+        # TODO: This should return a bot type
+        Source.new()
+      end
+
+      def dump0(dumper)
+        "redo"
+      end
+    end
+
     class CASE < Node
       def initialize(raw_node, lenv)
         super
