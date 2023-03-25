@@ -67,16 +67,16 @@ module TypeProf::Core
 
     def pretty_print(q)
       q.text "Set["
-      q.group {
-        q.nest(1) {
+      q.group do
+        q.nest(1) do
           @hash.each_key do |elem|
             q.breakable ""
             q.pp elem
             q.text ","
           end
-        }
+        end
         q.breakable ""
-      }
+      end
       q.text "]"
     end
   end

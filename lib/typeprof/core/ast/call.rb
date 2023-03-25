@@ -34,7 +34,7 @@ module TypeProf::Core
         if raw_block
           raise if @block_pass
           @block_tbl, raw_block_args, raw_block_body = raw_block.children
-          @block_f_args = raw_block_args.children
+          @block_f_args = raw_block_args ? raw_block_args.children : nil
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
           locals = lenv.locals.dup
           @block_tbl.each {|var| locals[var] = Source.new(Type.nil) }
@@ -71,8 +71,10 @@ module TypeProf::Core
         end
         if @block_body
           blk_f_args = []
-          @block_f_args[0].times do |i|
-            blk_f_args << @block_body.lenv.new_var(@block_tbl[i], self)
+          if @block_f_args
+            @block_f_args[0].times do |i|
+              blk_f_args << @block_body.lenv.new_var(@block_tbl[i], self)
+            end
           end
           blk_ret = @block_body.lenv.get_var(:"*block_ret")
 

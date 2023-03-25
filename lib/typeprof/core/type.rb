@@ -22,6 +22,13 @@ module TypeProf::Core
         "singleton(#{ @cpath.empty? ? "Object" : @cpath.join("::" ) })"
       end
 
+      def match?(genv, other)
+        return true if self == other
+
+        # TODO: implement!
+        return false
+      end
+
       def get_instance_type
         Instance.new(@cpath)
       end
