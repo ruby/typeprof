@@ -233,5 +233,7 @@ test(Foo.new)
         assert_equal("Foo#bar : (untyped) -> String", items[1][:detail])
       end
     end
+
+    # TODO: add a test for definition (for crossing files)
   end
 end

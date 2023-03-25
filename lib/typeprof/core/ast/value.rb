@@ -191,5 +191,29 @@ module TypeProf::Core
         "{ #{ @elems.map {|key, val| key.dump(dumper) + " => " + val.dump(dumper) }.join(", ") } }"
       end
     end
+
+    class DOT2 < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        raw_begin, raw_end = raw_node.children
+        @begin = AST.create_node(raw_begin, lenv)
+        @end = AST.create_node(raw_end, lenv)
+      end
+
+      attr_reader :begin, :end
+
+      def subnodes = { begin:, end: }
+
+      def install0(genv)
+        elem = Vertex.new("range-elem", self)
+        @begin.install(genv).add_edge(genv, elem)
+        @end.install(genv).add_edge(genv, elem)
+        Source.new(Type::Array.new(nil, elem, Type.range))
+      end
+
+      def dump0(dumper)
+        "(#{ @begin.dump(dumper) } .. #{ @end.dump(dumper) })"
+      end
+    end
   end
 end

@@ -77,6 +77,7 @@ module TypeProf::Core
       when :STR, :DSTR then STR.new(raw_node, lenv)
       when :ZLIST, :LIST then LIST.new(raw_node, lenv)
       when :HASH then HASH.new(raw_node, lenv)
+      when :DOT2 then DOT2.new(raw_node, lenv)
 
       # misc
       when :DEFINED then DEFINED.new(raw_node, lenv)

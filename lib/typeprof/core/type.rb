@@ -193,5 +193,6 @@ module TypeProf::Core
     def self.int = Type::Instance.new([:Integer])
     def self.float = Type::Instance.new([:Float])
     def self.ary = Type::Instance.new([:Array])
+    def self.range = Type::Instance.new([:Range])
   end
 end
