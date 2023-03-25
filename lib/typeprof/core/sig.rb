@@ -115,11 +115,16 @@ module TypeProf::Core
       when RBS::Types::ClassInstance
         name = type.name
         cpath = name.namespace.path + [name.name]
-        if cpath == [:Array]
+        case cpath
+        when [:Array]
           raise if type.args.size != 1
           elem = type.args.first
           elem_vtx = type_to_vtx(genv, node, elem, param_map)
           Source.new(Type::Array.new(nil, elem_vtx, Type.ary)).add_edge(genv, vtx)
+        when [:Set]
+          elem = type.args.first
+          elem_vtx = type_to_vtx(genv, node, elem, param_map)
+          Source.new(Type::Array.new(nil, elem_vtx, Type::Instance.new([:Set]))).add_edge(genv, vtx)
         else
           Source.new(Type::Instance.new(cpath)).add_edge(genv, vtx)
         end
@@ -143,6 +148,8 @@ module TypeProf::Core
         Source.new(Type.obj).add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Any
         Source.new().add_edge(genv, vtx) # TODO
+      when RBS::Types::Bases::Top
+        Source.new().add_edge(genv, vtx)
       when RBS::Types::Bases::Bottom
         Source.new(Type::Bot.new).add_edge(genv, vtx)
       when RBS::Types::Variable

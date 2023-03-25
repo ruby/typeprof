@@ -85,7 +85,7 @@ module TypeProf::Core
         if @elems
           "[#{ @elems.map {|e| Type.strip_parens(e.show) }.join(", ") }]"
         else
-          "Array[#{ Type.strip_parens(@unified_elem.show) }]"
+          "#{ @base_type.cpath.join("::") }[#{ Type.strip_parens(@unified_elem.show) }]"
         end
       end
     end

@@ -96,7 +96,12 @@ module TypeProf::Core
       }
       case recv_ty
       when Type::Array
-        param_map[:Elem] = recv_ty.get_elem
+        case recv_ty.base_types(genv).first.cpath
+        when [:Set]
+          param_map[:A] = recv_ty.get_elem
+        when [:Array], [:Enumerator]
+          param_map[:Elem] = recv_ty.get_elem
+        end
       when Type::Hash
         param_map[:K] = recv_ty.get_key
         param_map[:V] = recv_ty.get_value

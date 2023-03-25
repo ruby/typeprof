@@ -11,6 +11,7 @@ module TypeProf::Core
         file = $1.strip if $1
         core.update_file(file, code)
         core.update_file(file, code) unless interactive
+        #core.dump_graph(file)
       when /^assert(?::(.*))?$/
         file = $1.strip if $1
         actual = core.dump_declarations(file).chomp
