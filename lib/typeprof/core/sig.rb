@@ -15,9 +15,9 @@ module TypeProf::Core
         cpath = name.namespace.path + [name.name]
         # TODO: decl.type_params
         # TODO: decl.super_class.args
-        superclass = decl.super_class&.name
+        superclass = decl.super_class
         if superclass
-          superclass_cpath = superclass.namespace.path + [superclass.name]
+          superclass_cpath = superclass.name.namespace.path + [superclass.name.name]
         else
           superclass_cpath = [:Object]
         end

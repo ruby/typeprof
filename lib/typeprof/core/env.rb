@@ -313,6 +313,7 @@ module TypeProf::Core
     def run_all
       until @run_queue.empty?
         obj = @run_queue.shift
+        raise unless obj # annotation
         @run_queue_set.delete(obj)
         obj.run(self)
       end
@@ -322,6 +323,7 @@ module TypeProf::Core
 
     def resolve_cpath(cpath)
       dir = @toplevel
+      raise unless cpath # annotation
       cpath.each do |cname|
         dir = dir.child_modules[cname] ||= ModuleDirectory.new
       end
