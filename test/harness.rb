@@ -20,6 +20,17 @@ module TypeProf::Core
           yield code, actual
         end
         RBS::Parser.parse_signature(actual)
+      when /^diagnostics(?::(.*))?$/
+        actual = []
+        core.diagnostics(file) do |diag|
+          actual << "#{ diag.code_range.to_s }: #{ diag.msg }"
+        end
+        actual = actual.join("\n")
+        if interactive
+          raise "unmatch\nexpected: %p\nactual:   %p" % [code, actual] if code != actual
+        else
+          yield code, actual
+        end
       when /^hover: *\( *(\d+), *(\d+) *\)$/
         row, col = $1.to_i, $2.to_i
         pos = TypeProf::CodePosition.new(row, col)

@@ -452,6 +452,7 @@ module TypeProf::Core
 
     def resolve(genv)
       @recv.types.each do |ty, _source|
+        next if ty == Type::Bot.new # ad-hoc hack
         ty.base_types(genv).each do |base_ty|
           mds = genv.resolve_method(base_ty.cpath, base_ty.is_a?(Type::Module), @mid)
           yield ty, mds
