@@ -17,7 +17,7 @@ module TypeProf::Core
       tbl.each {|var| locals[var] = Source.new(Type.nil) }
       locals[:"*self"] = Source.new(cref.get_self)
       locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
-      lenv = LexicalScope.new(nil, cref, locals, nil)
+      lenv = LocalEnv.new(cref, locals)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         row1, col1, row2, col2 = cr
         pos1 = TypeProf::CodePosition.new(row1, col1)
@@ -381,17 +381,13 @@ module TypeProf::Core
     end
   end
 
-  class LexicalScope
-    def initialize(node, cref, locals, outer)
+  class LocalEnv
+    def initialize(cref, locals)
       @cref = cref
       @locals = locals
-      @outer = outer
-      # XXX
-      @self = Source.new(@cref.get_self)
-      @ret = node ? Vertex.new("ret", node) : nil
     end
 
-    attr_reader :cref, :locals, :outer
+    attr_reader :cref, :locals
 
     def new_var(name, node)
       @locals[name] = Vertex.new("var:#{ name }", node)

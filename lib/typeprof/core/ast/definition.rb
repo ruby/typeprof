@@ -75,7 +75,7 @@ module TypeProf::Core
           tbl.each {|var| locals[var] = Source.new(Type.nil) }
           locals[:"*self"] = Source.new(ncref.get_self)
           locals[:"*ret"] = Vertex.new("module_ret", self)
-          nlenv = LexicalScope.new(self, ncref, locals, nil)
+          nlenv = LocalEnv.new(ncref, locals)
           @body = AST.create_node(raw_body, nlenv)
         else
           @body = nil
@@ -211,7 +211,7 @@ module TypeProf::Core
         @tbl.each {|var| locals[var] = Source.new(Type.nil) }
         locals[:"*self"] = Source.new(ncref.get_self)
         locals[:"*ret"] = Vertex.new("method_ret", self)
-        @body_lenv = LexicalScope.new(self, ncref, locals, nil)
+        @body_lenv = LocalEnv.new(ncref, locals)
         @body = raw_body ? AST.create_node(raw_body, @body_lenv) : nil
 
         @args_code_ranges = []
