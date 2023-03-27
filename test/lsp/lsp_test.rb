@@ -1,6 +1,13 @@
 require_relative "../helper"
 
 module TypeProf::LSP
+  class Server
+    remove_method(:target_path?)
+    def target_path?(_path)
+      true
+    end
+  end
+
   class LSPTest < Test::Unit::TestCase
     class DummyIO
       def initialize

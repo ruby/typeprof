@@ -137,7 +137,9 @@ module TypeProf::Core
     end
 
     def diagnostics(path, &blk)
-      @text_nodes[path].diagnostics(@genv, &blk)
+      if @text_nodes[path]
+        @text_nodes[path].diagnostics(@genv, &blk)
+      end
     end
 
     def definitions(path, pos)
