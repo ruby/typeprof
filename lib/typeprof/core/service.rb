@@ -145,7 +145,7 @@ module TypeProf::Core
     def definitions(path, pos)
       defs = []
       @text_nodes[path].hover(pos) do |node|
-        site = node.sites[:main]
+        site = node.sites[:class_new] || node.sites[:main]
         if site.is_a?(CallSite)
           site.resolve(genv) do |_ty, mds|
             next unless mds
@@ -164,9 +164,19 @@ module TypeProf::Core
 
     def hover(path, pos)
       @text_nodes[path].hover(pos) do |node|
-        site = node.sites[:main]
+        site = node.sites[:class_new] || node.sites[:main]
         if site.is_a?(CallSite)
-          return site.recv.show + "#" + site.mid.to_s
+          site.resolve(genv) do |_ty, mds|
+            next unless mds
+            mds.each do |md|
+              case md
+              when MethodDecl
+              when MethodDef
+                return "def #{ md.singleton ? "self." : "" }#{ md.mid }: " + md.show
+              end
+            end
+          end
+          return "???"
         else
           return node.ret.show
         end
