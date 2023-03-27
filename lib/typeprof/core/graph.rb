@@ -217,6 +217,38 @@ module TypeProf::Core
     end
   end
 
+  class IsAFilter
+    def initialize(genv, node, prev_vtx, neg, cpath)
+      @node = node
+      @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
+      prev_vtx.add_edge(genv, self)
+      @neg = neg
+      @cpath = cpath
+    end
+
+    attr_reader :show_name, :node, :next_vtx, :allow_nil
+
+    def filter(genv, types)
+      types.select {|ty| ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.cpath, @cpath) != @neg } }
+    end
+
+    def on_type_added(genv, src_var, added_types)
+      types = filter(genv, added_types)
+      @next_vtx.on_type_added(genv, self, types) unless types.empty?
+    end
+
+    def on_type_removed(genv, src_var, removed_types)
+      types = filter(genv, removed_types)
+      @next_vtx.on_type_removed(genv, self, types) unless types.empty?
+    end
+
+    #@@new_id = 0
+
+    def to_s
+      "NF#{ @id ||= $new_id += 1 } -> #{ @next_vtx }"
+    end
+  end
+
   class BotFilter
     def initialize(genv, node, prev_vtx, base_vtx)
       @node = node

@@ -1,5 +1,17 @@
 module TypeProf::Core
   class AST
+    def self.is_a_class(node)
+      if node.is_a?(CALL)
+        if node.recv.is_a?(LVAR)
+          if node.positional_args && node.positional_args.size == 1 && node.positional_args[0].is_a?(CONST)
+            # TODO: need static resolusion of a constant
+            return [node.recv.var, [node.positional_args[0].cname]]
+          end
+        end
+      end
+      return nil
+    end
+
     class BranchNode < Node
       def initialize(raw_node, lenv)
         super
@@ -20,6 +32,8 @@ module TypeProf::Core
 
         vars = Set[]
         vars << @cond.var if @cond.is_a?(LVAR)
+        var, filtered_class = AST.is_a_class(@cond)
+        vars << var if var
         @then.modified_vars(@lenv.locals.keys, vars) if @then
         @else.modified_vars(@lenv.locals.keys, vars) if @else
         modified_vtxs = {}
@@ -34,6 +48,12 @@ module TypeProf::Core
           nvtx_then = NilFilter.new(genv, self, nvtx_then, !self.is_a?(IF)).next_vtx
           nvtx_else = NilFilter.new(genv, self, nvtx_else, self.is_a?(IF)).next_vtx
           modified_vtxs[@cond.var] = nvtx_then, nvtx_else
+        end
+        if filtered_class
+          nvtx_then, nvtx_else = modified_vtxs[var]
+          nvtx_then = IsAFilter.new(genv, self, nvtx_then, !self.is_a?(IF), filtered_class).next_vtx
+          nvtx_else = IsAFilter.new(genv, self, nvtx_else, self.is_a?(IF), filtered_class).next_vtx
+          modified_vtxs[var] = nvtx_then, nvtx_else
         end
 
         if @then
