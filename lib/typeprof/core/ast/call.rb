@@ -112,6 +112,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
+        # return unless self.is_a?(CallNode)
         return if self.class != prev_node.class
         return unless attrs.all? {|key, attr| attr == prev_node.send(key) }
 
@@ -251,7 +252,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        dump("super(...)")
+        "super(...)"
       end
     end
 
@@ -263,7 +264,7 @@ module TypeProf::Core
 
       def dump0(dumper)
         args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
-        dump_call("yield(#{ args })")
+        dump_call("yield", "(#{ args })")
       end
     end
 
