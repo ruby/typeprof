@@ -192,7 +192,7 @@ module TypeProf::Core
       def install0(genv)
         site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
         add_site(:main, site)
-        site.ret
+        @lenv.apply_read_filter(genv, self, @var, site.ret)
       end
 
       def hover(pos)

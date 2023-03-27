@@ -387,6 +387,7 @@ module TypeProf::Core
       @path = path
       @cref = cref
       @locals = locals
+      @filters = {}
     end
 
     attr_reader :path, :cref, :locals
@@ -401,6 +402,24 @@ module TypeProf::Core
 
     def get_var(name)
       @locals[name] || raise
+    end
+
+    def push_read_filter(name, type)
+      (@filters[name] ||= []) << type
+    end
+
+    def pop_read_filter(name)
+      (@filters[name] ||= []).pop
+    end
+
+    def apply_read_filter(genv, node, name, vtx)
+      if @filters[name] && !@filters[name].empty?
+        case @filters[name].last
+        when :non_nil
+          return NilFilter.new(genv, node, vtx, false).next_vtx
+        end
+      end
+      vtx
     end
   end
 

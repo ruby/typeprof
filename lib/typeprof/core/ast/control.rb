@@ -40,7 +40,13 @@ module TypeProf::Core
           modified_vtxs.each do |var, (nvtx_then, _)|
             @lenv.set_var(var, nvtx_then)
           end
+          if @cond.is_a?(IVAR)
+            @lenv.push_read_filter(@cond.var, :non_nil)
+          end
           then_val = @then.install(genv)
+          if @cond.is_a?(IVAR)
+            @lenv.pop_read_filter(@cond.var)
+          end
           modified_vtxs.each do |var, ary|
             ary[0] = @lenv.get_var(var)
           end

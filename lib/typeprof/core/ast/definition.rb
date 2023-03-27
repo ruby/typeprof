@@ -164,9 +164,13 @@ module TypeProf::Core
           cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           add_def(genv, cdef)
 
-          ret = @body.lenv.get_var(:"*ret")
-          @body.install(genv).add_edge(genv, ret)
-          ret
+          if @body
+            ret = @body.lenv.get_var(:"*ret")
+            @body.install(genv).add_edge(genv, ret)
+            ret
+          else
+            Source.new(Type.nil) # XXX
+          end
         else
           # TODO: show error
           check
@@ -185,7 +189,7 @@ module TypeProf::Core
         s << " < #{ @superclass_cpath.dump(dumper) }" if @superclass_cpath
         s << "\n"
         if @static_cpath
-          s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
+          s << @body.dump(dumper).gsub(/^/, "  ") + "\n" if @body
         else
           s << "<analysis ommitted>\n"
         end
@@ -273,7 +277,7 @@ module TypeProf::Core
         s = "def #{ @mid }(#{
           (0..@args[0]-1).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body_lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
         })\n"
-        s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
+        s << @body.dump(dumper).gsub(/^/, "  ") + "\n" if @body
         s << "end"
       end
     end
