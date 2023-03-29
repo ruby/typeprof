@@ -4,11 +4,12 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         super
         @cname, = raw_node.children
+        @cdef = nil
       end
 
-      attr_reader :cname
+      attr_reader :cname, :cdef
 
-      def attrs = { cname: }
+      def attrs = { cname:, cdef: }
 
       def define0(genv)
         const = BaseConstRead.new(self, @cname, @lenv.cref)
@@ -21,9 +22,19 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        site = ConstReadSite.new(self, genv, @lenv.cref, nil, @cname)
-        add_site(:main, site)
-        site.ret
+        @cdef = @static_ret.cdef
+        if @cdef
+          ret = Vertex.new("const-read", self)
+          @cdef.vtx.add_edge(genv, ret)
+          ret
+        else
+          Source.new()
+        end
+      end
+
+      def uninstall0(genv)
+        @cdef.vtx.remove_edge(genv, @ret) if @cdef
+        super
       end
 
       def hover(pos)
@@ -56,10 +67,26 @@ module TypeProf::Core
       def attrs = { cname: }
 
       def install0(genv)
-        cbase = @cbase ? @cbase.install(genv) : nil
-        site = ConstReadSite.new(self, genv, @lenv.cref, cbase, @cname)
-        add_site(:main, site)
-        site.ret
+        @cbase.install(genv) if @cbase
+        if @static_ret
+          @cdef = @static_ret.cdef
+          if @cdef
+            ret = Vertex.new("const-read", self)
+            @cdef.vtx.add_edge(genv, ret)
+            ret
+          else
+            Source.new()
+          end
+        else
+          Source.new()
+        end
+      end
+
+      def uninstall0(genv)
+        if @cdef
+          @cdef.vtx.remove_edge(genv, @ret)
+        end
+        super
       end
 
       def dump0(dumper)
@@ -75,7 +102,13 @@ module TypeProf::Core
       end
 
       def define0(genv)
-        BaseConstRead.new(self, @cname, CRef::Toplevel)
+        const = BaseConstRead.new(self, @cname, CRef::Toplevel)
+        genv.add_const_read(const)
+        const
+      end
+
+      def undefine0(genv)
+        genv.remove_const_read(@static_ret)
       end
 
       attr_reader :cname
@@ -83,9 +116,25 @@ module TypeProf::Core
       def attrs = { cname: }
 
       def install0(genv)
-        site = ConstReadSite.new(self, genv, CRef::Toplevel, nil, @cname)
-        add_site(:main, site)
-        site.ret
+        if @static_ret
+          @cdef = @static_ret.cdef
+          if @cdef
+            ret = Vertex.new("const-read", self)
+            @cdef.vtx.add_edge(genv, ret)
+            ret
+          else
+            Source.new()
+          end
+        else
+          Source.new()
+        end
+      end
+
+      def uninstall0(genv)
+        if @cdef
+          @cdef.vtx.remove_edge(genv, @ret)
+        end
+        super
       end
 
       def dump0(dumper)
@@ -116,14 +165,30 @@ module TypeProf::Core
       def subnodes = { cpath:, rhs: }
       def attrs = { static_cpath: }
 
+      def define0(genv)
+        @rhs.define(genv) if @rhs
+        genv.add_const_def(@static_cpath, self)
+      end
+
+      def undefine0(genv)
+        genv.remove_const_def(@static_cpath, self)
+        @rhs.undefine(genv) if @rhs
+      end
+
       def install0(genv)
         @cpath.install(genv) if @cpath
-        val = @rhs.install(genv)
-        if @static_cpath
-          cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
-          add_def(genv, cdef)
+        val = @rhs.install(genv) if @rhs
+        if @static_ret.vtx && val
+          val.add_edge(genv, @static_ret.vtx)
         end
         val
+      end
+
+      def uninstall0(genv)
+        if @static_ret.vtx && @ret
+          @ret.remove_edge(genv, @static_ret.vtx)
+        end
+        super
       end
 
       def dump0(dumper)

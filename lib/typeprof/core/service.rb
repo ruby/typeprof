@@ -77,23 +77,35 @@ module TypeProf::Core
 
       # invariant validation
       if prev_node
+        live_vtxs = Set[]
+        live_boxes = Set[]
+        node.get_vertexes_and_boxes(live_vtxs, live_boxes)
+
         dead_vtxs = Set[]
         dead_boxes = Set[]
         prev_node.get_vertexes_and_boxes(dead_vtxs, dead_boxes)
 
-        live_vtxs = Set[]
-        live_boxes = Set[]
-        @text_nodes.each do |path_, node|
-          node.get_vertexes_and_boxes(live_vtxs, live_boxes)
+        live_vtxs.each do |vtx|
+          raise if dead_vtxs.include?(vtx)
         end
 
-        if live_vtxs.to_a & dead_vtxs.to_a != []
-          dump_graph(path)
-          raise (live_vtxs.to_a & dead_vtxs.to_a).to_s
+        global_vtxs = Set[]
+        @genv.get_vertexes_and_boxes(global_vtxs)
+        global_vtxs.each do |vtx|
+          dead_vtxs.delete(vtx)
         end
+        #dump_graph(path)
 
-        if live_boxes.to_a & dead_boxes.to_a != []
-          raise
+        global_vtxs.each do |global_vtx|
+          next unless global_vtx.is_a?(Vertex)
+          global_vtx.types.each_value do |prev_vtxs|
+            prev_vtxs.each do |prev_vtx|
+              raise if dead_vtxs.include?(prev_vtx)
+            end
+          end
+          global_vtx.next_vtxs.each do |next_vtx|
+            raise "#{ next_vtx }" if dead_vtxs.include?(next_vtx)
+          end
         end
       end
     end
@@ -122,13 +134,6 @@ module TypeProf::Core
           puts "\e[33m#{ box.long_inspect }\e[m"
           puts "  recv: #{ box.recv }"
           puts "  args: (#{ box.a_args.join(", ") })"
-          puts "  ret: #{ box.ret }"
-        end
-      end
-      boxes.each do |box|
-        case box
-        when ConstReadSite
-          puts "\e[32m#{ box.long_inspect }\e[m"
           puts "  ret: #{ box.ret }"
         end
       end
@@ -207,8 +212,6 @@ module TypeProf::Core
               when MethodDef
                 #puts " " * depth + "# #{ d.node.code_range }"
                 hint = "def #{ d.mid }: " + d.show
-              when ConstDef
-                hint = "#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show
               end
               if hint
                 pos = d.node.code_range.first
@@ -280,14 +283,18 @@ module TypeProf::Core
               out << "  " * depth + "end"
             end
           end
+        when AST::CDECL
+          if node.static_cpath
+            if event == :enter
+              out << "  " * depth + "#{ node.static_cpath.join("::") }: #{ node.ret.show }"
+            end
+          end
         else
           if event == :enter && !node.defs.empty?
             node.defs.each do |d|
               case d
               when MethodDef
                 out << "  " * depth + "def #{ d.singleton ? "self." : "" }#{ d.mid }: " + d.show
-              when ConstDef
-                out << "  " * depth + "#{ d.cpath.join("::") }::#{ d.cname }: " + d.val.show
               end
             end
           end

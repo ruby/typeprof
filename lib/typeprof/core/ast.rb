@@ -186,8 +186,6 @@ module TypeProf::Core
         case d
         when MethodDef
           genv.add_method_def(d)
-        when ConstDef
-          genv.add_const_def(d)
         when GVarDef
           genv.add_gvar_def(d)
         when IVarDef
@@ -267,8 +265,6 @@ module TypeProf::Core
               case d
               when MethodDef
                 genv.remove_method_def(d)
-              when ConstDef
-                genv.remove_const_def(d)
               when GVarDef
                 genv.remove_gvar_def(d)
               when IVarDef
@@ -314,6 +310,7 @@ module TypeProf::Core
         prev_node = @prev_node # annotation
         if prev_node
           @lenv = prev_node.lenv
+          @static_ret = prev_node.static_ret
           @ret = prev_node.ret
           @defs = prev_node.defs
           @sites = prev_node.sites

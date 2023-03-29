@@ -8,7 +8,7 @@ class Foo
 end
 
 # assert
-::C: Integer
+C: Integer
 class Foo
   Foo::C: Float
   def foo: -> Integer

@@ -95,23 +95,24 @@ module TypeProf::Core
       end
 
       def define0(genv)
+        @cpath.define(genv)
         genv.add_module_def(@static_cpath, self)
         @body.define(genv) if @body
-        nil
+        genv.add_const_def(@static_cpath, self)
       end
 
       def undefine0(genv)
         @body.undefine(genv) if @body
+        genv.remove_const_def(@static_cpath, self)
         genv.remove_module_def(@static_cpath, self)
+        @cpath.undefine(genv)
       end
 
       def install0(genv)
         @cpath.install(genv)
+        val = Source.new(Type::Module.new(@static_cpath))
+        val.add_edge(genv, @static_ret.vtx)
         if @static_cpath
-          val = Source.new(Type::Module.new(@static_cpath))
-          cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
-          add_def(genv, cdef)
-
           ret = @body.lenv.get_var(:"*ret")
           @body.install(genv).add_edge(genv, ret)
           ret
@@ -122,7 +123,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        s = "module #{ @cpath.join("::") }\n" + s.gsub(/^/, "  ") + "\n"
+        s = "module #{ @cpath.dump(dumper) }\n"
         if @static_cpath
           s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         else
@@ -150,6 +151,7 @@ module TypeProf::Core
       end
 
       def define0(genv)
+        @cpath.define(genv)
         if @static_cpath
           genv.add_module_def(@static_cpath, self)
           if @superclass_cpath
@@ -157,24 +159,26 @@ module TypeProf::Core
             const.const_reads << @static_cpath if const
           end
           @body.define(genv) if @body
+          genv.add_const_def(@static_cpath, self)
+        else
+          nil
         end
-        nil
       end
 
       def undefine0(genv)
         @body.undefine(genv) if @body
+        genv.remove_const_def(@static_cpath, self)
         genv.remove_module_def(@static_cpath, self)
         @superclass_cpath.undefine(genv) if @superclass_cpath
+        @cpath.undefine(genv)
       end
 
       def install0(genv)
         @cpath.install(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
+        val = Source.new(Type::Module.new(@static_cpath))
+        val.add_edge(genv, @static_ret.vtx)
         if @static_cpath
-          val = Source.new(Type::Module.new(@static_cpath))
-          cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
-          add_def(genv, cdef)
-
           if @body
             ret = @body.lenv.get_var(:"*ret")
             @body.install(genv).add_edge(genv, ret)

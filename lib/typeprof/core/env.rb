@@ -8,6 +8,7 @@ module TypeProf::Core
       @superclass_cpath = []
       @subclasses = Set[]
       @const_reads = Set[]
+      @child_consts = {}
 
       @consts = {}
       @singleton_methods = {}
@@ -19,6 +20,7 @@ module TypeProf::Core
 
     attr_reader :cpath
     attr_reader :module_decls, :module_defs, :child_modules
+    attr_reader :child_consts
     attr_reader :superclass_cpath
     attr_reader :subclasses
     attr_reader :const_reads
@@ -70,6 +72,16 @@ module TypeProf::Core
         @const_reads.dup.each {|const_read| const_read.on_scope_updated(genv) }
       end
     end
+
+    def get_vertexes_and_boxes(vtxs)
+      @child_modules.each_value do |dir|
+        next if self.equal?(dir) # for Object
+        dir.get_vertexes_and_boxes(vtxs)
+      end
+      @child_consts.each_value do |cdef|
+        vtxs << cdef.vtx
+      end
+    end
   end
 
   class ConstRead
@@ -78,9 +90,10 @@ module TypeProf::Core
       @cname = cname
       @const_reads = Set[]
       @cpath = nil
+      @cdef = nil
     end
 
-    attr_reader :cref, :cname, :cpath, :const_reads
+    attr_reader :cref, :cname, :cpath, :cdef, :const_reads
 
     def propagate(genv)
       @const_reads.dup.each do |const_read|
@@ -102,7 +115,13 @@ module TypeProf::Core
         while true
           m = genv.resolve_cpath(scope)
           mm = genv.resolve_cpath(scope + [@cname])
-          return scope + [@cname] if !mm.module_decls.empty? || !mm.module_defs.empty?
+          if !mm.module_decls.empty? || !mm.module_defs.empty?
+            cpath = scope + [@cname]
+          end
+          if m.child_consts[@cname] && (!m.child_consts[@cname].decls.empty? || !m.child_consts[@cname].defs.empty?) # TODO: const_decls
+            cdef = m.child_consts[@cname]
+          end
+          return [cpath, cdef] if cpath || cdef
           break unless first
           break unless m.superclass_cpath
           break if scope == [:BasicObject]
@@ -124,9 +143,10 @@ module TypeProf::Core
     attr_reader :cref
 
     def on_scope_updated(genv)
-      cpath = resolve(genv, @cref)
-      if cpath != @cpath
+      cpath, cdef = resolve(genv, @cref)
+      if cpath != @cpath || cdef != @cdef
         @cpath = cpath
+        @cdef = cdef
         propagate(genv)
       end
     end
@@ -144,14 +164,13 @@ module TypeProf::Core
 
     def on_cbase_updated(genv)
       if @cbase && @cbase.cpath
-        cpath = resolve(genv, CRef.new(@cbase.cpath, false, nil))
-        if cpath != @cpath
+        cpath, cdef = resolve(genv, CRef.new(@cbase.cpath, false, nil))
+        if cpath != @cpath || cdef != @cdef
           genv.resolve_cpath(@cbase_cpath).const_reads.delete(self) if @cbase_cpath
           @cpath = cpath
+          @cdef = cdef
           @cbase_cpath = @cbase.cpath
-          if @cbase_cpath
-            genv.resolve_cpath(@cbase_cpath).const_reads << self
-          end
+          genv.resolve_cpath(@cbase_cpath).const_reads << self if @cbase_cpath
           propagate(genv)
         end
       end
@@ -166,34 +185,6 @@ module TypeProf::Core
     end
 
     attr_reader :decls, :defs, :aliases
-  end
-
-  class ConstEntry
-    def initialize(cpath, cname)
-      @cpath = cpath
-      @cname = cname
-    end
-
-    attr_reader :cpath, :cname
-  end
-
-  class ConstDecl < ConstEntry
-    def initialize(cpath, cname, type)
-      super(cpath, cname)
-      @type = type
-    end
-
-    attr_reader :type
-  end
-
-  class ConstDef < ConstEntry
-    def initialize(cpath, cname, node, val)
-      super(cpath, cname)
-      @node = node
-      @val = val
-    end
-
-    attr_reader :node, :val
   end
 
   class MethodEntry
@@ -424,7 +415,6 @@ module TypeProf::Core
 
       @rbs_builder = rbs_builder
 
-      @creadsites_by_name = {}
       @callsites_by_name = {}
       @ivreadsites_by_name = {}
       @gvreadsites_by_name = {}
@@ -439,6 +429,20 @@ module TypeProf::Core
       end
     end
 
+    def define_all
+      @define_queue.uniq.each do |v|
+        case v
+        when Array # cpath
+          resolve_cpath(v).on_child_modules_updated(self)
+        when BaseConstRead
+          v.on_scope_updated(self)
+        else
+          raise
+        end
+      end
+      @define_queue.clear
+    end
+
     def run_all
       until @run_queue.empty?
         obj = @run_queue.shift
@@ -446,6 +450,12 @@ module TypeProf::Core
         @run_queue_set.delete(obj)
         obj.run(self)
       end
+    end
+
+    # just for validation
+    def get_vertexes_and_boxes(vtxs)
+      @toplevel.get_vertexes_and_boxes(vtxs)
+      # TODO: gvars and others?
     end
 
     # classes and modules
@@ -462,6 +472,7 @@ module TypeProf::Core
     def add_module_decl(cpath, mod_decl)
       dir = resolve_cpath(cpath)
       dir.module_decls << mod_decl
+      add_const_decl(cpath, mod_decl, Source.new(Type::Module.new(cpath)))
 
       if mod_decl.is_a?(RBS::AST::Declarations::Class)
         superclass = mod_decl.super_class
@@ -493,6 +504,72 @@ module TypeProf::Core
       end
     end
 
+    def set_superclass(cpath, superclass_cpath)
+      dir = resolve_cpath(cpath)
+      dir.superclass_cpath = superclass_cpath
+    end
+
+    # module inclusion
+
+    def add_module_include(cpath, mod_cpath)
+      dir = resolve_cpath(cpath)
+      dir.include_module_cpaths << mod_cpath
+    end
+
+    # TODO: remove_method_include
+
+    # constants
+
+    class ConstDef
+      def initialize(cpath)
+        @cpath = cpath
+        @decls = Set[]
+        @defs = Set[]
+        @vtx = nil
+      end
+
+      attr_reader :cpath, :decls, :defs, :vtx
+
+      def add_decl(decl, vtx)
+        @decls << decl
+        @vtx = vtx
+      end
+
+      def remove_decl(decl)
+        @decls.delete(decl)
+      end
+
+      def add_def(node)
+        @defs << node
+        @vtx = Vertex.new("const-def", node) unless @vtx
+        self
+      end
+
+      def remove_def(node)
+        @defs.delete(node)
+      end
+    end
+
+    def resolve_const(cpath)
+      dir = resolve_cpath(cpath[0..-2])
+      dir.child_consts[cpath[-1]] ||= ConstDef.new(cpath)
+    end
+
+    def add_const_decl(cpath, decl, vtx)
+      cdef = resolve_const(cpath)
+      cdef.add_decl(decl, vtx)
+    end
+
+    # TODO: remove_const_decl
+
+    def add_const_def(cpath, node)
+      resolve_const(cpath).add_def(node)
+    end
+
+    def remove_const_def(cpath, node)
+      resolve_const(cpath).remove_def(node)
+    end
+
     def add_const_read(const)
       cref = const.cref
       while cref
@@ -507,91 +584,6 @@ module TypeProf::Core
       while cref
         resolve_cpath(cref.cpath).const_reads.delete(const)
         cref = cref.outer
-      end
-    end
-
-    def define_all
-      @define_queue.uniq.each do |v|
-        case v
-        when Array # cpath
-          resolve_cpath(v).on_child_modules_updated(self)
-        when BaseConstRead
-          v.on_scope_updated(self)
-        else
-          raise
-        end
-      end
-      @define_queue.clear
-    end
-
-    def set_superclass(cpath, superclass_cpath)
-      dir = resolve_cpath(cpath)
-      dir.superclass_cpath = superclass_cpath
-    end
-
-    # module inclusion
-
-    def add_module_include(cpath, mod_cpath)
-      dir = resolve_cpath(cpath)
-      dir.include_module_cpaths << mod_cpath
-    end
-
-    # TODO: remove_method_decl
-
-    # consts
-
-    def get_const_entity(ce)
-      dir = resolve_cpath(ce.cpath)
-      dir.consts[ce.cname] ||= Entity.new
-    end
-
-    def add_const_decl(cdecl)
-      e = get_const_entity(cdecl)
-      e.decls << cdecl
-    end
-
-    def add_const_def(cdef)
-      e = get_const_entity(cdef)
-      e.defs << cdef
-
-      run_creadsite(cdef.cname)
-    end
-
-    def remove_const_def(cdef)
-      e = get_const_entity(cdef)
-      e.defs.delete(cdef)
-
-      run_creadsite(cdef.cname)
-    end
-
-    def resolve_const(cpath, cname)
-      while cpath
-        dir = resolve_cpath(cpath)
-        e = dir.consts[cname]
-        if e
-          return e.decls unless e.decls.empty?
-          return e.defs unless e.defs.empty?
-        end
-        cpath = dir.superclass_cpath
-        break if cpath == []
-      end
-    end
-
-    def add_creadsite(creadsite)
-      (@creadsites_by_name[creadsite.cname] ||= Set[]) << creadsite
-      add_run(creadsite)
-    end
-
-    def remove_creadsite(creadsite)
-      @creadsites_by_name[creadsite.cname].delete(creadsite)
-    end
-
-    def run_creadsite(cname)
-      creadsites = @creadsites_by_name[cname]
-      if creadsites
-        creadsites.each do |creadsite|
-          add_run(creadsite)
-        end
       end
     end
 

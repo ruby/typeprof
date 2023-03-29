@@ -106,7 +106,7 @@ module TypeProf::Core
   class Vertex < BasicVertex
     def initialize(show_name, node)
       @show_name = show_name
-      raise unless node.is_a?(AST::Node)
+      raise if !node.is_a?(AST::Node) && !node.is_a?(RBS::AST::Declarations::Base)
       @node = node
       @next_vtxs = Set[]
       super({})
@@ -359,72 +359,6 @@ module TypeProf::Core
     end
 
     alias inspect to_s
-  end
-
-  class ConstReadSite < Box
-    def initialize(node, genv, cref, cbase, cname)
-      super(node)
-      @cref = cref
-      @cbase = cbase
-      @cname = cname
-      @ret = Vertex.new("cname:#{ cname }", node)
-      genv.add_creadsite(self)
-      @cbase.add_edge(genv, self) if @cbase
-    end
-
-    def destroy(genv)
-      super
-      genv.remove_creadsite(self)
-    end
-
-    attr_reader :node, :cref, :cbase, :cname, :ret
-
-    def run0(genv)
-      edges = Set[]
-      resolve(genv).each do |cds|
-        cds.each do |cd|
-          case cd
-          when ConstDecl
-            cd.type.base_types(genv).each do |base_ty|
-              edges << [Source.new(base_ty), @ret]
-            end
-          when ConstDef
-            edges << [cd.val, @ret]
-          end
-        end
-      end
-      edges
-    end
-
-    def resolve(genv)
-      ret = []
-      if @cbase
-        @cbase.types.each do |ty, _source|
-          case ty
-          when Type::Module
-            cds = genv.resolve_const(ty.cpath, @cname)
-            ret << cds if cds
-          else
-            puts "???"
-          end
-        end
-      else
-        cref = @cref
-        while cref
-          cds = genv.resolve_const(cref.cpath, @cname)
-          if cds && !cds.empty?
-            ret << cds
-            break
-          end
-          cref = cref.outer
-        end
-      end
-      ret
-    end
-
-    def long_inspect
-      "#{ to_s } (cname:#{ @cname } @ #{ @node.code_range })"
-    end
   end
 
   class CallSite < Box

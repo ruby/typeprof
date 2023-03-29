@@ -18,23 +18,18 @@ module TypeProf::Core
         # TODO: decl.super_class.args
         genv.add_module_decl(cpath, decl)
         ty = Type::Module.new(cpath)
-        cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
-        genv.add_const_decl(cdecl)
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Module
         name = decl.name
         cpath = name.namespace.path + [name.name]
         genv.add_module_decl(cpath, decl)
         ty = Type::Module.new(cpath)
-        cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
-        genv.add_const_decl(cdecl)
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Constant
         name = decl.name
         cpath = name.namespace.path + [name.name]
-        ty = Type::RBS.new(decl.type)
-        cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
-        genv.add_const_decl(cdecl)
+        vtx = type_to_vtx(genv, decl, decl.type, {})
+        genv.add_const_decl(cpath, decl, vtx)
       when RBS::AST::Declarations::AliasDecl
       when RBS::AST::Declarations::TypeAlias
         # TODO: check
@@ -107,6 +102,8 @@ module TypeProf::Core
         type.types.each do |ty|
           type_to_vtx0(genv, node, ty, vtx, param_map)
         end
+      when RBS::Types::ClassSingleton
+        Source.new # TODO
       when RBS::Types::ClassInstance
         name = type.name
         cpath = name.namespace.path + [name.name]
