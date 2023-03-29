@@ -87,17 +87,15 @@ module TypeProf::Core
 
         #dump_graph(path)
         live_vtxs.each do |vtx|
-          raise dead_vtxs.include?(vtx)
+          raise if dead_vtxs.include?(vtx)
         end
 
         global_vtxs = Set[]
         @genv.get_vertexes_and_boxes(global_vtxs)
-        global_vtxs.each do |vtx|
-          dead_vtxs.delete(vtx)
-        end
 
         global_vtxs.each do |global_vtx|
           next unless global_vtx.is_a?(Vertex)
+          raise if dead_vtxs.include?(global_vtx)
           global_vtx.types.each_value do |prev_vtxs|
             prev_vtxs.each do |prev_vtx|
               raise if dead_vtxs.include?(prev_vtx)

@@ -98,14 +98,14 @@ module TypeProf::Core
     def initialize
       @decls = Set[]
       @defs = Set[]
-      @vtx = nil
+      @vtx = Vertex.new("const-def", self)
     end
 
     attr_reader :decls, :defs, :vtx
 
     def add_decl(decl, vtx)
       @decls << decl
-      @vtx = vtx
+      @vtx = vtx # TODO
     end
 
     def remove_decl(decl)
@@ -114,7 +114,6 @@ module TypeProf::Core
 
     def add_def(node)
       @defs << node
-      @vtx = Vertex.new("const-def", node) unless @vtx
       self
     end
 

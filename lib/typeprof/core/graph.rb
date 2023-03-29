@@ -106,7 +106,14 @@ module TypeProf::Core
   class Vertex < BasicVertex
     def initialize(show_name, node)
       @show_name = show_name
-      raise if !node.is_a?(AST::Node) && !node.is_a?(RBS::AST::Declarations::Base)
+      case node
+      when AST::Node
+      when RBS::AST::Declarations::Base
+      when ConstEntity
+      when GlobalEnv::GVarEntity
+      else
+        raise
+      end
       @node = node
       @next_vtxs = Set[]
       super({})
@@ -516,44 +523,19 @@ module TypeProf::Core
   class GVarReadSite < Box
     def initialize(node, genv, name)
       super(node)
-      @name = name
-      @ret = Vertex.new("gvar:#{ name }", node)
-      genv.add_gvreadsite(self)
+      @vtx = genv.resolve_gvar(name).vtx
+      @ret = Vertex.new("gvar", node)
+      genv.add_run(self)
     end
 
-    def destroy(genv)
-      genv.remove_gvreadsite(self)
-      super
-    end
-
-    attr_reader :name, :ret
+    attr_reader :node, :const_read, :ret
 
     def run0(genv)
-      edges = Set[]
-      resolve(genv).each do |gves|
-        gves.each do |gve|
-          case gve
-          when GVarDecl
-            gve.type.base_types(genv).each do |base_ty|
-              edges << [Source.new(base_ty), @ret]
-            end
-          when GVarDef
-            edges << [gve.val, @ret]
-          end
-        end
-      end
-      edges
-    end
-
-    def resolve(genv)
-      ret = []
-      gves = genv.resolve_gvar(@name)
-      ret << gves if gves && !gves.empty?
-      ret
+      [[@vtx, @ret]]
     end
 
     def long_inspect
-      "#{ to_s } (name:#{ @name } @ #{ @node.code_range })"
+      "TODO"
     end
   end
 

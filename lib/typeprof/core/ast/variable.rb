@@ -47,11 +47,25 @@ module TypeProf::Core
       def subnodes = { rhs: }
       def attrs = { var:, var_code_range:, dummy_rhs: }
 
+      def define0(genv)
+        @rhs.define(genv) if @rhs
+        genv.add_gvar_def(@var, self)
+      end
+
+      def undefine0(genv)
+        genv.remove_gvar_def(@var, self)
+        @rhs.undefine(genv) if @rhs
+      end
+
       def install0(genv)
         val = (@rhs || @dummy_rhs).install(genv)
-        gvdef = GVarDef.new(@var, self, val)
-        add_def(genv, gvdef)
+        val.add_edge(genv, @static_ret.vtx)
         val
+      end
+
+      def uninstall0(genv)
+        @ret.remove_edge(genv, @static_ret.vtx)
+        super
       end
 
       def hover(pos)

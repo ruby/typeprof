@@ -83,6 +83,10 @@ module TypeProf::Core
         @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
       end
 
+      def set_dummy_rhs(dummy_rhs)
+        @dummy_rhs = dummy_rhs
+      end
+
       attr_reader :cpath, :rhs, :static_cpath
 
       def subnodes = { cpath:, rhs: }
@@ -100,17 +104,13 @@ module TypeProf::Core
 
       def install0(genv)
         @cpath.install(genv) if @cpath
-        val = @rhs.install(genv) if @rhs
-        if @static_ret.vtx && val
-          val.add_edge(genv, @static_ret.vtx)
-        end
+        val = (@rhs || @dummy_rhs).install(genv)
+        val.add_edge(genv, @static_ret.vtx)
         val
       end
 
       def uninstall0(genv)
-        if @static_ret.vtx && @ret
-          @ret.remove_edge(genv, @static_ret.vtx)
-        end
+        @ret.remove_edge(genv, @static_ret.vtx)
         super
       end
 

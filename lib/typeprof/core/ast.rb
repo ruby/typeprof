@@ -206,8 +206,6 @@ module TypeProf::Core
         case d
         when MethodDef
           genv.add_method_def(d)
-        when GVarDef
-          genv.add_gvar_def(d)
         when IVarDef
           genv.add_ivar_def(d)
         end
@@ -285,8 +283,6 @@ module TypeProf::Core
               case d
               when MethodDef
                 genv.remove_method_def(d)
-              when GVarDef
-                genv.remove_gvar_def(d)
               when IVarDef
                 genv.remove_ivar_def(d)
               end

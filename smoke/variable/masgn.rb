@@ -22,3 +22,6 @@ class Object
   def foo: -> Integer
   def bar: -> Integer?
 end
+
+# update
+C, @x, $v = 1, 2, 3

@@ -17,13 +17,11 @@ module TypeProf::Core
         # TODO: decl.type_params
         # TODO: decl.super_class.args
         genv.add_module_decl(cpath, decl)
-        ty = Type::Module.new(cpath)
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Module
         name = decl.name
         cpath = name.namespace.path + [name.name]
         genv.add_module_decl(cpath, decl)
-        ty = Type::Module.new(cpath)
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Constant
         name = decl.name
@@ -35,9 +33,8 @@ module TypeProf::Core
         # TODO: check
       when RBS::AST::Declarations::Interface
       when RBS::AST::Declarations::Global
-        ty = Type::RBS.new(decl.type)
-        gvdecl = GVarDecl.new(decl.name, ty)
-        genv.add_gvar_decl(gvdecl)
+        vtx = type_to_vtx(genv, decl, decl.type, {})
+        genv.add_gvar_decl(decl.name, decl, vtx)
       else
         raise "unsupported: #{ decl.class }"
       end
@@ -102,6 +99,8 @@ module TypeProf::Core
         type.types.each do |ty|
           type_to_vtx0(genv, node, ty, vtx, param_map)
         end
+      when RBS::Types::Intersection
+        Source.new # TODO
       when RBS::Types::ClassSingleton
         Source.new # TODO
       when RBS::Types::ClassInstance
@@ -165,76 +164,6 @@ module TypeProf::Core
           raise "unknown RBS literal: #{ type.literal.inspect }"
         end
         Source.new(ty).add_edge(genv, vtx)
-      else
-        raise "unknown RBS type: #{ type.class }"
-      end
-    end
-
-    def self.type(genv, type, map)
-      case type
-      when RBS::Types::Alias
-        self.type(genv, genv.rbs_builder.expand_alias(type.name), map)
-      when RBS::Types::Union
-        type.types.flat_map do |ty|
-          self.type(genv, ty, map)
-        end.compact
-      when RBS::Types::ClassInstance
-        name = type.name
-        cpath = name.namespace.path + [name.name]
-        if cpath == [:Array]
-          raise if type.args.size != 1
-          elem = type.args.first
-          if elem.is_a?(RBS::Types::Tuple)
-            # TODO!!!
-            raise
-            [Source.new(Type.obj)] # TODO!!!
-          else
-            map[elem.name].map do |vtx|
-              Source.new(Type::Array.new(nil, vtx, Type.ary))
-            end
-          end
-        else
-          [Source.new(Type::Instance.new(cpath))]
-        end
-      when RBS::Types::Tuple
-        raise
-        [Source.new(Type.obj)] # TODO!!!
-      when RBS::Types::Interface
-        nil # TODO...
-      when RBS::Types::Bases::Bool
-        [
-          Source.new(Type.true),
-          Source.new(Type.false),
-        ]
-      when RBS::Types::Bases::Nil
-        [Source.new(Type.nil)]
-      when RBS::Types::Bases::Self
-        map[:__self]
-      when RBS::Types::Bases::Void
-        [Source.new(Type.obj)] # TODO
-      when RBS::Types::Bases::Any
-        [Source.new(Type.obj)] # TODO
-      when RBS::Types::Bases::Bottom
-        [Source.new(Type::Bot.new)] # TODO
-      when RBS::Types::Variable
-        map[type.name] || [Source.new()] # TODO
-      when RBS::Types::Optional
-        self.type(genv, type.type, map) + [Source.new(Type.nil)]
-      when RBS::Types::Literal
-        case type.literal
-        when ::Symbol
-          [Source.new(Type::Symbol.new(type.literal))]
-        when ::Integer
-          [Source.new(Type.int)]
-        when ::String
-          [Source.new(Type.str)]
-        when ::TrueClass
-          [Source.new(Type.true)]
-        when ::FalseClass
-          [Source.new(Type.false)]
-        else
-          raise "unknown RBS literal: #{ type.literal.inspect }"
-        end
       else
         raise "unknown RBS type: #{ type.class }"
       end

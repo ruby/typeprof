@@ -176,37 +176,6 @@ module TypeProf::Core
     attr_reader :node, :f_args, :ret
   end
 
-  class GVarEntry
-    def initialize(name)
-      @name = name
-    end
-
-    attr_reader :name
-  end
-
-  class GVarDecl < GVarEntry
-    def initialize(name, type)
-      super(name)
-      @type = type
-    end
-
-    attr_reader :type
-  end
-
-  class GVarDef < GVarEntry
-    def initialize(name, node, val)
-      super(name)
-      @node = node
-      @val = val
-    end
-
-    attr_reader :node, :val
-
-    def show
-      "<TODO GVarDef>"
-    end
-  end
-
   class IVarDef
     def initialize(cpath, singleton, name, node, val)
       @cpath = cpath
@@ -239,7 +208,6 @@ module TypeProf::Core
 
       @callsites_by_name = {}
       @ivreadsites_by_name = {}
-      @gvreadsites_by_name = {}
     end
 
     attr_reader :rbs_builder
@@ -277,7 +245,9 @@ module TypeProf::Core
     # just for validation
     def get_vertexes_and_boxes(vtxs)
       @toplevel.get_vertexes_and_boxes(vtxs)
-      # TODO: gvars and others?
+      @gvars.each_value do |gvar_entity|
+        vtxs << gvar_entity.vtx
+      end
     end
 
     # classes and modules
@@ -481,54 +451,50 @@ module TypeProf::Core
 
     # global variables
 
-    def get_gvar_entity(gve)
-      @gvars[gve.name] ||= Entity.new
-    end
+    class GVarEntity
+      def initialize
+        @decls = Set[]
+        @defs = Set[]
+        @vtx = Vertex.new("gvar", self)
+      end
 
-    def add_gvar_decl(gvdecl)
-      e = get_gvar_entity(gvdecl)
-      e.decls << gvdecl
-    end
+      attr_reader :decls, :defs, :vtx
 
-    def add_gvar_def(gvdef)
-      e = get_gvar_entity(gvdef)
-      e.defs << gvdef
+      def add_decl(decl, vtx)
+        @decls << decl
+        @vtx = vtx # TODO
+      end
 
-      run_gvreadsite(gvdef.name)
-    end
+      def remove_decl(decl)
+        @decls.delete(decl)
+      end
 
-    def remove_gvar_def(gvdef)
-      e = get_gvar_entity(gvdef)
-      e.defs.delete(gvdef)
+      def add_def(node)
+        @defs << node
+        self
+      end
 
-      run_gvreadsite(gvdef.name)
+      def remove_def(node)
+        @defs.delete(node)
+      end
     end
 
     def resolve_gvar(name)
-      e = @gvars[name]
-      if e
-        return e.decls unless e.decls.empty?
-        return e.defs unless e.defs.empty?
-      end
-      return nil
+      @gvars[name] ||= GVarEntity.new
     end
 
-    def add_gvreadsite(gvreadsite)
-      (@gvreadsites_by_name[gvreadsite.name] ||= Set[]) << gvreadsite
-      add_run(gvreadsite)
+    def add_gvar_decl(cpath, decl, vtx)
+      resolve_gvar(cpath).add_decl(decl, vtx)
     end
 
-    def remove_gvreadsite(gvreadsite)
-      @gvreadsites_by_name[gvreadsite.name].delete(gvreadsite)
+    # TODO: remove_const_decl
+
+    def add_gvar_def(cpath, node)
+      resolve_gvar(cpath).add_def(node)
     end
 
-    def run_gvreadsite(name)
-      gvreadsites = @gvreadsites_by_name[name]
-      if gvreadsites
-        gvreadsites.each do |gvreadsite|
-          add_run(gvreadsite)
-        end
-      end
+    def remove_gvar_def(cpath, node)
+      resolve_gvar(cpath).remove_def(node)
     end
 
     # instance variables
