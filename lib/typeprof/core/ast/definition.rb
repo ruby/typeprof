@@ -94,11 +94,20 @@ module TypeProf::Core
         super(raw_node, lenv, raw_cpath, raw_scope)
       end
 
+      def define0(genv)
+        genv.add_module_def(@static_cpath, self)
+        @body.define(genv) if @body
+        nil
+      end
+
+      def undefine0(genv)
+        @body.undefine(genv) if @body
+        genv.remove_module_def(@static_cpath, self)
+      end
+
       def install0(genv)
         @cpath.install(genv)
         if @static_cpath
-          genv.add_module(@static_cpath, self, nil)
-
           val = Source.new(Type::Module.new(@static_cpath))
           cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           add_def(genv, cdef)
@@ -110,13 +119,6 @@ module TypeProf::Core
           # TODO: show error
           check
         end
-      end
-
-      def uninstall0(genv)
-        if @static_cpath && @static_superclass_cpath
-          genv.remove_module(@static_cpath, self)
-        end
-        super
       end
 
       def dump0(dumper)
@@ -136,30 +138,39 @@ module TypeProf::Core
         super(raw_node, lenv, raw_cpath, raw_scope)
         if raw_superclass
           @superclass_cpath = AST.create_node(raw_superclass, lenv)
-          @static_superclass_cpath = AST.parse_cpath(raw_superclass, lenv.cref.cpath)
-          @body = nil unless @static_superclass_cpath
         else
           @superclass_cpath = nil
-          @static_superclass_cpath = [:Object]
         end
       end
 
-      attr_reader :superclass_cpath, :static_superclass_cpath
+      attr_reader :superclass_cpath
 
       def subnodes
         super.merge!({ superclass_cpath: })
       end
 
-      def attrs
-        super.merge!({ static_superclass_cpath: })
+      def define0(genv)
+        if @static_cpath
+          genv.add_module_def(@static_cpath, self)
+          if @superclass_cpath
+            const = @superclass_cpath.define(genv)
+            const.const_reads << @static_cpath if const
+          end
+          @body.define(genv) if @body
+        end
+        nil
+      end
+
+      def undefine0(genv)
+        @body.undefine(genv) if @body
+        genv.remove_module_def(@static_cpath, self)
+        @superclass_cpath.undefine(genv) if @superclass_cpath
       end
 
       def install0(genv)
         @cpath.install(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
-        if @static_cpath && @static_superclass_cpath
-          genv.add_module(@static_cpath, self, @static_superclass_cpath)
-
+        if @static_cpath
           val = Source.new(Type::Module.new(@static_cpath))
           cdef = ConstDef.new(@static_cpath[0..-2], @static_cpath[-1], self, val)
           add_def(genv, cdef)
@@ -175,13 +186,6 @@ module TypeProf::Core
           # TODO: show error
           check
         end
-      end
-
-      def uninstall0(genv)
-        if @static_cpath && @static_superclass_cpath
-          genv.remove_module(@static_cpath, self)
-        end
-        super
       end
 
       def dump0(dumper)

@@ -10,6 +10,16 @@ module TypeProf::Core
 
       def attrs = { cname: }
 
+      def define0(genv)
+        const = BaseConstRead.new(self, @cname, @lenv.cref)
+        genv.add_const_read(const)
+        const
+      end
+
+      def undefine0(genv)
+        genv.remove_const_read(@static_ret)
+      end
+
       def install0(genv)
         site = ConstReadSite.new(self, genv, @lenv.cref, nil, @cname)
         add_site(:main, site)
@@ -30,6 +40,14 @@ module TypeProf::Core
         super
         cbase_raw, @cname = raw_node.children
         @cbase = cbase_raw ? AST.create_node(cbase_raw, lenv) : nil
+      end
+
+      def define0(genv)
+        if @cbase
+          ScopedConstRead.new(self, @cname, @cbase.define(genv))
+        else
+          nil
+        end
       end
 
       attr_reader :cbase, :cname
@@ -56,12 +74,16 @@ module TypeProf::Core
         @cname, = raw_node.children
       end
 
+      def define0(genv)
+        BaseConstRead.new(self, @cname, CRef::Toplevel)
+      end
+
       attr_reader :cname
 
       def attrs = { cname: }
 
       def install0(genv)
-        site = ConstReadSite.new(self, genv, CRef.new([], false, nil), nil, @cname)
+        site = ConstReadSite.new(self, genv, CRef::Toplevel, nil, @cname)
         add_site(:main, site)
         site.ret
       end

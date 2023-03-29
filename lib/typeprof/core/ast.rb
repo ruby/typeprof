@@ -12,7 +12,7 @@ module TypeProf::Core
       tbl, args, raw_body = raw_scope.children
       raise unless args == nil
 
-      cref = CRef.new([], false, nil)
+      cref = CRef::Toplevel
       locals = {}
       tbl.each {|var| locals[var] = Source.new(Type.nil) }
       locals[:"*self"] = Source.new(cref.get_self)
@@ -149,12 +149,13 @@ module TypeProf::Core
         @lenv = lenv
         @raw_children = raw_node.children
         @prev_node = nil
+        @static_ret = nil
         @ret = nil
         @defs = nil
         @sites = nil
       end
 
-      attr_reader :lenv, :prev_node, :ret
+      attr_reader :lenv, :prev_node, :static_ret, :ret
 
       def subnodes = {}
       def attrs = {}
@@ -200,6 +201,42 @@ module TypeProf::Core
 
       def add_site(key, site)
         sites[key] = site
+      end
+
+      def define(genv)
+        debug = ENV["TYPEPROF_DEBUG"]
+        if debug
+          puts "define enter: #{ self.class }@#{ code_range.inspect }"
+        end
+        @static_ret = define0(genv)
+        if debug
+          puts "define leave: #{ self.class }@#{ code_range.inspect }"
+        end
+        @static_ret
+      end
+
+      def define0(genv)
+        subnodes.each_value do |subnode|
+          subnode.define(genv) if subnode
+        end
+        nil
+      end
+
+      def undefine(genv)
+        debug = ENV["TYPEPROF_DEBUG"]
+        if debug
+          puts "undefine enter: #{ self.class }@#{ code_range.inspect }"
+        end
+        undefine0(genv)
+        if debug
+          puts "undefine leave: #{ self.class }@#{ code_range.inspect }"
+        end
+      end
+
+      def undefine0(genv)
+        subnodes.each_value do |subnode|
+          subnode.undefine(genv) if subnode
+        end
       end
 
       def install(genv)
@@ -437,7 +474,9 @@ module TypeProf::Core
     end
 
     def get_self
-      (@singleton ? Type::Module : Type::Instance).new(@cpath || [:Object])
+      (@singleton ? Type::Module : Type::Instance).new(@cpath || [])
     end
+
+    Toplevel = self.new([], false, nil)
   end
 end

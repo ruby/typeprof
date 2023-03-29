@@ -6,6 +6,7 @@ module TypeProf::Core
       genv.rbs_builder.env.declarations.each do |decl|
         declaration(genv, decl)
       end
+      genv.define_all
     end
 
     def self.declaration(genv, decl)
@@ -15,13 +16,7 @@ module TypeProf::Core
         cpath = name.namespace.path + [name.name]
         # TODO: decl.type_params
         # TODO: decl.super_class.args
-        superclass = decl.super_class
-        if superclass
-          superclass_cpath = superclass.name.namespace.path + [superclass.name.name]
-        else
-          superclass_cpath = [:Object]
-        end
-        genv.add_module(cpath, decl, superclass_cpath)
+        genv.add_module_decl(cpath, decl)
         ty = Type::Module.new(cpath)
         cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
         genv.add_const_decl(cdecl)
@@ -29,7 +24,7 @@ module TypeProf::Core
       when RBS::AST::Declarations::Module
         name = decl.name
         cpath = name.namespace.path + [name.name]
-        genv.add_module(cpath, decl)
+        genv.add_module_decl(cpath, decl)
         ty = Type::Module.new(cpath)
         cdecl = ConstDecl.new(cpath[0..-2], cpath[-1], ty)
         genv.add_const_decl(cdecl)

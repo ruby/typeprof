@@ -75,7 +75,9 @@ module TypeProf::LSP
         URI(uri).path
       end
 
-      @server.core.add_workspaces(folders)
+      @server.core.add_workspaces(folders) do |path|
+        @server.target_path?(path)
+      end
 
       respond(
         capabilities: {

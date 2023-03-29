@@ -35,11 +35,10 @@ module TypeProf::Core
 
     attr_reader :genv
 
-    def add_workspaces(folders)
-      return # TODO
+    def add_workspaces(folders, &blk)
       folders.each do |folder|
         Dir.glob(File.expand_path(folder + "/**/*.rb")) do |path|
-          update_file(path, nil)
+          update_file(path, nil) if !blk || blk.call(path)
         end
       end
     end
@@ -56,6 +55,12 @@ module TypeProf::Core
 
       node.diff(@text_nodes[path]) if prev_node
       @text_nodes[path] = node
+
+      node.define(@genv)
+      if prev_node
+        prev_node.undefine(@genv)
+      end
+      @genv.define_all
 
       node.install(@genv)
       @genv.run_all
@@ -259,11 +264,14 @@ module TypeProf::Core
             end
           end
         when AST::CLASS
-          if node.static_cpath && node.static_superclass_cpath
+          if node.static_cpath
             if event == :enter
               s = "class #{ node.static_cpath.join("::") }"
-              unless node.static_superclass_cpath == [:Object]
-                s << " < #{ node.static_superclass_cpath.join("::") }"
+              superclass_cpath = @genv.resolve_cpath(node.static_cpath).superclass_cpath
+              if superclass_cpath == nil
+                s << " # failed to identify its superclass"
+              elsif superclass_cpath != []
+                s << " < #{ superclass_cpath.join("::") }"
               end
               out << "  " * depth + s
               depth += 1

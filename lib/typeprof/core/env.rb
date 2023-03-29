@@ -1,9 +1,13 @@
 module TypeProf::Core
   class ModuleDirectory
-    def initialize
+    def initialize(cpath)
+      @cpath = cpath
+      @module_decls = Set[]
       @module_defs = Set[]
       @child_modules = {}
-      @superclass_cpath = nil
+      @superclass_cpath = []
+      @subclasses = Set[]
+      @const_reads = Set[]
 
       @consts = {}
       @singleton_methods = {}
@@ -13,12 +17,11 @@ module TypeProf::Core
       @instance_ivars = {}
     end
 
-    def set_superclass_path(cpath)
-      @superclass_path = cpath
-    end
-
-    attr_reader :module_defs, :child_modules
-    attr_accessor :superclass_cpath
+    attr_reader :cpath
+    attr_reader :module_decls, :module_defs, :child_modules
+    attr_reader :superclass_cpath
+    attr_reader :subclasses
+    attr_reader :const_reads
     attr_reader :consts
     attr_reader :include_module_cpaths
 
@@ -28,6 +31,130 @@ module TypeProf::Core
 
     def ivars(singleton)
       singleton ? @singleton_ivars : @instance_ivars
+    end
+
+    def on_child_modules_updated(genv) # TODO: accept what is a change
+      @subclasses.each {|subclass| subclass.on_child_modules_updated(genv) }
+      @const_reads.dup.each do |const_read|
+        case const_read
+        when BaseConstRead
+          const_read.on_scope_updated(genv)
+        when ScopedConstRead
+          const_read.on_cbase_updated(genv)
+        else
+          raise
+        end
+      end
+    end
+
+    def set_superclass_cpath(cpath) # for RBS
+      @superclass_cpath = cpath
+    end
+
+    def on_superclass_updated(genv)
+      const = nil
+      # TODO: check with RBS's superclass if any
+      @module_defs.each do |mdef|
+        if mdef.is_a?(AST::CLASS) && mdef.superclass_cpath
+          const = mdef.superclass_cpath.static_ret
+          break
+        end
+      end
+      # TODO: check circular class/module mix, check inconsistent superclass
+      superclass_cpath = const ? const.cpath : []
+      if superclass_cpath != @superclass_cpath
+        genv.resolve_cpath(@superclass_cpath).subclasses.delete(self) if @superclass_cpath
+        @superclass_cpath = superclass_cpath
+        genv.resolve_cpath(@superclass_cpath).subclasses << self if @superclass_cpath
+        @subclasses.each {|subclass| subclass.on_superclass_updated(genv) }
+        @const_reads.dup.each {|const_read| const_read.on_scope_updated(genv) }
+      end
+    end
+  end
+
+  class ConstRead
+    def initialize(node, cname)
+      @node = node
+      @cname = cname
+      @const_reads = Set[]
+      @cpath = nil
+    end
+
+    attr_reader :cref, :cname, :cpath, :const_reads
+
+    def propagate(genv)
+      @const_reads.dup.each do |const_read|
+        case const_read
+        when ScopedConstRead
+          const_read.on_cbase_updated(genv)
+        when Array
+          genv.resolve_cpath(const_read).on_superclass_updated(genv)
+        else
+          raise const_read.inspect
+        end
+      end
+    end
+
+    def resolve(genv, cref)
+      first = true
+      while cref
+        scope = cref.cpath
+        while true
+          m = genv.resolve_cpath(scope)
+          mm = genv.resolve_cpath(scope + [@cname])
+          return scope + [@cname] if !mm.module_decls.empty? || !mm.module_defs.empty?
+          break unless first
+          break unless m.superclass_cpath
+          break if scope == [:BasicObject]
+          scope = m.superclass_cpath
+        end
+        first = false
+        cref = cref.outer
+      end
+      return nil
+    end
+  end
+
+  class BaseConstRead < ConstRead
+    def initialize(node, cname, cref)
+      super(node, cname)
+      @cref = cref
+    end
+
+    attr_reader :cref
+
+    def on_scope_updated(genv)
+      cpath = resolve(genv, @cref)
+      if cpath != @cpath
+        @cpath = cpath
+        propagate(genv)
+      end
+    end
+  end
+
+  class ScopedConstRead < ConstRead
+    def initialize(node, cname, cbase)
+      super(node, cname)
+      @cbase = cbase
+      @cbase.const_reads << self if @cbase
+      @cbase_cpath = nil
+    end
+
+    attr_reader :cbase
+
+    def on_cbase_updated(genv)
+      if @cbase && @cbase.cpath
+        cpath = resolve(genv, CRef.new(@cbase.cpath, false, nil))
+        if cpath != @cpath
+          genv.resolve_cpath(@cbase_cpath).const_reads.delete(self) if @cbase_cpath
+          @cpath = cpath
+          @cbase_cpath = @cbase.cpath
+          if @cbase_cpath
+            genv.resolve_cpath(@cbase_cpath).const_reads << self
+          end
+          propagate(genv)
+        end
+      end
     end
   end
 
@@ -285,10 +412,12 @@ module TypeProf::Core
 
   class GlobalEnv
     def initialize(rbs_builder)
+      @define_queue = []
+
       @run_queue = []
       @run_queue_set = Set[]
 
-      @toplevel = ModuleDirectory.new
+      @toplevel = ModuleDirectory.new([])
       @toplevel.child_modules[:Object] = @toplevel
 
       @gvars = {}
@@ -325,27 +454,74 @@ module TypeProf::Core
       dir = @toplevel
       raise unless cpath # annotation
       cpath.each do |cname|
-        dir = dir.child_modules[cname] ||= ModuleDirectory.new
+        dir = dir.child_modules[cname] ||= ModuleDirectory.new(dir.cpath + [cname])
       end
       dir
     end
 
-    def add_module(cpath, mod_def, superclass_cpath = nil)
+    def add_module_decl(cpath, mod_decl)
       dir = resolve_cpath(cpath)
-      dir.module_defs << mod_def
-      if superclass_cpath
-        if dir.superclass_cpath
-          # error
+      dir.module_decls << mod_decl
+
+      if mod_decl.is_a?(RBS::AST::Declarations::Class)
+        superclass = mod_decl.super_class
+        if superclass
+          cpath = superclass.name.namespace.path + [superclass.name.name]
         else
-          dir.superclass_cpath = superclass_cpath
+          cpath = []
         end
+        dir.set_superclass_cpath(cpath)
       end
+
       dir
     end
 
-    def remove_module(cpath, mod_def)
+    def add_module_def(cpath, mod_def)
+      dir = resolve_cpath(cpath)
+      if dir.module_defs.empty?
+        @define_queue << cpath[0..-2]
+      end
+      dir.module_defs << mod_def
+      dir
+    end
+
+    def remove_module_def(cpath, mod_def)
       dir = resolve_cpath(cpath)
       dir.module_defs.delete(mod_def)
+      if dir.module_defs.empty?
+        @define_queue << cpath[0..-2]
+      end
+    end
+
+    def add_const_read(const)
+      cref = const.cref
+      while cref
+        resolve_cpath(cref.cpath).const_reads << const
+        cref = cref.outer
+      end
+      @define_queue << const
+    end
+
+    def remove_const_read(const)
+      cref = const.cref
+      while cref
+        resolve_cpath(cref.cpath).const_reads.delete(const)
+        cref = cref.outer
+      end
+    end
+
+    def define_all
+      @define_queue.uniq.each do |v|
+        case v
+        when Array # cpath
+          resolve_cpath(v).on_child_modules_updated(self)
+        when BaseConstRead
+          v.on_scope_updated(self)
+        else
+          raise
+        end
+      end
+      @define_queue.clear
     end
 
     def set_superclass(cpath, superclass_cpath)
@@ -397,7 +573,7 @@ module TypeProf::Core
           return e.defs unless e.defs.empty?
         end
         cpath = dir.superclass_cpath
-        break if cpath == [:Object]
+        break if cpath == []
       end
     end
 

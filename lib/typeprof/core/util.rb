@@ -20,6 +20,12 @@ module TypeProf::Core
       @hash = hash
     end
 
+    def internal_hash = @hash
+
+    def dup
+      Set.new(@hash.dup)
+    end
+
     def <<(elem)
       @hash[elem] = true
       self
