@@ -180,7 +180,7 @@ module TypeProf::Core
         @prev_node = nil
         @static_ret = nil
         @ret = nil
-        @defs = nil
+        @method_defs = nil
         @sites = nil
         @diagnostics = []
       end
@@ -207,16 +207,13 @@ module TypeProf::Core
         end
       end
 
-      def defs
-        @defs ||= Set[]
+      def method_defs
+        @method_defs ||= Set[]
       end
 
-      def add_def(genv, d)
-        defs << d
-        case d
-        when MethodDef
-          genv.add_method_def(d)
-        end
+      def add_method_def(genv, d)
+        method_defs << d
+        genv.add_method_def(d)
       end
 
       def sites
@@ -285,9 +282,9 @@ module TypeProf::Core
           puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
         end
         unless @reused
-          defs = @defs # annoation
-          if defs
-            defs.each do |d|
+          method_defs = @method_defs # annoation
+          if method_defs
+            method_defs.each do |d|
               case d
               when MethodDef
                 genv.remove_method_def(d)
@@ -334,7 +331,7 @@ module TypeProf::Core
           @lenv = prev_node.lenv
           @static_ret = prev_node.static_ret
           @ret = prev_node.ret
-          @defs = prev_node.defs
+          @method_defs = prev_node.method_defs
           @sites = prev_node.sites
         end
 
