@@ -36,7 +36,7 @@ module TypeProf::Core
         if @static_cpath
           genv.add_module_def(@static_cpath, self)
           @body.define(genv)
-          genv.add_const_def(@static_cpath, self)
+          genv.resolve_const(@static_cpath).add_def(self)
         else
           kind = self.is_a?(MODULE) ? "module" : "class"
           add_diagnostics("TypeProf cannot analyze a non-static #{ kind }") # warning
@@ -46,7 +46,7 @@ module TypeProf::Core
 
       def undefine0(genv)
         if @static_cpath
-          genv.remove_const_def(@static_cpath, self)
+          genv.resolve_const(@static_cpath).remove_def(self)
           @body.undefine(genv)
           genv.remove_module_def(@static_cpath, self)
         end

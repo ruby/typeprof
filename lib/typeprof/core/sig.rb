@@ -17,24 +17,26 @@ module TypeProf::Core
         # TODO: decl.type_params
         # TODO: decl.super_class.args
         genv.add_module_decl(cpath, decl)
+        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(cpath)))
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Module
         name = decl.name
         cpath = name.namespace.path + [name.name]
         genv.add_module_decl(cpath, decl)
+        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(cpath)))
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Constant
         name = decl.name
         cpath = name.namespace.path + [name.name]
         vtx = type_to_vtx(genv, decl, decl.type, {})
-        genv.add_const_decl(cpath, decl, vtx)
+        genv.resolve_const(cpath).add_decl(decl, vtx)
       when RBS::AST::Declarations::AliasDecl
       when RBS::AST::Declarations::TypeAlias
         # TODO: check
       when RBS::AST::Declarations::Interface
       when RBS::AST::Declarations::Global
         vtx = type_to_vtx(genv, decl, decl.type, {})
-        genv.add_gvar_decl(decl.name, decl, vtx)
+        genv.resolve_gvar(decl.name).add_decl(decl, vtx)
       else
         raise "unsupported: #{ decl.class }"
       end

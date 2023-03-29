@@ -109,8 +109,7 @@ module TypeProf::Core
       case node
       when AST::Node
       when RBS::AST::Declarations::Base
-      when ConstEntity
-      when GlobalEnv::GVarEntity
+      when Entity
       else
         raise
       end

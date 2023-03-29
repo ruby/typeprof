@@ -93,32 +93,4 @@ module TypeProf::Core
       end
     end
   end
-
-  class ConstEntity
-    def initialize
-      @decls = Set[]
-      @defs = Set[]
-      @vtx = Vertex.new("const-def", self)
-    end
-
-    attr_reader :decls, :defs, :vtx
-
-    def add_decl(decl, vtx)
-      @decls << decl
-      @vtx = vtx # TODO
-    end
-
-    def remove_decl(decl)
-      @decls.delete(decl)
-    end
-
-    def add_def(node)
-      @defs << node
-      self
-    end
-
-    def remove_def(node)
-      @defs.delete(node)
-    end
-  end
 end

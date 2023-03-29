@@ -49,11 +49,11 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        genv.add_gvar_def(@var, self)
+        genv.resolve_gvar(@var).add_def(self)
       end
 
       def undefine0(genv)
-        genv.remove_gvar_def(@var, self)
+        genv.resolve_gvar(@var).remove_def(self)
         @rhs.undefine(genv) if @rhs
       end
 

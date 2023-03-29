@@ -3,6 +3,34 @@ module TypeProf::Core
     def initialize
       @decls = Set[]
       @defs = Set[]
+      @vtx = Vertex.new("gvar", self)
+    end
+
+    attr_reader :decls, :defs, :vtx
+
+    def add_decl(decl, vtx)
+      @decls << decl
+      @vtx = vtx # TODO
+    end
+
+    def remove_decl(decl)
+      @decls.delete(decl)
+    end
+
+    def add_def(node)
+      @defs << node
+      self
+    end
+
+    def remove_def(node)
+      @defs.delete(node)
+    end
+  end
+
+  class OldEntity
+    def initialize
+      @decls = Set[]
+      @defs = Set[]
       @aliases = Set[]
     end
 
@@ -264,7 +292,6 @@ module TypeProf::Core
     def add_module_decl(cpath, mod_decl)
       dir = resolve_cpath(cpath)
       dir.module_decls << mod_decl
-      add_const_decl(cpath, mod_decl, Source.new(Type::Module.new(cpath)))
 
       if mod_decl.is_a?(RBS::AST::Declarations::Class)
         superclass = mod_decl.super_class
@@ -314,21 +341,7 @@ module TypeProf::Core
 
     def resolve_const(cpath)
       dir = resolve_cpath(cpath[0..-2])
-      dir.child_consts[cpath[-1]] ||= ConstEntity.new
-    end
-
-    def add_const_decl(cpath, decl, vtx)
-      resolve_const(cpath).add_decl(decl, vtx)
-    end
-
-    # TODO: remove_const_decl
-
-    def add_const_def(cpath, node)
-      resolve_const(cpath).add_def(node)
-    end
-
-    def remove_const_def(cpath, node)
-      resolve_const(cpath).remove_def(node)
+      dir.child_consts[cpath[-1]] ||= Entity.new
     end
 
     def add_const_read(const_read)
@@ -352,7 +365,7 @@ module TypeProf::Core
 
     def get_method_entity(me)
       dir = resolve_cpath(me.cpath)
-      dir.methods(me.singleton)[me.mid] ||= Entity.new
+      dir.methods(me.singleton)[me.mid] ||= OldEntity.new
     end
 
     def add_method_decl(mdecl)
@@ -451,57 +464,15 @@ module TypeProf::Core
 
     # global variables
 
-    class GVarEntity
-      def initialize
-        @decls = Set[]
-        @defs = Set[]
-        @vtx = Vertex.new("gvar", self)
-      end
-
-      attr_reader :decls, :defs, :vtx
-
-      def add_decl(decl, vtx)
-        @decls << decl
-        @vtx = vtx # TODO
-      end
-
-      def remove_decl(decl)
-        @decls.delete(decl)
-      end
-
-      def add_def(node)
-        @defs << node
-        self
-      end
-
-      def remove_def(node)
-        @defs.delete(node)
-      end
-    end
-
     def resolve_gvar(name)
-      @gvars[name] ||= GVarEntity.new
-    end
-
-    def add_gvar_decl(cpath, decl, vtx)
-      resolve_gvar(cpath).add_decl(decl, vtx)
-    end
-
-    # TODO: remove_const_decl
-
-    def add_gvar_def(cpath, node)
-      resolve_gvar(cpath).add_def(node)
-    end
-
-    def remove_gvar_def(cpath, node)
-      resolve_gvar(cpath).remove_def(node)
+      @gvars[name] ||= Entity.new
     end
 
     # instance variables
 
     def get_ivar_entity(ive)
       dir = resolve_cpath(ive.cpath)
-      dir.ivars(ive.singleton)[ive.name] ||= Entity.new
+      dir.ivars(ive.singleton)[ive.name] ||= OldEntity.new
     end
 
     def add_ivar_decl(ivdecl)
