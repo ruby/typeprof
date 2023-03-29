@@ -35,7 +35,7 @@ module TypeProf::Core
           if !mm.module_decls.empty? || !mm.module_defs.empty?
             cpath = scope + [@cname]
           end
-          if m.child_consts[@cname] && (!m.child_consts[@cname].decls.empty? || !m.child_consts[@cname].defs.empty?) # TODO: const_decls
+          if m.child_consts[@cname] && m.child_consts[@cname].exist?
             cdef = m.child_consts[@cname]
           end
           return [cpath, cdef] if cpath || cdef

@@ -3,6 +3,7 @@ module TypeProf::Core
     def initialize(cpath)
       @cpath = cpath
 
+      # use Entity?
       @module_decls = Set[]
       @module_defs = Set[]
       @child_modules = {}
@@ -10,15 +11,15 @@ module TypeProf::Core
       @superclass_cpath = []
       @subclasses = Set[]
       @const_reads = Set[]
+      @ivar_reads = Set[]
 
       @child_consts = {}
+
+      @ivars = { true => {}, false => {} }
 
       @singleton_methods = {}
       @instance_methods = {}
       @include_module_cpaths = Set[]
-
-      @singleton_ivars = {}
-      @instance_ivars = {}
     end
 
     attr_reader :cpath
@@ -29,14 +30,16 @@ module TypeProf::Core
     attr_reader :superclass_cpath
     attr_reader :subclasses
     attr_reader :const_reads
+    attr_reader :ivar_reads
     attr_reader :include_module_cpaths
+    attr_reader :ivars
+
+    def exist?
+      !@module_decls.empty? || !@module_defs.empty?
+    end
 
     def methods(singleton)
       singleton ? @singleton_methods : @instance_methods
-    end
-
-    def ivars(singleton)
-      singleton ? @singleton_ivars : @instance_ivars
     end
 
     def on_child_modules_updated(genv) # TODO: accept what is a change
@@ -72,8 +75,24 @@ module TypeProf::Core
         genv.resolve_cpath(@superclass_cpath).subclasses.delete(self) if @superclass_cpath
         @superclass_cpath = superclass_cpath
         genv.resolve_cpath(@superclass_cpath).subclasses << self if @superclass_cpath
-        @subclasses.each {|subclass| subclass.on_superclass_updated(genv) }
-        @const_reads.dup.each {|const_read| const_read.on_scope_updated(genv) }
+        on_ancestors_updated(genv)
+      end
+    end
+
+    def on_ancestors_updated(genv)
+      @subclasses.each {|subclass| subclass.on_ancestors_updated(genv) }
+      @const_reads.dup.each {|const_read| const_read.on_scope_updated(genv) }
+      @ivar_reads.dup.each {|ivar_read| genv.add_run(ivar_read) }
+    end
+
+    def each_subclass_of_ivar(singleton, name, &blk)
+      sub_e = @ivars[singleton][name]
+      if sub_e
+        yield sub_e, @cpath
+      else
+        @subclasses.each do |subclass|
+          subclass.each_subclass_of_ivar(singleton, name, &blk)
+        end
       end
     end
 

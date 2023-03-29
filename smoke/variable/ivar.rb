@@ -1,6 +1,3 @@
-
-serv = Service.new
-
 # update
 class C
   def initialize(x)
@@ -14,6 +11,8 @@ end
 
 class D < C
   def bar(_)
+    @x
+    @x
     @x
   end
 end

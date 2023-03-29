@@ -25,6 +25,10 @@ module TypeProf::Core
     def remove_def(node)
       @defs.delete(node)
     end
+
+    def exist?
+      !@decls.empty? || !@defs.empty?
+    end
   end
 
   class OldEntity
@@ -202,22 +206,6 @@ module TypeProf::Core
     end
 
     attr_reader :node, :f_args, :ret
-  end
-
-  class IVarDef
-    def initialize(cpath, singleton, name, node, val)
-      @cpath = cpath
-      @singleton = singleton
-      @name = name
-      @node = node
-      @val = val
-    end
-
-    attr_reader :cpath, :singleton, :name, :node, :val
-
-    def show
-      "<TODO IVarDef>"
-    end
   end
 
   class GlobalEnv
@@ -470,68 +458,10 @@ module TypeProf::Core
 
     # instance variables
 
-    def get_ivar_entity(ive)
-      dir = resolve_cpath(ive.cpath)
-      dir.ivars(ive.singleton)[ive.name] ||= OldEntity.new
-    end
-
-    def add_ivar_decl(ivdecl)
-      e = get_ivar_entity(ivdecl)
-      e.decls << ivdecl
-    end
-
-    def add_ivar_def(ivdef)
-      e = get_ivar_entity(ivdef)
-      e.defs << ivdef
-
-      run_ivreadsite(ivdef.name)
-    end
-
-    def remove_ivar_def(ivdef)
-      e = get_ivar_entity(ivdef)
-      e.defs.delete(ivdef)
-
-      run_ivreadsite(ivdef.name)
-    end
-
     def resolve_ivar(cpath, singleton, name)
-      while cpath
-        dir = resolve_cpath(cpath)
-        e = dir.ivars(singleton)[name]
-        if e
-          return e.decls unless e.decls.empty?
-          return e.defs unless e.defs.empty?
-        end
-        cpath = dir.superclass_cpath
-        if cpath == [:BasicObject]
-          if singleton
-            singleton = false
-            cpath = [:Class]
-          else
-            return nil
-          end
-        else
-          cpath = dir.superclass_cpath
-        end
-      end
-    end
-
-    def add_ivreadsite(ivreadsite)
-      (@ivreadsites_by_name[ivreadsite.name] ||= Set[]) << ivreadsite
-      add_run(ivreadsite)
-    end
-
-    def remove_ivreadsite(ivreadsite)
-      @ivreadsites_by_name[ivreadsite.name].delete(ivreadsite)
-    end
-
-    def run_ivreadsite(name)
-      ivreadsites = @ivreadsites_by_name[name]
-      if ivreadsites
-        ivreadsites.each do |ivreadsite|
-          add_run(ivreadsite)
-        end
-      end
+      # TODO: include はあとで考える
+      dir = resolve_cpath(cpath)
+      dir.ivars[singleton][name] ||= Entity.new
     end
 
     def subclass?(cpath1, cpath2)

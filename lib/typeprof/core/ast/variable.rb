@@ -90,6 +90,14 @@ module TypeProf::Core
 
       def attrs = { var: }
 
+      def define0(genv)
+        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).add_def(self)
+      end
+
+      def undefine0(genv)
+        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).remove_def(self)
+      end
+
       def install0(genv)
         site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
         add_site(:main, site)
@@ -120,16 +128,32 @@ module TypeProf::Core
         @dummy_rhs = dummy_rhs
       end
 
-      attr_reader :var, :rhs, :var_code_range
+      attr_reader :var, :rhs, :var_code_range, :dummy_rhs
 
       def subnodes = { rhs: }
-      def attrs = { var:, var_code_range: }
+      def attrs = { var:, var_code_range:, dummy_rhs: }
+
+      def define0(genv)
+        @rhs.define(genv) if @rhs
+        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).add_def(self)
+      end
+
+      def undefine0(genv)
+        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).remove_def(self)
+        @rhs.undefine(genv) if @rhs
+      end
 
       def install0(genv)
+        site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
+        add_site(:main, site)
         val = (@rhs || @dummy_rhs).install(genv)
-        ivdef = IVarDef.new(lenv.cref.cpath, lenv.cref.singleton, @var, self, val)
-        add_def(genv, ivdef)
+        val.add_edge(genv, @static_ret.vtx)
         val
+      end
+
+      def uninstall0(genv)
+        @ret.remove_edge(genv, @static_ret.vtx)
+        super
       end
 
       def hover(pos)

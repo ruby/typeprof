@@ -544,40 +544,36 @@ module TypeProf::Core
       @cpath = cpath
       @singleton = singleton
       @name = name
-      @ret = Vertex.new("ivar:#{ name }", node)
-      genv.add_ivreadsite(self)
+      dir = genv.resolve_cpath(cpath)
+      dir.ivar_reads << self
+      @proxy = Vertex.new("ivar", node)
+      @ret = Vertex.new("ivar", node)
+      genv.add_run(self)
     end
 
-    def destroy(genv)
-      genv.remove_ivreadsite(self)
-      super
-    end
-
-    attr_reader :cpath, :singleton, :name, :ret
+    attr_reader :node, :const_read, :ret
 
     def run0(genv)
-      edges = Set[]
-      resolve(genv).each do |ives|
-        ives.each do |ive|
-          case ive
-          #when IVarDecl
-          when IVarDef
-            edges << [ive.val, @ret]
-          end
+      cur_ive = genv.resolve_ivar(@cpath, @singleton, @name)
+      cpath = @cpath
+      target_vtx = nil
+      while cpath
+        ive = genv.resolve_ivar(cpath, @singleton, @name)
+        if ive.exist?
+          target_vtx = ive.vtx
         end
+        break if cpath == [:BasicObject]
+        cpath = genv.resolve_cpath(cpath).superclass_cpath
       end
+      raise unless target_vtx
+      edges = []
+      edges << [cur_ive.vtx, @proxy] << [@proxy, target_vtx] if target_vtx != cur_ive.vtx
+      edges << [target_vtx, @ret]
       edges
     end
 
-    def resolve(genv)
-      ret = []
-      ives = genv.resolve_ivar(@cpath, @singleton, @name)
-      ret << ives if ives && !ives.empty?
-      ret
-    end
-
     def long_inspect
-      "#{ to_s } (cpath:#{ @cpath.join("::") }, name:#{ name } @ #{ @node.code_range })"
+      "IVarTODO"
     end
   end
 
