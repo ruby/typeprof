@@ -90,14 +90,6 @@ module TypeProf::Core
 
       def attrs = { var: }
 
-      def define0(genv)
-        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).add_def(self)
-      end
-
-      def undefine0(genv)
-        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).remove_def(self)
-      end
-
       def install0(genv)
         site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
         add_site(:main, site)

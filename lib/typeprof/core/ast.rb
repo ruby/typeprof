@@ -113,6 +113,16 @@ module TypeProf::Core
     end
 
     def self.create_call_node(raw_node, raw_call, raw_block, lenv)
+      if raw_call.type == :FCALL
+        case raw_call.children[0]
+        when :attr_reader
+          return ATTR_READER.new(raw_call, lenv)
+        when :attr_accessor
+          return ATTR_ACCESSOR.new(raw_call, lenv)
+        # TODO: include
+        end
+      end
+
       case raw_call.type
       when :CALL then CALL.new(raw_node, raw_call, raw_block, lenv)
       when :VCALL then VCALL.new(raw_node, raw_call, raw_block, lenv)

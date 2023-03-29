@@ -12,7 +12,7 @@ foo.x = "str"
 
 # assert
 class Foo
-  def x=: (String) -> String
   def x: -> String
+  def x=: (String) -> String
   def foo: -> String
 end

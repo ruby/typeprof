@@ -52,53 +52,6 @@ module TypeProf::Core
       []
     end
 
-    def module_attr_reader(node, ty, mid, a_args, ret)
-      edges = []
-      a_args.each do |a_arg|
-        a_arg.types.each do |ty, _source|
-          case ty
-          when Type::Symbol
-            ivar_name = "@#{ ty.sym }".to_sym # TODO: use DSYM
-            site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
-            # TODO: dup check
-            node.add_site(:attr_reader, site)
-            mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
-            node.add_def(@genv, mdef)
-          else
-            puts "???"
-          end
-        end
-      end
-      edges
-    end
-
-    def module_attr_accessor(node, ty, mid, a_args, ret)
-      edges = []
-      a_args.each do |a_arg|
-        a_arg.types.each do |ty, _source|
-          case ty
-          when Type::Symbol
-            vtx = Vertex.new("attr_writer-arg", node)
-            ivar_name = "@#{ ty.sym }".to_sym
-            ivdef = IVarDef.new(node.lenv.cref.cpath, false, ivar_name, node, vtx)
-            node.add_def(@genv, ivdef)
-            mdef = MethodDef.new(node.lenv.cref.cpath, false, "#{ ty.sym }=".to_sym, node, [vtx], nil, vtx)
-            node.add_def(@genv, mdef)
-
-            ivar_name = "@#{ ty.sym }".to_sym
-            site = IVarReadSite.new(node, @genv, node.lenv.cref.cpath, false, ivar_name)
-            # TODO: dup check
-            node.add_site(:attr_writer, site)
-            mdef = MethodDef.new(node.lenv.cref.cpath, false, ty.sym, node, [], nil, site.ret)
-            node.add_def(@genv, mdef)
-          else
-            puts "???"
-          end
-        end
-      end
-      edges
-    end
-
     def array_aref(node, ty, mid, a_args, ret)
       edges = []
       if a_args.size == 1
@@ -190,8 +143,6 @@ module TypeProf::Core
         class_new: [[:Class], false, :new],
         proc_call: [[:Proc], false, :call],
         module_include: [[:Module], false, :include],
-        #module_attr_reader: [[:Module], false, :attr_reader],
-        #module_attr_accessor: [[:Module], false, :attr_accessor],
         array_aref: [[:Array], false, :[]],
         array_aset: [[:Array], false, :[]=],
         hash_aref: [[:Hash], false, :[]],
