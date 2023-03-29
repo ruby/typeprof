@@ -106,7 +106,7 @@ module TypeProf::Core
           const_read.on_cbase_updated(genv)
         when Array
           genv.resolve_cpath(const_read).on_superclass_updated(genv)
-        when ConstReadSite
+        when ConstReadSite, IsAFilter
           genv.add_run(const_read)
         else
           raise const_read.inspect

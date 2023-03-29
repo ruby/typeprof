@@ -220,14 +220,15 @@ module TypeProf::Core
   class IsAFilter
     def initialize(genv, node, prev_vtx, neg, const_read)
       @node = node
+      @types = Set[]
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
       prev_vtx.add_edge(genv, self)
       @neg = neg
-      raise unless const_read.is_a?(ConstRead)
       @const_read = const_read
+      @const_read.const_reads << self
     end
 
-    attr_reader :show_name, :node, :next_vtx, :allow_nil
+    attr_reader :node, :next_vtx
 
     def filter(genv, types)
       # TODO: @const_read may change
@@ -235,13 +236,34 @@ module TypeProf::Core
     end
 
     def on_type_added(genv, src_var, added_types)
-      types = filter(genv, added_types)
-      @next_vtx.on_type_added(genv, self, types) unless types.empty?
+      added_types.each do |ty|
+        @types << ty
+      end
+      run(genv)
     end
 
     def on_type_removed(genv, src_var, removed_types)
-      types = filter(genv, removed_types)
-      @next_vtx.on_type_removed(genv, self, types) unless types.empty?
+      removed_types.each do |ty|
+        @types.delete(ty)
+      end
+      run(genv)
+    end
+
+    def run(genv)
+      if @const_read.cpath
+        passed_types = []
+        @types.each do |ty|
+          if ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.cpath, @const_read.cpath) } != @neg
+            passed_types << ty
+          end
+        end
+      else
+        passed_types = @types.to_a
+      end
+      added_types = passed_types - @next_vtx.types.keys
+      removed_types = @next_vtx.types.keys - passed_types
+      @next_vtx.on_type_added(genv, self, added_types)
+      @next_vtx.on_type_removed(genv, self, removed_types)
     end
 
     #@@new_id = 0
