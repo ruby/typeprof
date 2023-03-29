@@ -2,29 +2,33 @@ module TypeProf::Core
   class ModuleDirectory
     def initialize(cpath)
       @cpath = cpath
+
       @module_decls = Set[]
       @module_defs = Set[]
       @child_modules = {}
+
       @superclass_cpath = []
       @subclasses = Set[]
       @const_reads = Set[]
+
       @child_consts = {}
 
-      @consts = {}
       @singleton_methods = {}
       @instance_methods = {}
       @include_module_cpaths = Set[]
+
       @singleton_ivars = {}
       @instance_ivars = {}
     end
 
     attr_reader :cpath
-    attr_reader :module_decls, :module_defs, :child_modules
+    attr_reader :module_decls
+    attr_reader :module_defs
+    attr_reader :child_modules
     attr_reader :child_consts
     attr_reader :superclass_cpath
     attr_reader :subclasses
     attr_reader :const_reads
-    attr_reader :consts
     attr_reader :include_module_cpaths
 
     def methods(singleton)
@@ -422,13 +426,6 @@ module TypeProf::Core
 
     attr_reader :rbs_builder
 
-    def add_run(obj)
-      unless @run_queue_set.include?(obj)
-        @run_queue << obj
-        @run_queue_set << obj
-      end
-    end
-
     def define_all
       @define_queue.uniq.each do |v|
         case v
@@ -441,6 +438,13 @@ module TypeProf::Core
         end
       end
       @define_queue.clear
+    end
+
+    def add_run(obj)
+      unless @run_queue_set.include?(obj)
+        @run_queue << obj
+        @run_queue_set << obj
+      end
     end
 
     def run_all
