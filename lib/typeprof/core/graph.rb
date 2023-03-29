@@ -565,10 +565,15 @@ module TypeProf::Core
         break if cpath == [:BasicObject]
         cpath = genv.resolve_cpath(cpath).superclass_cpath
       end
-      raise unless target_vtx
       edges = []
-      edges << [cur_ive.vtx, @proxy] << [@proxy, target_vtx] if target_vtx != cur_ive.vtx
-      edges << [target_vtx, @ret]
+      if target_vtx
+        if target_vtx != cur_ive.vtx
+          edges << [cur_ive.vtx, @proxy] << [@proxy, target_vtx]
+        end
+        edges << [target_vtx, @ret]
+      else
+        # TODO: error?
+      end
       edges
     end
 
