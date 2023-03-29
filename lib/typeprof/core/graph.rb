@@ -544,14 +544,18 @@ module TypeProf::Core
       @cpath = cpath
       @singleton = singleton
       @name = name
-      dir = genv.resolve_cpath(cpath)
-      dir.ivar_reads << self
+      genv.resolve_cpath(cpath).ivar_reads << self
       @proxy = Vertex.new("ivar", node)
       @ret = Vertex.new("ivar", node)
       genv.add_run(self)
     end
 
     attr_reader :node, :const_read, :ret
+
+    def destroy(genv)
+      genv.resolve_cpath(@cpath).ivar_reads.delete(self)
+      super
+    end
 
     def run0(genv)
       cur_ive = genv.resolve_ivar(@cpath, @singleton, @name)
