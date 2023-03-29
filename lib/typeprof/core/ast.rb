@@ -219,7 +219,7 @@ module TypeProf::Core
         subnodes.each_value do |subnode|
           subnode.define(genv) if subnode
         end
-        nil
+        return nil
       end
 
       def undefine(genv)

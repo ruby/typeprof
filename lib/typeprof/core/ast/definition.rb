@@ -3,8 +3,8 @@ module TypeProf::Core
     class BLOCK < Node
       def initialize(raw_node, lenv)
         super
-        stmts = raw_node.children.compact
-        @stmts = stmts.map {|n| AST.create_node(n, lenv) }
+        raw_stmts = raw_node.children
+        @stmts = raw_stmts.map {|n| n ? AST.create_node(n, lenv) : nil }
       end
 
       attr_reader :stmts
@@ -18,7 +18,7 @@ module TypeProf::Core
       def install0(genv)
         ret = nil
         @stmts.each do |stmt|
-          ret = stmt.install(genv)
+          ret = stmt ? stmt.install(genv) : nil
         end
         ret || Source.new(Type.nil)
       end
