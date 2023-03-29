@@ -361,6 +361,31 @@ module TypeProf::Core
     alias inspect to_s
   end
 
+  class ConstReadSite < Box
+    def initialize(node, genv, const_read)
+      super(node)
+      @const_read = const_read
+      const_read.const_reads << self
+      @ret = Vertex.new("cname", node)
+      genv.add_run(self)
+    end
+
+    attr_reader :node, :const_read, :ret
+
+    def run0(genv)
+      cdef = @const_read.cdef
+      if cdef && cdef.vtx
+        Set[[cdef.vtx, @ret]]
+      else
+        Set[]
+      end
+    end
+
+    def long_inspect
+      "#{ to_s } (cname:#{ @cname } @ #{ @node.code_range })"
+    end
+  end
+
   class CallSite < Box
     def initialize(node, genv, recv, mid, a_args, block)
       raise mid.to_s unless mid

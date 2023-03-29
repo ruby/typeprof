@@ -55,9 +55,8 @@ module TypeProf::Core
       when :RESCUE then RESCUE.new(raw_node, lenv)
 
       # variable
-      when :CONST then CONST.new(raw_node, lenv)
-      when :COLON2 then COLON2.new(raw_node, lenv)
-      when :COLON3 then COLON3.new(raw_node, lenv)
+      when :CONST, :COLON2, :COLON3
+        create_const_node(raw_node, lenv)
       when :CDECL then CDECL.new(raw_node, lenv)
       when :GVAR then GVAR.new(raw_node, lenv)
       when :GASGN then GASGN.new(raw_node, lenv)
@@ -90,6 +89,26 @@ module TypeProf::Core
         AST.create_call_node(raw_node, raw_call, raw_block, lenv)
       else
         create_call_node(raw_node, raw_node, nil, lenv)
+      end
+    end
+
+    def self.create_const_node(raw_node, lenv)
+      case raw_node.type
+      when :CONST
+        cname, = raw_node.children
+        CONST.new(raw_node, lenv, cname, false)
+      when :COLON2
+        cbase_raw, cname = raw_node.children
+        if cbase_raw
+          COLON2.new(raw_node, lenv)
+        else
+          # "C" of "class C" is not CONST but COLON2, but cbase is null.
+          # This could be handled as CONST.
+          CONST.new(raw_node, lenv, cname, false)
+        end
+      when :COLON3
+        cname, = raw_node.children
+        CONST.new(raw_node, lenv, cname, true)
       end
     end
 
