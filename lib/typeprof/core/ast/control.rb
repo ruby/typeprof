@@ -3,9 +3,9 @@ module TypeProf::Core
     def self.is_a_class(node)
       if node.is_a?(CALL)
         if node.recv.is_a?(LVAR)
-          if node.positional_args && node.positional_args.size == 1 && node.positional_args[0].is_a?(CONST)
+          if node.positional_args && node.positional_args.size == 1 && node.positional_args[0].static_ret
             # TODO: need static resolusion of a constant
-            return [node.recv.var, [node.positional_args[0].cname]]
+            return [node.recv.var, node.positional_args[0].static_ret]
           end
         end
       end

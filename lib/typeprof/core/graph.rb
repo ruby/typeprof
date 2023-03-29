@@ -218,18 +218,20 @@ module TypeProf::Core
   end
 
   class IsAFilter
-    def initialize(genv, node, prev_vtx, neg, cpath)
+    def initialize(genv, node, prev_vtx, neg, const_read)
       @node = node
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
       prev_vtx.add_edge(genv, self)
       @neg = neg
-      @cpath = cpath
+      raise unless const_read.is_a?(ConstRead)
+      @const_read = const_read
     end
 
     attr_reader :show_name, :node, :next_vtx, :allow_nil
 
     def filter(genv, types)
-      types.select {|ty| ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.cpath, @cpath) != @neg } }
+      # TODO: @const_read may change
+      types.select {|ty| ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.cpath, @const_read.cpath) != @neg } }
     end
 
     def on_type_added(genv, src_var, added_types)
