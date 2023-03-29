@@ -369,7 +369,7 @@ module TypeProf::Core
       def install0(genv)
         ret = @arg ? @arg.install(genv) : Source.new(Type.nil)
         ret.add_edge(genv, @lenv.get_var(:"*ret"))
-        Vertex.new("dummy", self)
+        Source.new(Type::Bot.new)
       end
 
       def dump0(dumper)

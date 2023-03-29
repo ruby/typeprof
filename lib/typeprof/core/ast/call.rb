@@ -112,7 +112,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        # return unless self.is_a?(CallNode)
+        return unless prev_node.is_a?(CallNode)
         return if self.class != prev_node.class
         return unless attrs.all? {|key, attr| attr == prev_node.send(key) }
 
