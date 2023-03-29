@@ -1,6 +1,6 @@
 module TypeProf::Core
   class AST
-    class ATTR_READER < Node
+    class META_ATTR_READER < Node
       def initialize(raw_node, lenv)
         super
         _mid, raw_args = raw_node.children
@@ -37,7 +37,7 @@ module TypeProf::Core
       end
     end
 
-    class ATTR_ACCESSOR < Node
+    class META_ATTR_ACCESSOR < Node
       def initialize(raw_node, lenv)
         super
         _mid, raw_args = raw_node.children

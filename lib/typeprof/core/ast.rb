@@ -116,10 +116,11 @@ module TypeProf::Core
       if raw_call.type == :FCALL
         case raw_call.children[0]
         when :attr_reader
-          return ATTR_READER.new(raw_call, lenv)
+          return META_ATTR_READER.new(raw_call, lenv)
         when :attr_accessor
-          return ATTR_ACCESSOR.new(raw_call, lenv)
-        # TODO: include
+          return META_ATTR_ACCESSOR.new(raw_call, lenv)
+        #when :include
+        #  return META_INCLUDE.new(raw_call, lenv)
         end
       end
 
