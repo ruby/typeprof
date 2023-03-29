@@ -497,6 +497,7 @@ module TypeProf::Core
     end
 
     def diagnostics(genv)
+      count = 0
       resolve(genv) do |ty, mds|
         if mds
           mds.each do |md|
@@ -505,15 +506,25 @@ module TypeProf::Core
               # TODO: type error
             when MethodDef
               if @a_args.size != md.f_args.size
-                yield TypeProf::Diagnostic.new(@node, "wrong number of arguments (#{ @a_args.size } for #{ md.f_args.size })")
+                if count < 3
+                  yield TypeProf::Diagnostic.new(@node, "wrong number of arguments (#{ @a_args.size } for #{ md.f_args.size })")
+                end
+                count += 1
               end
             end
           end
           # TODO: arity error, type error
         else
           cr = @node.mid_code_range || @node
-          yield TypeProf::Diagnostic.new(cr, "undefined method: #{ ty.show }##{ @mid }")
+          if count < 3
+            yield TypeProf::Diagnostic.new(cr, "undefined method: #{ ty.show }##{ @mid }")
+          end
+          count += 1
         end
+      end
+      if count > 3
+        p :foo
+        yield TypeProf::Diagnostic.new(@node.mid_code_range || @node, "(and #{ count - 3 } errors omitted)")
       end
     end
 
