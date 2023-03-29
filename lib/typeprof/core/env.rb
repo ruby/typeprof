@@ -344,12 +344,11 @@ module TypeProf::Core
 
     def resolve_const(cpath)
       dir = resolve_cpath(cpath[0..-2])
-      dir.child_consts[cpath[-1]] ||= ConstDef.new(cpath)
+      dir.child_consts[cpath[-1]] ||= ConstEntity.new
     end
 
     def add_const_decl(cpath, decl, vtx)
-      cdef = resolve_const(cpath)
-      cdef.add_decl(decl, vtx)
+      resolve_const(cpath).add_decl(decl, vtx)
     end
 
     # TODO: remove_const_decl
@@ -362,19 +361,19 @@ module TypeProf::Core
       resolve_const(cpath).remove_def(node)
     end
 
-    def add_const_read(const)
-      cref = const.cref
+    def add_const_read(const_read)
+      cref = const_read.cref
       while cref
-        resolve_cpath(cref.cpath).const_reads << const
+        resolve_cpath(cref.cpath).const_reads << const_read
         cref = cref.outer
       end
-      @define_queue << const
+      @define_queue << const_read
     end
 
-    def remove_const_read(const)
-      cref = const.cref
+    def remove_const_read(const_read)
+      cref = const_read.cref
       while cref
-        resolve_cpath(cref.cpath).const_reads.delete(const)
+        resolve_cpath(cref.cpath).const_reads.delete(const_read)
         cref = cref.outer
       end
     end

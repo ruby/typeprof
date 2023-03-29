@@ -94,15 +94,14 @@ module TypeProf::Core
     end
   end
 
-  class ConstDef
-    def initialize(cpath)
-      @cpath = cpath
+  class ConstEntity
+    def initialize
       @decls = Set[]
       @defs = Set[]
       @vtx = nil
     end
 
-    attr_reader :cpath, :decls, :defs, :vtx
+    attr_reader :decls, :defs, :vtx
 
     def add_decl(decl, vtx)
       @decls << decl
