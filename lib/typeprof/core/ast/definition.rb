@@ -1,61 +1,5 @@
 module TypeProf::Core
   class AST
-    class BLOCK < Node
-      def initialize(raw_node, lenv)
-        super
-        raw_stmts = raw_node.children
-        @stmts = raw_stmts.map {|n| n ? AST.create_node(n, lenv) : nil }
-      end
-
-      attr_reader :stmts
-
-      def subnodes
-        h = {}
-        @stmts.each_with_index {|stmt, i| h[i] = stmt }
-        h
-      end
-
-      def install0(genv)
-        ret = nil
-        @stmts.each do |stmt|
-          ret = stmt ? stmt.install(genv) : nil
-        end
-        ret || Source.new(Type.nil)
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(BLOCK)
-          i = 0
-          while i < @stmts.size
-            @stmts[i].diff(prev_node.stmts[i])
-            if !@stmts[i].prev_node
-              j1 = @stmts.size - 1
-              j2 = prev_node.stmts.size - 1
-              while j1 >= i
-                @stmts[j1].diff(prev_node.stmts[j2])
-                if !@stmts[j1].prev_node
-                  return
-                end
-                j1 -= 1
-                j2 -= 1
-              end
-              return
-            end
-            i += 1
-          end
-          if i == prev_node.stmts.size
-            @prev_node = prev_node
-          end
-        end
-      end
-
-      def dump0(dumper)
-        @stmts.map do |stmt|
-          stmt.dump(dumper)
-        end.join("\n")
-      end
-    end
-
     class ModuleNode < Node
       def initialize(raw_node, lenv, raw_cpath, raw_scope)
         super(raw_node, lenv)
@@ -86,44 +30,44 @@ module TypeProf::Core
 
       def subnodes = { cpath:, body: }
       def attrs = { static_cpath: }
-    end
-
-    class MODULE < ModuleNode
-      def initialize(raw_node, lenv)
-        raw_cpath, raw_scope = raw_node.children
-        super(raw_node, lenv, raw_cpath, raw_scope)
-      end
 
       def define0(genv)
         @cpath.define(genv)
-        genv.add_module_def(@static_cpath, self)
-        @body.define(genv) if @body
-        genv.add_const_def(@static_cpath, self)
+        if @static_cpath
+          genv.add_module_def(@static_cpath, self)
+          @body.define(genv)
+          genv.add_const_def(@static_cpath, self)
+        else
+          kind = self.is_a?(MODULE) ? "module" : "class"
+          add_diagnostics("TypeProf cannot analyze a non-static #{ kind }") # warning
+          nil
+        end
       end
 
       def undefine0(genv)
-        @body.undefine(genv) if @body
-        genv.remove_const_def(@static_cpath, self)
-        genv.remove_module_def(@static_cpath, self)
+        if @static_cpath
+          genv.remove_const_def(@static_cpath, self)
+          @body.undefine(genv)
+          genv.remove_module_def(@static_cpath, self)
+        end
         @cpath.undefine(genv)
       end
 
       def install0(genv)
         @cpath.install(genv)
-        val = Source.new(Type::Module.new(@static_cpath))
-        val.add_edge(genv, @static_ret.vtx)
         if @static_cpath
+          val = Source.new(Type::Module.new(@static_cpath))
+          val.add_edge(genv, @static_ret.vtx)
           ret = @body.lenv.get_var(:"*ret")
           @body.install(genv).add_edge(genv, ret)
           ret
         else
-          # TODO: show error
-          check
+          Source.new
         end
       end
 
-      def dump0(dumper)
-        s = "module #{ @cpath.dump(dumper) }\n"
+      def dump_module(dumper, kind, superclass)
+        s = "#{ kind } #{ @cpath.dump(dumper) }#{ superclass }\n"
         if @static_cpath
           s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
         else
@@ -133,15 +77,22 @@ module TypeProf::Core
       end
     end
 
+    class MODULE < ModuleNode
+      def initialize(raw_node, lenv)
+        raw_cpath, raw_scope = raw_node.children
+        super(raw_node, lenv, raw_cpath, raw_scope)
+      end
+
+      def dump0(dumper)
+        dump_module(dumper, "module", "")
+      end
+    end
+
     class CLASS < ModuleNode
       def initialize(raw_node, lenv)
         raw_cpath, raw_superclass, raw_scope = raw_node.children
         super(raw_node, lenv, raw_cpath, raw_scope)
-        if raw_superclass
-          @superclass_cpath = AST.create_node(raw_superclass, lenv)
-        else
-          @superclass_cpath = nil
-        end
+        @superclass_cpath = raw_superclass ? AST.create_node(raw_superclass, lenv) : nil
       end
 
       attr_reader :superclass_cpath
@@ -151,57 +102,25 @@ module TypeProf::Core
       end
 
       def define0(genv)
-        @cpath.define(genv)
-        if @static_cpath
-          genv.add_module_def(@static_cpath, self)
-          if @superclass_cpath
-            const = @superclass_cpath.define(genv)
-            const.const_reads << @static_cpath if const
-          end
-          @body.define(genv) if @body
-          genv.add_const_def(@static_cpath, self)
-        else
-          nil
+        if @static_cpath && @superclass_cpath
+          const = @superclass_cpath.define(genv)
+          const.const_reads << @static_cpath if const
         end
+        super
       end
 
       def undefine0(genv)
-        @body.undefine(genv) if @body
-        genv.remove_const_def(@static_cpath, self)
-        genv.remove_module_def(@static_cpath, self)
+        super
         @superclass_cpath.undefine(genv) if @superclass_cpath
-        @cpath.undefine(genv)
       end
 
       def install0(genv)
-        @cpath.install(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
-        val = Source.new(Type::Module.new(@static_cpath))
-        val.add_edge(genv, @static_ret.vtx)
-        if @static_cpath
-          if @body
-            ret = @body.lenv.get_var(:"*ret")
-            @body.install(genv).add_edge(genv, ret)
-            ret
-          else
-            Source.new(Type.nil) # XXX
-          end
-        else
-          # TODO: show error
-          check
-        end
+        super
       end
 
       def dump0(dumper)
-        s = "class #{ @cpath.dump(dumper) }"
-        s << " < #{ @superclass_cpath.dump(dumper) }" if @superclass_cpath
-        s << "\n"
-        if @static_cpath
-          s << @body.dump(dumper).gsub(/^/, "  ") + "\n" if @body
-        else
-          s << "<analysis ommitted>\n"
-        end
-        s << "end"
+        dump_module(dumper, "class", @superclass_cpath ? " < #{ @superclass_cpath.dump(dumper) }" : "")
       end
     end
 
@@ -340,30 +259,6 @@ module TypeProf::Core
 
       def dump0(dumper)
         "alias #{ @new_name.dump(dumper) } #{ @old_name.dump(dumper) }"
-      end
-    end
-
-    class BEGIN_ < Node
-      def initialize(raw_node, lenv)
-        super
-        raise NotImplementedError if raw_node.children != [nil]
-      end
-
-      def install0(genv)
-        # TODO
-        Vertex.new("begin", self)
-      end
-
-      def uninstall0(genv)
-        # TODO
-      end
-
-      def diff(prev_node)
-        # TODO
-      end
-
-      def dump0(dumper)
-        "begin; end"
       end
     end
   end

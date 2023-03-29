@@ -85,8 +85,9 @@ module TypeProf::Core
         dead_boxes = Set[]
         prev_node.get_vertexes_and_boxes(dead_vtxs, dead_boxes)
 
+        #dump_graph(path)
         live_vtxs.each do |vtx|
-          raise if dead_vtxs.include?(vtx)
+          raise dead_vtxs.include?(vtx)
         end
 
         global_vtxs = Set[]
@@ -94,7 +95,6 @@ module TypeProf::Core
         global_vtxs.each do |vtx|
           dead_vtxs.delete(vtx)
         end
-        #dump_graph(path)
 
         global_vtxs.each do |global_vtx|
           next unless global_vtx.is_a?(Vertex)

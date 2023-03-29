@@ -172,6 +172,7 @@ module TypeProf::Core
         @ret = nil
         @defs = nil
         @sites = nil
+        @diagnostics = []
       end
 
       attr_reader :lenv, :prev_node, :static_ret, :ret
@@ -367,7 +368,12 @@ module TypeProf::Core
         raise "should override"
       end
 
+      def add_diagnostics(msg)
+        @diagnostics << TypeProf::Diagnostic.new(self, msg)
+      end
+
       def diagnostics(genv, &blk)
+        @diagnostics.each(&blk)
         sites = @sites # annotation
         if sites
           sites.each_value do |site|

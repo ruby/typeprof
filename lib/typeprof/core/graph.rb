@@ -504,7 +504,6 @@ module TypeProf::Core
         end
       end
       if count > 3
-        p :foo
         yield TypeProf::Diagnostic.new(@node.mid_code_range || @node, "(and #{ count - 3 } errors omitted)")
       end
     end
