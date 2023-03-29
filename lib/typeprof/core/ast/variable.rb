@@ -89,7 +89,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        s << "::#{ @cname }"
+        "::#{ @cname }"
       end
     end
 
@@ -105,7 +105,7 @@ module TypeProf::Core
         else # children.size == 3
           # expr::C = expr
           @cpath = AST.create_node(children[0], lenv)
-          @static_cpath = AST.parse_cpath(@cpath, lenv.cref.cpath)
+          @static_cpath = AST.parse_cpath(children[0], lenv.cref.cpath)
           raw_rhs = children[2]
         end
         @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
