@@ -31,7 +31,9 @@ module TypeProf::Core
       end
 
       def get_instance_type
-        Instance.new(@cpath)
+        x = Instance.new(@cpath)
+        p [:c, x.object_id] if @cpath == [:Hash]
+        x
       end
     end
 
@@ -101,10 +103,11 @@ module TypeProf::Core
     class Hash < Type
       include StructuralEquality
 
-      def initialize(literal_pairs, unified_key, unified_val)
+      def initialize(literal_pairs, unified_key, unified_val, base_type)
         @literal_pairs = literal_pairs
         @unified_key = unified_key
         @unified_val = unified_val
+        @base_type = base_type
       end
 
       def get_key
@@ -113,6 +116,10 @@ module TypeProf::Core
 
       def get_value(key = nil)
         @literal_pairs[key] || @unified_val
+      end
+
+      def base_types(genv)
+        [@base_type]
       end
 
       def base_types(genv)
@@ -201,6 +208,7 @@ module TypeProf::Core
     def self.int = Type::Instance.new([:Integer])
     def self.float = Type::Instance.new([:Float])
     def self.ary = Type::Instance.new([:Array])
+    def self.hsh = Type::Instance.new([:Hash])
     def self.range = Type::Instance.new([:Range])
   end
 end

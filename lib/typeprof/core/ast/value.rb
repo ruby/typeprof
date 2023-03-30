@@ -173,7 +173,7 @@ module TypeProf::Core
           v.add_edge(genv, unified_val)
           literal_pairs[key.lit] = v if key.is_a?(LIT) && key.lit.is_a?(Symbol)
         end
-        Source.new(Type::Hash.new(literal_pairs, unified_key, unified_val))
+        Source.new(Type::Hash.new(literal_pairs, unified_key, unified_val, Type.hsh))
       end
 
       def diff(prev_node)

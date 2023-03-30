@@ -28,7 +28,7 @@ module TypeProf::Core
         end
         edges << [ty.block.ret, ret]
       else
-        puts "???"
+        puts "??? proc_call"
       end
       edges
     end
@@ -44,12 +44,12 @@ module TypeProf::Core
               # TODO: undo
               @genv.add_module_include(cpath, ty.cpath)
             else
-              puts "???"
+              puts "??? module_include"
             end
           end
         end
       else
-        puts "???"
+        puts "??? module_include"
       end
       []
     end
@@ -67,10 +67,10 @@ module TypeProf::Core
           end
           edges << [ty.get_elem(idx), ret]
         else
-          puts "???"
+          puts "??? array_aref"
         end
       else
-        puts "???"
+        puts "??? array_aref"
       end
       edges
     end
@@ -88,10 +88,10 @@ module TypeProf::Core
             edges << [val, ty.get_elem]
           end
         else
-          puts "???"
+          puts "??? array_aset"
         end
       else
-        puts "???"
+        puts "??? array_aset"
       end
       edges
     end
@@ -109,10 +109,10 @@ module TypeProf::Core
           end
           edges << [ty.get_value(idx), ret]
         else
-          puts "???"
+          puts "??? hash_aref 1"
         end
       else
-        puts "???"
+        puts "??? hash_aref 2"
       end
       edges
     end
@@ -132,10 +132,10 @@ module TypeProf::Core
             edges << [val, ty.get_value]
           end
         else
-          puts "???"
+          puts "??? hash_aset 1 #{ ty.object_id } #{ ty.inspect }"
         end
       else
-        puts "???"
+        puts "??? hash_aset 2"
       end
       edges
     end
