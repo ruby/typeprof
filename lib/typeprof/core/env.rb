@@ -277,43 +277,8 @@ module TypeProf::Core
       dir
     end
 
-    def add_module_decl(cpath, mod_decl)
-      dir = resolve_cpath(cpath)
-      dir.module_decls << mod_decl
-
-      if mod_decl.is_a?(RBS::AST::Declarations::Class)
-        superclass = mod_decl.super_class
-        if superclass
-          cpath = superclass.name.namespace.path + [superclass.name.name]
-        else
-          cpath = []
-        end
-        dir.set_superclass_cpath(cpath)
-      end
-
-      dir
-    end
-
-    def add_module_def(cpath, mod_def)
-      dir = resolve_cpath(cpath)
-      if dir.module_defs.empty?
-        @define_queue << cpath[0..-2]
-      end
-      dir.module_defs << mod_def
-      dir
-    end
-
-    def remove_module_def(cpath, mod_def)
-      dir = resolve_cpath(cpath)
-      dir.module_defs.delete(mod_def)
-      if dir.module_defs.empty?
-        @define_queue << cpath[0..-2]
-      end
-    end
-
-    def set_superclass(cpath, superclass_cpath)
-      dir = resolve_cpath(cpath)
-      dir.superclass_cpath = superclass_cpath
+    def add_define_queue(cpath)
+      @define_queue << cpath
     end
 
     # module inclusion

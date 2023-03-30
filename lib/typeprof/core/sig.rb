@@ -16,13 +16,20 @@ module TypeProf::Core
         cpath = name.namespace.path + [name.name]
         # TODO: decl.type_params
         # TODO: decl.super_class.args
-        genv.add_module_decl(cpath, decl)
+        genv.resolve_cpath(cpath).module_decls << decl
         genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(cpath)))
+        superclass = decl.super_class
+        if superclass
+          superclass_cpath = superclass.name.namespace.path + [superclass.name.name]
+        else
+          superclass_cpath = []
+        end
+        genv.resolve_cpath(cpath).set_superclass_cpath(superclass_cpath)
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Module
         name = decl.name
         cpath = name.namespace.path + [name.name]
-        genv.add_module_decl(cpath, decl)
+        genv.resolve_cpath(cpath).module_decls << decl
         genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(cpath)))
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Constant

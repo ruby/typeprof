@@ -34,7 +34,9 @@ module TypeProf::Core
       def define0(genv)
         @cpath.define(genv)
         if @static_cpath
-          genv.add_module_def(@static_cpath, self)
+          dir = genv.resolve_cpath(@static_cpath)
+          genv.add_define_queue(@static_cpath[0..-2]) if dir.module_defs.empty?
+          dir.module_defs << self
           @body.define(genv)
           genv.resolve_const(@static_cpath).add_def(self)
         else
@@ -48,7 +50,9 @@ module TypeProf::Core
         if @static_cpath
           genv.resolve_const(@static_cpath).remove_def(self)
           @body.undefine(genv)
-          genv.remove_module_def(@static_cpath, self)
+          dir = genv.resolve_cpath(@static_cpath)
+          dir.module_defs.delete(self)
+          genv.add_define_queue(@static_cpath[0..-2]) if dir.module_defs.empty?
         end
         @cpath.undefine(genv)
       end
