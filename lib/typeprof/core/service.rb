@@ -155,8 +155,11 @@ module TypeProf::Core
       @text_nodes[path].hover(pos) do |node|
         site = node.sites[:class_new] || node.sites[:main]
         if site.is_a?(CallSite)
-          raise NotImplementedError
-          site.resolve(genv) do |_ty, mds|
+          site.resolve(genv) do |_ty, mid, me, _param_map|
+            next unless me
+            me.defs.each do |mdef|
+              defs << [mdef.node.lenv.path, mdef.node.code_range]
+            end
           end
         end
         return defs
@@ -195,11 +198,11 @@ module TypeProf::Core
           end
         else
           if event == :enter && !node.method_defs.empty?
-            node.method_defs.each do |d|
+            node.method_defs.each do |cpath, singleton, mid, mdef|
               #puts " " * depth + "# #{ d.node.code_range }"
-              hint = "def #{ d.mid }: " + d.show
+              hint = "def #{ mid }: " + mdef.show
               if hint
-                pos = d.node.code_range.first
+                pos = mdef.node.code_range.first
                 yield TypeProf::CodeRange.new(pos, pos.right), hint
               end
             end
