@@ -249,7 +249,8 @@ module TypeProf::Core
         if @new_mid.is_a?(LIT) && @old_mid.is_a?(LIT)
           new_mid = @new_mid.lit
           old_mid = @old_mid.lit
-          genv.resolve_meth(@lenv.cref.cpath, false, new_mid).add_alias(old_mid)
+          genv.resolve_meth(@lenv.cref.cpath, false, new_mid).add_alias(self, old_mid)
+          genv.resolve_cpath(@lenv.cref.cpath).add_run_all_callsites(genv)
         end
         Source.new(Type.nil)
       end
@@ -257,14 +258,14 @@ module TypeProf::Core
       def uninstall0(genv)
         if @new_mid.is_a?(LIT) && @old_mid.is_a?(LIT)
           new_mid = @new_mid.lit
-          old_mid = @old_mid.lit
-          genv.resolve_meth(@lenv.cref.cpath, false, new_mid).remove_alias(old_mid)
+          genv.resolve_meth(@lenv.cref.cpath, false, new_mid).remove_alias(self)
+          genv.resolve_cpath(@lenv.cref.cpath).add_run_all_callsites(genv)
         end
         super
       end
 
       def dump0(dumper)
-        "alias #{ @new_name.dump(dumper) } #{ @old_name.dump(dumper) }"
+        "alias #{ @new_mid.dump(dumper) } #{ @old_mid.dump(dumper) }"
       end
     end
   end

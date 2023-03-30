@@ -11,6 +11,7 @@ module TypeProf::Core
       @superclass_cpath = []
       @subclasses = Set[]
       @const_reads = Set[]
+      @callsites = Set[]
       @ivar_reads = Set[]
 
       @child_consts = {}
@@ -30,6 +31,7 @@ module TypeProf::Core
     attr_reader :superclass_cpath
     attr_reader :subclasses
     attr_reader :const_reads
+    attr_reader :callsites
     attr_reader :ivar_reads
 
     attr_reader :child_consts
@@ -76,6 +78,7 @@ module TypeProf::Core
     def on_ancestors_updated(genv)
       @subclasses.each {|subclass| subclass.on_ancestors_updated(genv) }
       @const_reads.each {|const_read| genv.const_read_changed(const_read) }
+      @callsites.each {|callsite| genv.add_run(callsite) }
       @ivar_reads.each {|ivar_read| genv.add_run(ivar_read) }
     end
 
@@ -87,6 +90,21 @@ module TypeProf::Core
         @subclasses.each do |subclass|
           subclass.each_subclass_of_ivar(singleton, name, &blk)
         end
+      end
+    end
+
+    def add_run_all_callsites(genv)
+      traverse_subclasses do |subclass_dir|
+        subclass_dir.callsites.each do |callsite|
+          genv.add_run(callsite)
+        end
+      end
+    end
+
+    def traverse_subclasses(&blk)
+      yield self
+      @subclasses.each do |subclass|
+        subclass.traverse_subclasses(&blk)
       end
     end
 
@@ -106,7 +124,7 @@ module TypeProf::Core
       @builtin = nil
       @decls = Set[]
       @defs = Set[]
-      @aliases = Set[]
+      @aliases = {}
     end
 
     attr_reader :decls, :defs, :aliases
@@ -129,8 +147,8 @@ module TypeProf::Core
       @defs.delete(mdef)
     end
 
-    def add_alias(mid)
-      @aliases << mid
+    def add_alias(node, old_mid)
+      @aliases[node] = old_mid
     end
 
     def remove_alias(mid)

@@ -73,10 +73,10 @@ module TypeProf::Core
         when RBS::AST::Members::Private
         when RBS::AST::Members::Alias
           if member.singleton?
-            genv.resolve_meth(cpath, true, member.new_name).add_alias(member.old_name)
+            genv.resolve_meth(cpath, true, member.new_name).add_alias(member, member.old_name)
           end
           if member.instance?
-            genv.resolve_meth(cpath, false, member.new_name).add_alias(member.old_name)
+            genv.resolve_meth(cpath, false, member.new_name).add_alias(member, member.old_name)
           end
         when
           RBS::AST::Declarations::TypeAlias,

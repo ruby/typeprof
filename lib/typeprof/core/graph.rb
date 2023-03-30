@@ -467,7 +467,21 @@ module TypeProf::Core
           raise
         end
       end
+      @recv.types.each do |ty, _source|
+        ty.base_types(genv).each do |base_ty|
+          genv.resolve_cpath(base_ty.cpath).callsites << self
+        end
+      end
       edges
+    end
+
+    def destroy(genv)
+      @recv.types.each do |ty, _source|
+        ty.base_types(genv).each do |base_ty|
+          genv.resolve_cpath(base_ty.cpath).callsites.delete(self)
+        end
+      end
+      super
     end
 
     def resolve(genv)
@@ -493,7 +507,7 @@ module TypeProf::Core
           while true
             me = genv.resolve_meth(cpath, singleton, mid)
             if !me.aliases.empty?
-              mid = me.aliases.to_a.first
+              mid = me.aliases.values.first
               redo
             end
             if me && me.exist?
@@ -505,7 +519,7 @@ module TypeProf::Core
               genv.resolve_cpath(cpath).include_module_cpaths.each do |mod_cpath|
                 me = genv.resolve_meth(mod_cpath, singleton, mid)
                 if !me.aliases.empty?
-                  mid = me.aliases.to_a.first
+                  mid = me.aliases.values.first
                   redo
                 end
                 # TODO: module alias??

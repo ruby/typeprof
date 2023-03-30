@@ -170,7 +170,7 @@ foo(1)
       end
     end
 
-    def __skip__test_diagnostics
+    def test_diagnostics
       init("basic")
 
       notify(
