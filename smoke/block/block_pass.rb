@@ -33,7 +33,7 @@ end
 
 def bar
   ret = nil
-  foo do |n|
+  foo(1) do |n|
     ret = n
   end
   ret

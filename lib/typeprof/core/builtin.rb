@@ -4,7 +4,7 @@ module TypeProf::Core
       @genv = genv
     end
 
-    def class_new(node, ty, mid, a_args, ret)
+    def class_new(node, ty, a_args, ret)
       edges = []
       ty = ty.get_instance_type
       recv = Source.new(ty)
@@ -17,7 +17,7 @@ module TypeProf::Core
       edges << [Source.new(ty), ret]
     end
 
-    def proc_call(node, ty, mid, a_args, ret)
+    def proc_call(node, ty, a_args, ret)
       edges = []
       case ty
       when Type::Proc
@@ -33,7 +33,7 @@ module TypeProf::Core
       edges
     end
 
-    def module_include(node, ty, mid, a_args, ret)
+    def module_include(node, ty, a_args, ret)
       case ty
       when Type::Module
         cpath = ty.cpath
@@ -54,7 +54,7 @@ module TypeProf::Core
       []
     end
 
-    def array_aref(node, ty, mid, a_args, ret)
+    def array_aref(node, ty, a_args, ret)
       edges = []
       if a_args.size == 1
         case ty
@@ -75,7 +75,7 @@ module TypeProf::Core
       edges
     end
 
-    def array_aset(node, ty, mid, a_args, ret)
+    def array_aset(node, ty, a_args, ret)
       edges = []
       if a_args.size == 2
         case ty
@@ -96,7 +96,7 @@ module TypeProf::Core
       edges
     end
 
-    def hash_aref(node, ty, mid, a_args, ret)
+    def hash_aref(node, ty, a_args, ret)
       edges = []
       if a_args.size == 1
         case ty
@@ -117,7 +117,7 @@ module TypeProf::Core
       edges
     end
 
-    def hash_aset(node, ty, mid, a_args, ret)
+    def hash_aset(node, ty, a_args, ret)
       edges = []
       if a_args.size == 2
         case ty
@@ -150,11 +150,8 @@ module TypeProf::Core
         hash_aref: [[:Hash], false, :[]],
         hash_aset: [[:Hash], false, :[]=],
       }.each do |key, (cpath, singleton, mid)|
-        mdecls = @genv.resolve_method(cpath, singleton, mid)
-        m = method(key)
-        mdecls.each do |mdecl|
-          mdecl.set_builtin(&m)
-        end
+        me = @genv.resolve_meth(cpath, singleton, mid)
+        me.builtin = method(key)
       end
     end
   end

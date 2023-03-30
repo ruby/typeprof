@@ -122,10 +122,6 @@ module TypeProf::Core
         [@base_type]
       end
 
-      def base_types(genv)
-        [Type::Instance.new([:Hash])]
-      end
-
       def show
         "Hash[#{ Type.strip_parens(@unified_key.show) }, #{ Type.strip_parens(@unified_val.show) }]"
       end

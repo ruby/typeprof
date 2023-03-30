@@ -212,9 +212,9 @@ module TypeProf::Core
         @method_defs ||= Set[]
       end
 
-      def add_method_def(genv, d)
-        method_defs << d
-        genv.add_method_def(d)
+      def add_method_def(genv, cpath, singleton, mid, mdef)
+        method_defs << [cpath, singleton, mid, mdef]
+        genv.resolve_meth(cpath, singleton, mid).add_def(mdef)
       end
 
       def sites
@@ -286,11 +286,8 @@ module TypeProf::Core
         unless @reused
           method_defs = @method_defs # annoation
           if method_defs
-            method_defs.each do |d|
-              case d
-              when MethodDefOld
-                genv.remove_method_def(d)
-              end
+            method_defs.each do |cpath_, singleton_, mid_, mdef|
+              genv.resolve_meth(cpath_, singleton_, mid_).remove_def(mdef)
             end
           end
           sites = @sites # annotation

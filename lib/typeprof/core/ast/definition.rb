@@ -188,8 +188,8 @@ module TypeProf::Core
             body_ret = Source.new(Type.nil)
           end
           body_ret.add_edge(genv, ret)
-          mdef = MethodDefOld.new(@lenv.cref.cpath, @singleton, @mid, self, f_args, block, ret)
-          add_method_def(genv, mdef)
+          mdef = MethodDef.new(self, f_args, block, ret)
+          add_method_def(genv, @lenv.cref.cpath, @singleton, @mid, mdef)
         end
         Source.new(Type::Symbol.new(@mid))
       end
@@ -239,10 +239,9 @@ module TypeProf::Core
         @old_mid = AST.create_node(raw_old_mid, lenv)
       end
 
-      attr_reader :new_name, :old_name, :malias
+      attr_reader :new_name, :old_name
 
       def subnodes = { new_name:, old_name: }
-      def attrs = { malias: }
 
       def install0(genv)
         @new_mid.install(genv)
@@ -250,14 +249,17 @@ module TypeProf::Core
         if @new_mid.is_a?(LIT) && @old_mid.is_a?(LIT)
           new_mid = @new_mid.lit
           old_mid = @old_mid.lit
-          @malias = MethodAlias.new(@lenv.cref.cpath, false, new_mid, old_mid, self)
-          genv.add_method_alias(@malias)
+          genv.resolve_meth(@lenv.cref.cpath, false, new_mid).add_alias(old_mid)
         end
         Source.new(Type.nil)
       end
 
       def uninstall0(genv)
-        genv.remove_method_alias(@malias)
+        if @new_mid.is_a?(LIT) && @old_mid.is_a?(LIT)
+          new_mid = @new_mid.lit
+          old_mid = @old_mid.lit
+          genv.resolve_meth(@lenv.cref.cpath, false, new_mid).remove_alias(old_mid)
+        end
         super
       end
 

@@ -155,15 +155,8 @@ module TypeProf::Core
       @text_nodes[path].hover(pos) do |node|
         site = node.sites[:class_new] || node.sites[:main]
         if site.is_a?(CallSite)
+          raise NotImplementedError
           site.resolve(genv) do |_ty, mds|
-            next unless mds
-            mds.each do |md|
-              case md
-              when MethodDeclOld
-              when MethodDefOld
-                defs << [md.node.lenv.path, md.node.code_range]
-              end
-            end
           end
         end
         return defs
@@ -172,15 +165,12 @@ module TypeProf::Core
 
     def hover(path, pos)
       @text_nodes[path].hover(pos) do |node|
-        site = node.sites[:class_new] || node.sites[:main]
+        site = node.sites[[:class_new, 0]] || node.sites[:main]
         if site.is_a?(CallSite)
-          site.resolve(genv) do |_ty, mds|
-            next unless mds
-            mds.each do |md|
-              case md
-              when MethodDeclOld
-              when MethodDefOld
-                return "def #{ md.singleton ? "self." : "" }#{ md.mid }: " + md.show
+          site.resolve(genv) do |ty, mid, me, _param_map|
+            if me && !me.defs.empty?
+              me.defs.each do |mdef|
+                return "#{ ty.show }##{ mid } : #{ mdef.show }"
               end
             end
           end
@@ -223,6 +213,7 @@ module TypeProf::Core
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
             ty.base_types(genv).each do |base_ty|
+              raise NotImplementedError
               genv.enumerate_methods(base_ty.cpath, base_ty.is_a?(Type::Module)) do |cpath, singleton, mdefs|
                 mdefs.each do |mid, entity|
                   sig = nil
@@ -286,8 +277,8 @@ module TypeProf::Core
           end
         else
           if event == :enter && !node.method_defs.empty?
-            node.method_defs.each do |d|
-              out << "  " * depth + "def #{ d.singleton ? "self." : "" }#{ d.mid }: " + d.show
+            node.method_defs.each do |cpath, singleton, mid, mdef|
+              out << "  " * depth + "def #{ singleton ? "self." : "" }#{ mid }: " + mdef.show
             end
           end
         end
@@ -304,7 +295,7 @@ module TypeProf::Core
 
     def get_method_sig(cpath, singleton, mid)
       s = []
-      @genv.get_method_entity(MethodEntry.new(cpath, singleton, mid)).defs.each do |mdef|
+      @genv.resolve_meth(cpath, singleton, mid).defs.each do |mdef|
         s << "def #{ mid }: " + mdef.show
       end
       s

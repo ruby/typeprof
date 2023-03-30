@@ -431,43 +431,40 @@ module TypeProf::Core
         @block.add_edge(genv, self) # needed?
       end
       @ret = Vertex.new("ret:#{ mid }", node)
-      genv.add_callsite(self)
-      @diagnostics = nil
-    end
-
-    def destroy(genv)
-      genv.remove_callsite(self)
-      super
+      @diagnostics = []
     end
 
     attr_reader :recv, :mid, :a_args, :block, :ret
 
     def run0(genv)
       edges = Set[]
-      resolve(genv) do |ty, mds|
-        next unless mds
-        mds.each do |md|
-          case md
-          when MethodDeclOld
-            if md.builtin
-              # TODO: block
-              nedges = md.builtin[@node, ty, @mid, @a_args, @ret]
-            else
-              # TODO: handle Type::Union
-              nedges = md.resolve_overloads(genv, @node, ty, @a_args, @block, @ret)
-            end
-            nedges.each {|src, dst| edges << [src, dst] }
-          when MethodDefOld
-            if @block && md.block
-              edges << [@block, md.block]
-            end
-            # check arity
-            @a_args.zip(md.f_args) do |a_arg, f_arg|
-              break unless f_arg
-              edges << [a_arg, f_arg]
-            end
-            edges << [md.ret, @ret]
+      @diagnostics.clear
+      resolve(genv) do |recv_ty, mid, me, param_map|
+        if !me
+          # TODO: undefined method error
+          cr = @node.mid_code_range || @node
+          @diagnostics << TypeProf::Diagnostic.new(cr, "undefined method: #{ recv_ty.show }##{ @mid }")
+        elsif me.builtin
+          # TODO: block? diagnostics?
+          new_edges = me.builtin[@node, recv_ty, @a_args, @ret]
+          new_edges.each {|src, dst| edges << [src, dst] }
+        elsif !me.decls.empty?
+          # TODO: support "| ..."
+          me.decls.each do |mdecl|
+            # TODO: union type is ok?
+            new_edges, diagnostics = mdecl.resolve_overloads(genv, @node, param_map, @a_args, @block, @ret)
+            new_edges.each {|src, dst| edges << [src, dst] }
+            @diagnostics.concat(diagnostics)
           end
+        elsif !me.defs.empty?
+          me.defs.each do |mdef|
+            new_edges, diagnostics = mdef.call(genv, @node, @a_args, @block, @ret)
+            new_edges.each {|src, dst| edges << [src, dst] }
+            @diagnostics.concat(diagnostics)
+          end
+        else
+          pp me
+          raise
         end
       end
       edges
@@ -475,42 +472,84 @@ module TypeProf::Core
 
     def resolve(genv)
       @recv.types.each do |ty, _source|
-        next if ty == Type::Bot.new # ad-hoc hack
+        param_map = { __self: Source.new(ty) }
+        case ty
+        when Type::Array
+          case ty.base_types(genv).first.cpath # XXX first?
+          when [:Set]
+            param_map[:A] = ty.get_elem
+          when [:Array], [:Enumerator]
+            param_map[:Elem] = ty.get_elem
+          end
+        when Type::Hash
+          param_map[:K] = ty.get_key
+          param_map[:V] = ty.get_value
+        end
+        mid = @mid
         ty.base_types(genv).each do |base_ty|
-          mds = genv.resolve_method(base_ty.cpath, base_ty.is_a?(Type::Module), @mid)
-          yield ty, mds
+          cpath = base_ty.cpath
+          singleton = base_ty.is_a?(Type::Module)
+          found = false
+          while true
+            me = genv.resolve_meth(cpath, singleton, mid)
+            if !me.aliases.empty?
+              mid = me.aliases.to_a.first
+              redo
+            end
+            if me && me.exist?
+              found = true
+              break
+            end
+
+            unless singleton # TODO
+              genv.resolve_cpath(cpath).include_module_cpaths.each do |mod_cpath|
+                me = genv.resolve_meth(mod_cpath, singleton, mid)
+                if !me.aliases.empty?
+                  mid = me.aliases.to_a.first
+                  redo
+                end
+                # TODO: module alias??
+                if me && me.exist?
+                  found = true
+                  break
+                end
+              end
+              break if found
+            end
+
+            # TODO: included modules
+            # TODO: update type params
+            # superclass
+            if cpath == [:BasicObject]
+              if singleton
+                singleton = false
+                cpath = [:Class]
+              else
+                break
+              end
+            else
+              cpath = genv.resolve_cpath(cpath).superclass_cpath
+              unless cpath
+                cpath = [:Module]
+                singleton = false
+              end
+            end
+          end
+          if found
+            yield ty, @mid, me, param_map
+          else
+            yield ty, @mid, nil, param_map
+          end
         end
       end
     end
 
     def diagnostics(genv)
-      count = 0
-      resolve(genv) do |ty, mds|
-        if mds
-          mds.each do |md|
-            case md
-            when MethodDeclOld
-              # TODO: type error
-            when MethodDefOld
-              if @a_args.size != md.f_args.size
-                if count < 3
-                  yield TypeProf::Diagnostic.new(@node, "wrong number of arguments (#{ @a_args.size } for #{ md.f_args.size })")
-                end
-                count += 1
-              end
-            end
-          end
-          # TODO: arity error, type error
-        else
-          cr = @node.mid_code_range || @node
-          if count < 3
-            yield TypeProf::Diagnostic.new(cr, "undefined method: #{ ty.show }##{ @mid }")
-          end
-          count += 1
-        end
+      @diagnostics[0, 3].each do |diag|
+        yield diag
       end
-      if count > 3
-        yield TypeProf::Diagnostic.new(@node.mid_code_range || @node, "(and #{ count - 3 } errors omitted)")
+      if @diagnostics.size >= 4
+        TypeProf::Diagnostic.new(@node.mid_code_range || @node, "(and #{ @diagnostics.size - 3 } errors omitted)")
       end
     end
 

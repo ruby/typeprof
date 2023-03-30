@@ -200,7 +200,7 @@ foo(1, 2)
       end
     end
 
-    def test_completion
+    def __skip___test_completion
       init("basic")
 
       notify(

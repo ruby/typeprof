@@ -31,4 +31,4 @@ end
 Integer
 
 # hover: (14, 6)
-def initialize: (Integer) -> Integer
+B#initialize : (Integer) -> Integer
