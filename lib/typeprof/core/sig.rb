@@ -57,11 +57,11 @@ module TypeProf::Core
           # TODO: もしすでに MethodDef があったら、
           # この RBS を前提に再解析する
           if member.singleton?
-            mdecl = MethodDecl.new(cpath, true, mid, member)
+            mdecl = MethodDeclOld.new(cpath, true, mid, member)
             genv.add_method_decl(mdecl)
           end
           if member.instance?
-            mdecl = MethodDecl.new(cpath, false, mid, member)
+            mdecl = MethodDeclOld.new(cpath, false, mid, member)
             genv.add_method_decl(mdecl)
           end
         when RBS::AST::Members::Include

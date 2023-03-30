@@ -109,4 +109,46 @@ module TypeProf::Core
       end
     end
   end
+
+  class MethodEntity
+    def initialize
+      @decls = Set[]
+      @defs = Set[]
+      @aliases = Set[]
+    end
+
+    attr_reader :decls, :defs, :aliases
+
+    def add_decl(decl)
+      @decls << decl
+    end
+
+    def remove_decl(decl)
+      @decls.delete(decl)
+    end
+
+    def add_def(mdef)
+      @defs << mdef
+      self
+    end
+
+    def remove_def(mdef)
+      @defs.delete(mdef)
+    end
+
+    def add_alias(mid)
+      @aliases << mid
+    end
+
+    def remove_alias(mid)
+      @aliases.delete(mid)
+    end
+
+    def exist?
+      !@decls.empty? || !@defs.empty? || !@aliases.empty?
+    end
+  end
+
+  class MethodDecl
+  end
 end

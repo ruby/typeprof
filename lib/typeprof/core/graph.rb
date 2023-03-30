@@ -448,7 +448,7 @@ module TypeProf::Core
         next unless mds
         mds.each do |md|
           case md
-          when MethodDecl
+          when MethodDeclOld
             if md.builtin
               # TODO: block
               nedges = md.builtin[@node, ty, @mid, @a_args, @ret]
@@ -457,7 +457,7 @@ module TypeProf::Core
               nedges = md.resolve_overloads(genv, @node, ty, @a_args, @block, @ret)
             end
             nedges.each {|src, dst| edges << [src, dst] }
-          when MethodDef
+          when MethodDefOld
             if @block && md.block
               edges << [@block, md.block]
             end
@@ -489,9 +489,9 @@ module TypeProf::Core
         if mds
           mds.each do |md|
             case md
-            when MethodDecl
+            when MethodDeclOld
               # TODO: type error
-            when MethodDef
+            when MethodDefOld
               if @a_args.size != md.f_args.size
                 if count < 3
                   yield TypeProf::Diagnostic.new(@node, "wrong number of arguments (#{ @a_args.size } for #{ md.f_args.size })")

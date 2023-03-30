@@ -287,7 +287,7 @@ module TypeProf::Core
           if method_defs
             method_defs.each do |d|
               case d
-              when MethodDef
+              when MethodDefOld
                 genv.remove_method_def(d)
               end
             end

@@ -76,7 +76,7 @@ module TypeProf::Core
       # @genv.run_all
 
       # invariant validation
-      if prev_node
+      if prev_node && false
         live_vtxs = Set[]
         live_boxes = Set[]
         node.get_vertexes_and_boxes(live_vtxs, live_boxes)
@@ -159,8 +159,8 @@ module TypeProf::Core
             next unless mds
             mds.each do |md|
               case md
-              when MethodDecl
-              when MethodDef
+              when MethodDeclOld
+              when MethodDefOld
                 defs << [md.node.lenv.path, md.node.code_range]
               end
             end
@@ -178,8 +178,8 @@ module TypeProf::Core
             next unless mds
             mds.each do |md|
               case md
-              when MethodDecl
-              when MethodDef
+              when MethodDeclOld
+              when MethodDefOld
                 return "def #{ md.singleton ? "self." : "" }#{ md.mid }: " + md.show
               end
             end

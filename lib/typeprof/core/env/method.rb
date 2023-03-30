@@ -9,7 +9,7 @@ module TypeProf::Core
     attr_reader :cpath, :singleton, :mid
   end
 
-  class MethodDecl < MethodEntry
+  class MethodDeclOld < MethodEntry
     def initialize(cpath, singleton, mid, rbs_member)
       super(cpath, singleton, mid)
       @rbs_member = rbs_member
@@ -110,11 +110,11 @@ module TypeProf::Core
     end
 
     def inspect
-      "#<MethodDecl ...>"
+      "#<MethodDeclOld ...>"
     end
   end
 
-  class MethodDef < MethodEntry
+  class MethodDefOld < MethodEntry
     def initialize(cpath, singleton, mid, node, f_args, block, ret)
       super(cpath, singleton, mid)
       @node = node
