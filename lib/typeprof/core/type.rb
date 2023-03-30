@@ -31,9 +31,7 @@ module TypeProf::Core
       end
 
       def get_instance_type
-        x = Instance.new(@cpath)
-        p [:c, x.object_id] if @cpath == [:Hash]
-        x
+        Instance.new(@cpath)
       end
     end
 
