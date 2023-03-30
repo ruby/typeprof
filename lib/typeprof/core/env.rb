@@ -43,7 +43,8 @@ module TypeProf::Core
 
   class GlobalEnv
     def initialize(rbs_builder)
-      @define_queue = []
+      @child_modules_changed = []
+      @const_read_changed = []
 
       @run_queue = []
       @run_queue_set = Set[]
@@ -61,18 +62,34 @@ module TypeProf::Core
 
     attr_reader :rbs_builder
 
+    def child_modules_changed(cpath)
+      @child_modules_changed << cpath
+    end
+
+    def const_read_changed(cpath)
+      @const_read_changed << cpath
+    end
+
     def define_all
-      @define_queue.uniq.each do |v|
+      @child_modules_changed.uniq.each do |v|
+        resolve_cpath(v).on_child_modules_updated(self)
+      end
+      @child_modules_changed.clear
+
+      until @const_read_changed.empty?
+        # I wonder if this loop can ever loop infinitely...
+        v = @const_read_changed.shift
         case v
-        when Array # cpath
-          resolve_cpath(v).on_child_modules_updated(self)
         when BaseConstRead
           v.on_scope_updated(self)
+        when ScopedConstRead
+          v.on_cbase_updated(self)
         else
           raise
         end
       end
-      @define_queue.clear
+
+      # TODO: check circular inheritance
     end
 
     def add_run(obj)
@@ -110,10 +127,6 @@ module TypeProf::Core
       dir
     end
 
-    def add_define_queue(cpath)
-      @define_queue << cpath
-    end
-
     # module inclusion
 
     def add_module_include(cpath, mod_cpath)
@@ -136,7 +149,7 @@ module TypeProf::Core
         resolve_cpath(cref.cpath).const_reads << const_read
         cref = cref.outer
       end
-      @define_queue << const_read
+      @const_read_changed << const_read
     end
 
     def remove_const_read(const_read)

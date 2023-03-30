@@ -47,16 +47,7 @@ module TypeProf::Core
 
     def on_child_modules_updated(genv) # TODO: accept what is a change
       @subclasses.each {|subclass| subclass.on_child_modules_updated(genv) }
-      @const_reads.dup.each do |const_read|
-        case const_read
-        when BaseConstRead
-          const_read.on_scope_updated(genv)
-        when ScopedConstRead
-          const_read.on_cbase_updated(genv)
-        else
-          raise
-        end
-      end
+      @const_reads.each {|const_read| genv.const_read_changed(const_read) }
     end
 
     def set_superclass_cpath(cpath) # for RBS
@@ -84,8 +75,8 @@ module TypeProf::Core
 
     def on_ancestors_updated(genv)
       @subclasses.each {|subclass| subclass.on_ancestors_updated(genv) }
-      @const_reads.dup.each {|const_read| const_read.on_scope_updated(genv) }
-      @ivar_reads.dup.each {|ivar_read| genv.add_run(ivar_read) }
+      @const_reads.each {|const_read| genv.const_read_changed(const_read) }
+      @ivar_reads.each {|ivar_read| genv.add_run(ivar_read) }
     end
 
     def each_subclass_of_ivar(singleton, name, &blk)
