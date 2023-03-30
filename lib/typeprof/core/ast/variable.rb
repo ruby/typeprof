@@ -257,6 +257,7 @@ module TypeProf::Core
         end
         rhs = @rhs.install(genv)
         site = MAsgnSite.new(self, genv, rhs, lhss)
+        add_site(:main, site)
         @lhss.each {|lhs| lhs.install(genv) }
         site.ret
       end

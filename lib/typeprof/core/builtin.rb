@@ -10,7 +10,9 @@ module TypeProf::Core
       recv = Source.new(ty)
       site = CallSite.new(node, @genv, recv, :initialize, a_args, nil) # TODO: block
       # TODO: dup check
-      node.add_site(:class_new, site)
+      i = 0
+      i += 1 while node.sites.include?([:class_new, i])
+      node.add_site([:class_new, i], site)
       # site.ret (the return value of initialize) is discarded
       edges << [Source.new(ty), ret]
     end

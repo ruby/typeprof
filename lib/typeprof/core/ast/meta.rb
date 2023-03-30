@@ -22,10 +22,11 @@ module TypeProf::Core
       def attrs = { args: }
 
       def install0(genv)
+        i = 0
         @args.each do |arg|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
           site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
-          add_site(:attr_reader, site)
+          add_site([:attr_reader, i += 1], site)
           mdef = MethodDefOld.new(@lenv.cref.cpath, false, arg, self, [], nil, site.ret)
           add_method_def(genv, mdef)
         end

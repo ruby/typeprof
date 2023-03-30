@@ -222,6 +222,7 @@ module TypeProf::Core
       end
 
       def add_site(key, site)
+        raise if sites.include?(key)
         sites[key] = site
       end
 
