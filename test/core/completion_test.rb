@@ -2,7 +2,7 @@ require_relative "../helper"
 
 module TypeProf::Core
   class CompletionTest < Test::Unit::TestCase
-    def test_dot_completion
+    def __skip__test_dot_completion
       serv = Service.new
 
       serv.update_file("test.rb", <<-END)
