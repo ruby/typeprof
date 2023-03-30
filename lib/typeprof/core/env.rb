@@ -351,9 +351,14 @@ module TypeProf::Core
 
     # methods
 
+    def resolve_meth(cpath, singleton, mid)
+      dir = resolve_cpath(cpath)
+      dir.methods[singleton][mid] ||= MethodEntity.new
+    end
+
     def get_method_entity(me)
       dir = resolve_cpath(me.cpath)
-      dir.methods(me.singleton)[me.mid] ||= OldEntity.new
+      dir.methods_old(me.singleton)[me.mid] ||= OldEntity.new
     end
 
     def add_method_decl(mdecl)
@@ -407,11 +412,11 @@ module TypeProf::Core
     def enumerate_methods(cpath, singleton)
       while true
         dir = resolve_cpath(cpath)
-        yield cpath, singleton, dir.methods(singleton)
+        yield cpath, singleton, dir.methods_old(singleton)
         unless singleton # TODO
           dir.include_module_cpaths.each do |mod_cpath|
             mod_dir = resolve_cpath(mod_cpath)
-            yield mod_cpath, false, mod_dir.methods(false)
+            yield mod_cpath, false, mod_dir.methods_old(false)
           end
         end
         if cpath == [:BasicObject]

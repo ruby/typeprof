@@ -15,6 +15,7 @@ module TypeProf::Core
 
       @child_consts = {}
 
+      @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
 
       @singleton_methods = {}
@@ -26,19 +27,21 @@ module TypeProf::Core
     attr_reader :module_decls
     attr_reader :module_defs
     attr_reader :child_modules
-    attr_reader :child_consts
     attr_reader :superclass_cpath
     attr_reader :subclasses
     attr_reader :const_reads
     attr_reader :ivar_reads
-    attr_reader :include_module_cpaths
+
+    attr_reader :child_consts
+    attr_reader :methods
     attr_reader :ivars
+    attr_reader :include_module_cpaths
 
     def exist?
       !@module_decls.empty? || !@module_defs.empty?
     end
 
-    def methods(singleton)
+    def methods_old(singleton)
       singleton ? @singleton_methods : @instance_methods
     end
 
@@ -106,5 +109,4 @@ module TypeProf::Core
       end
     end
   end
-
 end
