@@ -216,10 +216,9 @@ module TypeProf::Core
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
             ty.base_types(genv).each do |base_ty|
-              cpath = base_ty.cpath
+              dir = genv.resolve_cpath(base_ty.cpath)
               singleton = base_ty.is_a?(Type::Module)
               while true
-                dir = genv.resolve_cpath(cpath)
                 dir.methods[singleton].each do |mid, me|
                   sig = nil
                   me.decls.each do |mdecl|
@@ -232,22 +231,22 @@ module TypeProf::Core
                       break
                     end
                   end
-                  yield mid, "#{ cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
+                  yield mid, "#{ dir.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
                 end
                 # TODO: support aliases
                 # TODO: support include module
                 # superclass
-                if cpath == [:BasicObject]
+                if dir.cpath == [:BasicObject]
                   if singleton
                     singleton = false
-                    cpath = [:Class]
+                    dir = genv.resolve_cpath([:Class])
                   else
                     break
                   end
                 else
-                  cpath = genv.resolve_cpath(cpath).superclass_cpath
-                  unless cpath
-                    cpath = [:Module]
+                  dir = dir.superclass
+                  unless dir
+                    dir = genv.resolve_cpath([:Module])
                     singleton = false
                   end
                 end
@@ -278,11 +277,11 @@ module TypeProf::Core
           if node.static_cpath
             if event == :enter
               s = "class #{ node.static_cpath.join("::") }"
-              superclass_cpath = @genv.resolve_cpath(node.static_cpath).superclass_cpath
-              if superclass_cpath == nil
+              superclass = @genv.resolve_cpath(node.static_cpath).superclass
+              if superclass == nil
                 s << " # failed to identify its superclass"
-              elsif superclass_cpath != []
-                s << " < #{ superclass_cpath.join("::") }"
+              elsif superclass.cpath != []
+                s << " < #{ superclass.cpath.join("::") }"
               end
               out << "  " * depth + s
               depth += 1

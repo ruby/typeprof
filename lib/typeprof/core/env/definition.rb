@@ -1,6 +1,6 @@
 module TypeProf::Core
   class ModuleDirectory
-    def initialize(cpath)
+    def initialize(cpath, toplevel)
       @cpath = cpath
 
       # use Entity?
@@ -8,8 +8,9 @@ module TypeProf::Core
       @module_defs = Set[]
       @child_modules = {}
 
-      @superclass_cpath = []
+      @superclass = toplevel
       @subclasses = Set[]
+
       @const_reads = Set[]
       @callsites = Set[]
       @ivar_reads = Set[]
@@ -28,7 +29,7 @@ module TypeProf::Core
     attr_reader :module_decls
     attr_reader :module_defs
     attr_reader :child_modules
-    attr_reader :superclass_cpath
+    attr_reader :superclass
     attr_reader :subclasses
     attr_reader :const_reads
     attr_reader :callsites
@@ -43,8 +44,12 @@ module TypeProf::Core
       !@module_decls.empty? || !@module_defs.empty?
     end
 
-    def methods_old(singleton)
-      singleton ? @singleton_methods : @instance_methods
+    def get_method(singleton, mid)
+      @methods[singleton][mid] ||= MethodEntity.new
+    end
+
+    def get_ivar(singleton, name)
+      @ivars[singleton][name] ||= Entity.new
     end
 
     def on_child_modules_updated(genv) # TODO: accept what is a change
@@ -52,8 +57,8 @@ module TypeProf::Core
       @const_reads.each {|const_read| genv.const_read_changed(const_read) }
     end
 
-    def set_superclass_cpath(cpath) # for RBS
-      @superclass_cpath = cpath
+    def set_superclass(dir) # for RBS
+      @superclass = dir
     end
 
     def on_superclass_updated(genv)
@@ -66,11 +71,12 @@ module TypeProf::Core
         end
       end
       # TODO: check circular class/module mix, check inconsistent superclass
-      superclass_cpath = const ? const.cpath : []
-      if superclass_cpath != @superclass_cpath
-        genv.resolve_cpath(@superclass_cpath).subclasses.delete(self) if @superclass_cpath
-        @superclass_cpath = superclass_cpath
-        genv.resolve_cpath(@superclass_cpath).subclasses << self if @superclass_cpath
+      new_superclass_cpath = const ? const.cpath : []
+      new_superclass = new_superclass_cpath ? genv.resolve_cpath(new_superclass_cpath) : nil
+      if @superclass != new_superclass
+        @superclass.subclasses.delete(self) if @superclass
+        @superclass = new_superclass
+        @superclass.subclasses << self if @superclass
         on_ancestors_updated(genv)
       end
     end

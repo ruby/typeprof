@@ -29,21 +29,21 @@ module TypeProf::Core
       first = true
       while cref
         scope = cref.cpath
+        dir = genv.resolve_cpath(scope)
         while true
-          m = genv.resolve_cpath(scope)
-          mm = genv.resolve_cpath(scope + [@cname])
-          if !mm.module_decls.empty? || !mm.module_defs.empty?
-            cpath = scope + [@cname]
+          mm = genv.resolve_cpath(dir.cpath + [@cname]) # TODO
+          if mm.exist?
+            cpath = dir.cpath + [@cname]
+            return [cpath, dir.child_consts[@cname]]
           end
-          if m.child_consts[@cname] && m.child_consts[@cname].exist?
-            cdef = m.child_consts[@cname]
+          if dir.child_consts[@cname] && dir.child_consts[@cname].exist?
+            return [nil, dir.child_consts[@cname]]
           end
-          return [cpath, cdef] if cpath || cdef
           break unless first
-          break unless m.superclass_cpath
-          break if scope == [:BasicObject]
-          scope = m.superclass_cpath
-          break if scope == [] && break_object
+          break unless dir.superclass
+          break if dir.cpath == [:BasicObject]
+          dir = dir.superclass
+          break if dir.cpath == [] && break_object
         end
         first = false
         cref = cref.outer

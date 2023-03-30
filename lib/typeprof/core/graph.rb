@@ -504,8 +504,9 @@ module TypeProf::Core
           cpath = base_ty.cpath
           singleton = base_ty.is_a?(Type::Module)
           found = false
+          dir = genv.resolve_cpath(cpath)
           while true
-            me = genv.resolve_meth(cpath, singleton, mid)
+            me = dir.get_method(singleton, mid)
             if !me.aliases.empty?
               mid = me.aliases.values.first
               redo
@@ -516,7 +517,7 @@ module TypeProf::Core
             end
 
             unless singleton # TODO
-              genv.resolve_cpath(cpath).include_module_cpaths.each do |mod_cpath|
+              dir.include_module_cpaths.each do |mod_cpath|
                 me = genv.resolve_meth(mod_cpath, singleton, mid)
                 if !me.aliases.empty?
                   mid = me.aliases.values.first
@@ -534,17 +535,17 @@ module TypeProf::Core
             # TODO: included modules
             # TODO: update type params
             # superclass
-            if cpath == [:BasicObject]
+            if dir.cpath == [:BasicObject]
               if singleton
                 singleton = false
-                cpath = [:Class]
+                dir = genv.resolve_cpath([:Class])
               else
                 break
               end
             else
-              cpath = genv.resolve_cpath(cpath).superclass_cpath
+              dir = dir.superclass
               unless cpath
-                cpath = [:Module]
+                dir = genv.resolve_cpath([:Module])
                 singleton = false
               end
             end
@@ -611,16 +612,16 @@ module TypeProf::Core
     end
 
     def run0(genv)
-      cur_ive = genv.resolve_ivar(@cpath, @singleton, @name)
-      cpath = @cpath
+      dir = genv.resolve_cpath(@cpath)
+      cur_ive = dir.get_ivar(@singleton, @name)
       target_vtx = nil
-      while cpath
-        ive = genv.resolve_ivar(cpath, @singleton, @name)
+      while true
+        ive = dir.get_ivar(@singleton, @name)
         if ive.exist?
           target_vtx = ive.vtx
         end
-        break if cpath == [:BasicObject]
-        cpath = genv.resolve_cpath(cpath).superclass_cpath
+        break if dir.cpath == [:BasicObject]
+        dir = dir.superclass
       end
       edges = []
       if target_vtx

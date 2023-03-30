@@ -49,7 +49,7 @@ module TypeProf::Core
       @run_queue = []
       @run_queue_set = Set[]
 
-      @toplevel = ModuleDirectory.new([])
+      @toplevel = ModuleDirectory.new([], nil)
       @toplevel.child_modules[:Object] = @toplevel
 
       @gvars = {}
@@ -122,7 +122,7 @@ module TypeProf::Core
       dir = @toplevel
       raise unless cpath # annotation
       cpath.each do |cname|
-        dir = dir.child_modules[cname] ||= ModuleDirectory.new(dir.cpath + [cname])
+        dir = dir.child_modules[cname] ||= ModuleDirectory.new(dir.cpath + [cname], @toplevel)
       end
       dir
     end
@@ -164,7 +164,7 @@ module TypeProf::Core
 
     def resolve_meth(cpath, singleton, mid)
       dir = resolve_cpath(cpath)
-      dir.methods[singleton][mid] ||= MethodEntity.new
+      dir.get_method(singleton, mid)
     end
 
     # global variables
@@ -178,15 +178,15 @@ module TypeProf::Core
     def resolve_ivar(cpath, singleton, name)
       # TODO: include はあとで考える
       dir = resolve_cpath(cpath)
-      dir.ivars[singleton][name] ||= Entity.new
+      dir.get_ivar(singleton, name)
     end
 
     def subclass?(cpath1, cpath2)
-      while cpath1
-        return true if cpath1 == cpath2
-        break if cpath1 == [:BasicObject]
-        dir = resolve_cpath(cpath1)
-        cpath1 = dir.superclass_cpath
+      dir = resolve_cpath(cpath1)
+      while true
+        return true if dir.cpath == cpath2
+        break if dir.cpath == [:BasicObject]
+        dir = dir.superclass
       end
       return false
     end

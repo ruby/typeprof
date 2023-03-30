@@ -24,7 +24,7 @@ module TypeProf::Core
         else
           superclass_cpath = []
         end
-        genv.resolve_cpath(cpath).set_superclass_cpath(superclass_cpath)
+        genv.resolve_cpath(cpath).set_superclass(genv.resolve_cpath(superclass_cpath))
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Module
         name = decl.name
