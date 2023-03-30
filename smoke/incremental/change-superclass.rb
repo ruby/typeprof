@@ -7,7 +7,7 @@ class C2
 end
 
 class X
-  class D < C1
+  class D < C
     # This invokes C#target
     def foo = target(1)
   end
