@@ -25,7 +25,7 @@ module TypeProf::Core
       end
     end
 
-    def resolve(genv, cref)
+    def resolve(genv, cref, break_object)
       first = true
       while cref
         scope = cref.cpath
@@ -43,6 +43,7 @@ module TypeProf::Core
           break unless m.superclass_cpath
           break if scope == [:BasicObject]
           scope = m.superclass_cpath
+          break if scope == [] && break_object
         end
         first = false
         cref = cref.outer
@@ -60,7 +61,7 @@ module TypeProf::Core
     attr_reader :cref
 
     def on_scope_updated(genv)
-      cpath, cdef = resolve(genv, @cref)
+      cpath, cdef = resolve(genv, @cref, false)
       if cpath != @cpath || cdef != @cdef
         @cpath = cpath
         @cdef = cdef
@@ -81,7 +82,7 @@ module TypeProf::Core
 
     def on_cbase_updated(genv)
       if @cbase && @cbase.cpath
-        cpath, cdef = resolve(genv, CRef.new(@cbase.cpath, false, nil))
+        cpath, cdef = resolve(genv, CRef.new(@cbase.cpath, false, nil), true)
         if cpath != @cpath || cdef != @cdef
           genv.resolve_cpath(@cbase_cpath).const_reads.delete(self) if @cbase_cpath
           @cpath = cpath
