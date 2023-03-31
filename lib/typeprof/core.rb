@@ -1,6 +1,7 @@
 require_relative "core/util"
 require_relative "core/ast"
 require_relative "core/ast/definition"
+require_relative "core/ast/method"
 require_relative "core/ast/call"
 require_relative "core/ast/control"
 require_relative "core/ast/const"
