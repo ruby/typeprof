@@ -28,26 +28,6 @@ module TypeProf::Core
       end
     end
 
-    def module_include(changes, node, ty, a_args, ret)
-      case ty
-      when Type::Module
-        cpath = ty.cpath
-        a_args.each do |a_arg|
-          a_arg.types.each do |ty, _source|
-            case ty
-            when Type::Module
-              # TODO: undo
-              @genv.add_module_include(cpath, ty.cpath)
-            else
-              puts "??? module_include"
-            end
-          end
-        end
-      else
-        puts "??? module_include"
-      end
-    end
-
     def array_aref(changes, node, ty, a_args, ret)
       if a_args.size == 1
         case ty
@@ -130,7 +110,6 @@ module TypeProf::Core
       {
         class_new: [[:Class], false, :new],
         proc_call: [[:Proc], false, :call],
-        module_include: [[:Module], false, :include],
         array_aref: [[:Array], false, :[]],
         array_aset: [[:Array], false, :[]=],
         hash_aref: [[:Hash], false, :[]],
