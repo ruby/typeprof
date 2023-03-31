@@ -58,11 +58,11 @@ module TypeProf::Core
           # この RBS を前提に再解析する
           if member.singleton?
             mdecl = MethodDecl.new(member)
-            genv.resolve_meth(cpath, true, mid).add_decl(mdecl)
+            genv.resolve_method(cpath, true, mid).add_decl(mdecl)
           end
           if member.instance?
             mdecl = MethodDecl.new(member)
-            genv.resolve_meth(cpath, false, mid).add_decl(mdecl)
+            genv.resolve_method(cpath, false, mid).add_decl(mdecl)
           end
         when RBS::AST::Members::Include
           name = member.name
@@ -74,10 +74,10 @@ module TypeProf::Core
         when RBS::AST::Members::Private
         when RBS::AST::Members::Alias
           if member.singleton?
-            genv.resolve_meth(cpath, true, member.new_name).add_alias(member, member.old_name)
+            genv.resolve_method(cpath, true, member.new_name).add_alias(member, member.old_name)
           end
           if member.instance?
-            genv.resolve_meth(cpath, false, member.new_name).add_alias(member, member.old_name)
+            genv.resolve_method(cpath, false, member.new_name).add_alias(member, member.old_name)
           end
         when
           RBS::AST::Declarations::TypeAlias,

@@ -273,7 +273,6 @@ module TypeProf::Core
 
     def call(changes, genv, call_node, a_args, block, ret)
       if a_args.size == @f_args.size
-        edges = []
         if block && @block
           changes.add_edge(block, @block)
         end

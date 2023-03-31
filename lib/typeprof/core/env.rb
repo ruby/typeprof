@@ -148,7 +148,7 @@ module TypeProf::Core
       end
     end
 
-    def resolve_meth(cpath, singleton, mid)
+    def resolve_method(cpath, singleton, mid)
       dir = resolve_cpath(cpath)
       dir.get_method(singleton, mid)
     end

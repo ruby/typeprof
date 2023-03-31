@@ -213,7 +213,7 @@ module TypeProf::Core
 
       def add_method_def(genv, cpath, singleton, mid, mdef)
         method_defs << [cpath, singleton, mid, mdef]
-        genv.resolve_meth(cpath, singleton, mid).add_def(mdef)
+        genv.resolve_method(cpath, singleton, mid).add_def(mdef)
 
         genv.resolve_cpath(cpath).add_run_all_callsites(genv)
       end
@@ -294,7 +294,7 @@ module TypeProf::Core
           method_defs = @method_defs # annoation
           if method_defs
             method_defs.each do |cpath_, singleton_, mid_, mdef|
-              genv.resolve_meth(cpath_, singleton_, mid_).remove_def(mdef)
+              genv.resolve_method(cpath_, singleton_, mid_).remove_def(mdef)
 
               genv.resolve_cpath(cpath_).add_run_all_callsites(genv)
             end

@@ -114,7 +114,7 @@ module TypeProf::Core
         hash_aref: [[:Hash], false, :[]],
         hash_aset: [[:Hash], false, :[]=],
       }.each do |key, (cpath, singleton, mid)|
-        me = @genv.resolve_meth(cpath, singleton, mid)
+        me = @genv.resolve_method(cpath, singleton, mid)
         me.builtin = method(key)
       end
     end

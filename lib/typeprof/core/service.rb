@@ -304,7 +304,7 @@ module TypeProf::Core
 
     def get_method_sig(cpath, singleton, mid)
       s = []
-      @genv.resolve_meth(cpath, singleton, mid).defs.each do |mdef|
+      @genv.resolve_method(cpath, singleton, mid).defs.each do |mdef|
         s << "def #{ mid }: " + mdef.show
       end
       s
