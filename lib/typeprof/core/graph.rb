@@ -513,6 +513,7 @@ module TypeProf::Core
 
     def resolve(genv)
       @recv.types.each do |ty, _source|
+        next if ty == Type::Bot.new
         param_map = { __self: Source.new(ty) }
         case ty
         when Type::Array
