@@ -171,29 +171,6 @@ module TypeProf::Core
       end
     end
 
-    class RBS < Type
-      include StructuralEquality
-
-      def initialize(rbs_type)
-        @rbs_type = rbs_type
-      end
-
-      attr_reader :rbs_type
-
-      def base_types(genv)
-        # XXX: We need to consider this
-        map = {}
-        vtxs = Signatures.type(genv, @rbs_type, map)
-        vtxs.flat_map do |vtx|
-          vtx.types.keys
-        end.uniq
-      end
-
-      def inspect
-        "#<Type::RBS ...>"
-      end
-    end
-
     def self.obj = Type::Instance.new([:Object])
     def self.nil = Type::Instance.new([:NilClass])
     def self.true = Type::Instance.new([:TrueClass])

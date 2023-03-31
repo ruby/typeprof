@@ -128,7 +128,7 @@ module TypeProf::Core
           raise if type.args.size != 2
           key_vtx = type_to_vtx(genv, node, type.args[0], param_map)
           val_vtx = type_to_vtx(genv, node, type.args[1], param_map)
-          Source.new(Type::Hash.new(nil, key_vtx, val_vtx, Type.hsh)).add_edge(genv, vtx)
+          Source.new(Type::Hash.new({}, key_vtx, val_vtx, Type.hsh)).add_edge(genv, vtx)
         else
           Source.new(Type::Instance.new(cpath)).add_edge(genv, vtx)
         end
