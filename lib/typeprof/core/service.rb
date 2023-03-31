@@ -145,9 +145,8 @@ module TypeProf::Core
     end
 
     def diagnostics(path, &blk)
-      if @text_nodes[path]
-        @text_nodes[path].diagnostics(@genv, &blk)
-      end
+      node = @text_nodes[path]
+      node.diagnostics(@genv, &blk) if node
     end
 
     def definitions(path, pos)
@@ -186,9 +185,9 @@ module TypeProf::Core
               end
             end
           end
-          return "???"
+          return "??? failed to hover"
         else
-          return node.ret ? node.ret.show : "???"
+          return node.ret ? node.ret.show : "??? no type ???"
         end
       end
     end
