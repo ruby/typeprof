@@ -51,6 +51,9 @@ module TypeProf::Core
 
       @toplevel = ModuleDirectory.new([], nil)
       @toplevel.child_modules[:Object] = @toplevel
+      @mod_basic_object = resolve_cpath([:BasicObject])
+      @mod_class = resolve_cpath([:Class])
+      @mod_module = resolve_cpath([:Module])
 
       @gvars = {}
 
@@ -58,6 +61,23 @@ module TypeProf::Core
 
       @callsites_by_name = {}
       @ivreadsites_by_name = {}
+    end
+
+    def get_superclass(dir, singleton)
+      if dir == @mod_basic_object
+        if singleton
+          return [@mod_class, false]
+        else
+          return nil
+        end
+      else
+        dir = dir.superclass
+        if dir
+          return [dir, singleton]
+        else
+          return [@mod_module, false]
+        end
+      end
     end
 
     attr_reader :rbs_builder

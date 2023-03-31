@@ -532,7 +532,7 @@ module TypeProf::Core
           singleton = base_ty.is_a?(Type::Module)
           found = false
           dir = genv.resolve_cpath(cpath)
-          while true
+          while dir
             me = dir.get_method(singleton, mid)
             if !me.aliases.empty?
               mid = me.aliases.values.first
@@ -561,21 +561,8 @@ module TypeProf::Core
 
             # TODO: included modules
             # TODO: update type params
-            # superclass
-            if dir.cpath == [:BasicObject]
-              if singleton
-                singleton = false
-                dir = genv.resolve_cpath([:Class])
-              else
-                break
-              end
-            else
-              dir = dir.superclass
-              unless cpath
-                dir = genv.resolve_cpath([:Module])
-                singleton = false
-              end
-            end
+
+            dir, singleton = genv.get_superclass(dir, singleton)
           end
           if found
             yield ty, @mid, me, param_map

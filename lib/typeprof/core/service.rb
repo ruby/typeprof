@@ -236,21 +236,7 @@ module TypeProf::Core
                 end
                 # TODO: support aliases
                 # TODO: support include module
-                # superclass
-                if dir.cpath == [:BasicObject]
-                  if singleton
-                    singleton = false
-                    dir = genv.resolve_cpath([:Class])
-                  else
-                    break
-                  end
-                else
-                  dir = dir.superclass
-                  unless dir
-                    dir = genv.resolve_cpath([:Module])
-                    singleton = false
-                  end
-                end
+                dir, singleton = genv.get_superclass(dir, singleton)
               end
             end
           end
