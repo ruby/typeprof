@@ -388,7 +388,7 @@ module TypeProf::Core
         sites = @sites # annotation
         if sites
           sites.each_value do |site|
-            next unless site.respond_to?(:diagnostics) # XXX
+            next unless site.is_a?(CallSite) # XXX
             site.diagnostics(genv, &blk)
           end
         end
