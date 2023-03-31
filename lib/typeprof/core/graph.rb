@@ -118,7 +118,7 @@ module TypeProf::Core
       super({})
     end
 
-    attr_reader :show_name, :next_vtxs, :types
+    attr_reader :show_name, :node, :next_vtxs, :types
 
     def on_type_added(genv, src_var, added_types)
       new_added_types = []

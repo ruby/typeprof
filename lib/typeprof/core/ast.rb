@@ -398,6 +398,7 @@ module TypeProf::Core
       end
 
       def get_vertexes_and_boxes(vtxs, boxes)
+        return if @reused
         sites = @sites # annotation
         if sites
           sites.each_value do |site|
@@ -453,6 +454,26 @@ module TypeProf::Core
 
       def dump(dumper)
         ""
+      end
+    end
+
+    class DummyRHSNode < Node
+      def initialize(code_range, lenv, vtx)
+        @code_range = code_range
+        super(nil, lenv)
+        @vtx = vtx
+      end
+
+      def code_range
+        @code_range
+      end
+
+      def install0(_)
+        @vtx
+      end
+
+      def dump(dumper)
+        "<DummyRHSNode>"
       end
     end
 

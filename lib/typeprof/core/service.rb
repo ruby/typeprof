@@ -76,7 +76,7 @@ module TypeProf::Core
       # @genv.run_all
 
       # invariant validation
-      if prev_node && false
+      if prev_node
         live_vtxs = Set[]
         live_boxes = Set[]
         node.get_vertexes_and_boxes(live_vtxs, live_boxes)

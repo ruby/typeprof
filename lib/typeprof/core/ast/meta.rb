@@ -38,6 +38,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
+        @args.each {|arg| arg.install(genv) }
         Source.new
       end
 

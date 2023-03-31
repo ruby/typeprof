@@ -62,8 +62,9 @@ module TypeProf::Core
         if @static_cpath
           val = Source.new(Type::Module.new(@static_cpath))
           val.add_edge(genv, @static_ret.vtx)
-          ret = @body.lenv.get_var(:"*ret")
+          ret = Vertex.new("module_return", self)
           @body.install(genv).add_edge(genv, ret)
+          @body.lenv.get_var(:"*ret").add_edge(genv, ret)
           ret
         else
           Source.new

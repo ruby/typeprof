@@ -220,25 +220,6 @@ module TypeProf::Core
       end
     end
 
-    class DummyRHS
-      def initialize(vtx)
-        @vtx = vtx
-      end
-
-      def define(_)
-      end
-
-      def undefine(_)
-      end
-
-      def install(genv)
-        @vtx
-      end
-
-      def uninstall(_)
-      end
-    end
-
     class MASGN < Node
       def initialize(raw_node, lenv)
         super
@@ -261,7 +242,8 @@ module TypeProf::Core
       def install0(genv)
         lhss = @lhss.map do |lhs|
           vtx = Vertex.new("masgn-rhs", self)
-          lhs.set_dummy_rhs(DummyRHS.new(vtx))
+          last = @rhs.code_range.last
+          lhs.set_dummy_rhs(DummyRHSNode.new(TypeProf::CodeRange.new(last, last), @lenv, vtx))
           vtx
         end
         rhs = @rhs.install(genv)
