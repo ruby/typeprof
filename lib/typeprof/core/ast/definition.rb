@@ -38,7 +38,9 @@ module TypeProf::Core
           genv.child_modules_changed(@static_cpath[0..-2]) if dir.module_defs.empty?
           dir.module_defs << self
           @body.define(genv)
-          genv.resolve_const(@static_cpath).add_def(self)
+          dir = genv.resolve_const(@static_cpath)
+          dir.defs << self
+          dir
         else
           kind = self.is_a?(MODULE) ? "module" : "class"
           add_diagnostics("TypeProf cannot analyze a non-static #{ kind }") # warning
@@ -48,7 +50,7 @@ module TypeProf::Core
 
       def undefine0(genv)
         if @static_cpath
-          genv.resolve_const(@static_cpath).remove_def(self)
+          genv.resolve_const(@static_cpath).defs.delete(self)
           @body.undefine(genv)
           dir = genv.resolve_cpath(@static_cpath)
           dir.module_defs.delete(self)

@@ -94,11 +94,13 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        genv.resolve_const(@static_cpath).add_def(self)
+        dir = genv.resolve_const(@static_cpath)
+        dir.defs << self
+        dir
       end
 
       def undefine0(genv)
-        genv.resolve_const(@static_cpath).remove_def(self)
+        genv.resolve_const(@static_cpath).defs.delete(self)
         @rhs.undefine(genv) if @rhs
       end
 

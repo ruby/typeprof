@@ -13,32 +13,9 @@ module TypeProf::Core
       @vtx = vtx # TODO
     end
 
-    def remove_decl(decl)
-      @decls.delete(decl)
-    end
-
-    def add_def(node)
-      @defs << node
-      self
-    end
-
-    def remove_def(node)
-      @defs.delete(node)
-    end
-
     def exist?
       !@decls.empty? || !@defs.empty?
     end
-  end
-
-  class OldEntity
-    def initialize
-      @decls = Set[]
-      @defs = Set[]
-      @aliases = Set[]
-    end
-
-    attr_reader :decls, :defs, :aliases
   end
 
   class GlobalEnv
@@ -147,8 +124,6 @@ module TypeProf::Core
       dir
     end
 
-    # TODO: remove_method_include
-
     # constants
 
     def resolve_const(cpath)
@@ -173,20 +148,14 @@ module TypeProf::Core
       end
     end
 
-    # methods
-
     def resolve_meth(cpath, singleton, mid)
       dir = resolve_cpath(cpath)
       dir.get_method(singleton, mid)
     end
 
-    # global variables
-
     def resolve_gvar(name)
       @gvars[name] ||= Entity.new
     end
-
-    # instance variables
 
     def resolve_ivar(cpath, singleton, name)
       # TODO: include はあとで考える
