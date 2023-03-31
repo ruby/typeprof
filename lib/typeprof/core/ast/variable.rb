@@ -44,8 +44,8 @@ module TypeProf::Core
 
       attr_reader :var, :rhs, :var_code_range, :dummy_rhs
 
-      def subnodes = { rhs: }
-      def attrs = { var:, var_code_range:, dummy_rhs: }
+      def subnodes = { rhs:, dummy_rhs: }
+      def attrs = { var:, var_code_range: }
 
       def define0(genv)
         @rhs.define(genv) if @rhs
@@ -122,8 +122,8 @@ module TypeProf::Core
 
       attr_reader :var, :rhs, :var_code_range, :dummy_rhs
 
-      def subnodes = { rhs: }
-      def attrs = { var:, var_code_range:, dummy_rhs: }
+      def subnodes = { rhs:, dummy_rhs: }
+      def attrs = { var:, var_code_range: }
 
       def define0(genv)
         @rhs.define(genv) if @rhs
@@ -199,8 +199,8 @@ module TypeProf::Core
 
       attr_reader :var, :rhs, :var_code_range, :dummy_rhs
 
-      def subnodes = { rhs: }
-      def attrs = { var:, var_code_range:, dummy_rhs: }
+      def subnodes = { rhs:, dummy_rhs: }
+      def attrs = { var:, var_code_range: }
 
       def install0(genv)
         val = (@rhs || @dummy_rhs).install(genv)
@@ -225,8 +225,17 @@ module TypeProf::Core
         @vtx = vtx
       end
 
+      def define(_)
+      end
+
+      def undefine(_)
+      end
+
       def install(genv)
         @vtx
+      end
+
+      def uninstall(_)
       end
     end
 

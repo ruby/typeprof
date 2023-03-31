@@ -20,9 +20,9 @@ module TypeProf::Core
         @cdef = nil
       end
 
-      attr_reader :cname
+      attr_reader :cname, :toplevel, :cdef
 
-      def attrs = { cname: }
+      def attrs = { cname:, toplevel:, cdef: }
 
       def define0(genv)
         const = BaseConstRead.new(self, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)

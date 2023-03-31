@@ -101,15 +101,14 @@ module TypeProf::Core
         # TODO: fine-grained hover
       end
 
-      attr_reader :args, :ives
+      attr_reader :args
 
-      def attrs = { args:, ives: }
+      def attrs = { args: }
 
       def define0(genv)
-        @ives = @args.map do |arg|
+        @args.map do |arg|
           genv.resolve_ivar(lenv.cref.cpath, false, "@#{ arg }".to_sym).add_def(self)
         end
-        nil
       end
 
       def undefine0(genv)
@@ -120,7 +119,7 @@ module TypeProf::Core
 
       def install0(genv)
         i = 0
-        @args.zip(@ives) do |arg, ive|
+        @args.zip(@static_ret) do |arg, ive|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
           site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
           add_site(i += 1, site)

@@ -4,7 +4,14 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         super
         raw_stmts = raw_node.children
-        @stmts = raw_stmts.map {|n| n ? AST.create_node(n, lenv) : nil }
+        @stmts = raw_stmts.map do |n|
+          if n
+            AST.create_node(n, lenv)
+          else
+            last = code_range.last
+            NilNode.new(TypeProf::CodeRange.new(last, last), lenv)
+          end
+        end
       end
 
       attr_reader :stmts
@@ -73,6 +80,7 @@ module TypeProf::Core
 
       def diff(prev_node)
         # TODO
+        @prev_node = prev_node
       end
 
       def dump0(dumper)
@@ -93,9 +101,6 @@ module TypeProf::Core
 
       def install0(genv)
         Source.new(Type.true, Type.false)
-      end
-
-      def diff(_)
       end
 
       def dump0(dumper)

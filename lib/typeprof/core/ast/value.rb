@@ -33,7 +33,9 @@ module TypeProf::Core
 
       def diff(prev_node)
         # Need to compare their classes to distinguish between 1 and 1.0 (or use equal?)
-        prev_node.is_a?(LIT) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
+        if prev_node.is_a?(LIT) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
+          @prev_node = prev_node
+        end
       end
 
       def dump0(dumper)
@@ -84,7 +86,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(STR) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations
+        if prev_node.is_a?(STR) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations.size
           @interpolations.zip(prev_node.interpolations) do |n, prev_n|
             n.diff(prev_n)
             return unless n.prev_node
@@ -152,6 +154,8 @@ module TypeProf::Core
           end
         end
       end
+
+      attr_reader :elems
 
       def subnodes
         h = {}

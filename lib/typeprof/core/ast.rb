@@ -177,7 +177,6 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         @raw_node = raw_node
         @lenv = lenv
-        @raw_children = raw_node.children
         @prev_node = nil
         @static_ret = nil
         @ret = nil
@@ -263,8 +262,10 @@ module TypeProf::Core
       end
 
       def undefine0(genv)
-        subnodes.each_value do |subnode|
-          subnode.undefine(genv) if subnode
+        unless @reused
+          subnodes.each_value do |subnode|
+            subnode.undefine(genv) if subnode
+          end
         end
       end
 
@@ -304,8 +305,8 @@ module TypeProf::Core
               site.destroy(genv)
             end
           end
+          uninstall0(genv)
         end
-        uninstall0(genv)
         if debug
           puts "uninstall leave: #{ self.class }@#{ code_range.inspect }"
         end
@@ -319,8 +320,12 @@ module TypeProf::Core
 
       def diff(prev_node)
         if prev_node.is_a?(self.class) && attrs.all? {|key, attr| attr == prev_node.send(key) }
-          subnodes.each do |key, subnode|
-            prev_subnode = prev_node.send(key)
+          s1 = subnodes
+          s2 = prev_node.subnodes
+          return if s1.keys != s2.keys
+          s1.each do |key, subnode|
+            next if key == :dummy_rhs
+            prev_subnode = s2[key]
             if subnode && prev_subnode
               subnode.diff(prev_subnode)
               return unless subnode.prev_node
@@ -428,7 +433,26 @@ module TypeProf::Core
       end
 
       def pretty_print_instance_variables
-        super - [:@raw_node, :@raw_children, :@lenv, :@prev_node]
+        super - [:@raw_node, :@lenv, :@prev_node]
+      end
+    end
+
+    class NilNode < Node
+      def initialize(code_range, lenv)
+        @code_range = code_range
+        super(nil, lenv)
+      end
+
+      def code_range
+        @code_range
+      end
+
+      def install0(_)
+        Source.new(Type.nil)
+      end
+
+      def dump(dumper)
+        ""
       end
     end
 

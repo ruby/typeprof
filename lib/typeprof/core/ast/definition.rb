@@ -140,14 +140,19 @@ module TypeProf::Core
 
         # TODO: default expression for optional args
         @args = raw_args.children
+        @args[2] = nil # temporarily delete OPT_ARG
 
         ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
         locals = {}
         @tbl.each {|var| locals[var] = Source.new(Type.nil) }
         locals[:"*self"] = Source.new(ncref.get_self)
         locals[:"*ret"] = Vertex.new("method_ret", self)
-        @body_lenv = LocalEnv.new(@lenv.path, ncref, locals)
-        @body = raw_body ? AST.create_node(raw_body, @body_lenv) : nil
+        nlenv = LocalEnv.new(@lenv.path, ncref, locals)
+        if raw_body
+          @body = AST.create_node(raw_body, nlenv)
+        else
+          @body = NilNode.new(code_range, nlenv)
+        end
 
         @args_code_ranges = []
         @args[0].times do |i|
@@ -158,30 +163,36 @@ module TypeProf::Core
         @reused = false
       end
 
-      attr_reader :singleton, :mid, :tbl, :args, :body, :body_lenv
+      attr_reader :singleton, :mid, :tbl, :args, :body
 
       def subnodes = @reused ? {} : { body: }
-      def attrs = { singleton:, mid:, tbl:, args:, body_lenv: }
+      def attrs = { singleton:, mid:, tbl:, args: }
 
       attr_accessor :reused
 
-      def install0(genv)
+      def define0(genv)
         if @prev_node
           reuse
           @prev_node.reused = true
         else
+          super
+        end
+      end
+
+      def install0(genv)
+        unless @prev_node
           # TODO: ユーザ定義 RBS があるときは検証する
           f_args = []
           block = nil
           if @args
             @args[0].times do |i|
-              f_args << @body_lenv.new_var(@tbl[i], self)
+              f_args << @body.lenv.new_var(@tbl[i], self)
             end
             # &block
-            block = @body_lenv.new_var(:"*given_block", self)
-            @body_lenv.set_var(@args[9], block) if @args[9]
+            block = @body.lenv.new_var(:"*given_block", self)
+            @body.lenv.set_var(@args[9], block) if @args[9]
           end
-          ret = @body_lenv.get_var(:"*ret")
+          ret = @body.lenv.get_var(:"*ret")
           if @body
             body_ret = @body.install(genv)
           else
@@ -197,7 +208,7 @@ module TypeProf::Core
       def hover(pos)
         @args_code_ranges.each_with_index do |cr, i|
           if cr.include?(pos)
-            yield DummySymbolNode.new(@tbl[i], cr, @body_lenv.get_var(@tbl[i]))
+            yield DummySymbolNode.new(@tbl[i], cr, @body.lenv.get_var(@tbl[i]))
             break
           end
         end
@@ -206,7 +217,7 @@ module TypeProf::Core
 
       def dump0(dumper)
         s = "def #{ @mid }(#{
-          (0..@args[0]-1).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body_lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
+          (0..@args[0]-1).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body.lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
         })\n"
         s << @body.dump(dumper).gsub(/^/, "  ") + "\n" if @body
         s << "end"

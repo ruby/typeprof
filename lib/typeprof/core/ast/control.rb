@@ -235,10 +235,10 @@ module TypeProf::Core
           raw_vals, raw_clause, raw_when = raw_when.children
           @clauses << [
             AST.create_node(raw_vals, lenv),
-            raw_clause ? AST.create_node(raw_clause, lenv) : nil,
+            raw_clause ? AST.create_node(raw_clause, lenv) : NilNode.new(code_range, lenv), # TODO: code_range for NilNode
           ]
         end
-        @else_clause = raw_when ? AST.create_node(raw_when, lenv) : nil
+        @else_clause = raw_when ? AST.create_node(raw_when, lenv) : NilNode.new(code_range, lenv) # TODO: code_range for NilNode
       end
 
       attr_reader :pivot, :clauses, :else_clause
@@ -257,17 +257,9 @@ module TypeProf::Core
         @pivot.install(genv)
         @clauses.each do |vals, clause|
           vals.install(genv)
-          if clause
-            clause.install(genv).add_edge(genv, ret)
-          else
-            Source.new(Type.nil).add_edge(genv, ret)
-          end
+          clause.install(genv).add_edge(genv, ret)
         end
-        if @else_clause
-          @else_clause.install(genv).add_edge(genv, ret)
-        else
-          Source.new(Type.nil).add_edge(genv, ret)
-        end
+        @else_clause.install(genv).add_edge(genv, ret)
         ret
       end
 
@@ -392,10 +384,6 @@ module TypeProf::Core
 
       def install0(genv)
         @body.install(genv)
-      end
-
-      def diff(prev_node)
-        raise NotImplementedError
       end
     end
   end

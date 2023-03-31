@@ -35,6 +35,9 @@ module TypeProf::Core
           raise if @block_pass
           @block_tbl, raw_block_args, raw_block_body = raw_block.children
           @block_f_args = raw_block_args ? raw_block_args.children : nil
+          if @block_f_args
+            @block_f_args[1] = nil # temporarily delete RubyVM::AST
+          end
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
           locals = lenv.locals.dup
           @block_tbl.each {|var| locals[var] = Source.new(Type.nil) }
@@ -130,7 +133,7 @@ module TypeProf::Core
           return if @block_body != prev_node.block_body
         end
 
-        if @positional_args
+        if @positional_args && prev_node.positional_args
           if @positional_args.size == prev_node.positional_args.size
             @positional_args.zip(prev_node.positional_args) do |node, prev_node|
               node.diff(prev_node)
@@ -140,6 +143,8 @@ module TypeProf::Core
         else
           return if @positional_args != prev_node.positional_args
         end
+
+        @prev_node = prev_node
       end
 
       def dump_call(prefix, suffix)
@@ -265,54 +270,6 @@ module TypeProf::Core
       def dump0(dumper)
         args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
         dump_call("yield", "(#{ args })")
-      end
-    end
-
-    class A_ARGS
-      def initialize(raw_node, raw_last_arg, lenv)
-        super(raw_node, lenv)
-        @positional_args = []
-        # TODO
-        case raw_node.type
-        when :LIST
-          args = raw_node.children.compact
-          @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
-        when :ARGSPUSH, :ARGSCAT
-          raise NotImplementedError
-        else
-          raise "not supported yet: #{ raw_node.type }"
-        end
-        if raw_last_arg
-          @positional_args << AST.create_node(raw_last_arg, lenv)
-        end
-      end
-
-      attr_reader :positional_args
-
-      def subnodes
-        h = {}
-        @positional_args.each_with_index {|n, i| h[i] = n }
-        h
-      end
-
-      def install0(genv)
-        @positional_args.map do |node|
-          node.install(genv)
-        end
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(A_ARGS) && @positional_args.size == prev_node.positional_args.size
-          @positional_args.zip(prev_node.positional_args) do |node, prev_node|
-            node.diff(prev_node)
-            return unless node.prev_node
-          end
-          @prev_node = prev_node
-        end
-      end
-
-      def dump(dumper) # HACK: intentionally not dump0 because this node does not simply return a vertex
-        @positional_args.map {|n| n.dump(dumper) }.join(", ")
       end
     end
   end
