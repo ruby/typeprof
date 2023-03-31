@@ -109,6 +109,8 @@ module TypeProf::Core
       when :COLON3
         cname, = raw_node.children
         CONST.new(raw_node, lenv, cname, true)
+      else
+        raise "should not reach" # annotation
       end
     end
 
