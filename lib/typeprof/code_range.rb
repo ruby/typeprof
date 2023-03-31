@@ -60,6 +60,12 @@ module TypeProf
       new(pos1, pos2)
     end
 
+    def self.[](a, b, c, d)
+      pos1 = CodePosition.new(a, b)
+      pos2 = CodePosition.new(c, d)
+      new(pos1, pos2)
+    end
+
     def to_lsp
       { start: @first.to_lsp, end: @last.to_lsp }
     end

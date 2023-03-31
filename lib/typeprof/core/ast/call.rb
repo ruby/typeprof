@@ -109,9 +109,12 @@ module TypeProf::Core
         site.ret
       end
 
-      def hover(pos)
+      def hover(pos, &blk)
         yield self if @mid_code_range && @mid_code_range.include?(pos)
-        super
+        subnodes.each_value do |subnode|
+          next unless subnode
+          subnode.hover(pos, &blk)
+        end
       end
 
       def diff(prev_node)

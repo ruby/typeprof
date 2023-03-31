@@ -153,7 +153,8 @@ module TypeProf::Core
     def definitions(path, pos)
       defs = []
       @text_nodes[path].hover(pos) do |node|
-        site = node.sites[:class_new] || node.sites[:main]
+        _key, site = node.sites.find {|key, site| key.is_a?(Array) && key[0] == :class_new }
+        site ||= node.sites[:main]
         if site.is_a?(CallSite)
           site.resolve(genv) do |_ty, mid, me, _param_map|
             next unless me
@@ -162,8 +163,8 @@ module TypeProf::Core
             end
           end
         end
-        return defs
       end
+      return defs
     end
 
     def hover(path, pos)
@@ -180,7 +181,7 @@ module TypeProf::Core
           end
           return "???"
         else
-          return node.ret.show
+          return node.ret ? node.ret.show : "???"
         end
       end
     end
