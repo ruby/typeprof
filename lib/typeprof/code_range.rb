@@ -22,6 +22,16 @@ module TypeProf
 
     include Comparable
 
+    def ==(other)
+      @lineno == other.lineno && @column == other.column
+    end
+
+    alias eql? ==
+
+    def hash
+      [@lineno, @column].hash
+    end
+
     def to_s
       "(%d,%d)" % [@lineno, @column]
     end
@@ -58,6 +68,16 @@ module TypeProf
 
     def include?(pos)
       @first <= pos && pos < @last
+    end
+
+    def ==(other)
+      @first == other.first && @last == other.last
+    end
+
+    alias eql? ==
+
+    def hash
+      [@first, @last].hash
     end
 
     def to_s
