@@ -379,7 +379,7 @@ module TypeProf::Core
         raise "should override"
       end
 
-      def add_diagnostics(msg)
+      def add_diagnostic(msg)
         @diagnostics << TypeProf::Diagnostic.new(self, msg)
       end
 

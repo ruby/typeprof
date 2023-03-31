@@ -213,9 +213,7 @@ module TypeProf::Core
 
     attr_reader :rbs_member
 
-    def resolve_overloads(genv, node, param_map, a_args, block, ret)
-      edges = Set[]
-
+    def resolve_overloads(changes, genv, node, param_map, a_args, block, ret)
       @rbs_member.overloads.each do |overload|
         rbs_func = overload.method_type.type
         # rbs_func.optional_keywords
@@ -248,19 +246,17 @@ module TypeProf::Core
               blk_f_args = ty.block.f_args
               if blk_a_args.size == blk_f_args.size # TODO: pass arguments for block
                 blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
-                  edges << [blk_a_arg, blk_f_arg]
+                  changes.add_edge(blk_a_arg, blk_f_arg)
                 end
                 blk_f_ret = Signatures.type_to_vtx(genv, node, rbs_blk_func.return_type, param_map0) # TODO: Sink instead of Source
-                edges << [ty.block.ret, blk_f_ret]
+                changes.add_edge(ty.block.ret, blk_f_ret)
               end
             end
           end
         end
         ret_vtx = Signatures.type_to_vtx(genv, node, rbs_func.return_type, param_map0)
-        edges << [ret_vtx, ret]
+        changes.add_edge(ret_vtx, ret)
       end
-
-      [edges, []]
     end
   end
 
@@ -275,22 +271,22 @@ module TypeProf::Core
 
     attr_reader :node, :f_args, :block, :ret
 
-    def call(genv, call_node, a_args, block, ret)
+    def call(changes, genv, call_node, a_args, block, ret)
       if a_args.size == @f_args.size
         edges = []
         if block && @block
-          edges << [block, @block]
+          changes.add_edge(block, @block)
         end
         # check arity
         a_args.zip(@f_args) do |a_arg, f_arg|
           break unless f_arg
-          edges << [a_arg, f_arg]
+          changes.add_edge(a_arg, f_arg)
         end
-        [edges << [@ret, ret], []]
+        changes.add_edge(@ret, ret)
       else
-        [[], [
+        changes.add_diagnostic(
           TypeProf::Diagnostic.new(call_node, "wrong number of arguments (#{ a_args.size } for #{ @f_args.size })")
-        ]]
+        )
       end
     end
 

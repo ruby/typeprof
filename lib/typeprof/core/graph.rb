@@ -345,7 +345,11 @@ module TypeProf::Core
       @new_edges = Set[]
       @callsites = {}
       @new_callsites = {}
+      @diagnostics = []
+      @new_diagnostics = []
     end
+
+    attr_reader :diagnostics
 
     def add_edge(src, dst)
       @new_edges << [src, dst]
@@ -353,6 +357,10 @@ module TypeProf::Core
 
     def add_callsite(key, callsite)
       @new_callsites[key] = callsite
+    end
+
+    def add_diagnostic(diag)
+      @new_diagnostics << diag
     end
 
     def reinstall(genv)
@@ -373,6 +381,9 @@ module TypeProf::Core
       end
       @callsites, @new_callsites = @new_callsites, @callsites
       @new_callsites.clear
+
+      @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
+      @new_diagnostics.clear
     end
   end
 
@@ -457,19 +468,19 @@ module TypeProf::Core
         @block.add_edge(genv, self) # needed?
       end
       @ret = Vertex.new("ret:#{ mid }", node)
-      @diagnostics = []
     end
 
     attr_reader :recv, :mid, :a_args, :block, :ret
 
     def run0(genv, changes)
       edges = Set[]
-      @diagnostics.clear
       resolve(genv) do |recv_ty, mid, me, param_map|
         if !me
           # TODO: undefined method error
           cr = @node.mid_code_range || @node
-          @diagnostics << TypeProf::Diagnostic.new(cr, "undefined method: #{ recv_ty.show }##{ @mid }")
+          changes.add_diagnostic(
+            TypeProf::Diagnostic.new(cr, "undefined method: #{ recv_ty.show }##{ @mid }")
+          )
         elsif me.builtin
           # TODO: block? diagnostics?
           me.builtin[changes, @node, recv_ty, @a_args, @ret]
@@ -477,15 +488,11 @@ module TypeProf::Core
           # TODO: support "| ..."
           me.decls.each do |mdecl|
             # TODO: union type is ok?
-            new_edges, diagnostics = mdecl.resolve_overloads(genv, @node, param_map, @a_args, @block, @ret)
-            new_edges.each {|src, dst| edges << [src, dst] }
-            @diagnostics.concat(diagnostics)
+            mdecl.resolve_overloads(changes, genv, @node, param_map, @a_args, @block, @ret)
           end
         elsif !me.defs.empty?
           me.defs.each do |mdef|
-            new_edges, diagnostics = mdef.call(genv, @node, @a_args, @block, @ret)
-            new_edges.each {|src, dst| edges << [src, dst] }
-            @diagnostics.concat(diagnostics)
+            mdef.call(changes, genv, @node, @a_args, @block, @ret)
           end
         else
           pp me
@@ -575,11 +582,11 @@ module TypeProf::Core
     end
 
     def diagnostics(genv)
-      @diagnostics[0, 3].each do |diag|
+      @changes.diagnostics[0, 3].each do |diag|
         yield diag
       end
-      if @diagnostics.size >= 4
-        TypeProf::Diagnostic.new(@node.mid_code_range || @node, "(and #{ @diagnostics.size - 3 } errors omitted)")
+      if @changes.diagnostics.size >= 4
+        TypeProf::Diagnostic.new(@node.mid_code_range || @node, "(and #{ @changes.diagnostics.size - 3 } errors omitted)")
       end
     end
 

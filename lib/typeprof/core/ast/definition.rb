@@ -43,7 +43,7 @@ module TypeProf::Core
           dir
         else
           kind = self.is_a?(MODULE) ? "module" : "class"
-          add_diagnostics("TypeProf cannot analyze a non-static #{ kind }") # warning
+          add_diagnostic("TypeProf cannot analyze a non-static #{ kind }") # warning
           nil
         end
       end
