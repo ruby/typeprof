@@ -17,8 +17,7 @@ module TypeProf::Core
       @callsites = Set[]
       @ivar_reads = Set[]
 
-      @child_consts = {}
-
+      @consts = {}
       @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
     end
@@ -39,7 +38,7 @@ module TypeProf::Core
     attr_reader :callsites
     attr_reader :ivar_reads
 
-    attr_reader :child_consts
+    attr_reader :consts
     attr_reader :methods
     attr_reader :ivars
 
@@ -160,7 +159,7 @@ module TypeProf::Core
         next if self.equal?(dir) # for Object
         dir.get_vertexes_and_boxes(vtxs)
       end
-      @child_consts.each_value do |cdef|
+      @consts.each_value do |cdef|
         vtxs << cdef.vtx
       end
     end

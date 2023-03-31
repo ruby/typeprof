@@ -153,7 +153,7 @@ module TypeProf::Core
 
     def resolve_const(cpath)
       dir = resolve_cpath(cpath[0..-2])
-      dir.child_consts[cpath[-1]] ||= Entity.new
+      dir.consts[cpath[-1]] ||= Entity.new
     end
 
     def add_const_read(const_read)

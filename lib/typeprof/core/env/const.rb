@@ -34,10 +34,10 @@ module TypeProf::Core
           mm = genv.resolve_cpath(dir.cpath + [@cname]) # TODO
           if mm.exist?
             cpath = dir.cpath + [@cname]
-            return [cpath, dir.child_consts[@cname]]
+            return [cpath, dir.consts[@cname]]
           end
-          if dir.child_consts[@cname] && dir.child_consts[@cname].exist?
-            return [nil, dir.child_consts[@cname]]
+          if dir.consts[@cname] && dir.consts[@cname].exist?
+            return [nil, dir.consts[@cname]]
           end
           break unless first
           break unless dir.superclass
