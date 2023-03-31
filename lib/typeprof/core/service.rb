@@ -155,7 +155,14 @@ module TypeProf::Core
       @text_nodes[path].hover(pos) do |node|
         _key, site = node.sites.find {|key, site| key.is_a?(Array) && key[0] == :class_new }
         site ||= node.sites[:main]
-        if site.is_a?(CallSite)
+        case site
+        when ConstReadSite
+          if site.const_read && site.const_read.cdef
+            site.const_read.cdef.defs.each do |cdef_node|
+              defs << [cdef_node.lenv.path, cdef_node.code_range]
+            end
+          end
+        when CallSite
           site.resolve(genv) do |_ty, mid, me, _param_map|
             next unless me
             me.defs.each do |mdef|
