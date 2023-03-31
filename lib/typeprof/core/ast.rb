@@ -20,9 +20,7 @@ module TypeProf::Core
       lenv = LocalEnv.new(path, cref, locals)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         row1, col1, row2, col2 = cr
-        pos1 = TypeProf::CodePosition.new(row1, col1)
-        pos2 = TypeProf::CodePosition.new(row2, col2)
-        code_range = TypeProf::CodeRange.new(pos1, pos2)
+        code_range = TypeProf::CodeRange[row1, col1, row2, col2]
         [type, str, code_range]
       end.compact.sort_by {|_type, _str, code_range| code_range.first }
       AST.create_node(raw_body, lenv)
