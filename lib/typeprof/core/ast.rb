@@ -228,6 +228,10 @@ module TypeProf::Core
         sites[key] = site
       end
 
+      def remove_site(genv, key)
+        sites.delete(key).destroy(genv)
+      end
+
       def define(genv)
         debug = ENV["TYPEPROF_DEBUG"]
         if debug

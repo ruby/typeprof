@@ -339,10 +339,47 @@ module TypeProf::Core
     end
   end
 
+  class Changes
+    def initialize
+      @edges = Set[]
+      @new_edges = Set[]
+      @callsites = {}
+      @new_callsites = {}
+    end
+
+    def add_edge(src, dst)
+      @new_edges << [src, dst]
+    end
+
+    def add_callsite(key, callsite)
+      @new_callsites[key] = callsite
+    end
+
+    def reinstall(genv)
+      @new_edges.each do |src, dst|
+        src.add_edge(genv, dst) unless @edges.include?([src, dst])
+      end
+      @edges.each do |src, dst|
+        src.remove_edge(genv, dst) unless @new_edges.include?([src, dst])
+      end
+      @edges, @new_edges = @new_edges, @edges
+      @new_edges.clear
+
+      @callsites.each do |key, callsite|
+        callsite.node.remove_site(genv, key)
+      end
+      @new_callsites.each do |key, callsite|
+        callsite.node.add_site(key, callsite)
+      end
+      @callsites, @new_callsites = @new_callsites, @callsites
+      @new_callsites.clear
+    end
+  end
+
   class Box
     def initialize(node)
       @node = node
-      @edges = Set[]
+      @changes = Changes.new
       @destroyed = false
     end
 
@@ -350,9 +387,7 @@ module TypeProf::Core
 
     def destroy(genv)
       @destroyed = true
-      @edges.each do |src, dst|
-        src.remove_edge(genv, dst)
-      end
+      @changes.reinstall(genv) # rollback all changes
     end
 
     def on_type_added(genv, src_tyvar, added_types)
@@ -365,19 +400,9 @@ module TypeProf::Core
 
     def run(genv)
       return if @destroyed
-      new_edges = run0(genv)
+      run0(genv, @changes)
 
-      # install
-      new_edges.each do |src, dst|
-        src.add_edge(genv, dst) unless @edges.include?([src, dst])
-      end
-
-      # uninstall
-      @edges.each do |src, dst|
-        src.remove_edge(genv, dst) unless new_edges.include?([src, dst])
-      end
-
-      @edges = new_edges
+      @changes.reinstall(genv)
     end
 
     #@@new_id = 0
@@ -400,13 +425,9 @@ module TypeProf::Core
 
     attr_reader :node, :const_read, :ret
 
-    def run0(genv)
+    def run0(genv, changes)
       cdef = @const_read.cdef
-      if cdef && cdef.vtx
-        Set[[cdef.vtx, @ret]]
-      else
-        Set[]
-      end
+      changes.add_edge(cdef.vtx, @ret) if cdef && cdef.vtx
     end
 
     def long_inspect
@@ -414,6 +435,7 @@ module TypeProf::Core
     end
   end
 
+  #$count = $count2 = 0
   class CallSite < Box
     def initialize(node, genv, recv, mid, a_args, block)
       raise mid.to_s unless mid
@@ -432,11 +454,14 @@ module TypeProf::Core
       end
       @ret = Vertex.new("ret:#{ mid }", node)
       @diagnostics = []
+      $count += 1
+      #p [:add, self, @node.object_id, @node.code_range, @mid]
     end
 
     attr_reader :recv, :mid, :a_args, :block, :ret
 
-    def run0(genv)
+    def run0(genv, changes)
+      #$count2 += 1
       edges = Set[]
       @diagnostics.clear
       resolve(genv) do |recv_ty, mid, me, param_map|
@@ -446,8 +471,7 @@ module TypeProf::Core
           @diagnostics << TypeProf::Diagnostic.new(cr, "undefined method: #{ recv_ty.show }##{ @mid }")
         elsif me.builtin
           # TODO: block? diagnostics?
-          new_edges = me.builtin[@node, recv_ty, @a_args, @ret]
-          new_edges.each {|src, dst| edges << [src, dst] }
+          me.builtin[changes, @node, recv_ty, @a_args, @ret]
         elsif !me.decls.empty?
           # TODO: support "| ..."
           me.decls.each do |mdecl|
@@ -472,10 +496,14 @@ module TypeProf::Core
           genv.resolve_cpath(base_ty.cpath).callsites << self
         end
       end
-      edges
+      edges.each do |src, dst|
+        changes.add_edge(src, dst)
+      end
     end
 
     def destroy(genv)
+      #p [:remove, self]
+      $count -= 1
       @recv.types.each do |ty, _source|
         ty.base_types(genv).each do |base_ty|
           genv.resolve_cpath(base_ty.cpath).callsites.delete(self)
@@ -583,8 +611,8 @@ module TypeProf::Core
 
     attr_reader :node, :const_read, :ret
 
-    def run0(genv)
-      [[@vtx, @ret]]
+    def run0(genv, changes)
+      changes.add_edge(@vtx, @ret)
     end
 
     def long_inspect
@@ -611,7 +639,7 @@ module TypeProf::Core
       super
     end
 
-    def run0(genv)
+    def run0(genv, changes)
       dir = genv.resolve_cpath(@cpath)
       cur_ive = dir.get_ivar(@singleton, @name)
       target_vtx = nil
@@ -632,7 +660,9 @@ module TypeProf::Core
       else
         # TODO: error?
       end
-      edges
+      edges.each do |src, dst|
+        changes.add_edge(src, dst)
+      end
     end
 
     def long_inspect
@@ -652,7 +682,7 @@ module TypeProf::Core
 
     def ret = @rhs
 
-    def run0(genv)
+    def run0(genv, changes)
       edges = []
       @rhs.types.each do |ty, _source|
         case ty
@@ -664,7 +694,9 @@ module TypeProf::Core
           edges << [@rhs, @lhss[0]]
         end
       end
-      edges
+      edges.each do |src, dst|
+        changes.add_edge(src, dst)
+      end
     end
 
     def long_inspect
