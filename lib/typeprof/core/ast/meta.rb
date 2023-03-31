@@ -22,7 +22,6 @@ module TypeProf::Core
       end
 
       def define0(genv)
-        i = 0
         dir = genv.resolve_cpath(@lenv.cref.cpath)
         dir.include_defs << self
         @args.each do |arg|

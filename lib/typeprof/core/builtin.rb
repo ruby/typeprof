@@ -5,7 +5,6 @@ module TypeProf::Core
     end
 
     def class_new(changes, node, ty, a_args, ret)
-      edges = []
       ty = ty.get_instance_type
       recv = Source.new(ty)
       site = CallSite.new(node, @genv, recv, :initialize, a_args, nil) # TODO: block
@@ -40,10 +39,10 @@ module TypeProf::Core
           end
           changes.add_edge(ty.get_elem(idx), ret)
         else
-          puts "??? array_aref"
+          #puts "??? array_aref"
         end
       else
-        puts "??? array_aref"
+        #puts "??? array_aref"
       end
     end
 
@@ -78,7 +77,7 @@ module TypeProf::Core
           end
           changes.add_edge(ty.get_value(idx), ret)
         else
-          puts "??? hash_aref 1"
+          #puts "??? hash_aref 1"
         end
       else
         puts "??? hash_aref 2"
@@ -99,7 +98,7 @@ module TypeProf::Core
             changes.add_edge(val, ty.get_value)
           end
         else
-          puts "??? hash_aset 1 #{ ty.object_id } #{ ty.inspect }"
+          #puts "??? hash_aset 1 #{ ty.object_id } #{ ty.inspect }"
         end
       else
         puts "??? hash_aset 2"
