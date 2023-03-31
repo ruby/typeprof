@@ -454,14 +454,11 @@ module TypeProf::Core
       end
       @ret = Vertex.new("ret:#{ mid }", node)
       @diagnostics = []
-      #$count += 1
-      #p [:add, self, @node.object_id, @node.code_range, @mid]
     end
 
     attr_reader :recv, :mid, :a_args, :block, :ret
 
     def run0(genv, changes)
-      #$count2 += 1
       edges = Set[]
       @diagnostics.clear
       resolve(genv) do |recv_ty, mid, me, param_map|
@@ -502,8 +499,6 @@ module TypeProf::Core
     end
 
     def destroy(genv)
-      #p [:remove, self]
-      #$count -= 1
       @recv.types.each do |ty, _source|
         ty.base_types(genv).each do |base_ty|
           genv.resolve_cpath(base_ty.cpath).callsites.delete(self)
