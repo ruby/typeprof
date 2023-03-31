@@ -168,7 +168,8 @@ module TypeProf::Core
 
     def hover(path, pos)
       @text_nodes[path].hover(pos) do |node|
-        site = node.sites[[:class_new, 0]] || node.sites[:main]
+        _key, site = node.sites.find {|key, site| key.is_a?(Array) && key[0] == :class_new }
+        site ||= node.sites[:main]
         if site.is_a?(CallSite)
           site.resolve(genv) do |ty, mid, me, _param_map|
             if me && !me.defs.empty?

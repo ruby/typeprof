@@ -74,6 +74,7 @@ module TypeProf::Core
     def initialize(node, cname, cbase)
       super(node, cname)
       @cbase = cbase
+      # Note: cbase may be nil when the cbase is a dynamic expression (such as lvar::CONST)
       @cbase.const_reads << self if @cbase
       @cbase_cpath = nil
     end
@@ -81,16 +82,15 @@ module TypeProf::Core
     attr_reader :cbase
 
     def on_cbase_updated(genv)
-      if @cbase && @cbase.cpath
-        cpath, cdef = resolve(genv, CRef.new(@cbase.cpath, false, nil), true)
-        if cpath != @cpath || cdef != @cdef
-          genv.resolve_cpath(@cbase_cpath).const_reads.delete(self) if @cbase_cpath
-          @cpath = cpath
-          @cdef = cdef
-          @cbase_cpath = @cbase.cpath
-          genv.resolve_cpath(@cbase_cpath).const_reads << self if @cbase_cpath
-          propagate(genv)
-        end
+      raise "should not occur" unless @cbase
+      cpath, cdef = resolve(genv, CRef.new(@cbase.cpath, false, nil), true) if @cbase.cpath
+      if @cbase_cpath != @cbase.cpath || cpath != @cpath || cdef != @cdef
+        genv.resolve_cpath(@cbase_cpath).const_reads.delete(self) if @cbase_cpath
+        @cpath = cpath
+        @cdef = cdef
+        @cbase_cpath = @cbase.cpath
+        genv.resolve_cpath(@cbase_cpath).const_reads << self if @cbase_cpath
+        propagate(genv)
       end
     end
   end

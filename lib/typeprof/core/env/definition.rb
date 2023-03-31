@@ -94,9 +94,11 @@ module TypeProf::Core
         updated = true
       end
 
+      all_args = Set[]
       @include_defs.each do |idef|
         idef.args.each do |arg|
           if arg.is_a?(AST::ConstNode) && arg.static_ret
+            all_args << arg
             new_mod_cpath = arg.static_ret
             new_mod_cpath = new_mod_cpath ? new_mod_cpath.cpath : nil
             new_mod = new_mod_cpath ? genv.resolve_cpath(new_mod_cpath) : nil
@@ -108,6 +110,12 @@ module TypeProf::Core
               updated = true
             end
           end
+        end
+      end
+      @included_modules.to_a.each do |arg, old_mod|
+        if arg.is_a?(AST::ConstNode) && !all_args.include?(arg)
+          old_mod.subclasses.delete(self) if old_mod
+          @included_modules.delete(arg)
         end
       end
 

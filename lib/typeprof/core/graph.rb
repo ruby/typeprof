@@ -427,7 +427,7 @@ module TypeProf::Core
 
     def run0(genv, changes)
       cdef = @const_read.cdef
-      changes.add_edge(cdef.vtx, @ret) if cdef && cdef.vtx
+      changes.add_edge(cdef.vtx, @ret) if cdef
     end
 
     def long_inspect

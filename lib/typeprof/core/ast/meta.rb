@@ -33,6 +33,7 @@ module TypeProf::Core
       def undefine0(genv)
         dir = genv.resolve_cpath(@lenv.cref.cpath)
         dir.include_defs.delete(self)
+        dir.on_superclass_updated(genv)
         super
       end
 
