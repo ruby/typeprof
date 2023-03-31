@@ -677,7 +677,7 @@ module TypeProf::Core
             edges << [ty.get_elem(i), lhs]
           end
         else
-          edges << [@rhs, @lhss[0]]
+          edges << [Source.new(ty), @lhss[0]]
         end
       end
       edges.each do |src, dst|
