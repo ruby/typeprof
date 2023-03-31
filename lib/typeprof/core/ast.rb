@@ -203,7 +203,7 @@ module TypeProf::Core
           TypeProf::CodeRange.from_node(@raw_node)
         else
           pp self
-          nil
+          raise
         end
       end
 
