@@ -7,7 +7,7 @@ module TypeProf::Core
     def class_new(changes, node, ty, a_args, ret)
       ty = ty.get_instance_type
       recv = Source.new(ty)
-      site = CallSite.new(node, @genv, recv, :initialize, a_args, nil) # TODO: block
+      site = CallSite.new(node, @genv, recv, :initialize, a_args, nil, false) # TODO: block
       # site.ret (the return value of initialize) is discarded
       changes.add_edge(Source.new(ty), ret)
       changes.add_callsite([:class_new, ty], site)

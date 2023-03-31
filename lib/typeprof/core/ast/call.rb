@@ -104,7 +104,7 @@ module TypeProf::Core
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
         end
-        site = CallSite.new(self, genv, recv, @mid, positional_args, blk_ty)
+        site = CallSite.new(self, genv, recv, @mid, positional_args, blk_ty, self.is_a?(FCALL))
         add_site(:main, site)
         site.ret
       end

@@ -452,7 +452,7 @@ module TypeProf::Core
   end
 
   class CallSite < Box
-    def initialize(node, genv, recv, mid, a_args, block)
+    def initialize(node, genv, recv, mid, a_args, block, subclasses)
       raise mid.to_s unless mid
       super(node)
       @recv = recv.new_vertex(genv, "recv:#{ mid }", node)
@@ -468,6 +468,7 @@ module TypeProf::Core
         @block.add_edge(genv, self) # needed?
       end
       @ret = Vertex.new("ret:#{ mid }", node)
+      @subclasses = subclasses
     end
 
     attr_reader :recv, :mid, :a_args, :block, :ret
@@ -499,6 +500,15 @@ module TypeProf::Core
           raise
         end
       end
+      if @subclasses
+        resolve_subclasses(genv) do |recv_ty, me|
+          if !me.defs.empty?
+            me.defs.each do |mdef|
+              mdef.call(changes, genv, @node, @a_args, @block, @ret)
+            end
+          end
+        end
+      end
       @recv.types.each do |ty, _source|
         ty.base_types(genv).each do |base_ty|
           genv.resolve_cpath(base_ty.cpath).callsites << self
@@ -516,6 +526,24 @@ module TypeProf::Core
         end
       end
       super
+    end
+
+    def resolve_subclasses(genv)
+      @recv.types.each do |ty, _source|
+        next if ty == Type::Bot.new
+        ty.base_types(genv).each do |base_ty|
+          cpath = base_ty.cpath
+          singleton = base_ty.is_a?(Type::Module)
+          dir = genv.resolve_cpath(cpath)
+          dir.traverse_subclasses do |subclass_dir|
+            next if dir == subclass_dir
+            me = subclass_dir.get_method(singleton, @mid)
+            if me && me.exist?
+              yield ty, me
+            end
+          end
+        end
+      end
     end
 
     def resolve(genv)
