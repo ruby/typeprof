@@ -376,16 +376,21 @@ module TypeProf::Core
     end
   end
 
+  $box_counts = Hash.new(0)
   class Box
     def initialize(node)
       @node = node
       @changes = Changes.new
       @destroyed = false
+      $box_counts[Box] += 1
+      $box_counts[self.class] += 1
     end
 
     attr_reader :node
 
     def destroy(genv)
+      $box_counts[self.class] -= 1
+      $box_counts[Box] -= 1
       @destroyed = true
       @changes.reinstall(genv) # rollback all changes
     end
@@ -435,7 +440,6 @@ module TypeProf::Core
     end
   end
 
-  #$count = $count2 = 0
   class CallSite < Box
     def initialize(node, genv, recv, mid, a_args, block)
       raise mid.to_s unless mid
