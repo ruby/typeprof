@@ -63,17 +63,16 @@ module TypeProf::Core
       @genv.define_all
 
       node.install(@genv)
+      prev_node.uninstall(@genv) if prev_node
       @genv.run_all
-
-      if prev_node
-        prev_node.uninstall(@genv)
-        @genv.run_all
-      end
 
       # OR:
       # node.install(@genv)
-      # prev_node.uninstall(@genv) if prev_node
       # @genv.run_all
+      # if prev_node
+      #   prev_node.uninstall(@genv)
+      #   @genv.run_all
+      # end
 
       # invariant validation
       if prev_node
