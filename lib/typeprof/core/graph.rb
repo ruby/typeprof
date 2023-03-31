@@ -104,21 +104,21 @@ module TypeProf::Core
   end
 
   class Vertex < BasicVertex
-    def initialize(show_name, node)
+    def initialize(show_name, origin)
       @show_name = show_name
-      case node
+      case origin
       when AST::Node
       when RBS::AST::Declarations::Base
-      when Entity
+      when VertexEntity
       else
         raise
       end
-      @node = node
+      @origin = origin
       @next_vtxs = Set[]
       super({})
     end
 
-    attr_reader :show_name, :node, :next_vtxs, :types
+    attr_reader :show_name, :origin, :next_vtxs, :types
 
     def on_type_added(genv, src_var, added_types)
       new_added_types = []

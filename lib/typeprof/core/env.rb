@@ -1,5 +1,5 @@
 module TypeProf::Core
-  class Entity
+  class VertexEntity
     def initialize
       @decls = Set[]
       @defs = Set[]
@@ -128,7 +128,7 @@ module TypeProf::Core
 
     def resolve_const(cpath)
       dir = resolve_cpath(cpath[0..-2])
-      dir.consts[cpath[-1]] ||= Entity.new
+      dir.consts[cpath[-1]] ||= VertexEntity.new
     end
 
     def add_const_read(const_read)
@@ -154,7 +154,7 @@ module TypeProf::Core
     end
 
     def resolve_gvar(name)
-      @gvars[name] ||= Entity.new
+      @gvars[name] ||= VertexEntity.new
     end
 
     def resolve_ivar(cpath, singleton, name)

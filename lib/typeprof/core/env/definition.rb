@@ -51,7 +51,7 @@ module TypeProf::Core
     end
 
     def get_ivar(singleton, name)
-      @ivars[singleton][name] ||= Entity.new
+      @ivars[singleton][name] ||= VertexEntity.new
     end
 
     def on_child_modules_updated(genv) # TODO: accept what is a change
