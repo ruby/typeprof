@@ -3,13 +3,15 @@ module TypeProf::Core
     def initialize(cpath, toplevel)
       @cpath = cpath
 
-      # use Entity?
       @module_decls = Set[]
       @module_defs = Set[]
+      @include_defs = Set[]
+
       @child_modules = {}
 
       @superclass = toplevel
       @subclasses = Set[]
+      @included_modules = {}
 
       @const_reads = Set[]
       @callsites = Set[]
@@ -19,18 +21,20 @@ module TypeProf::Core
 
       @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
-
-      @singleton_methods = {}
-      @instance_methods = {}
-      @include_module_cpaths = Set[]
     end
 
     attr_reader :cpath
+
     attr_reader :module_decls
     attr_reader :module_defs
+    attr_reader :include_defs
+
     attr_reader :child_modules
+
     attr_reader :superclass
     attr_reader :subclasses
+    attr_reader :included_modules
+
     attr_reader :const_reads
     attr_reader :callsites
     attr_reader :ivar_reads
@@ -38,7 +42,6 @@ module TypeProf::Core
     attr_reader :child_consts
     attr_reader :methods
     attr_reader :ivars
-    attr_reader :include_module_cpaths
 
     def exist?
       !@module_decls.empty? || !@module_defs.empty?
@@ -61,6 +64,14 @@ module TypeProf::Core
       @superclass = dir
     end
 
+    def add_included_module(origin, dir) # for RBS
+      @included_modules[origin] = dir
+    end
+
+    def remove_included_module(origin)
+      @included_modules.delete(origin)
+    end
+
     def on_superclass_updated(genv)
       const = nil
       # TODO: check with RBS's superclass if any
@@ -70,6 +81,9 @@ module TypeProf::Core
           break
         end
       end
+
+      updated = false
+
       # TODO: check circular class/module mix, check inconsistent superclass
       new_superclass_cpath = const ? const.cpath : []
       new_superclass = new_superclass_cpath ? genv.resolve_cpath(new_superclass_cpath) : nil
@@ -77,8 +91,27 @@ module TypeProf::Core
         @superclass.subclasses.delete(self) if @superclass
         @superclass = new_superclass
         @superclass.subclasses << self if @superclass
-        on_ancestors_updated(genv)
+        updated = true
       end
+
+      @include_defs.each do |idef|
+        idef.args.each do |arg|
+          if arg.is_a?(AST::ConstNode) && arg.static_ret
+            new_mod_cpath = arg.static_ret
+            new_mod_cpath = new_mod_cpath ? new_mod_cpath.cpath : nil
+            new_mod = new_mod_cpath ? genv.resolve_cpath(new_mod_cpath) : nil
+            old_mod = @included_modules[arg]
+            if old_mod != new_mod
+              old_mod.subclasses.delete(self) if old_mod
+              old_mod = @included_modules[arg] = new_mod
+              new_mod.subclasses << self if new_mod
+              updated = true
+            end
+          end
+        end
+      end
+
+      on_ancestors_updated(genv) if updated
     end
 
     def on_ancestors_updated(genv)

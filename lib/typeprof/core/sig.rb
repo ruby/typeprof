@@ -67,7 +67,8 @@ module TypeProf::Core
         when RBS::AST::Members::Include
           name = member.name
           mod_cpath = name.namespace.path + [name.name]
-          genv.add_module_include(cpath, mod_cpath)
+          mod = genv.resolve_cpath(mod_cpath)
+          genv.resolve_cpath(cpath).add_included_module(member, mod)
         when RBS::AST::Members::Extend
         when RBS::AST::Members::Public
         when RBS::AST::Members::Private

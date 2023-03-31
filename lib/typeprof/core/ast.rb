@@ -115,12 +115,12 @@ module TypeProf::Core
     def self.create_call_node(raw_node, raw_call, raw_block, lenv)
       if raw_call.type == :FCALL
         case raw_call.children[0]
+        when :include
+          return META_INCLUDE.new(raw_call, lenv)
         when :attr_reader
           return META_ATTR_READER.new(raw_call, lenv)
         when :attr_accessor
           return META_ATTR_ACCESSOR.new(raw_call, lenv)
-        #when :include
-        #  return META_INCLUDE.new(raw_call, lenv)
         end
       end
 

@@ -127,13 +127,6 @@ module TypeProf::Core
       dir
     end
 
-    # module inclusion
-
-    def add_module_include(cpath, mod_cpath)
-      dir = resolve_cpath(cpath)
-      dir.include_module_cpaths << mod_cpath
-    end
-
     # TODO: remove_method_include
 
     # constants

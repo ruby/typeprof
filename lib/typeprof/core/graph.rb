@@ -454,7 +454,7 @@ module TypeProf::Core
       end
       @ret = Vertex.new("ret:#{ mid }", node)
       @diagnostics = []
-      $count += 1
+      #$count += 1
       #p [:add, self, @node.object_id, @node.code_range, @mid]
     end
 
@@ -503,7 +503,7 @@ module TypeProf::Core
 
     def destroy(genv)
       #p [:remove, self]
-      $count -= 1
+      #$count -= 1
       @recv.types.each do |ty, _source|
         ty.base_types(genv).each do |base_ty|
           genv.resolve_cpath(base_ty.cpath).callsites.delete(self)
@@ -545,8 +545,8 @@ module TypeProf::Core
             end
 
             unless singleton # TODO
-              dir.include_module_cpaths.each do |mod_cpath|
-                me = genv.resolve_meth(mod_cpath, singleton, mid)
+              dir.included_modules.each_value do |mod_dir|
+                me = mod_dir.get_method(singleton, mid)
                 if !me.aliases.empty?
                   mid = me.aliases.values.first
                   redo

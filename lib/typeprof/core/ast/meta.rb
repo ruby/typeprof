@@ -1,5 +1,51 @@
 module TypeProf::Core
   class AST
+    class META_INCLUDE < Node
+      def initialize(raw_node, lenv)
+        super
+        _mid, raw_args = raw_node.children
+        @args = raw_args.children.compact.map do |raw_arg|
+          AST.create_node(raw_arg, lenv)
+        end
+        # TODO: error for non-LIT
+        # TODO: fine-grained hover
+      end
+
+      attr_reader :args
+
+      def subnodes
+        h = {}
+        @args.each_with_index do |arg, i|
+          h[i] = arg
+        end
+        h
+      end
+
+      def define0(genv)
+        i = 0
+        dir = genv.resolve_cpath(@lenv.cref.cpath)
+        dir.include_defs << self
+        @args.each do |arg|
+          arg.define(genv)
+          arg.static_ret.const_reads << @lenv.cref.cpath if arg.static_ret
+        end
+      end
+
+      def undefine0(genv)
+        dir = genv.resolve_cpath(@lenv.cref.cpath)
+        dir.include_defs.delete(self)
+        super
+      end
+
+      def install0(genv)
+        Source.new
+      end
+
+      def dump0(dumper)
+        "attr_reader #{ @args.map {|arg| ":#{ arg }" }.join(", ") }"
+      end
+    end
+
     class META_ATTR_READER < Node
       def initialize(raw_node, lenv)
         super
