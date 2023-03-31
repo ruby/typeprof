@@ -62,17 +62,18 @@ module TypeProf::Core
       end
       @genv.define_all
 
-      node.install(@genv)
-      prev_node.uninstall(@genv) if prev_node
-      @genv.run_all
-
-      # OR:
-      # node.install(@genv)
-      # @genv.run_all
-      # if prev_node
-      #   prev_node.uninstall(@genv)
-      #   @genv.run_all
-      # end
+      if true
+        node.install(@genv)
+        prev_node.uninstall(@genv) if prev_node
+        @genv.run_all
+      else
+        node.install(@genv)
+        @genv.run_all
+        if prev_node
+          prev_node.uninstall(@genv)
+          @genv.run_all
+        end
+      end
 
       # invariant validation
       if prev_node
@@ -218,7 +219,7 @@ module TypeProf::Core
             ty.base_types(genv).each do |base_ty|
               dir = genv.resolve_cpath(base_ty.cpath)
               singleton = base_ty.is_a?(Type::Module)
-              while true
+              while dir
                 dir.methods[singleton].each do |mid, me|
                   sig = nil
                   me.decls.each do |mdecl|
