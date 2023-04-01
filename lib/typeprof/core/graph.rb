@@ -192,7 +192,13 @@ module TypeProf::Core
     end
   end
 
-  class NilFilter
+  class Filter
+    def destroyed
+      false
+    end
+  end
+
+  class NilFilter < Filter
     def initialize(genv, node, prev_vtx, allow_nil)
       @node = node
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
@@ -223,7 +229,7 @@ module TypeProf::Core
     end
   end
 
-  class IsAFilter
+  class IsAFilter < Filter
     def initialize(genv, node, prev_vtx, neg, const_read)
       @node = node
       @types = Set[]
@@ -279,7 +285,7 @@ module TypeProf::Core
     end
   end
 
-  class BotFilter
+  class BotFilter < Filter
     def initialize(genv, node, prev_vtx, base_vtx)
       @node = node
       @types = {}
@@ -397,7 +403,7 @@ module TypeProf::Core
       $box_counts[self.class] += 1
     end
 
-    attr_reader :node
+    attr_reader :node, :destroyed
 
     def destroy(genv)
       $box_counts[self.class] -= 1

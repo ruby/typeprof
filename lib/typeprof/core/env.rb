@@ -36,9 +36,10 @@ module TypeProf::Core
 
       @rbs_builder = rbs_builder
 
-      @callsites_by_name = {}
-      @ivreadsites_by_name = {}
+      @run_count = 0
     end
+
+    attr_accessor :run_count
 
     def get_superclass(dir, singleton)
       if dir == @mod_basic_object
@@ -97,12 +98,16 @@ module TypeProf::Core
     end
 
     def run_all
+      run_count = 0
       until @run_queue.empty?
         obj = @run_queue.shift
-        raise unless obj # annotation
         @run_queue_set.delete(obj)
-        obj.run(self)
+        unless obj.destroyed
+          run_count += 1
+          obj.run(self)
+        end
       end
+      @run_count += run_count
     end
 
     # just for validation

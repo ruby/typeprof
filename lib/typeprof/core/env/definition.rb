@@ -80,6 +80,8 @@ module TypeProf::Core
           break
         end
       end
+      # TODO: report if it has multiple inconsistent superclasses:
+      # class C<A;end; class C<B;end # A!=B
 
       updated = false
 
@@ -115,6 +117,7 @@ module TypeProf::Core
         if arg.is_a?(AST::ConstNode) && !all_args.include?(arg)
           old_mod.subclasses.delete(self) if old_mod
           @included_modules.delete(arg)
+          updated = true
         end
       end
 
