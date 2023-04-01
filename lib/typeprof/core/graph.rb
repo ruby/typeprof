@@ -354,8 +354,8 @@ module TypeProf::Core
       @new_callsites = {}
       @diagnostics = []
       @new_diagnostics = []
-      @event_sources = []
-      @new_event_sources = []
+      @depended_method_entities = []
+      @new_depended_method_entities = []
     end
 
     attr_reader :diagnostics
@@ -372,8 +372,8 @@ module TypeProf::Core
       @new_diagnostics << diag
     end
 
-    def add_event_source(event_source)
-      @new_event_sources << event_source
+    def add_depended_method_entities(dir, singleton, mid)
+      @new_depended_method_entities << [dir, singleton, mid]
     end
 
     def reinstall(genv)
@@ -398,15 +398,15 @@ module TypeProf::Core
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
 
-      @event_sources.each do |event_source|
-        event_source.callsites.delete(@target)
+      @depended_method_entities.each do |dir, singleton, mid|
+        dir.remove_depended_method_entity(singleton, mid, @target)
       end
-      @new_event_sources.each do |event_source|
-        event_source.callsites << @target
+      @new_depended_method_entities.each do |dir, singleton, mid|
+        dir.add_depended_method_entity(singleton, mid, @target)
       end
 
-      @event_sources, @new_event_sources = @new_event_sources, @event_sources
-      @new_event_sources.clear
+      @depended_method_entities, @new_depended_method_entities = @new_depended_method_entities, @depended_method_entities
+      @depended_method_entities.clear
     end
   end
 
@@ -512,7 +512,7 @@ module TypeProf::Core
           # TODO: support "| ..."
           me.decls.each do |mdecl|
             # TODO: union type is ok?
-            # TODO: add_event_source for types used to resolve overloads
+            # TODO: add_depended_method_entities for types used to resolve overloads
             mdecl.resolve_overloads(changes, genv, @node, param_map, @a_args, @block, @ret)
           end
         elsif !me.defs.empty?
@@ -548,7 +548,7 @@ module TypeProf::Core
           dir = genv.resolve_cpath(cpath)
           dir.traverse_subclasses do |subclass_dir|
             next if dir == subclass_dir
-            changes.add_event_source(subclass_dir)
+            changes.add_depended_method_entities(subclass_dir, singleton, @mid)
             me = subclass_dir.get_method(singleton, @mid)
             if me && me.exist?
               yield ty, me
@@ -581,7 +581,7 @@ module TypeProf::Core
           found = false
           dir = genv.resolve_cpath(cpath)
           while dir
-            changes.add_event_source(dir) if changes
+            changes.add_depended_method_entities(dir, singleton, mid) if changes
 
             me = dir.get_method(singleton, mid)
             if !me.aliases.empty?
@@ -595,7 +595,7 @@ module TypeProf::Core
 
             unless singleton # TODO
               dir.included_modules.each_value do |mod_dir|
-                changes.add_event_source(mod_dir) if changes
+                changes.add_depended_method_entities(mod_dir, singleton, mid) if changes
                 me = mod_dir.get_method(singleton, mid)
                 if !me.aliases.empty?
                   mid = me.aliases.values.first

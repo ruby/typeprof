@@ -14,7 +14,7 @@ module TypeProf::Core
       @included_modules = {}
 
       @const_reads = Set[]
-      @callsites = Set[]
+      @callsites = { true => {}, false => {} }
       @ivar_reads = Set[]
 
       @consts = {}
@@ -127,7 +127,13 @@ module TypeProf::Core
     def on_ancestors_updated(genv)
       @subclasses.each {|subclass| subclass.on_ancestors_updated(genv) }
       @const_reads.each {|const_read| genv.const_read_changed(const_read) }
-      @callsites.each {|callsite| genv.add_run(callsite) }
+      @callsites.each do |_, callsites|
+        callsites.each_value do |callsites|
+          callsites.each do |callsite|
+            genv.add_run(callsite)
+          end
+        end
+      end
       @ivar_reads.each {|ivar_read| genv.add_run(ivar_read) }
     end
 
@@ -142,8 +148,19 @@ module TypeProf::Core
       end
     end
 
-    def add_run_all_callsites(genv)
-      @callsites.each {|callsite| genv.add_run(callsite) }
+    def add_depended_method_entity(singleton, mid, target)
+      @callsites[singleton] ||= {}
+      @callsites[singleton][mid] ||= Set[]
+      @callsites[singleton][mid] << target
+    end
+
+    def remove_depended_method_entity(singleton, mid, target)
+      @callsites[singleton][mid].delete(target)
+    end
+
+    def add_run_all_callsites(genv, singleton, mid)
+      callsites = @callsites[singleton][mid]
+      callsites.each {|callsite| genv.add_run(callsite) } if callsites
     end
 
     def traverse_subclasses(&blk)
