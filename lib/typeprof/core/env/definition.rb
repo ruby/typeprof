@@ -143,11 +143,7 @@ module TypeProf::Core
     end
 
     def add_run_all_callsites(genv)
-      traverse_subclasses do |subclass_dir|
-        subclass_dir.callsites.each do |callsite|
-          genv.add_run(callsite)
-        end
-      end
+      @callsites.each {|callsite| genv.add_run(callsite) }
     end
 
     def traverse_subclasses(&blk)

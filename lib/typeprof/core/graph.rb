@@ -346,13 +346,16 @@ module TypeProf::Core
   end
 
   class Changes
-    def initialize
+    def initialize(target)
+      @target = target
       @edges = Set[]
       @new_edges = Set[]
       @callsites = {}
       @new_callsites = {}
       @diagnostics = []
       @new_diagnostics = []
+      @event_sources = []
+      @new_event_sources = []
     end
 
     attr_reader :diagnostics
@@ -367,6 +370,10 @@ module TypeProf::Core
 
     def add_diagnostic(diag)
       @new_diagnostics << diag
+    end
+
+    def add_event_source(event_source)
+      @new_event_sources << event_source
     end
 
     def reinstall(genv)
@@ -390,6 +397,16 @@ module TypeProf::Core
 
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
+
+      @event_sources.each do |event_source|
+        event_source.callsites.delete(@target)
+      end
+      @new_event_sources.each do |event_source|
+        event_source.callsites << @target
+      end
+
+      @event_sources, @new_event_sources = @new_event_sources, @event_sources
+      @new_event_sources.clear
     end
   end
 
@@ -397,7 +414,7 @@ module TypeProf::Core
   class Box
     def initialize(node)
       @node = node
-      @changes = Changes.new
+      @changes = Changes.new(self)
       @destroyed = false
       $box_counts[Box] += 1
       $box_counts[self.class] += 1
@@ -481,7 +498,7 @@ module TypeProf::Core
 
     def run0(genv, changes)
       edges = Set[]
-      resolve(genv) do |recv_ty, mid, me, param_map|
+      resolve(genv, changes) do |recv_ty, mid, me, param_map|
         if !me
           # TODO: undefined method error
           cr = @node.mid_code_range || @node
@@ -495,6 +512,7 @@ module TypeProf::Core
           # TODO: support "| ..."
           me.decls.each do |mdecl|
             # TODO: union type is ok?
+            # TODO: add_event_source for types used to resolve overloads
             mdecl.resolve_overloads(changes, genv, @node, param_map, @a_args, @block, @ret)
           end
         elsif !me.defs.empty?
@@ -507,7 +525,7 @@ module TypeProf::Core
         end
       end
       if @subclasses
-        resolve_subclasses(genv) do |recv_ty, me|
+        resolve_subclasses(genv, changes) do |recv_ty, me|
           if !me.defs.empty?
             me.defs.each do |mdef|
               mdef.call(changes, genv, @node, @a_args, @block, @ret)
@@ -515,26 +533,13 @@ module TypeProf::Core
           end
         end
       end
-      @recv.types.each do |ty, _source|
-        ty.base_types(genv).each do |base_ty|
-          genv.resolve_cpath(base_ty.cpath).callsites << self
-        end
-      end
       edges.each do |src, dst|
         changes.add_edge(src, dst)
       end
     end
 
-    def destroy(genv)
-      @recv.types.each do |ty, _source|
-        ty.base_types(genv).each do |base_ty|
-          genv.resolve_cpath(base_ty.cpath).callsites.delete(self)
-        end
-      end
-      super
-    end
-
-    def resolve_subclasses(genv)
+    def resolve_subclasses(genv, changes)
+      # TODO: This does not follow the change of subclass methods
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new
         ty.base_types(genv).each do |base_ty|
@@ -543,6 +548,7 @@ module TypeProf::Core
           dir = genv.resolve_cpath(cpath)
           dir.traverse_subclasses do |subclass_dir|
             next if dir == subclass_dir
+            #changes.add_event_source(subclass_dir)
             me = subclass_dir.get_method(singleton, @mid)
             if me && me.exist?
               yield ty, me
@@ -552,7 +558,7 @@ module TypeProf::Core
       end
     end
 
-    def resolve(genv)
+    def resolve(genv, changes = nil)
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new
         param_map = { __self: Source.new(ty) }
@@ -575,6 +581,8 @@ module TypeProf::Core
           found = false
           dir = genv.resolve_cpath(cpath)
           while dir
+            changes.add_event_source(dir) if changes
+
             me = dir.get_method(singleton, mid)
             if !me.aliases.empty?
               mid = me.aliases.values.first
@@ -587,6 +595,7 @@ module TypeProf::Core
 
             unless singleton # TODO
               dir.included_modules.each_value do |mod_dir|
+                changes.add_event_source(mod_dir) if changes
                 me = mod_dir.get_method(singleton, mid)
                 if !me.aliases.empty?
                   mid = me.aliases.values.first
