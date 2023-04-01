@@ -548,7 +548,7 @@ module TypeProf::Core
           dir = genv.resolve_cpath(cpath)
           dir.traverse_subclasses do |subclass_dir|
             next if dir == subclass_dir
-            #changes.add_event_source(subclass_dir)
+            changes.add_event_source(subclass_dir)
             me = subclass_dir.get_method(singleton, @mid)
             if me && me.exist?
               yield ty, me
