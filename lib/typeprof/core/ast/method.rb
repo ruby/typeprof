@@ -1,8 +1,32 @@
 module TypeProf::Core
   class AST
+    def self.get_rbs_comment_before(pos)
+      tokens = Fiber[:tokens]
+      i = tokens.bsearch_index {|_type, _str, code_range| pos <= code_range.first }
+      if i
+        comments = []
+        while i > 0
+          i -= 1
+          type, str, = tokens[i]
+          case type
+          when :tSP
+            # ignore
+          when :tCOMMENT
+            break unless str.start_with?("#:")
+            comments << str[2..]
+          else
+            break
+          end
+        end
+        RBS::Parser.parse_method_type(comments.reverse.join)
+      end
+    end
+
     class DefNode < Node
       def initialize(raw_node, lenv, singleton, mid, raw_scope)
         super(raw_node, lenv)
+
+        # @rbs = AST.get_rbs_comment_before(code_range.first)
 
         @singleton = singleton
         @mid = mid
