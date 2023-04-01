@@ -2273,7 +2273,7 @@ module TypeProf
       _flag_args_fcall   = flags[ 2] != 0
       _flag_args_vcall   = flags[ 3] != 0
       _flag_args_simple  = flags[ 4] != 0 # unused in TP
-      _flag_blockiseq    = flags[ 5] != 0 # unused in VM :-)
+      flags <<= 1 if RUBY_VERSION >= "3.3" # blockiseq flag was removed in 3.3
       flag_args_kwarg    = flags[ 6] != 0
       flag_args_kw_splat = flags[ 7] != 0
       _flag_tailcall     = flags[ 8] != 0
