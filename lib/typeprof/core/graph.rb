@@ -539,7 +539,7 @@ module TypeProf::Core
     end
 
     def resolve_subclasses(genv, changes)
-      # TODO: This does not follow the change of subclass methods
+      # TODO: This does not follow new subclasses
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new
         ty.base_types(genv).each do |base_ty|
