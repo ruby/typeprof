@@ -25,13 +25,11 @@ module TypeProf::Core
       def attrs = { cname:, toplevel:, cdef: }
 
       def define0(genv)
-        const = BaseConstRead.new(self, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)
-        genv.add_const_read(const)
-        const
+        BaseConstRead.new(self, genv, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)
       end
 
       def undefine0(genv)
-        genv.remove_const_read(@static_ret)
+        @static_ret.destroy(genv)
       end
 
       def dump0(dumper)
@@ -46,11 +44,15 @@ module TypeProf::Core
         @cbase = AST.create_node(cbase_raw, lenv)
       end
 
+      attr_reader :cbase, :cname
+
       def define0(genv)
-        ScopedConstRead.new(self, @cname, @cbase.define(genv))
+        ScopedConstRead.new(self, genv, @cname, @cbase.define(genv))
       end
 
-      attr_reader :cbase, :cname
+      def undefine0(genv)
+        @static_ret.destroy(genv)
+      end
 
       def subnodes = { cbase: }
       def attrs = { cname: }
