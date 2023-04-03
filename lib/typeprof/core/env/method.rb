@@ -32,8 +32,8 @@ module TypeProf::Core
       @aliases[node] = old_mid
     end
 
-    def remove_alias(mid)
-      @aliases.delete(mid)
+    def remove_alias(node)
+      @aliases.delete(node)
     end
 
     def exist?
