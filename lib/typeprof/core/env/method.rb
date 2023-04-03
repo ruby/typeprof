@@ -5,9 +5,10 @@ module TypeProf::Core
       @decls = Set[]
       @defs = Set[]
       @aliases = {}
+      @callsites = Set[]
     end
 
-    attr_reader :decls, :defs, :aliases
+    attr_reader :decls, :defs, :aliases, :callsites
     attr_accessor :builtin
 
     def add_decl(decl)

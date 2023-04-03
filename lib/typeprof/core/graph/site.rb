@@ -26,8 +26,8 @@ module TypeProf::Core
       @new_diagnostics << diag
     end
 
-    def add_depended_method_entities(mod, singleton, mid)
-      @new_depended_method_entities << [mod, singleton, mid]
+    def add_depended_method_entities(me)
+      @new_depended_method_entities << me
     end
 
     def reinstall(genv)
@@ -53,11 +53,11 @@ module TypeProf::Core
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
 
-      @depended_method_entities.each do |mod, singleton, mid|
-        mod.remove_depended_method_entity(singleton, mid, @target)
+      @depended_method_entities.each do |me|
+        me.callsites.delete(@target)
       end
-      @new_depended_method_entities.each do |mod, singleton, mid|
-        mod.add_depended_method_entity(singleton, mid, @target)
+      @new_depended_method_entities.each do |me|
+        me.callsites << @target
       end
 
       @depended_method_entities, @new_depended_method_entities = @new_depended_method_entities, @depended_method_entities
@@ -272,8 +272,8 @@ module TypeProf::Core
           mod = base_ty.mod
           mod.each_descendant do |desc_mod|
             next if mod == desc_mod
-            changes.add_depended_method_entities(desc_mod, singleton, @mid)
             me = desc_mod.get_method(singleton, @mid)
+            changes.add_depended_method_entities(me)
             if me && me.exist?
               yield ty, me
             end
@@ -304,9 +304,8 @@ module TypeProf::Core
           singleton = base_ty.is_a?(Type::Module)
           found = false
           while mod
-            changes.add_depended_method_entities(mod, singleton, mid) if changes
-
             me = mod.get_method(singleton, mid)
+            changes.add_depended_method_entities(me) if changes
             if !me.aliases.empty?
               mid = me.aliases.values.first
               redo
@@ -318,8 +317,8 @@ module TypeProf::Core
 
             unless singleton # TODO
               mod.included_modules.each_value do |inc_mod|
-                changes.add_depended_method_entities(inc_mod, singleton, mid) if changes
                 me = inc_mod.get_method(singleton, mid)
+                changes.add_depended_method_entities(me) if changes
                 if !me.aliases.empty?
                   mid = me.aliases.values.first
                   redo

@@ -21,8 +21,7 @@ module TypeProf::Core
       @ivars = { true => {}, false => {} }
 
       @const_reads = Set[]
-      @callsites = { true => {}, false => {} }
-      @ivar_reads = Set[]
+      @ivar_reads = Set[] # should be handled in @ivars ??
     end
 
     attr_reader :cpath
@@ -161,9 +160,9 @@ module TypeProf::Core
       end
       @child_modules.each {|child_mod| child_mod.on_ancestors_updated(genv, base_mod || self) }
       @const_reads.each {|const_read| genv.add_static_eval_queue(:const_read_changed, const_read) }
-      @callsites.each do |_, callsites|
-        callsites.each_value do |callsites|
-          callsites.each do |callsite|
+      @methods.each do |_, methods|
+        methods.each_value do |me|
+          me.callsites.each do |callsite|
             genv.add_run(callsite)
           end
         end
@@ -171,19 +170,10 @@ module TypeProf::Core
       @ivar_reads.each {|ivar_read| genv.add_run(ivar_read) }
     end
 
-    def add_depended_method_entity(singleton, mid, target)
-      @callsites[singleton] ||= {}
-      @callsites[singleton][mid] ||= Set[]
-      @callsites[singleton][mid] << target
-    end
-
-    def remove_depended_method_entity(singleton, mid, target)
-      @callsites[singleton][mid].delete(target)
-    end
-
     def add_run_all_callsites(genv, singleton, mid)
-      callsites = @callsites[singleton][mid]
-      callsites.each {|callsite| genv.add_run(callsite) } if callsites
+      get_method(singleton, mid).callsites.each do |callsite|
+        genv.add_run(callsite)
+      end
     end
 
     def each_descendant(base_mod = nil, &blk)

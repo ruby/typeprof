@@ -102,8 +102,6 @@ module TypeProf::Core
           raise
         end
       end
-
-      # TODO: check circular inheritance
     end
 
     def add_run(obj)
