@@ -103,6 +103,8 @@ module TypeProf::Core
 
   class Vertex < BasicVertex
     def initialize(show_name, origin)
+      # Note that show_name and origin are just for debug.
+      # When an AST node is reused, the value of the origin will be invalid.
       @show_name = show_name
       case origin
       when AST::Node
@@ -111,12 +113,11 @@ module TypeProf::Core
       else
         raise
       end
-      @origin = origin
       @next_vtxs = Set[]
       super({})
     end
 
-    attr_reader :show_name, :origin, :next_vtxs, :types
+    attr_reader :show_name, :next_vtxs, :types
 
     def on_type_added(genv, src_var, added_types)
       new_added_types = []
