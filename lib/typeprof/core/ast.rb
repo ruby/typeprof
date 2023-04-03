@@ -338,14 +338,17 @@ module TypeProf::Core
       end
 
       def reuse
-        prev_node = @prev_node # annotation
-        if prev_node
-          @lenv = prev_node.lenv
-          @static_ret = prev_node.static_ret
-          @ret = prev_node.ret
-          @method_defs = prev_node.method_defs
-          @sites = prev_node.sites
+        raise unless @prev_node # annotation
+
+        @lenv = @prev_node.lenv
+        @static_ret = @prev_node.static_ret
+        @ret = @prev_node.ret
+        @method_defs = @prev_node.method_defs
+        @method_defs.each do |_cpath, _singleton, _mid, mdef|
+          raise if mdef.node != @prev_node
+          mdef.node = self
         end
+        @sites = @prev_node.sites
 
         subnodes.each_value do |subnode|
           subnode.reuse if subnode

@@ -103,7 +103,9 @@ module TypeProf::Core
       @ret = ret
     end
 
-    attr_reader :node, :f_args, :block, :ret
+    attr_accessor :node
+
+    attr_reader :f_args, :block, :ret
 
     def call(changes, genv, call_node, a_args, block, ret)
       if a_args.size == @f_args.size
