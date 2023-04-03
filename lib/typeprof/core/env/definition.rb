@@ -147,14 +147,8 @@ module TypeProf::Core
       @included_modules.delete_if do |idef, old_mod|
         next if @include_defs.include?(idef)
         new_parent, updated = update_parent(genv, @included_modules[idef], nil, nil)
-        if updated
-          if new_parent
-            @included_modules[idef] = new_parent
-          else
-            @included_modules.delete(idef)
-          end
-          any_updated = true
-        end
+        any_updated ||= updated
+        true
       end
 
       on_ancestors_updated(genv) if any_updated
