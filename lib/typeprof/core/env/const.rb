@@ -18,7 +18,7 @@ module TypeProf::Core
           follower.on_cbase_updated(genv)
         when ConstReadSite, IsAFilter
           genv.add_run(follower)
-        when ModuleDirectory
+        when ModuleEntity
           follower.on_parent_module_changed(genv)
         else
           raise follower.inspect

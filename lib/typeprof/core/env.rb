@@ -32,7 +32,7 @@ module TypeProf::Core
       @run_queue = []
       @run_queue_set = Set[]
 
-      @toplevel = ModuleDirectory.new([], nil)
+      @toplevel = ModuleEntity.new([], nil)
       @toplevel.inner_modules[:Object] = @toplevel
       @mod_basic_object = resolve_cpath([:BasicObject])
       @mod_class = resolve_cpath([:Class])
@@ -150,7 +150,7 @@ module TypeProf::Core
       mod = @toplevel
       raise unless cpath # annotation
       cpath.each do |cname|
-        mod = mod.inner_modules[cname] ||= ModuleDirectory.new(mod.cpath + [cname], @toplevel)
+        mod = mod.inner_modules[cname] ||= ModuleEntity.new(mod.cpath + [cname], @toplevel)
       end
       mod
     end

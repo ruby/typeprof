@@ -1,5 +1,5 @@
 module TypeProf::Core
-  class ModuleDirectory
+  class ModuleEntity
     def initialize(cpath, toplevel)
       @cpath = cpath
 
