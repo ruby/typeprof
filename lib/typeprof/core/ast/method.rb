@@ -57,15 +57,25 @@ module TypeProf::Core
 
       attr_reader :singleton, :mid, :tbl, :args, :body
 
-      def subnodes = @reused ? {} : { body: }
+      def subnodes = { body: }
       def attrs = { singleton:, mid:, tbl:, args: }
-
-      attr_accessor :reused
 
       def define0(genv)
         if @prev_node
-          reuse
-          @prev_node.reused = true
+          # TODO: if possible, replace this node itself with @prev_node
+          @lenv = @prev_node.lenv
+          @static_ret = @prev_node.static_ret
+          @ret = @prev_node.ret
+          @sites = @prev_node.sites
+          @sites.each_value do |sites|
+            sites.each do |site|
+              raise if site.node != @prev_node
+              site.reuse(self)
+            end
+          end
+          @body.copy_code_ranges
+          @body = @prev_node.body
+          @prev_node.instance_variable_set(:@reused, true)
         else
           super
         end

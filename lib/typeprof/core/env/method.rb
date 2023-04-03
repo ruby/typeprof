@@ -33,7 +33,7 @@ module TypeProf::Core
     end
 
     def remove_alias(node)
-      @aliases.delete(node)
+      @aliases.delete(node) || raise
     end
 
     def exist?

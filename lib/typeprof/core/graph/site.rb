@@ -175,8 +175,9 @@ module TypeProf::Core
         end
         changes.add_edge(@ret, ret)
       else
+        meth = call_node.mid_code_range ? :mid_code_range : :code_range
         changes.add_diagnostic(
-          TypeProf::Diagnostic.new(call_node.mid_code_range || call_node, "wrong number of arguments (#{ a_args.size } for #{ @f_args.size })")
+          TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ a_args.size } for #{ @f_args.size })")
         )
       end
     end
@@ -228,9 +229,9 @@ module TypeProf::Core
       resolve(genv, changes) do |recv_ty, mid, me, param_map|
         if !me
           # TODO: undefined method error
-          cr = @node.mid_code_range || @node
+          meth = @node.mid_code_range ? :mid_code_range : :code_range
           changes.add_diagnostic(
-            TypeProf::Diagnostic.new(cr, "undefined method: #{ recv_ty.show }##{ @mid }")
+            TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ recv_ty.show }##{ @mid }")
           )
         elsif me.builtin
           # TODO: block? diagnostics?

@@ -178,12 +178,14 @@ module TypeProf::Core
         @ret = nil
         @sites = {}
         @diagnostics = []
+        @reused = false
       end
 
       attr_reader :lenv, :prev_node, :static_ret, :ret, :sites
 
       def subnodes = {}
       def attrs = {}
+      def code_ranges = {}
 
       def traverse(&blk)
         yield :enter, self
@@ -308,22 +310,13 @@ module TypeProf::Core
         end
       end
 
-      def reuse
-        raise "#{ self.class }" unless @prev_node # annotation
-
-        @lenv = @prev_node.lenv
-        @static_ret = @prev_node.static_ret
-        @ret = @prev_node.ret
-        @sites = @prev_node.sites
-        @sites.each_value do |sites|
-          sites.each do |site|
-            raise if site.node != @prev_node
-            site.reuse(self)
-          end
+      def copy_code_ranges
+        @prev_node.instance_variable_set(:@raw_node, @raw_node)
+        code_ranges.each do |key, cr|
+          @prev_node.instance_variable_set("@#{ key }".to_sym, cr)
         end
-
         subnodes.each_value do |subnode|
-          subnode.reuse if subnode
+          subnode.copy_code_ranges if subnode
         end
       end
 
@@ -355,7 +348,7 @@ module TypeProf::Core
       end
 
       def add_diagnostic(msg)
-        @diagnostics << TypeProf::Diagnostic.new(self, msg)
+        @diagnostics << TypeProf::Diagnostic.new(self, :code_range, msg)
       end
 
       def diagnostics(genv, &blk)

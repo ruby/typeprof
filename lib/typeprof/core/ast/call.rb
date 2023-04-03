@@ -57,7 +57,8 @@ module TypeProf::Core
         end
         h
       end
-      def attrs = { mid:, block_tbl:, block_f_args:, mid_code_range:, yield: }
+      def attrs = { mid:, block_tbl:, block_f_args:, yield: }
+      def code_ranges = { mid_code_range: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")

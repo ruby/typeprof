@@ -1,20 +1,25 @@
 module TypeProf
   class Diagnostic
-    def initialize(code_range, msg)
-      @code_range = code_range.is_a?(TypeProf::CodeRange) ? code_range : code_range.code_range
+    def initialize(node, meth, msg)
+      @node = node
+      @meth = meth
       @msg = msg
       @severity = :error # TODO: keyword argument
       @tags = nil # TODO: keyword argument
     end
 
-    attr_reader :msg, :severity, :code_range
+    attr_reader :msg, :severity
+
+    def code_range
+      @node.send(@meth)
+    end
 
     SEVERITY = { error: 1, warning: 2, info: 3, hint: 4 }
     TAG = { unnecesary: 1, deprecated: 2 }
 
     def to_lsp
       json = {
-        range: @code_range.to_lsp,
+        range: code_range.to_lsp,
         source: "TypeProf",
         message: @msg,
       }
