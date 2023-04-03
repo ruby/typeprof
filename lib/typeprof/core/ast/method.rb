@@ -95,8 +95,8 @@ module TypeProf::Core
             body_ret = Source.new(Type.nil)
           end
           body_ret.add_edge(genv, ret)
-          mdef = MethodDef.new(self, f_args, block, ret)
-          add_method_def(genv, @lenv.cref.cpath, @singleton, @mid, mdef)
+          mdef = MethodDefSite.new(self, @lenv.cref.cpath, @singleton, @mid, f_args, block, ret)
+          add_method_def(genv, mdef)
         end
         Source.new(Type::Symbol.new(@mid))
       end

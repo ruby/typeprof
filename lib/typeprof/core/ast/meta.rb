@@ -82,8 +82,8 @@ module TypeProf::Core
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
           site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
           add_site([:attr_reader, i += 1], site)
-          mdef = MethodDef.new(self, [], nil, site.ret)
-          add_method_def(genv, @lenv.cref.cpath, false, arg, mdef)
+          mdef = MethodDefSite.new(self, @lenv.cref.cpath, false, arg, [], nil, site.ret)
+          add_method_def(genv, mdef)
         end
         Source.new
       end
@@ -135,13 +135,13 @@ module TypeProf::Core
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
           site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
           add_site(i += 1, site)
-          mdef = MethodDef.new(self, [], nil, site.ret)
-          add_method_def(genv, @lenv.cref.cpath, false, arg, mdef)
+          mdef = MethodDefSite.new(self, @lenv.cref.cpath, false, arg, [], nil, site.ret)
+          add_method_def(genv, mdef)
 
           vtx = Vertex.new("attr_writer-arg", self)
           vtx.add_edge(genv, ive.vtx)
-          mdef = MethodDef.new(self, [vtx], nil, vtx)
-          add_method_def(genv, @lenv.cref.cpath, false, "#{ arg }=".to_sym, mdef)
+          mdef = MethodDefSite.new(self, @lenv.cref.cpath, false, "#{ arg }=".to_sym, [vtx], nil, vtx)
+          add_method_def(genv, mdef)
         end
         Source.new
       end

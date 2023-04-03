@@ -211,11 +211,10 @@ module TypeProf::Core
         @method_defs ||= Set[]
       end
 
-      def add_method_def(genv, cpath, singleton, mid, mdef)
-        method_defs << [cpath, singleton, mid, mdef]
-        genv.resolve_method(cpath, singleton, mid).add_def(mdef)
-
-        genv.resolve_cpath(cpath).add_run_all_callsites(genv, singleton, mid)
+      def add_method_def(genv, mdef)
+        method_defs << mdef
+        genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid).add_def(mdef)
+        genv.resolve_cpath(mdef.cpath).add_run_all_callsites(genv, mdef.singleton, mdef.mid)
       end
 
       def sites
@@ -293,10 +292,10 @@ module TypeProf::Core
         unless @reused
           method_defs = @method_defs # annoation
           if method_defs
-            method_defs.each do |cpath_, singleton_, mid_, mdef|
-              genv.resolve_method(cpath_, singleton_, mid_).remove_def(mdef)
+            method_defs.each do |mdef|
+              genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid).remove_def(mdef)
 
-              genv.resolve_cpath(cpath_).add_run_all_callsites(genv, singleton_, mid_)
+              genv.resolve_cpath(mdef.cpath).add_run_all_callsites(genv, mdef.singleton, mdef.mid)
             end
           end
           sites = @sites # annotation
@@ -344,7 +343,7 @@ module TypeProf::Core
         @static_ret = @prev_node.static_ret
         @ret = @prev_node.ret
         @method_defs = @prev_node.method_defs
-        @method_defs.each do |_cpath, _singleton, _mid, mdef|
+        @method_defs.each do |mdef|
           raise if mdef.node != @prev_node
           mdef.node = self
         end

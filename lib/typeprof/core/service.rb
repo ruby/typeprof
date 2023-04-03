@@ -206,9 +206,8 @@ module TypeProf::Core
           end
         else
           if event == :enter && !node.method_defs.empty?
-            node.method_defs.each do |cpath, singleton, mid, mdef|
-              #puts " " * depth + "# #{ d.node.code_range }"
-              hint = "def #{ mid }: " + mdef.show
+            node.method_defs.each do |mdef|
+              hint = "def #{ mdef.mid }: " + mdef.show
               if hint
                 pos = mdef.node.code_range.first
                 yield TypeProf::CodeRange.new(pos, pos.right), hint
@@ -292,8 +291,8 @@ module TypeProf::Core
           end
         else
           if event == :enter && !node.method_defs.empty?
-            node.method_defs.each do |cpath, singleton, mid, mdef|
-              out << "  " * depth + "def #{ singleton ? "self." : "" }#{ mid }: " + mdef.show
+            node.method_defs.each do |mdef|
+              out << "  " * depth + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show
             end
           end
         end

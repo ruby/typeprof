@@ -191,7 +191,7 @@ foo(1, 2)
             message: "wrong number of arguments (2 for 1)",
             range: {
               start: { line: 4, character: 0 },
-              end: { line: 4, character: 9 },
+              end: { line: 4, character: 3 },
             },
             severity: 1,
             source: "TypeProf",

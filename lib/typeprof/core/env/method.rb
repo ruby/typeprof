@@ -94,9 +94,12 @@ module TypeProf::Core
     end
   end
 
-  class MethodDef
-    def initialize(node, f_args, block, ret)
+  class MethodDefSite < Box
+    def initialize(node, cpath, singleton, mid, f_args, block, ret)
       @node = node
+      @cpath = cpath
+      @singleton = singleton
+      @mid = mid
       raise unless f_args
       @f_args = f_args
       @block = block
@@ -105,7 +108,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :f_args, :block, :ret
+    attr_reader :cpath, :singleton, :mid, :f_args, :block, :ret
 
     def call(changes, genv, call_node, a_args, block, ret)
       if a_args.size == @f_args.size
