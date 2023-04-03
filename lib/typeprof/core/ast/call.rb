@@ -142,6 +142,8 @@ module TypeProf::Core
               node.diff(prev_node)
               return unless node.prev_node
             end
+          else
+            return
           end
         else
           return if @positional_args != prev_node.positional_args

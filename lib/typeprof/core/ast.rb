@@ -338,7 +338,7 @@ module TypeProf::Core
       end
 
       def reuse
-        raise unless @prev_node # annotation
+        raise "#{ self.class }" unless @prev_node # annotation
 
         @lenv = @prev_node.lenv
         @static_ret = @prev_node.static_ret
