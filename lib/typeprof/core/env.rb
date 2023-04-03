@@ -136,23 +136,6 @@ module TypeProf::Core
       dir.consts[cpath[-1]] ||= VertexEntity.new
     end
 
-    def add_const_read(const_read)
-      cref = const_read.cref
-      while cref
-        resolve_cpath(cref.cpath).const_reads << const_read
-        cref = cref.outer
-      end
-      @const_read_changed << const_read
-    end
-
-    def remove_const_read(const_read)
-      cref = const_read.cref
-      while cref
-        resolve_cpath(cref.cpath).const_reads.delete(const_read)
-        cref = cref.outer
-      end
-    end
-
     def resolve_method(cpath, singleton, mid)
       dir = resolve_cpath(cpath)
       dir.get_method(singleton, mid)

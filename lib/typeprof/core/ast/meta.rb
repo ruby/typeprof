@@ -26,7 +26,7 @@ module TypeProf::Core
         dir.include_defs << self
         @args.each do |arg|
           arg.define(genv)
-          arg.static_ret.const_reads << @lenv.cref.cpath if arg.static_ret
+          arg.static_ret.followers << dir if arg.static_ret
         end
       end
 

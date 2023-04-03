@@ -3,25 +3,25 @@ module TypeProf::Core
     def initialize(node, cname)
       @node = node
       @cname = cname
-      @const_reads = Set[]
+      @followers = Set[]
       @cpath = nil
       @cdef = nil
       @event_sources = []
     end
 
-    attr_reader :cref, :cname, :cpath, :cdef, :const_reads
+    attr_reader :cref, :cname, :cpath, :cdef, :followers
 
     def propagate(genv)
-      @const_reads.dup.each do |const_read|
-        case const_read
+      @followers.dup.each do |follower|
+        case follower
         when ScopedConstRead
-          const_read.on_cbase_updated(genv)
-        when Array
-          genv.resolve_cpath(const_read).on_superclass_updated(genv)
+          follower.on_cbase_updated(genv)
+        when ModuleDirectory
+          follower.on_superclass_updated(genv)
         when ConstReadSite, IsAFilter
-          genv.add_run(const_read)
+          genv.add_run(follower)
         else
-          raise const_read.inspect
+          raise follower.inspect
         end
       end
     end
@@ -89,7 +89,7 @@ module TypeProf::Core
       super(node, cname)
       # Note: cbase may be nil when the cbase is a dynamic expression (such as lvar::CONST)
       @cbase = cbase
-      @cbase.const_reads << self if @cbase
+      @cbase.followers << self if @cbase
     end
 
     attr_reader :cbase

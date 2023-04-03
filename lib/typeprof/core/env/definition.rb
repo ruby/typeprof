@@ -13,13 +13,13 @@ module TypeProf::Core
       @subclasses = Set[]
       @included_modules = {}
 
-      @const_reads = Set[]
-      @callsites = { true => {}, false => {} }
-      @ivar_reads = Set[]
-
       @consts = {}
       @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
+
+      @const_reads = Set[]
+      @callsites = { true => {}, false => {} }
+      @ivar_reads = Set[]
     end
 
     attr_reader :cpath
@@ -34,13 +34,13 @@ module TypeProf::Core
     attr_reader :subclasses
     attr_reader :included_modules
 
-    attr_reader :const_reads
-    attr_reader :callsites
-    attr_reader :ivar_reads
-
     attr_reader :consts
     attr_reader :methods
     attr_reader :ivars
+
+    attr_reader :const_reads
+    attr_reader :callsites
+    attr_reader :ivar_reads
 
     def exist?
       !@module_decls.empty? || !@module_defs.empty?

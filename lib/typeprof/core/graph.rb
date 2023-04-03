@@ -237,7 +237,7 @@ module TypeProf::Core
       prev_vtx.add_edge(genv, self)
       @neg = neg
       @const_read = const_read
-      @const_read.const_reads << self
+      @const_read.followers << self
     end
 
     attr_reader :node, :next_vtx
@@ -457,7 +457,7 @@ module TypeProf::Core
     def initialize(node, genv, const_read)
       super(node)
       @const_read = const_read
-      const_read.const_reads << self
+      const_read.followers << self
       @ret = Vertex.new("cname", node)
       genv.add_run(self)
     end
