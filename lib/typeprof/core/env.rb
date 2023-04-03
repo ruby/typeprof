@@ -58,17 +58,17 @@ module TypeProf::Core
 
     attr_accessor :run_count
 
-    def get_superclass(dir, singleton)
-      if dir == @mod_basic_object
+    def get_superclass(mod, singleton)
+      if mod == @mod_basic_object
         if singleton
           return [@mod_class, false]
         else
           return nil
         end
       else
-        dir = dir.superclass
-        if dir
-          return [dir, singleton]
+        mod = mod.superclass
+        if mod
+          return [mod, singleton]
         else
           return [@mod_module, false]
         end
@@ -147,24 +147,24 @@ module TypeProf::Core
     # classes and modules
 
     def resolve_cpath(cpath)
-      dir = @toplevel
+      mod = @toplevel
       raise unless cpath # annotation
       cpath.each do |cname|
-        dir = dir.inner_modules[cname] ||= ModuleDirectory.new(dir.cpath + [cname], @toplevel)
+        mod = mod.inner_modules[cname] ||= ModuleDirectory.new(mod.cpath + [cname], @toplevel)
       end
-      dir
+      mod
     end
 
     # constants
 
     def resolve_const(cpath)
-      dir = resolve_cpath(cpath[0..-2])
-      dir.consts[cpath[-1]] ||= VertexEntity.new
+      mod = resolve_cpath(cpath[0..-2])
+      mod.consts[cpath[-1]] ||= VertexEntity.new
     end
 
     def resolve_method(cpath, singleton, mid)
-      dir = resolve_cpath(cpath)
-      dir.get_method(singleton, mid)
+      mod = resolve_cpath(cpath)
+      mod.get_method(singleton, mid)
     end
 
     def resolve_gvar(name)
@@ -173,16 +173,16 @@ module TypeProf::Core
 
     def resolve_ivar(cpath, singleton, name)
       # TODO: include はあとで考える
-      dir = resolve_cpath(cpath)
-      dir.get_ivar(singleton, name)
+      mod = resolve_cpath(cpath)
+      mod.get_ivar(singleton, name)
     end
 
     def subclass?(cpath1, cpath2)
-      dir = resolve_cpath(cpath1)
+      mod = resolve_cpath(cpath1)
       while true
-        return true if dir.cpath == cpath2
-        break if dir.cpath == [:BasicObject]
-        dir = dir.superclass
+        return true if mod.cpath == cpath2
+        break if mod.cpath == [:BasicObject]
+        mod = mod.superclass
       end
       return false
     end

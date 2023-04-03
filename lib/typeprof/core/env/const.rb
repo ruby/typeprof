@@ -27,8 +27,8 @@ module TypeProf::Core
     end
 
     def destroy(genv)
-      @event_sources.each do |dir|
-        dir.const_reads.delete(self)
+      @event_sources.each do |mod|
+        mod.const_reads.delete(self)
       end
       @event_sources.clear
     end
@@ -39,24 +39,24 @@ module TypeProf::Core
       first = true
       while cref
         scope = cref.cpath
-        dir = genv.resolve_cpath(scope)
+        mod = genv.resolve_cpath(scope)
         while true
-          @event_sources << dir
-          dir.const_reads << self
-          mm = genv.resolve_cpath(dir.cpath + [@cname]) # TODO
-          if mm.exist?
-            cpath = dir.cpath + [@cname]
-            return [cpath, dir.consts[@cname]]
+          @event_sources << mod
+          mod.const_reads << self
+          inner_mod = genv.resolve_cpath(mod.cpath + [@cname]) # TODO
+          if inner_mod.exist?
+            cpath = mod.cpath + [@cname]
+            return [cpath, mod.consts[@cname]]
           end
-          if dir.consts[@cname] && dir.consts[@cname].exist?
-            return [nil, dir.consts[@cname]]
+          if mod.consts[@cname] && mod.consts[@cname].exist?
+            return [nil, mod.consts[@cname]]
           end
           # TODO: include
           break unless first
-          break unless dir.superclass
-          break if dir.cpath == [:BasicObject]
-          dir = dir.superclass
-          break if dir.cpath == [] && break_object
+          break unless mod.superclass
+          break if mod.cpath == [:BasicObject]
+          mod = mod.superclass
+          break if mod.cpath == [] && break_object
         end
         first = false
         cref = cref.outer

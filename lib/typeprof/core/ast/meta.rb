@@ -22,22 +22,22 @@ module TypeProf::Core
       end
 
       def define0(genv)
-        dir = genv.resolve_cpath(@lenv.cref.cpath)
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
         @args.each do |arg|
           arg.define(genv)
           if arg.static_ret
-            arg.static_ret.followers << dir
-            dir.add_include_def(genv, arg)
+            arg.static_ret.followers << mod
+            mod.add_include_def(genv, arg)
           end
         end
         genv.add_static_eval_queue(:parent_modules_changed, @lenv.cref.cpath)
       end
 
       def undefine0(genv)
-        dir = genv.resolve_cpath(@lenv.cref.cpath)
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
         @args.each do |arg|
           if arg.static_ret
-            dir.remove_include_def(genv, arg)
+            mod.remove_include_def(genv, arg)
           end
           arg.undefine(genv)
         end
@@ -115,16 +115,16 @@ module TypeProf::Core
 
       def define0(genv)
         @args.map do |arg|
-          dir = genv.resolve_ivar(lenv.cref.cpath, false, "@#{ arg }".to_sym)
-          dir.defs << self
-          dir
+          mod = genv.resolve_ivar(lenv.cref.cpath, false, "@#{ arg }".to_sym)
+          mod.defs << self
+          mod
         end
       end
 
       def undefine0(genv)
         @args.each do |arg|
-          dir = genv.resolve_ivar(lenv.cref.cpath, false, @var)
-          dir.defs.delete(self)
+          mod = genv.resolve_ivar(lenv.cref.cpath, false, @var)
+          mod.defs.delete(self)
         end
       end
 

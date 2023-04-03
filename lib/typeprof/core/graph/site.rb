@@ -26,8 +26,8 @@ module TypeProf::Core
       @new_diagnostics << diag
     end
 
-    def add_depended_method_entities(dir, singleton, mid)
-      @new_depended_method_entities << [dir, singleton, mid]
+    def add_depended_method_entities(mod, singleton, mid)
+      @new_depended_method_entities << [mod, singleton, mid]
     end
 
     def reinstall(genv)
@@ -53,11 +53,11 @@ module TypeProf::Core
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
 
-      @depended_method_entities.each do |dir, singleton, mid|
-        dir.remove_depended_method_entity(singleton, mid, @target)
+      @depended_method_entities.each do |mod, singleton, mid|
+        mod.remove_depended_method_entity(singleton, mid, @target)
       end
-      @new_depended_method_entities.each do |dir, singleton, mid|
-        dir.add_depended_method_entity(singleton, mid, @target)
+      @new_depended_method_entities.each do |mod, singleton, mid|
+        mod.add_depended_method_entity(singleton, mid, @target)
       end
 
       @depended_method_entities, @new_depended_method_entities = @new_depended_method_entities, @depended_method_entities
@@ -270,11 +270,11 @@ module TypeProf::Core
         ty.base_types(genv).each do |base_ty|
           cpath = base_ty.cpath
           singleton = base_ty.is_a?(Type::Module)
-          dir = genv.resolve_cpath(cpath)
-          dir.traverse_subclasses do |subclass_dir|
-            next if dir == subclass_dir
-            changes.add_depended_method_entities(subclass_dir, singleton, @mid)
-            me = subclass_dir.get_method(singleton, @mid)
+          mod = genv.resolve_cpath(cpath)
+          mod.traverse_subclasses do |subclass_mod|
+            next if mod == subclass_mod
+            changes.add_depended_method_entities(subclass_mod, singleton, @mid)
+            me = subclass_mod.get_method(singleton, @mid)
             if me && me.exist?
               yield ty, me
             end
@@ -304,11 +304,11 @@ module TypeProf::Core
           cpath = base_ty.cpath
           singleton = base_ty.is_a?(Type::Module)
           found = false
-          dir = genv.resolve_cpath(cpath)
-          while dir
-            changes.add_depended_method_entities(dir, singleton, mid) if changes
+          mod = genv.resolve_cpath(cpath)
+          while mod
+            changes.add_depended_method_entities(mod, singleton, mid) if changes
 
-            me = dir.get_method(singleton, mid)
+            me = mod.get_method(singleton, mid)
             if !me.aliases.empty?
               mid = me.aliases.values.first
               redo
@@ -319,9 +319,9 @@ module TypeProf::Core
             end
 
             unless singleton # TODO
-              dir.included_modules.each_value do |mod_dir|
-                changes.add_depended_method_entities(mod_dir, singleton, mid) if changes
-                me = mod_dir.get_method(singleton, mid)
+              mod.included_modules.each_value do |inc_mod|
+                changes.add_depended_method_entities(inc_mod, singleton, mid) if changes
+                me = inc_mod.get_method(singleton, mid)
                 if !me.aliases.empty?
                   mid = me.aliases.values.first
                   redo
@@ -338,7 +338,7 @@ module TypeProf::Core
             # TODO: included modules
             # TODO: update type params
 
-            dir, singleton = genv.get_superclass(dir, singleton)
+            mod, singleton = genv.get_superclass(mod, singleton)
           end
           if found
             yield ty, @mid, me, param_map
@@ -393,16 +393,16 @@ module TypeProf::Core
     end
 
     def run0(genv, changes)
-      dir = genv.resolve_cpath(@cpath)
+      mod = genv.resolve_cpath(@cpath)
       singleton = @singleton
-      cur_ive = dir.get_ivar(singleton, @name)
+      cur_ive = mod.get_ivar(singleton, @name)
       target_vtx = nil
-      while dir
-        ive = dir.get_ivar(singleton, @name)
+      while mod
+        ive = mod.get_ivar(singleton, @name)
         if ive.exist?
           target_vtx = ive.vtx
         end
-        dir, singleton = genv.get_superclass(dir, singleton)
+        mod, singleton = genv.get_superclass(mod, singleton)
       end
       edges = []
       if target_vtx

@@ -49,9 +49,9 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        dir = genv.resolve_gvar(@var)
-        dir.defs << self
-        dir
+        mod = genv.resolve_gvar(@var)
+        mod.defs << self
+        mod
       end
 
       def undefine0(genv)
@@ -129,9 +129,9 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        dir = genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var)
-        dir.defs << self
-        dir
+        mod = genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var)
+        mod.defs << self
+        mod
       end
 
       def undefine0(genv)

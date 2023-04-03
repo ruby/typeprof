@@ -96,9 +96,9 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        dir = genv.resolve_const(@static_cpath)
-        dir.defs << self
-        dir
+        mod = genv.resolve_const(@static_cpath)
+        mod.defs << self
+        mod
       end
 
       def undefine0(genv)

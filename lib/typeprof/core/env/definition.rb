@@ -59,12 +59,12 @@ module TypeProf::Core
       @const_reads.each {|const_read| genv.const_read_changed(const_read) }
     end
 
-    def set_superclass(dir) # for RBS
-      @superclass = dir
+    def set_superclass(mod) # for RBS
+      @superclass = mod
     end
 
-    def add_included_module(origin, dir) # for RBS
-      @included_modules[origin] = dir
+    def add_included_module(origin, mod) # for RBS
+      @included_modules[origin] = mod
     end
 
     def remove_included_module(origin)
@@ -202,9 +202,9 @@ module TypeProf::Core
     end
 
     def get_vertexes(vtxs)
-      @inner_modules.each_value do |dir|
-        next if self.equal?(dir) # for Object
-        dir.get_vertexes(vtxs)
+      @inner_modules.each_value do |mod|
+        next if self.equal?(mod) # for Object
+        mod.get_vertexes(vtxs)
       end
       @consts.each_value do |cdef|
         vtxs << cdef.vtx

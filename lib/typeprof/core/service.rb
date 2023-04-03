@@ -225,10 +225,10 @@ module TypeProf::Core
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
             ty.base_types(genv).each do |base_ty|
-              dir = genv.resolve_cpath(base_ty.cpath)
+              mod = genv.resolve_cpath(base_ty.cpath)
               singleton = base_ty.is_a?(Type::Module)
-              while dir
-                dir.methods[singleton].each do |mid, me|
+              while mod
+                mod.methods[singleton].each do |mid, me|
                   sig = nil
                   me.decls.each do |mdecl|
                     sig = mdecl.rbs_member.overloads.map {|overload| overload.method_type.to_s }.join(" | ")
@@ -240,11 +240,11 @@ module TypeProf::Core
                       break
                     end
                   end
-                  yield mid, "#{ dir.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
+                  yield mid, "#{ mod.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
                 end
                 # TODO: support aliases
                 # TODO: support include module
-                dir, singleton = genv.get_superclass(dir, singleton)
+                mod, singleton = genv.get_superclass(mod, singleton)
               end
             end
           end
