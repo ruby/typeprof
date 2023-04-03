@@ -82,10 +82,6 @@ module TypeProf::Core
 
     attr_reader :rbs_builder
 
-    def inner_modules_changed(cpath)
-      @inner_modules_changed << cpath
-    end
-
     def add_static_eval_queue(change_type, arg)
       @static_eval_queue[change_type] << arg
     end
@@ -104,7 +100,7 @@ module TypeProf::Core
           arg = queue.shift
           case change_type
           when :inner_modules_changed
-            resolve_cpath(arg).on_inner_modules_changed(self)
+            arg.on_inner_modules_changed(self)
           when :const_read_changed
             case arg
             when BaseConstRead

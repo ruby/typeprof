@@ -73,17 +73,19 @@ module TypeProf::Core
 
     def add_module_def(genv, node)
       if @module_defs.empty?
-        genv.add_static_eval_queue(:inner_modules_changed, @cpath[0..-2])
+        outer_mod = genv.resolve_cpath(@cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
       end
       @module_defs << node
-      genv.add_static_eval_queue(:parent_modules_changed, @cpath)
+      genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
     def remove_module_def(genv, node)
       @module_defs.delete(node)
-      genv.add_static_eval_queue(:parent_modules_changed, @cpath)
+      genv.add_static_eval_queue(:parent_modules_changed, self)
       if @module_defs.empty?
-        genv.add_static_eval_queue(:inner_modules_changed, @cpath[0..-2])
+        outer_mod = genv.resolve_cpath(@cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
       end
     end
 
