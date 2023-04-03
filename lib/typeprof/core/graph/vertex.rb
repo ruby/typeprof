@@ -17,7 +17,7 @@ module TypeProf::Core
           optional = true_exist = false_exist = false
           @types.each_key do |ty|
             if ty.is_a?(Type::Instance)
-              case ty.cpath
+              case ty.mod.cpath
               when [:NilClass] then optional = true
               when [:TrueClass] then true_exist = true
               when [:FalseClass] then false_exist = true
@@ -28,8 +28,8 @@ module TypeProf::Core
           types << "bool" if bool
           @types.each do |ty, _source|
             if ty.is_a?(Type::Instance)
-              next if ty.cpath == [:NilClass]
-              next if bool && (ty.cpath == [:TrueClass] || ty.cpath == [:FalseClass])
+              next if ty.mod.cpath == [:NilClass]
+              next if bool && (ty.mod.cpath == [:TrueClass] || ty.mod.cpath == [:FalseClass])
             end
             next if ty == Type::Bot.new
             types << ty.show

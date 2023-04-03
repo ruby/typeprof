@@ -76,7 +76,7 @@ module TypeProf::Core
           # TODO: ユーザ定義 RBS があるときは検証する
 
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self)
+          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
           @body.lenv.locals[:"*ret"] = Vertex.new("method_ret", self)
 
           f_args = []

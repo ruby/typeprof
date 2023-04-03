@@ -72,7 +72,7 @@ module TypeProf::Core
       if @const_read.cpath
         passed_types = []
         @types.each do |ty|
-          if ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.cpath, @const_read.cpath) } != @neg
+          if ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.mod.cpath, @const_read.cpath) } != @neg
             passed_types << ty
           end
         end

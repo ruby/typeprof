@@ -16,21 +16,23 @@ module TypeProf::Core
         cpath = name.namespace.path + [name.name]
         # TODO: decl.type_params
         # TODO: decl.super_class.args
-        genv.resolve_cpath(cpath).module_decls << decl
-        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(cpath)))
+        mod = genv.resolve_cpath(cpath)
+        mod.module_decls << decl
+        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(mod)))
         superclass = decl.super_class
         if superclass
           superclass_cpath = superclass.name.namespace.path + [superclass.name.name]
         else
           superclass_cpath = []
         end
-        genv.resolve_cpath(cpath).set_superclass(genv.resolve_cpath(superclass_cpath))
+        mod.set_superclass(genv.resolve_cpath(superclass_cpath))
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Module
         name = decl.name
         cpath = name.namespace.path + [name.name]
-        genv.resolve_cpath(cpath).module_decls << decl
-        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(cpath)))
+        mod = genv.resolve_cpath(cpath)
+        mod.module_decls << decl
+        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(mod)))
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Constant
         name = decl.name
@@ -123,14 +125,15 @@ module TypeProf::Core
         when [:Set]
           elem = type.args.first
           elem_vtx = type_to_vtx(genv, node, elem, param_map)
-          Source.new(Type::Array.new(nil, elem_vtx, Type::Instance.new([:Set]))).add_edge(genv, vtx)
+          Source.new(Type::Array.new(nil, elem_vtx, genv.set_type)).add_edge(genv, vtx)
         when [:Hash]
           raise if type.args.size != 2
           key_vtx = type_to_vtx(genv, node, type.args[0], param_map)
           val_vtx = type_to_vtx(genv, node, type.args[1], param_map)
           Source.new(Type::Hash.new({}, key_vtx, val_vtx, genv.hash_type)).add_edge(genv, vtx)
         else
-          Source.new(Type::Instance.new(cpath)).add_edge(genv, vtx)
+          mod = genv.resolve_cpath(cpath)
+          Source.new(Type::Instance.new(mod)).add_edge(genv, vtx)
         end
       when RBS::Types::Tuple
         unified_elem = Vertex.new("ary-unified", node)

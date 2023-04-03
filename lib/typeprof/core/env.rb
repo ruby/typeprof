@@ -40,21 +40,26 @@ module TypeProf::Core
 
       @gvars = {}
 
-      @obj_type = Type::Instance.new([:Object])
-      @nil_type = Type::Instance.new([:NilClass])
-      @true_type = Type::Instance.new([:TrueClass])
-      @false_type = Type::Instance.new([:FalseClass])
-      @str_type = Type::Instance.new([:String])
-      @int_type = Type::Instance.new([:Integer])
-      @float_type = Type::Instance.new([:Float])
-      @ary_type = Type::Instance.new([:Array])
-      @hash_type = Type::Instance.new([:Hash])
-      @range_type = Type::Instance.new([:Range])
+      @obj_type = Type::Instance.new(resolve_cpath([:Object]))
+      @nil_type = Type::Instance.new(resolve_cpath([:NilClass]))
+      @true_type = Type::Instance.new(resolve_cpath([:TrueClass]))
+      @false_type = Type::Instance.new(resolve_cpath([:FalseClass]))
+      @str_type = Type::Instance.new(resolve_cpath([:String]))
+      @int_type = Type::Instance.new(resolve_cpath([:Integer]))
+      @float_type = Type::Instance.new(resolve_cpath([:Float]))
+      @ary_type = Type::Instance.new(resolve_cpath([:Array]))
+      @hash_type = Type::Instance.new(resolve_cpath([:Hash]))
+      @range_type = Type::Instance.new(resolve_cpath([:Range]))
+      @proc_type = Type::Instance.new(resolve_cpath([:Proc]))
+      @symbol_type = Type::Instance.new(resolve_cpath([:Symbol]))
+      @set_type = Type::Instance.new(resolve_cpath([:Set]))
+      @regexp_type = Type::Instance.new(resolve_cpath([:Regexp]))
 
       @run_count = 0
     end
 
-    attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type, :ary_type, :hash_type, :range_type
+    attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type
+    attr_reader :ary_type, :hash_type, :range_type, :proc_type, :symbol_type, :set_type, :regexp_type
 
     attr_accessor :run_count
 

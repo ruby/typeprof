@@ -225,7 +225,7 @@ module TypeProf::Core
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
             ty.base_types(genv).each do |base_ty|
-              mod = genv.resolve_cpath(base_ty.cpath)
+              mod = base_ty.mod
               singleton = base_ty.is_a?(Type::Module)
               while mod
                 mod.methods[singleton].each do |mid, me|

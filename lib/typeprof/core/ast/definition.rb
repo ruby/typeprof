@@ -57,10 +57,10 @@ module TypeProf::Core
         @cpath.install(genv)
         if @static_cpath
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self)
+          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
           @body.lenv.locals[:"*ret"] = Vertex.new("module_ret", self)
 
-          val = Source.new(Type::Module.new(@static_cpath))
+          val = Source.new(Type::Module.new(genv.resolve_cpath(@static_cpath)))
           val.add_edge(genv, @static_ret.vtx)
           ret = Vertex.new("module_return", self)
           @body.install(genv).add_edge(genv, ret)

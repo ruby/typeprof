@@ -210,5 +210,9 @@ module TypeProf::Core
         vtxs << cdef.vtx
       end
     end
+
+    def show_cpath
+      @cpath.empty? ? "Object" : @cpath.join("::" )
+    end
   end
 end

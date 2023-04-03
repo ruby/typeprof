@@ -426,7 +426,7 @@ module TypeProf::Core
 
       def install0(genv)
         @tbl.each {|var| @lenv.locals[var] = Source.new(genv.nil_type) }
-        @lenv.locals[:"*self"] = Source.new(lenv.cref.get_self)
+        @lenv.locals[:"*self"] = Source.new(lenv.cref.get_self(genv))
         @lenv.locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
 
         @body.install(genv)
@@ -545,8 +545,8 @@ module TypeProf::Core
       CRef.new(cpath, singleton, self)
     end
 
-    def get_self
-      (@singleton ? Type::Module : Type::Instance).new(@cpath || [])
+    def get_self(genv)
+      (@singleton ? Type::Module : Type::Instance).new(genv.resolve_cpath(@cpath || []))
     end
 
     Toplevel = self.new([], false, nil)

@@ -268,9 +268,8 @@ module TypeProf::Core
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new
         ty.base_types(genv).each do |base_ty|
-          cpath = base_ty.cpath
           singleton = base_ty.is_a?(Type::Module)
-          mod = genv.resolve_cpath(cpath)
+          mod = base_ty.mod
           mod.traverse_subclasses do |subclass_mod|
             next if mod == subclass_mod
             changes.add_depended_method_entities(subclass_mod, singleton, @mid)
@@ -289,7 +288,7 @@ module TypeProf::Core
         param_map = { __self: Source.new(ty) }
         case ty
         when Type::Array
-          case ty.base_types(genv).first.cpath # XXX first?
+          case ty.base_types(genv).first.mod.cpath # XXX first?
           when [:Set]
             param_map[:A] = ty.get_elem(genv)
           when [:Array], [:Enumerator]
@@ -301,10 +300,9 @@ module TypeProf::Core
         end
         mid = @mid
         ty.base_types(genv).each do |base_ty|
-          cpath = base_ty.cpath
+          mod = base_ty.mod
           singleton = base_ty.is_a?(Type::Module)
           found = false
-          mod = genv.resolve_cpath(cpath)
           while mod
             changes.add_depended_method_entities(mod, singleton, mid) if changes
 

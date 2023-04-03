@@ -23,7 +23,7 @@ module TypeProf::Core
         when FalseClass then Source.new(genv.false_type)
         when Integer then Source.new(genv.int_type)
         when Float then Source.new(genv.float_type)
-        when Regexp then Source.new(Type::Instance.new([:Regexp]))
+        when Regexp then Source.new(genv.regexp_type)
         when Symbol
           Source.new(Type::Symbol.new(@lit))
         else
@@ -82,7 +82,7 @@ module TypeProf::Core
         @interpolations.each do |subnode|
           subnode.install(genv)
         end
-        Source.new(Type::Instance.new([:String]))
+        Source.new(genv.str_type)
       end
 
       def diff(prev_node)

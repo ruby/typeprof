@@ -12,15 +12,16 @@ module TypeProf::Core
     class Module < Type
       include StructuralEquality
 
-      def initialize(cpath)
+      def initialize(mod)
+        raise unless mod.is_a?(ModuleEntity)
         # TODO: type_param
-        @cpath = cpath
+        @mod = mod
       end
 
-      attr_reader :cpath
+      attr_reader :mod
 
       def show
-        "singleton(#{ @cpath.empty? ? "Object" : @cpath.join("::" ) })"
+        "singleton(#{ @mod.show_cpath })"
       end
 
       def match?(genv, other)
@@ -31,31 +32,27 @@ module TypeProf::Core
       end
 
       def get_instance_type
-        Instance.new(@cpath)
+        Instance.new(@mod)
       end
     end
 
     class Instance < Type
       include StructuralEquality
 
-      def initialize(cpath)
-        raise unless cpath.is_a?(::Array)
-        @cpath = cpath
+      def initialize(mod)
+        raise unless mod.is_a?(ModuleEntity)
+        @mod = mod
       end
 
-      attr_reader :cpath
-
-      def get_class_type
-        Class.new(:class, @cpath)
-      end
+      attr_reader :mod
 
       def show
-        case @cpath
+        case @mod.cpath
         when [:NilClass] then "nil"
         when [:TrueClass] then "true"
         when [:FalseClass] then "false"
         else
-          "#{ @cpath.empty? ? "Object" : @cpath.join("::" )}"
+          "#{ @mod.show_cpath }"
         end
       end
 
@@ -63,7 +60,7 @@ module TypeProf::Core
         return true if self == other
 
         # TODO: base_type?
-        return Instance === other && genv.subclass?(@cpath, other.cpath)
+        return Instance === other && genv.subclass?(@mod.cpath, other.mod.cpath)
       end
     end
 
@@ -93,7 +90,7 @@ module TypeProf::Core
         if @elems
           "[#{ @elems.map {|e| Type.strip_parens(e.show) }.join(", ") }]"
         else
-          "#{ @base_type.cpath.join("::") }[#{ Type.strip_parens(@unified_elem.show) }]"
+          "#{ @base_type.mod.show_cpath }[#{ Type.strip_parens(@unified_elem.show) }]"
         end
       end
     end
@@ -133,7 +130,7 @@ module TypeProf::Core
       attr_reader :block
 
       def base_types(genv)
-        [Type::Instance.new([:Proc])]
+        [genv.proc_type]
       end
 
       def show
@@ -151,7 +148,7 @@ module TypeProf::Core
       attr_reader :sym
 
       def base_types(genv)
-        [Type::Instance.new([:Symbol])]
+        [genv.symbol_type]
       end
 
       def show
@@ -163,7 +160,7 @@ module TypeProf::Core
       include StructuralEquality
 
       def base_types(genv)
-        [Type::Instance.new([:Object])]
+        [genv.obj_type]
       end
 
       def show

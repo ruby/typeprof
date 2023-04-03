@@ -71,7 +71,7 @@ module TypeProf::Core
         if @block_body
           @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
           @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @block_body.lenv.locals[:"*self"] = Source.new(@block_body.lenv.cref.get_self)
+          @block_body.lenv.locals[:"*self"] = Source.new(@block_body.lenv.cref.get_self(genv))
           @block_body.lenv.locals[:"*block_ret"] = Vertex.new("block_ret", self)
 
           blk_f_args = []
