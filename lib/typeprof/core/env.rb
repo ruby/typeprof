@@ -124,8 +124,8 @@ module TypeProf::Core
     end
 
     # just for validation
-    def get_vertexes_and_boxes(vtxs)
-      @toplevel.get_vertexes_and_boxes(vtxs)
+    def get_vertexes(vtxs)
+      @toplevel.get_vertexes(vtxs)
       @gvars.each_value do |gvar_entity|
         vtxs << gvar_entity.vtx
       end

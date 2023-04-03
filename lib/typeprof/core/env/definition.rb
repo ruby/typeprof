@@ -201,10 +201,10 @@ module TypeProf::Core
       end
     end
 
-    def get_vertexes_and_boxes(vtxs)
+    def get_vertexes(vtxs)
       @inner_modules.each_value do |dir|
         next if self.equal?(dir) # for Object
-        dir.get_vertexes_and_boxes(vtxs)
+        dir.get_vertexes(vtxs)
       end
       @consts.each_value do |cdef|
         vtxs << cdef.vtx

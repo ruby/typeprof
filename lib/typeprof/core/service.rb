@@ -78,12 +78,10 @@ module TypeProf::Core
       # invariant validation
       if prev_node
         live_vtxs = Set[]
-        live_boxes = Set[]
-        node.get_vertexes_and_boxes(live_vtxs, live_boxes)
+        node.get_vertexes(live_vtxs)
 
         dead_vtxs = Set[]
-        dead_boxes = Set[]
-        prev_node.get_vertexes_and_boxes(dead_vtxs, dead_boxes)
+        prev_node.get_vertexes(dead_vtxs)
 
         #dump_graph(path)
         live_vtxs.each do |vtx|
@@ -91,7 +89,7 @@ module TypeProf::Core
         end
 
         global_vtxs = Set[]
-        @genv.get_vertexes_and_boxes(global_vtxs)
+        @genv.get_vertexes(global_vtxs)
 
         global_vtxs.each do |global_vtx|
           next unless global_vtx.is_a?(Vertex)

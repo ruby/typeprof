@@ -374,17 +374,16 @@ module TypeProf::Core
         end
       end
 
-      def get_vertexes_and_boxes(vtxs, boxes)
+      def get_vertexes(vtxs)
         return if @reused
         @sites.each_value do |sites|
           sites.each do |site|
             vtxs << site.ret
-            boxes << site
           end
         end
         vtxs << @ret
         subnodes.each_value do |subnode|
-          subnode.get_vertexes_and_boxes(vtxs, boxes) if subnode
+          subnode.get_vertexes(vtxs) if subnode
         end
       end
 
