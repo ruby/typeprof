@@ -19,7 +19,7 @@ module TypeProf::Core
         when ConstReadSite, IsAFilter
           genv.add_run(follower)
         when ModuleEntity
-          follower.on_parent_module_changed(genv)
+          follower.on_parent_modules_changed(genv)
         else
           raise follower.inspect
         end

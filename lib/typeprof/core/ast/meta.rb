@@ -30,7 +30,6 @@ module TypeProf::Core
             mod.add_include_def(genv, arg)
           end
         end
-        genv.add_static_eval_queue(:parent_modules_changed, @lenv.cref.cpath)
       end
 
       def undefine0(genv)
@@ -41,7 +40,6 @@ module TypeProf::Core
           end
           arg.undefine(genv)
         end
-        genv.add_static_eval_queue(:parent_modules_changed, @lenv.cref.cpath)
         super
       end
 

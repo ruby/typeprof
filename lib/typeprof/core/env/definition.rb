@@ -91,10 +91,12 @@ module TypeProf::Core
 
     def add_include_def(genv, node)
       @include_defs << node
+      genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
     def remove_include_def(genv, node)
       @include_defs.delete(node)
+      genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
     def update_parent(genv, old_parent, const_read, default)
@@ -108,7 +110,7 @@ module TypeProf::Core
       return [new_parent, false]
     end
 
-    def on_parent_module_changed(genv)
+    def on_parent_modules_changed(genv)
       const_read = nil
       # TODO: check with RBS's superclass if any
       @module_defs.each do |mdef|

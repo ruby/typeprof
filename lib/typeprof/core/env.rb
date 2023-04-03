@@ -108,8 +108,10 @@ module TypeProf::Core
             when ScopedConstRead
               arg.on_cbase_updated(self)
             end
-          when :parent_module_changed
-            resolve_cpath(arg).on_parent_module_changed(self)
+          when :parent_modules_changed
+            arg.on_parent_modules_changed(self)
+          else
+            p :c
           end
         end
       end
