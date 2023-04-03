@@ -678,15 +678,15 @@ module TypeProf::Core
 
     def run0(genv, changes)
       dir = genv.resolve_cpath(@cpath)
-      cur_ive = dir.get_ivar(@singleton, @name)
+      singleton = @singleton
+      cur_ive = dir.get_ivar(singleton, @name)
       target_vtx = nil
-      while true
-        ive = dir.get_ivar(@singleton, @name)
+      while dir
+        ive = dir.get_ivar(singleton, @name)
         if ive.exist?
           target_vtx = ive.vtx
         end
-        break if dir.cpath == [:BasicObject]
-        dir = dir.superclass
+        dir, singleton = genv.get_superclass(dir, singleton)
       end
       edges = []
       if target_vtx
