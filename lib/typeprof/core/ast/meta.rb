@@ -25,15 +25,22 @@ module TypeProf::Core
         dir = genv.resolve_cpath(@lenv.cref.cpath)
         @args.each do |arg|
           arg.define(genv)
-          arg.static_ret.followers << dir if arg.static_ret
+          if arg.static_ret
+            arg.static_ret.followers << dir
+            dir.add_include_def(genv, arg)
+          end
         end
-        dir.add_include_def(genv, self)
         genv.add_static_eval_queue(:parent_modules_changed, @lenv.cref.cpath)
       end
 
       def undefine0(genv)
         dir = genv.resolve_cpath(@lenv.cref.cpath)
-        dir.remove_include_def(genv, self)
+        @args.each do |arg|
+          if arg.static_ret
+            dir.remove_include_def(genv, arg)
+          end
+          arg.undefine(genv)
+        end
         genv.add_static_eval_queue(:parent_modules_changed, @lenv.cref.cpath)
         super
       end
