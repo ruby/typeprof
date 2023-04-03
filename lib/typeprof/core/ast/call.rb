@@ -70,7 +70,7 @@ module TypeProf::Core
         end
         if @block_body
           @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
-          @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(Type.nil) }
+          @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(genv.nil_type) }
           @block_body.lenv.locals[:"*self"] = Source.new(@block_body.lenv.cref.get_self)
           @block_body.lenv.locals[:"*block_ret"] = Vertex.new("block_ret", self)
 
@@ -259,7 +259,7 @@ module TypeProf::Core
 
       def install0(genv)
         # completely dummy
-        Source.new(Type.nil)
+        Source.new(genv.nil_type)
       end
 
       def dump0(dumper)

@@ -56,7 +56,7 @@ module TypeProf::Core
       def install0(genv)
         @cpath.install(genv)
         if @static_cpath
-          @tbl.each {|var| @body.lenv.locals[var] = Source.new(Type.nil) }
+          @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self)
           @body.lenv.locals[:"*ret"] = Vertex.new("module_ret", self)
 

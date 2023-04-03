@@ -18,11 +18,11 @@ module TypeProf::Core
 
       def install0(genv)
         case @lit
-        when NilClass then Source.new(Type.nil)
-        when TrueClass then Source.new(Type.true)
-        when FalseClass then Source.new(Type.false)
-        when Integer then Source.new(Type.int)
-        when Float then Source.new(Type.float)
+        when NilClass then Source.new(genv.nil_type)
+        when TrueClass then Source.new(genv.true_type)
+        when FalseClass then Source.new(genv.false_type)
+        when Integer then Source.new(genv.int_type)
+        when Float then Source.new(genv.float_type)
         when Regexp then Source.new(Type::Instance.new([:Regexp]))
         when Symbol
           Source.new(Type::Symbol.new(@lit))
@@ -118,7 +118,7 @@ module TypeProf::Core
         elems = @elems.map {|e| e.install(genv).new_vertex(genv, "ary-elem", self) }
         unified_elem = Vertex.new("ary-elems-unified", self)
         elems.each {|vtx| vtx.add_edge(genv, unified_elem) }
-        Source.new(Type::Array.new(elems, unified_elem, Type.ary))
+        Source.new(Type::Array.new(elems, unified_elem, genv.ary_type))
       end
 
       def diff(prev_node)
@@ -177,7 +177,7 @@ module TypeProf::Core
           v.add_edge(genv, unified_val)
           literal_pairs[key.lit] = v if key.is_a?(LIT) && key.lit.is_a?(Symbol)
         end
-        Source.new(Type::Hash.new(literal_pairs, unified_key, unified_val, Type.hsh))
+        Source.new(Type::Hash.new(literal_pairs, unified_key, unified_val, genv.hash_type))
       end
 
       def diff(prev_node)
@@ -213,7 +213,7 @@ module TypeProf::Core
         elem = Vertex.new("range-elem", self)
         @begin.install(genv).add_edge(genv, elem)
         @end.install(genv).add_edge(genv, elem)
-        Source.new(Type::Array.new(nil, elem, Type.range))
+        Source.new(Type::Array.new(nil, elem, genv.range_type))
       end
 
       def dump0(dumper)

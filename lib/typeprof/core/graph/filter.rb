@@ -15,17 +15,17 @@ module TypeProf::Core
 
     attr_reader :show_name, :node, :next_vtx, :allow_nil
 
-    def filter(types)
-      types.select {|ty| (ty == Type.nil) == @allow_nil }
+    def filter(types, nil_type)
+      types.select {|ty| (ty == nil_type) == @allow_nil }
     end
 
     def on_type_added(genv, src_var, added_types)
-      types = filter(added_types)
+      types = filter(added_types, genv.nil_type)
       @next_vtx.on_type_added(genv, self, types) unless types.empty?
     end
 
     def on_type_removed(genv, src_var, removed_types)
-      types = filter(removed_types)
+      types = filter(removed_types, genv.nil_type)
       @next_vtx.on_type_removed(genv, self, types) unless types.empty?
     end
 
@@ -106,7 +106,7 @@ module TypeProf::Core
     attr_reader :node, :types, :prev_vtx, :next_vtx, :base_vtx
 
     def filter(types)
-      types.select {|ty| (ty == Type.nil) == @allow_nil }
+      types.select {|ty| (ty == genv.nil_type) == @allow_nil }
     end
 
     def on_type_added(genv, src_var, added_types)

@@ -119,7 +119,7 @@ module TypeProf::Core
           raise if type.args.size != 1
           elem = type.args.first
           elem_vtx = type_to_vtx(genv, node, elem, param_map)
-          Source.new(Type::Array.new(nil, elem_vtx, Type.ary)).add_edge(genv, vtx)
+          Source.new(Type::Array.new(nil, elem_vtx, genv.ary_type)).add_edge(genv, vtx)
         when [:Set]
           elem = type.args.first
           elem_vtx = type_to_vtx(genv, node, elem, param_map)
@@ -128,7 +128,7 @@ module TypeProf::Core
           raise if type.args.size != 2
           key_vtx = type_to_vtx(genv, node, type.args[0], param_map)
           val_vtx = type_to_vtx(genv, node, type.args[1], param_map)
-          Source.new(Type::Hash.new({}, key_vtx, val_vtx, Type.hsh)).add_edge(genv, vtx)
+          Source.new(Type::Hash.new({}, key_vtx, val_vtx, genv.hash_type)).add_edge(genv, vtx)
         else
           Source.new(Type::Instance.new(cpath)).add_edge(genv, vtx)
         end
@@ -139,17 +139,17 @@ module TypeProf::Core
           nvtx.add_edge(genv, unified_elem)
           nvtx
         end
-        Source.new(Type::Array.new(elems, unified_elem, Type.ary)).add_edge(genv, vtx)
+        Source.new(Type::Array.new(elems, unified_elem, genv.ary_type)).add_edge(genv, vtx)
       when RBS::Types::Interface
         # TODO...
       when RBS::Types::Bases::Bool
-        Source.new(Type.true, Type.false).add_edge(genv, vtx)
+        Source.new(genv.true_type, genv.false_type).add_edge(genv, vtx)
       when RBS::Types::Bases::Nil
-        Source.new(Type.nil).add_edge(genv, vtx)
+        Source.new(genv.nil_type).add_edge(genv, vtx)
       when RBS::Types::Bases::Self
         param_map[:__self].add_edge(genv, vtx)
       when RBS::Types::Bases::Void
-        Source.new(Type.obj).add_edge(genv, vtx) # TODO
+        Source.new(genv.obj_type).add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Any
         Source.new().add_edge(genv, vtx) # TODO
       when RBS::Types::Bases::Top
@@ -164,15 +164,15 @@ module TypeProf::Core
         end
       when RBS::Types::Optional
         type_to_vtx0(genv, node, type.type, vtx, param_map)
-        Source.new(Type.nil).add_edge(genv, vtx)
+        Source.new(genv.nil_type).add_edge(genv, vtx)
       when RBS::Types::Literal
         ty = case type.literal
         when ::Symbol
           Type::Symbol.new(type.literal)
-        when ::Integer then Type.int
-        when ::String then Type.str
-        when ::TrueClass then Type.true
-        when ::FalseClass then Type.false
+        when ::Integer then genv.int_type
+        when ::String then genv.str_type
+        when ::TrueClass then genv.true_type
+        when ::FalseClass then genv.false_type
         else
           raise "unknown RBS literal: #{ type.literal.inspect }"
         end

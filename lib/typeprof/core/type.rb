@@ -77,9 +77,9 @@ module TypeProf::Core
         @base_type = base_type
       end
 
-      def get_elem(idx = nil)
+      def get_elem(genv, idx = nil)
         if idx && @elems
-          @elems[idx] || Source.new(Type.nil)
+          @elems[idx] || Source.new(genv.nil_type)
         else
           @unified_elem
         end
@@ -170,16 +170,5 @@ module TypeProf::Core
         "bot"
       end
     end
-
-    def self.obj = Type::Instance.new([:Object])
-    def self.nil = Type::Instance.new([:NilClass])
-    def self.true = Type::Instance.new([:TrueClass])
-    def self.false = Type::Instance.new([:FalseClass])
-    def self.str = Type::Instance.new([:String])
-    def self.int = Type::Instance.new([:Integer])
-    def self.float = Type::Instance.new([:Float])
-    def self.ary = Type::Instance.new([:Array])
-    def self.hsh = Type::Instance.new([:Hash])
-    def self.range = Type::Instance.new([:Range])
   end
 end

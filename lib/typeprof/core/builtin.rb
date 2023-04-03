@@ -37,7 +37,7 @@ module TypeProf::Core
           else
             idx = nil
           end
-          changes.add_edge(ty.get_elem(idx), ret)
+          changes.add_edge(ty.get_elem(@genv, idx), ret)
         else
           #puts "??? array_aref"
         end
@@ -52,10 +52,10 @@ module TypeProf::Core
         when Type::Array
           val = a_args[1]
           idx = node.positional_args[0]
-          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(idx.lit)
-            changes.add_edge(val, ty.get_elem(idx.lit))
+          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(@genv, idx.lit)
+            changes.add_edge(val, ty.get_elem(@genv, idx.lit))
           else
-            changes.add_edge(val, ty.get_elem)
+            changes.add_edge(val, ty.get_elem(@genv))
           end
         else
           puts "??? array_aset"

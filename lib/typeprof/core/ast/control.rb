@@ -72,7 +72,7 @@ module TypeProf::Core
             ary[0] = @lenv.get_var(var)
           end
         else
-          then_val = Source.new(Type.nil)
+          then_val = Source.new(genv.nil_type)
         end
         then_val.add_edge(genv, ret)
 
@@ -85,7 +85,7 @@ module TypeProf::Core
             ary[1] = @lenv.get_var(var)
           end
         else
-          else_val = Source.new(Type.nil)
+          else_val = Source.new(genv.nil_type)
         end
         else_val.add_edge(genv, ret)
 
@@ -151,7 +151,7 @@ module TypeProf::Core
           @lenv.set_var(var, old_vtxs[var])
         end
 
-        Source.new(Type.nil)
+        Source.new(genv.nil_type)
       end
 
       def dump0(dumper)
@@ -179,7 +179,7 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        _arg = @arg ? @arg.install(genv) : Source.new(Type.nil)
+        _arg = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
         # TODO: implement!
       end
 
@@ -200,7 +200,7 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        arg = @arg ? @arg.install(genv) : Source.new(Type.nil)
+        arg = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
         arg.add_edge(genv, @lenv.get_var(:"*block_ret"))
         Source.new(Type::Bot.new)
       end
@@ -360,7 +360,7 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        ret = @arg ? @arg.install(genv) : Source.new(Type.nil)
+        ret = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
         ret.add_edge(genv, @lenv.get_var(:"*ret"))
         Source.new(Type::Bot.new)
       end

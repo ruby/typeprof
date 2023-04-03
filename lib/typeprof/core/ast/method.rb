@@ -75,7 +75,7 @@ module TypeProf::Core
         unless @prev_node
           # TODO: ユーザ定義 RBS があるときは検証する
 
-          @tbl.each {|var| @body.lenv.locals[var] = Source.new(Type.nil) }
+          @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self)
           @body.lenv.locals[:"*ret"] = Vertex.new("method_ret", self)
 
@@ -93,7 +93,7 @@ module TypeProf::Core
           if @body
             body_ret = @body.install(genv)
           else
-            body_ret = Source.new(Type.nil)
+            body_ret = Source.new(genv.nil_type)
           end
           body_ret.add_edge(genv, ret)
           mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, block, ret)
@@ -160,7 +160,7 @@ module TypeProf::Core
           genv.resolve_method(@lenv.cref.cpath, false, new_mid).add_alias(self, old_mid)
           genv.resolve_cpath(@lenv.cref.cpath).add_run_all_callsites(genv, false, new_mid)
         end
-        Source.new(Type.nil)
+        Source.new(genv.nil_type)
       end
 
       def uninstall0(genv)

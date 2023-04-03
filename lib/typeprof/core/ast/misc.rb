@@ -27,7 +27,7 @@ module TypeProf::Core
         @stmts.each do |stmt|
           ret = stmt ? stmt.install(genv) : nil
         end
-        ret || Source.new(Type.nil)
+        ret || Source.new(genv.nil_type)
       end
 
       def diff(prev_node)
@@ -100,7 +100,7 @@ module TypeProf::Core
       def subnodes = {} # no arg!
 
       def install0(genv)
-        Source.new(Type.true, Type.false)
+        Source.new(genv.true_type, genv.false_type)
       end
 
       def dump0(dumper)

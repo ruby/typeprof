@@ -20,6 +20,8 @@ module TypeProf::Core
 
   class GlobalEnv
     def initialize(rbs_builder)
+      @rbs_builder = rbs_builder
+
       @static_eval_queue = {
         inner_modules_changed: [],
         const_read_changed: [],
@@ -38,10 +40,21 @@ module TypeProf::Core
 
       @gvars = {}
 
-      @rbs_builder = rbs_builder
+      @obj_type = Type::Instance.new([:Object])
+      @nil_type = Type::Instance.new([:NilClass])
+      @true_type = Type::Instance.new([:TrueClass])
+      @false_type = Type::Instance.new([:FalseClass])
+      @str_type = Type::Instance.new([:String])
+      @int_type = Type::Instance.new([:Integer])
+      @float_type = Type::Instance.new([:Float])
+      @ary_type = Type::Instance.new([:Array])
+      @hash_type = Type::Instance.new([:Hash])
+      @range_type = Type::Instance.new([:Range])
 
       @run_count = 0
     end
+
+    attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type, :ary_type, :hash_type, :range_type
 
     attr_accessor :run_count
 

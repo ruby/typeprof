@@ -425,7 +425,7 @@ module TypeProf::Core
       def attrs = { tbl: }
 
       def install0(genv)
-        @tbl.each {|var| @lenv.locals[var] = Source.new(Type.nil) }
+        @tbl.each {|var| @lenv.locals[var] = Source.new(genv.nil_type) }
         @lenv.locals[:"*self"] = Source.new(lenv.cref.get_self)
         @lenv.locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
 
@@ -447,8 +447,8 @@ module TypeProf::Core
         @code_range
       end
 
-      def install0(_)
-        Source.new(Type.nil)
+      def install0(genv)
+        Source.new(genv.nil_type)
       end
 
       def dump(dumper)

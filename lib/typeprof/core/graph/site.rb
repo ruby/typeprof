@@ -291,9 +291,9 @@ module TypeProf::Core
         when Type::Array
           case ty.base_types(genv).first.cpath # XXX first?
           when [:Set]
-            param_map[:A] = ty.get_elem
+            param_map[:A] = ty.get_elem(genv)
           when [:Array], [:Enumerator]
-            param_map[:Elem] = ty.get_elem
+            param_map[:Elem] = ty.get_elem(genv)
           end
         when Type::Hash
           param_map[:K] = ty.get_key
@@ -441,7 +441,7 @@ module TypeProf::Core
         case ty
         when Type::Array
           @lhss.each_with_index do |lhs, i|
-            edges << [ty.get_elem(i), lhs]
+            edges << [ty.get_elem(genv, i), lhs]
           end
         else
           edges << [Source.new(ty), @lhss[0]]

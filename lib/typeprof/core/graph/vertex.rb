@@ -14,12 +14,23 @@ module TypeProf::Core
           Fiber[:show_rec] << self
           types = []
           bot = @types.include?(Type::Bot.new)
-          optional = @types.include?(Type.nil)
-          bool = @types.include?(Type.true) && @types.include?(Type.false)
+          optional = true_exist = false_exist = false
+          @types.each_key do |ty|
+            if ty.is_a?(Type::Instance)
+              case ty.cpath
+              when [:NilClass] then optional = true
+              when [:TrueClass] then true_exist = true
+              when [:FalseClass] then false_exist = true
+              end
+            end
+          end
+          bool = true_exist && false_exist
           types << "bool" if bool
           @types.each do |ty, _source|
-            next if ty == Type.nil
-            next if bool && (ty == Type.true || ty == Type.false)
+            if ty.is_a?(Type::Instance)
+              next if ty.cpath == [:NilClass]
+              next if bool && (ty.cpath == [:TrueClass] || ty.cpath == [:FalseClass])
+            end
             next if ty == Type::Bot.new
             types << ty.show
           end
