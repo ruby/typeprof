@@ -39,11 +39,7 @@ module TypeProf::Core
             @block_f_args[1] = nil # temporarily delete RubyVM::AST
           end
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
-          locals = lenv.locals.dup
-          @block_tbl.each {|var| locals[var] = Source.new(Type.nil) }
-          locals[:"*self"] = Source.new(ncref.get_self)
-          locals[:"*block_ret"] = Vertex.new("block_ret", self)
-          nlenv = LocalEnv.new(@lenv.path, ncref, locals)
+          nlenv = LocalEnv.new(@lenv.path, ncref, {})
           @block_body = AST.create_node(raw_block_body, nlenv)
         else
           @block_tbl = @block_f_args = @block_body = nil
@@ -73,6 +69,11 @@ module TypeProf::Core
           positional_args = []
         end
         if @block_body
+          @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
+          @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(Type.nil) }
+          @block_body.lenv.locals[:"*self"] = Source.new(@block_body.lenv.cref.get_self)
+          @block_body.lenv.locals[:"*block_ret"] = Vertex.new("block_ret", self)
+
           blk_f_args = []
           if @block_f_args
             @block_f_args[0].times do |i|

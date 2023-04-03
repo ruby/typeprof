@@ -39,11 +39,7 @@ module TypeProf::Core
         @args[2] = nil # temporarily delete OPT_ARG
 
         ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
-        locals = {}
-        @tbl.each {|var| locals[var] = Source.new(Type.nil) }
-        locals[:"*self"] = Source.new(ncref.get_self)
-        locals[:"*ret"] = Vertex.new("method_ret", self)
-        nlenv = LocalEnv.new(@lenv.path, ncref, locals)
+        nlenv = LocalEnv.new(@lenv.path, ncref, {})
         if raw_body
           @body = AST.create_node(raw_body, nlenv)
         else
@@ -78,6 +74,11 @@ module TypeProf::Core
       def install0(genv)
         unless @prev_node
           # TODO: ユーザ定義 RBS があるときは検証する
+
+          @tbl.each {|var| @body.lenv.locals[var] = Source.new(Type.nil) }
+          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self)
+          @body.lenv.locals[:"*ret"] = Vertex.new("method_ret", self)
+
           f_args = []
           block = nil
           if @args

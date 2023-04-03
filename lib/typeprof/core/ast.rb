@@ -9,21 +9,17 @@ module TypeProf::Core
       end
 
       raise unless raw_scope.type == :SCOPE
-      tbl, args, raw_body = raw_scope.children
-      raise unless args == nil
 
-      cref = CRef::Toplevel
-      locals = {}
-      tbl.each {|var| locals[var] = Source.new(Type.nil) }
-      locals[:"*self"] = Source.new(cref.get_self)
-      locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
-      lenv = LocalEnv.new(path, cref, locals)
       Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
         row1, col1, row2, col2 = cr
         code_range = TypeProf::CodeRange[row1, col1, row2, col2]
         [type, str, code_range]
       end.compact.sort_by {|_type, _str, code_range| code_range.first }
-      AST.create_node(raw_body, lenv)
+
+      cref = CRef::Toplevel
+      lenv = LocalEnv.new(path, cref, {})
+
+      ProgramNode.new(raw_scope, lenv)
     end
 
     def self.create_node(raw_node, lenv)
@@ -410,6 +406,34 @@ module TypeProf::Core
 
       def pretty_print_instance_variables
         super - [:@raw_node, :@lenv, :@prev_node]
+      end
+    end
+
+    class ProgramNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+
+        @tbl, args, raw_body = raw_node.children
+        raise unless args == nil
+
+        @body = AST.create_node(raw_body, lenv)
+      end
+
+      attr_reader :tbl, :body
+
+      def subnodes = { body: }
+      def attrs = { tbl: }
+
+      def install0(genv)
+        @tbl.each {|var| @lenv.locals[var] = Source.new(Type.nil) }
+        @lenv.locals[:"*self"] = Source.new(lenv.cref.get_self)
+        @lenv.locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
+
+        @body.install(genv)
+      end
+
+      def dump(dumper)
+        @body.dump(dumper)
       end
     end
 

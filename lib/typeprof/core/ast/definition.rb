@@ -11,25 +11,21 @@ module TypeProf::Core
 
         if @static_cpath
           raise unless raw_scope.type == :SCOPE
-          tbl, args, raw_body = raw_scope.children
+          @tbl, args, raw_body = raw_scope.children
           raise unless args == nil
 
           ncref = CRef.new(@static_cpath, true, lenv.cref)
-          locals = {}
-          tbl.each {|var| locals[var] = Source.new(Type.nil) }
-          locals[:"*self"] = Source.new(ncref.get_self)
-          locals[:"*ret"] = Vertex.new("module_ret", self)
-          nlenv = LocalEnv.new(@lenv.path, ncref, locals)
+          nlenv = LocalEnv.new(@lenv.path, ncref, {})
           @body = AST.create_node(raw_body, nlenv)
         else
           @body = nil
         end
       end
 
-      attr_reader :cpath, :static_cpath, :body
+      attr_reader :tbl, :cpath, :static_cpath, :body
 
       def subnodes = { cpath:, body: }
-      def attrs = { static_cpath: }
+      def attrs = { static_cpath:, tbl: }
 
       def define0(genv)
         @cpath.define(genv)
@@ -60,6 +56,10 @@ module TypeProf::Core
       def install0(genv)
         @cpath.install(genv)
         if @static_cpath
+          @tbl.each {|var| @body.lenv.locals[var] = Source.new(Type.nil) }
+          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self)
+          @body.lenv.locals[:"*ret"] = Vertex.new("module_ret", self)
+
           val = Source.new(Type::Module.new(@static_cpath))
           val.add_edge(genv, @static_ret.vtx)
           ret = Vertex.new("module_return", self)
