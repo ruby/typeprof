@@ -321,7 +321,6 @@ module TypeProf::Core
         @sites = @prev_node.sites
         @sites.each_value do |sites|
           sites.each do |site|
-            next unless site # why is this needed?
             raise if site.node != @prev_node
             site.reuse(self)
           end
@@ -365,13 +364,9 @@ module TypeProf::Core
 
       def diagnostics(genv, &blk)
         @diagnostics.each(&blk)
-        sites = @sites # annotation
-        if sites
-          sites.each_value do |sites|
-            sites.each do |site|
-              next unless site.is_a?(CallSite) # XXX
-              site.diagnostics(genv, &blk)
-            end
+        @sites.each_value do |sites|
+          sites.each do |site|
+            site.diagnostics(genv, &blk)
           end
         end
         subnodes.each_value do |subnode|
@@ -381,13 +376,10 @@ module TypeProf::Core
 
       def get_vertexes_and_boxes(vtxs, boxes)
         return if @reused
-        sites = @sites # annotation
-        if sites
-          sites.each_value do |sites|
-            sites.each do |site|
-              vtxs << site.ret
-              boxes << site
-            end
+        @sites.each_value do |sites|
+          sites.each do |site|
+            vtxs << site.ret
+            boxes << site
           end
         end
         vtxs << @ret

@@ -103,6 +103,11 @@ module TypeProf::Core
       @changes.reinstall(genv)
     end
 
+    def diagnostics(genv, &blk)
+      raise self.to_s if !@changes
+      @changes.diagnostics.each(&blk)
+    end
+
     #@@new_id = 0
 
     def to_s
@@ -135,7 +140,7 @@ module TypeProf::Core
 
   class MethodDefSite < Site
     def initialize(node, genv, cpath, singleton, mid, f_args, block, ret)
-      @node = node
+      super(node)
       @cpath = cpath
       @singleton = singleton
       @mid = mid
@@ -341,15 +346,6 @@ module TypeProf::Core
             yield ty, @mid, nil, param_map
           end
         end
-      end
-    end
-
-    def diagnostics(genv)
-      @changes.diagnostics[0, 3].each do |diag|
-        yield diag
-      end
-      if @changes.diagnostics.size >= 4
-        TypeProf::Diagnostic.new(@node.mid_code_range || @node, "(and #{ @changes.diagnostics.size - 3 } errors omitted)")
       end
     end
 
