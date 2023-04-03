@@ -125,7 +125,7 @@ module TypeProf::Core
 
       any_updated = false
 
-      # TODO: check circular class/module mix, check inconsistent superclass
+      # TODO: report multiple inconsistent superclass
 
       new_superclass, updated = update_parent(genv, @superclass, const_read, [])
       if updated
@@ -146,16 +146,20 @@ module TypeProf::Core
       end
       @included_modules.delete_if do |idef, old_mod|
         next if @include_defs.include?(idef)
-        new_parent, updated = update_parent(genv, @included_modules[idef], nil, nil)
+        _new_parent, updated = update_parent(genv, @included_modules[idef], nil, nil)
         any_updated ||= updated
         true
       end
 
-      on_ancestors_updated(genv) if any_updated
+      on_ancestors_updated(genv, nil) if any_updated
     end
 
-    def on_ancestors_updated(genv)
-      @child_modules.each {|child_mod| child_mod.on_ancestors_updated(genv) }
+    def on_ancestors_updated(genv, base_mod)
+      if base_mod == self
+        # TODO: report circular inheritance
+        return
+      end
+      @child_modules.each {|child_mod| child_mod.on_ancestors_updated(genv, base_mod || self) }
       @const_reads.each {|const_read| genv.add_static_eval_queue(:const_read_changed, const_read) }
       @callsites.each do |_, callsites|
         callsites.each_value do |callsites|
@@ -165,17 +169,6 @@ module TypeProf::Core
         end
       end
       @ivar_reads.each {|ivar_read| genv.add_run(ivar_read) }
-    end
-
-    def each_subclass_of_ivar(singleton, name, &blk)
-      sub_e = @ivars[singleton][name]
-      if sub_e
-        yield sub_e, @cpath
-      else
-        @child_modules.each do |child_mod|
-          child_mod.each_subclass_of_ivar(singleton, name, &blk)
-        end
-      end
     end
 
     def add_depended_method_entity(singleton, mid, target)
@@ -193,10 +186,11 @@ module TypeProf::Core
       callsites.each {|callsite| genv.add_run(callsite) } if callsites
     end
 
-    def each_descendant(&blk)
+    def each_descendant(base_mod = nil, &blk)
+      return if base_mod == self
       yield self
       @child_modules.each do |child_mod|
-        child_mod.each_descendant(&blk)
+        child_mod.each_descendant(base_mod || self, &blk)
       end
     end
 
