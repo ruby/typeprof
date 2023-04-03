@@ -28,11 +28,13 @@ module TypeProf::Core
           arg.static_ret.followers << dir if arg.static_ret
         end
         dir.add_include_def(genv, self)
+        genv.add_static_eval_queue(:parent_modules_changed, @lenv.cref.cpath)
       end
 
       def undefine0(genv)
         dir = genv.resolve_cpath(@lenv.cref.cpath)
         dir.remove_include_def(genv, self)
+        genv.add_static_eval_queue(:parent_modules_changed, @lenv.cref.cpath)
         super
       end
 

@@ -38,6 +38,7 @@ module TypeProf::Core
           if dir.module_defs.empty?
             genv.add_static_eval_queue(:child_modules_changed, @static_cpath[0..-2])
           end
+          genv.add_static_eval_queue(:parent_modules_changed, @static_cpath)
           dir.module_defs << self
           @body.define(genv)
           dir = genv.resolve_const(@static_cpath)
