@@ -35,7 +35,9 @@ module TypeProf::Core
         @cpath.define(genv)
         if @static_cpath
           dir = genv.resolve_cpath(@static_cpath)
-          genv.child_modules_changed(@static_cpath[0..-2]) if dir.module_defs.empty?
+          if dir.module_defs.empty?
+            genv.add_static_eval_queue(:child_modules_changed, @static_cpath[0..-2])
+          end
           dir.module_defs << self
           @body.define(genv)
           dir = genv.resolve_const(@static_cpath)
@@ -54,7 +56,9 @@ module TypeProf::Core
           @body.undefine(genv)
           dir = genv.resolve_cpath(@static_cpath)
           dir.module_defs.delete(self)
-          genv.child_modules_changed(@static_cpath[0..-2]) if dir.module_defs.empty?
+          if dir.module_defs.empty?
+            genv.add_static_eval_queue(:child_modules_changed, @static_cpath[0..-2])
+          end
         end
         @cpath.undefine(genv)
       end

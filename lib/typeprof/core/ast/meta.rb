@@ -23,16 +23,16 @@ module TypeProf::Core
 
       def define0(genv)
         dir = genv.resolve_cpath(@lenv.cref.cpath)
-        dir.include_defs << self
         @args.each do |arg|
           arg.define(genv)
           arg.static_ret.followers << dir if arg.static_ret
         end
+        dir.add_include_def(genv, self)
       end
 
       def undefine0(genv)
         dir = genv.resolve_cpath(@lenv.cref.cpath)
-        dir.include_defs.delete(self)
+        dir.remove_include_def(genv, self)
         super
       end
 

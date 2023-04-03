@@ -20,7 +20,11 @@ module TypeProf::Core
 
   class GlobalEnv
     def initialize(rbs_builder)
-      @child_modules_changed = []
+      @static_eval_queue = {
+        child_modules_changed: [],
+        const_read_changed: [],
+        parent_modules_changed: [],
+      }
       @const_read_changed = []
 
       @run_queue = []
@@ -64,26 +68,35 @@ module TypeProf::Core
       @child_modules_changed << cpath
     end
 
+    def add_static_eval_queue(change_type, arg)
+      @static_eval_queue[change_type] << arg
+    end
+
     def const_read_changed(cpath)
-      @const_read_changed << cpath
+      @static_eval_queue[:const_read_changed] << cpath
     end
 
     def define_all
-      @child_modules_changed.uniq.each do |v|
-        resolve_cpath(v).on_child_modules_updated(self)
-      end
-      @child_modules_changed.clear
-
-      until @const_read_changed.empty?
-        # I wonder if this loop can ever loop infinitely...
-        v = @const_read_changed.shift
-        case v
-        when BaseConstRead
-          v.on_scope_updated(self)
-        when ScopedConstRead
-          v.on_cbase_updated(self)
-        else
-          raise
+      update = true
+      while update
+        update = false
+        @static_eval_queue.each do |change_type, queue|
+          next if queue.empty?
+          update = true
+          arg = queue.shift
+          case change_type
+          when :child_modules_changed
+            resolve_cpath(arg).on_child_modules_changed(self)
+          when :const_read_changed
+            case arg
+            when BaseConstRead
+              arg.on_scope_updated(self)
+            when ScopedConstRead
+              arg.on_cbase_updated(self)
+            end
+          when :parent_module_changed
+            resolve_cpath(arg).on_parent_module_changed(self)
+          end
         end
       end
 

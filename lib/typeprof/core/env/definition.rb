@@ -54,8 +54,8 @@ module TypeProf::Core
       @ivars[singleton][name] ||= VertexEntity.new
     end
 
-    def on_child_modules_updated(genv) # TODO: accept what is a change
-      @subclasses.each {|subclass| subclass.on_child_modules_updated(genv) }
+    def on_child_modules_changed(genv) # TODO: accept what is a change
+      @subclasses.each {|subclass| subclass.on_child_modules_changed(genv) }
       @const_reads.each {|const_read| genv.const_read_changed(const_read) }
     end
 
@@ -71,7 +71,15 @@ module TypeProf::Core
       @included_modules.delete(origin)
     end
 
-    def on_superclass_updated(genv)
+    def add_include_def(genv, node)
+      @include_defs << node
+    end
+
+    def remove_include_def(genv, node)
+      @include_defs.delete(node)
+    end
+
+    def on_parent_module_changed(genv)
       const = nil
       # TODO: check with RBS's superclass if any
       @module_defs.each do |mdef|

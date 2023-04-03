@@ -16,10 +16,10 @@ module TypeProf::Core
         case follower
         when ScopedConstRead
           follower.on_cbase_updated(genv)
-        when ModuleDirectory
-          follower.on_superclass_updated(genv)
         when ConstReadSite, IsAFilter
           genv.add_run(follower)
+        when ModuleDirectory
+          follower.on_parent_module_changed(genv)
         else
           raise follower.inspect
         end
