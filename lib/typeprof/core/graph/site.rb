@@ -270,10 +270,10 @@ module TypeProf::Core
         ty.base_types(genv).each do |base_ty|
           singleton = base_ty.is_a?(Type::Module)
           mod = base_ty.mod
-          mod.traverse_subclasses do |subclass_mod|
-            next if mod == subclass_mod
-            changes.add_depended_method_entities(subclass_mod, singleton, @mid)
-            me = subclass_mod.get_method(singleton, @mid)
+          mod.each_descendant do |desc_mod|
+            next if mod == desc_mod
+            changes.add_depended_method_entities(desc_mod, singleton, @mid)
+            me = desc_mod.get_method(singleton, @mid)
             if me && me.exist?
               yield ty, me
             end

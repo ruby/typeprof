@@ -22,12 +22,7 @@ module TypeProf::Core
     def initialize(rbs_builder)
       @rbs_builder = rbs_builder
 
-      @static_eval_queue = {
-        inner_modules_changed: [],
-        const_read_changed: [],
-        parent_modules_changed: [],
-      }
-      @const_read_changed = []
+      @static_eval_queue = []
 
       @run_queue = []
       @run_queue_set = Set[]
@@ -83,36 +78,28 @@ module TypeProf::Core
     attr_reader :rbs_builder
 
     def add_static_eval_queue(change_type, arg)
-      @static_eval_queue[change_type] << arg
-    end
-
-    def const_read_changed(cpath)
-      @static_eval_queue[:const_read_changed] << cpath
+      @static_eval_queue << [change_type, arg]
     end
 
     def define_all
-      update = true
-      while update
-        update = false
-        @static_eval_queue.each do |change_type, queue|
-          next if queue.empty?
-          update = true
-          arg = queue.shift
-          case change_type
-          when :inner_modules_changed
-            arg.on_inner_modules_changed(self)
-          when :const_read_changed
-            case arg
-            when BaseConstRead
-              arg.on_scope_updated(self)
-            when ScopedConstRead
-              arg.on_cbase_updated(self)
-            end
-          when :parent_modules_changed
-            arg.on_parent_modules_changed(self)
+      until @static_eval_queue.empty?
+        change_type, arg = @static_eval_queue.shift
+        case change_type
+        when :inner_modules_changed
+          arg.on_inner_modules_changed(self)
+        when :const_read_changed
+          case arg
+          when BaseConstRead
+            arg.on_scope_updated(self)
+          when ScopedConstRead
+            arg.on_cbase_updated(self)
           else
-            p :c
+            raise
           end
+        when :parent_modules_changed
+          arg.on_parent_modules_changed(self)
+        else
+          raise
         end
       end
 

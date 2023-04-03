@@ -9,9 +9,12 @@ module TypeProf::Core
 
       @inner_modules = {}
 
+      # parent modules (superclass and all modules that I include)
       @superclass = toplevel
-      @subclasses = Set[]
       @included_modules = {}
+
+      # child modules (subclasses and all modules that include me)
+      @child_modules = Set[]
 
       @consts = {}
       @methods = { true => {}, false => {} }
@@ -31,8 +34,8 @@ module TypeProf::Core
     attr_reader :inner_modules
 
     attr_reader :superclass
-    attr_reader :subclasses
     attr_reader :included_modules
+    attr_reader :child_modules
 
     attr_reader :consts
     attr_reader :methods
@@ -55,8 +58,8 @@ module TypeProf::Core
     end
 
     def on_inner_modules_changed(genv) # TODO: accept what is a change
-      @subclasses.each {|subclass| subclass.on_inner_modules_changed(genv) }
-      @const_reads.each {|const_read| genv.const_read_changed(const_read) }
+      @child_modules.each {|child_mod| child_mod.on_inner_modules_changed(genv) }
+      @const_reads.each {|const_read| genv.add_static_eval_queue(:const_read_changed, const_read) }
     end
 
     def set_superclass(mod) # for RBS
@@ -103,8 +106,8 @@ module TypeProf::Core
       new_parent_cpath = const_read ? const_read.cpath : default
       new_parent = new_parent_cpath ? genv.resolve_cpath(new_parent_cpath) : nil
       if old_parent != new_parent
-        old_parent.subclasses.delete(self) if old_parent
-        new_parent.subclasses << self if new_parent
+        old_parent.child_modules.delete(self) if old_parent
+        new_parent.child_modules << self if new_parent
         return [new_parent, true]
       end
       return [new_parent, false]
@@ -119,8 +122,6 @@ module TypeProf::Core
           break
         end
       end
-      # TODO: report if it has multiple inconsistent superclasses:
-      # class C<A;end; class C<B;end # A!=B
 
       any_updated = false
 
@@ -160,8 +161,8 @@ module TypeProf::Core
     end
 
     def on_ancestors_updated(genv)
-      @subclasses.each {|subclass| subclass.on_ancestors_updated(genv) }
-      @const_reads.each {|const_read| genv.const_read_changed(const_read) }
+      @child_modules.each {|child_mod| child_mod.on_ancestors_updated(genv) }
+      @const_reads.each {|const_read| genv.add_static_eval_queue(:const_read_changed, const_read) }
       @callsites.each do |_, callsites|
         callsites.each_value do |callsites|
           callsites.each do |callsite|
@@ -177,8 +178,8 @@ module TypeProf::Core
       if sub_e
         yield sub_e, @cpath
       else
-        @subclasses.each do |subclass|
-          subclass.each_subclass_of_ivar(singleton, name, &blk)
+        @child_modules.each do |child_mod|
+          child_mod.each_subclass_of_ivar(singleton, name, &blk)
         end
       end
     end
@@ -198,10 +199,10 @@ module TypeProf::Core
       callsites.each {|callsite| genv.add_run(callsite) } if callsites
     end
 
-    def traverse_subclasses(&blk)
+    def each_descendant(&blk)
       yield self
-      @subclasses.each do |subclass|
-        subclass.traverse_subclasses(&blk)
+      @child_modules.each do |child_mod|
+        child_mod.each_descendant(&blk)
       end
     end
 

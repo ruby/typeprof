@@ -69,7 +69,7 @@ module TypeProf::Core
     def initialize(node, genv, cname, cref)
       super(node, cname)
       @cref = cref
-      genv.const_read_changed(self)
+      genv.add_static_eval_queue(:const_read_changed, self)
     end
 
     attr_reader :cref
