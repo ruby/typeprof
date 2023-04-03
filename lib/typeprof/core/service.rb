@@ -152,20 +152,22 @@ module TypeProf::Core
     def definitions(path, pos)
       defs = []
       @text_nodes[path].hover(pos) do |node|
-        _key, site = node.sites.find {|key, site| key.is_a?(Array) && key[0] == :class_new }
-        site ||= node.sites[:main]
-        case site
-        when ConstReadSite
-          if site.const_read && site.const_read.cdef
-            site.const_read.cdef.defs.each do |cdef_node|
-              defs << [cdef_node.lenv.path, cdef_node.code_range]
+        sites = node.sites[:class_new] || node.sites[:main]
+        next unless sites
+        sites.each do |site|
+          case site
+          when ConstReadSite
+            if site.const_read && site.const_read.cdef
+              site.const_read.cdef.defs.each do |cdef_node|
+                defs << [cdef_node.lenv.path, cdef_node.code_range]
+              end
             end
-          end
-        when CallSite
-          site.resolve(genv) do |_ty, mid, me, _param_map|
-            next unless me
-            me.defs.each do |mdef|
-              defs << [mdef.node.lenv.path, mdef.node.code_range]
+          when CallSite
+            site.resolve(genv) do |_ty, mid, me, _param_map|
+              next unless me
+              me.defs.each do |mdef|
+                defs << [mdef.node.lenv.path, mdef.node.code_range]
+              end
             end
           end
         end
@@ -175,20 +177,22 @@ module TypeProf::Core
 
     def hover(path, pos)
       @text_nodes[path].hover(pos) do |node|
-        _key, site = node.sites.find {|key, site| key.is_a?(Array) && key[0] == :class_new }
-        site ||= node.sites[:main]
-        if site.is_a?(CallSite)
-          site.resolve(genv) do |ty, mid, me, _param_map|
-            if me && !me.defs.empty?
-              me.defs.each do |mdef|
-                return "#{ ty.show }##{ mid } : #{ mdef.show }"
+        sites = node.sites[:class_new] || node.sites[:main]
+        if sites
+          sites.each do |site|
+            if site.is_a?(CallSite)
+              site.resolve(genv) do |ty, mid, me, _param_map|
+                if me && !me.defs.empty?
+                  me.defs.each do |mdef|
+                    return "#{ ty.show }##{ mid } : #{ mdef.show }"
+                  end
+                end
               end
+              return "??? failed to hover"
             end
           end
-          return "??? failed to hover"
-        else
-          return node.ret ? node.ret.show : "??? no type ???"
         end
+        return node.ret ? node.ret.show : "??? no type ???"
       end
     end
 
@@ -205,8 +209,8 @@ module TypeProf::Core
             end
           end
         else
-          if event == :enter && !node.method_defs.empty?
-            node.method_defs.each do |mdef|
+          if event == :enter && node.sites[:mdef] && !node.sites[:mdef].empty?
+            node.sites[:mdef].each do |mdef|
               hint = "def #{ mdef.mid }: " + mdef.show
               if hint
                 pos = mdef.node.code_range.first
@@ -290,8 +294,8 @@ module TypeProf::Core
             end
           end
         else
-          if event == :enter && !node.method_defs.empty?
-            node.method_defs.each do |mdef|
+          if event == :enter && node.sites[:mdef] && !node.sites[:mdef].empty?
+            node.sites[:mdef].each do |mdef|
               out << "  " * depth + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show
             end
           end

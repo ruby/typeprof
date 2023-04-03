@@ -41,7 +41,8 @@ module TypeProf::Core
       @new_edges.clear
 
       @callsites.each do |key, callsite|
-        callsite.node.remove_site(genv, key)
+        callsite.destroy(genv)
+        callsite.node.remove_site(key, callsite)
       end
       @new_callsites.each do |key, callsite|
         callsite.node.add_site(key, callsite)
@@ -81,6 +82,10 @@ module TypeProf::Core
       $site_counts[Site] -= 1
       @destroyed = true
       @changes.reinstall(genv) # rollback all changes
+    end
+
+    def reuse(node)
+      @node = node
     end
 
     def on_type_added(genv, src_tyvar, added_types)

@@ -180,12 +180,11 @@ module TypeProf::Core
         @prev_node = nil
         @static_ret = nil
         @ret = nil
-        @method_defs = nil
-        @sites = nil
+        @sites = {}
         @diagnostics = []
       end
 
-      attr_reader :lenv, :prev_node, :static_ret, :ret
+      attr_reader :lenv, :prev_node, :static_ret, :ret, :sites
 
       def subnodes = {}
       def attrs = {}
@@ -207,25 +206,13 @@ module TypeProf::Core
         end
       end
 
-      def method_defs
-        @method_defs ||= Set[]
-      end
-
-      def add_method_def(genv, mdef)
-        method_defs << mdef
-      end
-
-      def sites
-        @sites ||= {}
-      end
-
       def add_site(key, site)
-        raise if sites.include?(key)
-        sites[key] = site
+        raise unless site
+        (@sites[key] ||= Set[]) << site
       end
 
-      def remove_site(genv, key)
-        sites.delete(key).destroy(genv)
+      def remove_site(key, site)
+        @sites[key].delete(site)
       end
 
       def define(genv)
@@ -288,15 +275,8 @@ module TypeProf::Core
           puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
         end
         unless @reused
-          method_defs = @method_defs # annoation
-          if method_defs
-            method_defs.each do |mdef|
-              mdef.destroy(genv)
-            end
-          end
-          sites = @sites # annotation
-          if sites
-            sites.each_value do |site|
+          @sites.each_value do |sites|
+            sites.each do |site|
               site.destroy(genv)
             end
           end
@@ -338,12 +318,14 @@ module TypeProf::Core
         @lenv = @prev_node.lenv
         @static_ret = @prev_node.static_ret
         @ret = @prev_node.ret
-        @method_defs = @prev_node.method_defs
-        @method_defs.each do |mdef|
-          raise if mdef.node != @prev_node
-          mdef.node = self
-        end
         @sites = @prev_node.sites
+        @sites.each_value do |sites|
+          sites.each do |site|
+            next unless site # why is this needed?
+            raise if site.node != @prev_node
+            site.reuse(self)
+          end
+        end
 
         subnodes.each_value do |subnode|
           subnode.reuse if subnode
@@ -385,9 +367,11 @@ module TypeProf::Core
         @diagnostics.each(&blk)
         sites = @sites # annotation
         if sites
-          sites.each_value do |site|
-            next unless site.is_a?(CallSite) # XXX
-            site.diagnostics(genv, &blk)
+          sites.each_value do |sites|
+            sites.each do |site|
+              next unless site.is_a?(CallSite) # XXX
+              site.diagnostics(genv, &blk)
+            end
           end
         end
         subnodes.each_value do |subnode|
@@ -399,9 +383,11 @@ module TypeProf::Core
         return if @reused
         sites = @sites # annotation
         if sites
-          sites.each_value do |site|
-            vtxs << site.ret
-            boxes << site
+          sites.each_value do |sites|
+            sites.each do |site|
+              vtxs << site.ret
+              boxes << site
+            end
           end
         end
         vtxs << @ret

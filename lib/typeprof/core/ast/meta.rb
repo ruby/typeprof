@@ -77,13 +77,12 @@ module TypeProf::Core
       def attrs = { args: }
 
       def install0(genv)
-        i = 0
         @args.each do |arg|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
           site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
-          add_site([:attr_reader, i += 1], site)
+          add_site(:attr_reader, site)
           mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, false, arg, [], nil, site.ret)
-          add_method_def(genv, mdef)
+          add_site(:mdef, mdef)
         end
         Source.new
       end
@@ -136,12 +135,12 @@ module TypeProf::Core
           site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
           add_site(i += 1, site)
           mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, false, arg, [], nil, site.ret)
-          add_method_def(genv, mdef)
+          add_site(:mdef, mdef)
 
           vtx = Vertex.new("attr_writer-arg", self)
           vtx.add_edge(genv, ive.vtx)
           mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, false, "#{ arg }=".to_sym, [vtx], nil, vtx)
-          add_method_def(genv, mdef)
+          add_site(:mdef, mdef)
         end
         Source.new
       end
