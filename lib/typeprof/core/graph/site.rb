@@ -148,8 +148,9 @@ module TypeProf::Core
       @f_args = f_args
       @block = block
       @ret = ret
-      genv.resolve_method(@cpath, @singleton, @mid).add_def(self)
-      genv.resolve_cpath(@cpath).add_run_all_callsites(genv, @singleton, @mid)
+      me = genv.resolve_method(@cpath, @singleton, @mid)
+      me.add_def(self)
+      me.add_run_all_callsites(genv)
     end
 
     attr_accessor :node
@@ -157,8 +158,9 @@ module TypeProf::Core
     attr_reader :cpath, :singleton, :mid, :f_args, :block, :ret
 
     def destroy(genv)
-      genv.resolve_method(@cpath, @singleton, @mid).remove_def(self)
-      genv.resolve_cpath(@cpath).add_run_all_callsites(genv, @singleton, @mid)
+      me = genv.resolve_method(@cpath, @singleton, @mid)
+      me.remove_def(self)
+      me.add_run_all_callsites(genv)
     end
 
     def call(changes, genv, call_node, a_args, block, ret)

@@ -171,9 +171,7 @@ module TypeProf::Core
     end
 
     def add_run_all_callsites(genv, singleton, mid)
-      get_method(singleton, mid).callsites.each do |callsite|
-        genv.add_run(callsite)
-      end
+      get_method(singleton, mid).add_run_all_callsites(genv)
     end
 
     def each_descendant(base_mod = nil, &blk)

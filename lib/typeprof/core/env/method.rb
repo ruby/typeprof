@@ -39,6 +39,12 @@ module TypeProf::Core
     def exist?
       @builtin || !@decls.empty? || !@defs.empty? || !@aliases.empty?
     end
+
+    def add_run_all_callsites(genv)
+      @callsites.each do |callsite|
+        genv.add_run(callsite)
+      end
+    end
   end
 
   class MethodDecl
