@@ -50,13 +50,7 @@ module TypeProf::Core
 
       attr_reader :recv, :mid, :positional_args, :block_tbl, :block_f_args, :block_body, :mid_code_range, :yield
 
-      def subnodes
-        h = { recv:, block_body: }
-        if @positional_args
-          @positional_args.each_with_index {|n, i| h[i] = n }
-        end
-        h
-      end
+      def subnodes = { recv:, block_body:, positional_args: }
       def attrs = { mid:, block_tbl:, block_f_args:, yield: }
       def code_ranges = { mid_code_range: }
 
@@ -113,7 +107,7 @@ module TypeProf::Core
 
       def hover(pos, &blk)
         yield self if @mid_code_range && @mid_code_range.include?(pos)
-        subnodes.each_value do |subnode|
+        each_subnode do |subnode|
           next unless subnode
           subnode.hover(pos, &blk)
         end

@@ -230,32 +230,24 @@ module TypeProf::Core
         super
         raw_pivot, raw_when = raw_node.children
         @pivot = AST.create_node(raw_pivot, lenv)
+        @whens = []
         @clauses = []
         while raw_when && raw_when.type == :WHEN
           raw_vals, raw_clause, raw_when = raw_when.children
-          @clauses << [
-            AST.create_node(raw_vals, lenv),
-            raw_clause ? AST.create_node(raw_clause, lenv) : NilNode.new(code_range, lenv), # TODO: code_range for NilNode
-          ]
+          @whens << AST.create_node(raw_vals, lenv)
+          @clauses << (raw_clause ? AST.create_node(raw_clause, lenv) : NilNode.new(code_range, lenv)) # TODO: code_range for NilNode
         end
         @else_clause = raw_when ? AST.create_node(raw_when, lenv) : NilNode.new(code_range, lenv) # TODO: code_range for NilNode
       end
 
-      attr_reader :pivot, :clauses, :else_clause
+      attr_reader :pivot, :whens, :clauses, :else_clause
 
-      def subnodes
-        h = { pivot:, else_clause: }
-        clauses.each_with_index do |(vals, clause), i|
-          h[i * 2] = vals
-          h[i * 2 + 1] = clause
-        end
-        h
-      end
+      def subnodes = { pivot:, whens:, clauses:, else_clause: }
 
       def install0(genv)
         ret = Vertex.new("case", self)
         @pivot.install(genv)
-        @clauses.each do |vals, clause|
+        @whens.zip(@clauses) do |vals, clause|
           vals.install(genv)
           clause.install(genv).add_edge(genv, ret)
         end
@@ -268,7 +260,7 @@ module TypeProf::Core
           @pivot.diff(prev_node.pivot)
           return unless @pivot.prev_node
 
-          @clauses.zip(prev_node.clauses) do |(vals, clause), (prev_vals, prev_clause)|
+          @whens.zip(@clauses, prev_node.whens, prev_node.clauses) do |vals, clause, prev_vals, prev_clause|
             vals.diff(prev_vals)
             return unless vals.prev_node
             clause.diff(prev_clause)
@@ -288,7 +280,7 @@ module TypeProf::Core
 
       def dump0(dumper)
         s = "case #{ @pivot.dump(dumper) }"
-        @clauses.each do |vals, clause|
+        @whens.zip(@clauses) do |vals, clause|
           s << "\nwhen #{ vals.dump(dumper) }\n"
           s << clause.dump(dumper).gsub(/^/, "  ")
         end

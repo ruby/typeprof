@@ -16,11 +16,7 @@ module TypeProf::Core
 
       attr_reader :stmts
 
-      def subnodes
-        h = {}
-        @stmts.each_with_index {|stmt, i| h[i] = stmt }
-        h
-      end
+      def subnodes = { stmts: }
 
       def install0(genv)
         ret = nil

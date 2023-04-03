@@ -69,13 +69,7 @@ module TypeProf::Core
 
       attr_reader :interpolations, :strs
 
-      def subnodes
-        h = {}
-        @interpolations.each_with_index do |subnode, i|
-          h[i] = subnode
-        end
-        h
-      end
+      def subnodes = { interpolations: }
       def attrs = { strs: }
 
       def install0(genv)
@@ -108,11 +102,7 @@ module TypeProf::Core
 
       attr_reader :elems
 
-      def subnodes
-        h = {}
-        @elems.each_with_index {|elem, i| h[i] = elem }
-        h
-      end
+      def subnodes = { elems: }
 
       def install0(genv)
         elems = @elems.map {|e| e.install(genv).new_vertex(genv, "ary-elem", self) }
@@ -142,12 +132,14 @@ module TypeProf::Core
         cs = raw_node.children
         raise "HASH???" if cs.size != 1
         contents = cs.first
-        @elems = {}
+        @keys = []
+        @vals = []
         if contents
           case contents.type
           when :LIST
             cs.first.children.compact.each_slice(2) do |key, val|
-              @elems[AST.create_node(key, lenv)] = AST.create_node(val, lenv)
+              @keys << AST.create_node(key, lenv)
+              @vals << AST.create_node(val, lenv)
             end
           else
              raise "not supported hash: #{ contents.type }"
@@ -155,22 +147,15 @@ module TypeProf::Core
         end
       end
 
-      attr_reader :elems
+      attr_reader :keys, :vals
 
-      def subnodes
-        h = {}
-        @elems.each_with_index do |(key, val), i|
-          h[i * 2] = key
-          h[i * 2 + 1] = val
-        end
-        h
-      end
+      def subnodes = { keys:, vals: }
 
       def install0(genv)
         unified_key = Vertex.new("hash-keys-unified", self)
         unified_val = Vertex.new("hash-vals-unified", self)
         literal_pairs = {}
-        @elems.each do |key, val|
+        @keys.zip(@vals) do |key, val|
           k = key.install(genv).new_vertex(genv, "hash-key", self)
           v = val.install(genv).new_vertex(genv, "hash-val", self)
           k.add_edge(genv, unified_key)
@@ -181,8 +166,8 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(HASH) && @elems.size == prev_node.elems.size
-          @elems.zip(prev_node.elems) do |(key, val), (prev_key, prev_val)|
+        if prev_node.is_a?(HASH) && @keys.size == prev_node.keys.size
+          @keys.zip(@vals, prev_node.keys, prev_node.vals) do |key, val, prev_key, prev_val|
             key.diff(prev_key)
             return unless key.prev_node
             val.diff(prev_val)
@@ -193,7 +178,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        "{ #{ @elems.map {|key, val| key.dump(dumper) + " => " + val.dump(dumper) }.join(", ") } }"
+        "{ #{ @keys.zip(@vals).map {|key, val| key.dump(dumper) + " => " + val.dump(dumper) }.join(", ") } }"
       end
     end
 

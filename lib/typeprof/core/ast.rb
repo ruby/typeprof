@@ -187,10 +187,24 @@ module TypeProf::Core
       def attrs = {}
       def code_ranges = {}
 
+      def each_subnode
+        subnodes.each_value do |subnode|
+          next unless subnode
+          case subnode
+          when AST::Node
+            yield subnode
+          when Array
+            subnode.each {|n| yield n }
+          else
+            raise subnode.class.to_s
+          end
+        end
+      end
+
       def traverse(&blk)
         yield :enter, self
-        subnodes.each_value do |subnode|
-          subnode.traverse(&blk) if subnode
+        each_subnode do |subnode|
+          subnode.traverse(&blk)
         end
         yield :leave, self
       end
@@ -226,8 +240,8 @@ module TypeProf::Core
       end
 
       def define0(genv)
-        subnodes.each_value do |subnode|
-          subnode.define(genv) if subnode
+        each_subnode do |subnode|
+          subnode.define(genv)
         end
         return nil
       end
@@ -245,8 +259,8 @@ module TypeProf::Core
 
       def undefine0(genv)
         unless @reused
-          subnodes.each_value do |subnode|
-            subnode.undefine(genv) if subnode
+          each_subnode do |subnode|
+            subnode.undefine(genv)
           end
         end
       end
@@ -286,8 +300,8 @@ module TypeProf::Core
       end
 
       def uninstall0(genv)
-        subnodes.each_value do |subnode|
-          subnode.uninstall(genv) if subnode
+        each_subnode do |subnode|
+          subnode.uninstall(genv)
         end
       end
 
@@ -300,8 +314,14 @@ module TypeProf::Core
             next if key == :dummy_rhs
             prev_subnode = s2[key]
             if subnode && prev_subnode
-              subnode.diff(prev_subnode)
-              return unless subnode.prev_node
+              if subnode.is_a?(AST::Node)
+                subnode = [subnode]
+                prev_subnode = [prev_subnode]
+              end
+              subnode.zip(prev_subnode) do |subnode0, prev_subnode0|
+                subnode0.diff(prev_subnode0)
+                return unless subnode0.prev_node
+              end
             else
               return if subnode != prev_subnode
             end
@@ -315,15 +335,14 @@ module TypeProf::Core
         code_ranges.each do |key, cr|
           @prev_node.instance_variable_set("@#{ key }".to_sym, cr)
         end
-        subnodes.each_value do |subnode|
-          subnode.copy_code_ranges if subnode
+        each_subnode do |subnode|
+          subnode.copy_code_ranges
         end
       end
 
       def hover(pos, &blk)
         if code_range.include?(pos)
-          subnodes.each_value do |subnode|
-            next unless subnode
+          each_subnode do |subnode|
             subnode.hover(pos, &blk)
           end
           yield self
@@ -358,8 +377,8 @@ module TypeProf::Core
             site.diagnostics(genv, &blk)
           end
         end
-        subnodes.each_value do |subnode|
-          subnode.diagnostics(genv, &blk) if subnode
+        each_subnode do |subnode|
+          subnode.diagnostics(genv, &blk)
         end
       end
 
@@ -371,8 +390,8 @@ module TypeProf::Core
           end
         end
         vtxs << @ret
-        subnodes.each_value do |subnode|
-          subnode.get_vertexes(vtxs) if subnode
+        each_subnode do |subnode|
+          subnode.get_vertexes(vtxs)
         end
       end
 
@@ -384,15 +403,18 @@ module TypeProf::Core
           # skip
         when CallNode
           subnodes.each do |key, subnode|
+            next unless subnode
             if key == :block_body
-              subnode.modified_vars(tbl - self.block_tbl, vars) if subnode
+              subnode.modified_vars(tbl - self.block_tbl, vars)
+            elsif subnode.is_a?(AST::Node)
+              subnode.modified_vars(tbl, vars)
             else
-              subnode.modified_vars(tbl, vars) if subnode
+              subnode.each {|n| n.modified_vars(tbl, vars) }
             end
           end
         else
-          subnodes.each_value do |subnode|
-            subnode.modified_vars(tbl, vars) if subnode
+          each_subnode do |subnode|
+            subnode.modified_vars(tbl, vars)
           end
         end
       end

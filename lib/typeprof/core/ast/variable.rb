@@ -238,13 +238,7 @@ module TypeProf::Core
 
       attr_reader :var, :rhs, :lhss, :var_code_range
 
-      def subnodes
-        h = { rhs: }
-        @lhss.each_with_index do |lhs, i|
-          h[i] = lhs
-        end
-        h
-      end
+      def subnodes = { rhs:, lhss: }
 
       def install0(genv)
         lhss = @lhss.map do |lhs|

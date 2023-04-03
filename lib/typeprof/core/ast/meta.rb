@@ -13,13 +13,7 @@ module TypeProf::Core
 
       attr_reader :args
 
-      def subnodes
-        h = {}
-        @args.each_with_index do |arg, i|
-          h[i] = arg
-        end
-        h
-      end
+      def subnodes = { args: }
 
       def define0(genv)
         mod = genv.resolve_cpath(@lenv.cref.cpath)
