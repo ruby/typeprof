@@ -32,8 +32,8 @@ module TypeProf::Core
       @run_queue = []
       @run_queue_set = Set[]
 
-      @toplevel = ModuleEntity.new([], nil)
-      @toplevel.inner_modules[:Object] = @toplevel
+      @mod_object = ModuleEntity.new([], nil)
+      @mod_object.inner_modules[:Object] = @mod_object
       @mod_basic_object = resolve_cpath([:BasicObject])
       @mod_class = resolve_cpath([:Class])
       @mod_module = resolve_cpath([:Module])
@@ -143,7 +143,7 @@ module TypeProf::Core
 
     # just for validation
     def get_vertexes(vtxs)
-      @toplevel.get_vertexes(vtxs)
+      @mod_object.get_vertexes(vtxs)
       @gvars.each_value do |gvar_entity|
         vtxs << gvar_entity.vtx
       end
@@ -152,10 +152,10 @@ module TypeProf::Core
     # classes and modules
 
     def resolve_cpath(cpath)
-      mod = @toplevel
+      mod = @mod_object
       raise unless cpath # annotation
       cpath.each do |cname|
-        mod = mod.inner_modules[cname] ||= ModuleEntity.new(mod.cpath + [cname], @toplevel)
+        mod = mod.inner_modules[cname] ||= ModuleEntity.new(mod.cpath + [cname], @mod_object)
       end
       mod
     end
@@ -191,5 +191,66 @@ module TypeProf::Core
       end
       return false
     end
+  end
+
+  class LocalEnv
+    def initialize(path, cref, locals)
+      @path = path
+      @cref = cref
+      @locals = locals
+      @filters = {}
+    end
+
+    attr_reader :path, :cref, :locals
+
+    def new_var(name, node)
+      @locals[name] = Vertex.new("var:#{ name }", node)
+    end
+
+    def set_var(name, vtx)
+      @locals[name] = vtx
+    end
+
+    def get_var(name)
+      @locals[name] || raise
+    end
+
+    def push_read_filter(name, type)
+      (@filters[name] ||= []) << type
+    end
+
+    def pop_read_filter(name)
+      (@filters[name] ||= []).pop
+    end
+
+    def apply_read_filter(genv, node, name, vtx)
+      if @filters[name] && !@filters[name].empty?
+        case @filters[name].last
+        when :non_nil
+          return NilFilter.new(genv, node, vtx, false).next_vtx
+        end
+      end
+      vtx
+    end
+  end
+
+  class CRef
+    def initialize(cpath, singleton, outer)
+      @cpath = cpath
+      @singleton = singleton
+      @outer = outer
+    end
+
+    attr_reader :cpath, :singleton, :outer
+
+    def extend(cpath, singleton)
+      CRef.new(cpath, singleton, self)
+    end
+
+    def get_self(genv)
+      (@singleton ? Type::Module : Type::Instance).new(genv.resolve_cpath(@cpath || []))
+    end
+
+    Toplevel = self.new([], false, nil)
   end
 end
