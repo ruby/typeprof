@@ -21,7 +21,7 @@ module TypeProf::Core
   class GlobalEnv
     def initialize(rbs_builder)
       @static_eval_queue = {
-        child_modules_changed: [],
+        inner_modules_changed: [],
         const_read_changed: [],
         parent_modules_changed: [],
       }
@@ -31,7 +31,7 @@ module TypeProf::Core
       @run_queue_set = Set[]
 
       @toplevel = ModuleDirectory.new([], nil)
-      @toplevel.child_modules[:Object] = @toplevel
+      @toplevel.inner_modules[:Object] = @toplevel
       @mod_basic_object = resolve_cpath([:BasicObject])
       @mod_class = resolve_cpath([:Class])
       @mod_module = resolve_cpath([:Module])
@@ -64,8 +64,8 @@ module TypeProf::Core
 
     attr_reader :rbs_builder
 
-    def child_modules_changed(cpath)
-      @child_modules_changed << cpath
+    def inner_modules_changed(cpath)
+      @inner_modules_changed << cpath
     end
 
     def add_static_eval_queue(change_type, arg)
@@ -85,8 +85,8 @@ module TypeProf::Core
           update = true
           arg = queue.shift
           case change_type
-          when :child_modules_changed
-            resolve_cpath(arg).on_child_modules_changed(self)
+          when :inner_modules_changed
+            resolve_cpath(arg).on_inner_modules_changed(self)
           when :const_read_changed
             case arg
             when BaseConstRead
@@ -137,7 +137,7 @@ module TypeProf::Core
       dir = @toplevel
       raise unless cpath # annotation
       cpath.each do |cname|
-        dir = dir.child_modules[cname] ||= ModuleDirectory.new(dir.cpath + [cname], @toplevel)
+        dir = dir.inner_modules[cname] ||= ModuleDirectory.new(dir.cpath + [cname], @toplevel)
       end
       dir
     end

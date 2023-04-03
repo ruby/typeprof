@@ -7,7 +7,7 @@ module TypeProf::Core
       @module_defs = Set[]
       @include_defs = Set[]
 
-      @child_modules = {}
+      @inner_modules = {}
 
       @superclass = toplevel
       @subclasses = Set[]
@@ -28,7 +28,7 @@ module TypeProf::Core
     attr_reader :module_defs
     attr_reader :include_defs
 
-    attr_reader :child_modules
+    attr_reader :inner_modules
 
     attr_reader :superclass
     attr_reader :subclasses
@@ -54,8 +54,8 @@ module TypeProf::Core
       @ivars[singleton][name] ||= VertexEntity.new
     end
 
-    def on_child_modules_changed(genv) # TODO: accept what is a change
-      @subclasses.each {|subclass| subclass.on_child_modules_changed(genv) }
+    def on_inner_modules_changed(genv) # TODO: accept what is a change
+      @subclasses.each {|subclass| subclass.on_inner_modules_changed(genv) }
       @const_reads.each {|const_read| genv.const_read_changed(const_read) }
     end
 
@@ -73,7 +73,7 @@ module TypeProf::Core
 
     def add_module_def(genv, node)
       if @module_defs.empty?
-        genv.add_static_eval_queue(:child_modules_changed, @cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, @cpath[0..-2])
       end
       @module_defs << node
       genv.add_static_eval_queue(:parent_modules_changed, @cpath)
@@ -83,7 +83,7 @@ module TypeProf::Core
       @module_defs.delete(node)
       genv.add_static_eval_queue(:parent_modules_changed, @cpath)
       if @module_defs.empty?
-        genv.add_static_eval_queue(:child_modules_changed, @cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, @cpath[0..-2])
       end
     end
 
@@ -195,7 +195,7 @@ module TypeProf::Core
     end
 
     def get_vertexes_and_boxes(vtxs)
-      @child_modules.each_value do |dir|
+      @inner_modules.each_value do |dir|
         next if self.equal?(dir) # for Object
         dir.get_vertexes_and_boxes(vtxs)
       end
