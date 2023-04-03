@@ -94,67 +94,6 @@ module TypeProf::Core
     end
   end
 
-  class MethodDefSite < Box
-    def initialize(node, genv, cpath, singleton, mid, f_args, block, ret)
-      @node = node
-      @cpath = cpath
-      @singleton = singleton
-      @mid = mid
-      raise unless f_args
-      @f_args = f_args
-      @block = block
-      @ret = ret
-      genv.resolve_method(@cpath, @singleton, @mid).add_def(self)
-      genv.resolve_cpath(@cpath).add_run_all_callsites(genv, @singleton, @mid)
-    end
-
-    attr_accessor :node
-
-    attr_reader :cpath, :singleton, :mid, :f_args, :block, :ret
-
-    def destroy(genv)
-      genv.resolve_method(@cpath, @singleton, @mid).remove_def(self)
-      genv.resolve_cpath(@cpath).add_run_all_callsites(genv, @singleton, @mid)
-    end
-
-    def call(changes, genv, call_node, a_args, block, ret)
-      if a_args.size == @f_args.size
-        if block && @block
-          changes.add_edge(block, @block)
-        end
-        # check arity
-        a_args.zip(@f_args) do |a_arg, f_arg|
-          break unless f_arg
-          changes.add_edge(a_arg, f_arg)
-        end
-        changes.add_edge(@ret, ret)
-      else
-        changes.add_diagnostic(
-          TypeProf::Diagnostic.new(call_node.mid_code_range || call_node, "wrong number of arguments (#{ a_args.size } for #{ @f_args.size })")
-        )
-      end
-    end
-
-    def show
-      block_show = []
-      if @block
-        @block.types.each_key do |ty|
-          case ty
-          when Type::Proc
-            block_show << "{ (#{ ty.block.f_args.map {|arg| arg.show }.join(", ") }) -> #{ ty.block.ret.show } }"
-          else
-            puts "???"
-          end
-        end
-      end
-      s = []
-      s << "(#{ @f_args.map {|arg| Type.strip_parens(arg.show) }.join(", ") })" unless @f_args.empty?
-      s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
-      s << "-> #{ @ret.show }"
-      s.join(" ")
-    end
-  end
-
   class Block
     def initialize(node, f_args, ret)
       @node = node
