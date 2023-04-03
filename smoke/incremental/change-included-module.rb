@@ -15,6 +15,7 @@ module M
   def foo: (Integer) -> nil
 end
 class C
+  include M
 end
 
 # update: test1.rb
@@ -30,10 +31,12 @@ module M
   def foo: (untyped) -> nil
 end
 class C
+  include C::M
 end
 
 # assert: test1.rb
 class C
+  include C::M
   module C::M
     def foo: (Integer) -> nil
   end

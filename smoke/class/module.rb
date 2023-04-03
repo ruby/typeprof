@@ -19,5 +19,6 @@ module M
   def foo: -> Integer
 end
 class C
+  include M
   def bar: -> Integer
 end

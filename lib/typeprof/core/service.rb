@@ -272,14 +272,18 @@ module TypeProf::Core
           if node.static_cpath
             if event == :enter
               s = "class #{ node.static_cpath.join("::") }"
-              superclass = @genv.resolve_cpath(node.static_cpath).superclass
+              mod = @genv.resolve_cpath(node.static_cpath)
+              superclass = mod.superclass
               if superclass == nil
                 s << " # failed to identify its superclass"
               elsif superclass.cpath != []
-                s << " < #{ superclass.cpath.join("::") }"
+                s << " < #{ superclass.show_cpath }"
               end
               out << "  " * depth + s
               depth += 1
+              mod.included_modules.each_value do |inc_mod|
+                out << "  " * depth + "include #{ inc_mod.show_cpath }"
+              end
             else
               depth -= 1
               out << "  " * depth + "end"
