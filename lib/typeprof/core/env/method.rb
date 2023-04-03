@@ -120,7 +120,7 @@ module TypeProf::Core
         changes.add_edge(@ret, ret)
       else
         changes.add_diagnostic(
-          TypeProf::Diagnostic.new(call_node, "wrong number of arguments (#{ a_args.size } for #{ @f_args.size })")
+          TypeProf::Diagnostic.new(call_node.mid_code_range || call_node, "wrong number of arguments (#{ a_args.size } for #{ @f_args.size })")
         )
       end
     end
