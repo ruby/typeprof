@@ -25,7 +25,7 @@ module TypeProf::Core
       def attrs = { cname:, toplevel:, cdef: }
 
       def define0(genv)
-        BaseConstRead.new(self, genv, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)
+        BaseConstRead.new(genv, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)
       end
 
       def undefine0(genv)
@@ -47,7 +47,7 @@ module TypeProf::Core
       attr_reader :cbase, :cname
 
       def define0(genv)
-        ScopedConstRead.new(self, genv, @cname, @cbase.define(genv))
+        ScopedConstRead.new(genv, @cname, @cbase.define(genv))
       end
 
       def undefine0(genv)

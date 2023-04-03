@@ -1,7 +1,6 @@
 module TypeProf::Core
   class ConstRead
-    def initialize(node, cname)
-      @node = node
+    def initialize(cname)
       @cname = cname
       @followers = Set[]
       @cpath = nil
@@ -66,8 +65,8 @@ module TypeProf::Core
   end
 
   class BaseConstRead < ConstRead
-    def initialize(node, genv, cname, cref)
-      super(node, cname)
+    def initialize(genv, cname, cref)
+      super(cname)
       @cref = cref
       genv.add_static_eval_queue(:const_read_changed, self)
     end
@@ -85,8 +84,8 @@ module TypeProf::Core
   end
 
   class ScopedConstRead < ConstRead
-    def initialize(node, genv, cname, cbase)
-      super(node, cname)
+    def initialize(genv, cname, cbase)
+      super(cname)
       # Note: cbase may be nil when the cbase is a dynamic expression (such as lvar::CONST)
       @cbase = cbase
       @cbase.followers << self if @cbase
