@@ -95,7 +95,7 @@ module TypeProf::Core
   end
 
   class MethodDefSite < Box
-    def initialize(node, cpath, singleton, mid, f_args, block, ret)
+    def initialize(node, genv, cpath, singleton, mid, f_args, block, ret)
       @node = node
       @cpath = cpath
       @singleton = singleton
@@ -104,11 +104,18 @@ module TypeProf::Core
       @f_args = f_args
       @block = block
       @ret = ret
+      genv.resolve_method(@cpath, @singleton, @mid).add_def(self)
+      genv.resolve_cpath(@cpath).add_run_all_callsites(genv, @singleton, @mid)
     end
 
     attr_accessor :node
 
     attr_reader :cpath, :singleton, :mid, :f_args, :block, :ret
+
+    def destroy(genv)
+      genv.resolve_method(@cpath, @singleton, @mid).remove_def(self)
+      genv.resolve_cpath(@cpath).add_run_all_callsites(genv, @singleton, @mid)
+    end
 
     def call(changes, genv, call_node, a_args, block, ret)
       if a_args.size == @f_args.size

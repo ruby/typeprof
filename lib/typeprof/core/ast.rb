@@ -213,8 +213,6 @@ module TypeProf::Core
 
       def add_method_def(genv, mdef)
         method_defs << mdef
-        genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid).add_def(mdef)
-        genv.resolve_cpath(mdef.cpath).add_run_all_callsites(genv, mdef.singleton, mdef.mid)
       end
 
       def sites
@@ -293,9 +291,7 @@ module TypeProf::Core
           method_defs = @method_defs # annoation
           if method_defs
             method_defs.each do |mdef|
-              genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid).remove_def(mdef)
-
-              genv.resolve_cpath(mdef.cpath).add_run_all_callsites(genv, mdef.singleton, mdef.mid)
+              mdef.destroy(genv)
             end
           end
           sites = @sites # annotation
