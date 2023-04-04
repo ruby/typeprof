@@ -14,6 +14,7 @@ module TypeProf::Core
           core.update_rb_file(file, code)
           core.update_rb_file(file, code) unless interactive
         when ".rbs"
+          core.update_rbs_file(file, code)
         else
           raise "unknown ext: #{ file }"
         end

@@ -1,6 +1,9 @@
 require "rbs"
 
 module TypeProf::Core
+  class Sig
+  end
+
   class Signatures
     def self.build(genv)
       genv.rbs_builder.env.declarations.each do |decl|

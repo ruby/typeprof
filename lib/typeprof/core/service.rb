@@ -96,6 +96,28 @@ module TypeProf::Core
       end
     end
 
+    def update_rbs_file(path, code)
+      prev_decls = @text_nodes[path]
+
+      code = File.read(path) unless code
+      begin
+        decls = Sig::AST.parse(path, code)
+      rescue SyntaxError
+        return
+      end
+
+      # TODO: diff
+      @text_nodes[path] = decls
+
+      decls.each {|decl| decl.define(@genv) }
+      prev_decls.each {|decl| decl.undefine(@genv) } if prev_decls
+      @genv.define_all
+
+      decls.each {|decl| decl.install(@genv) }
+      prev_decls.each {|decl| decl.uninstall(@genv) } if prev_decls
+      @genv.run_all
+    end
+
     def dump_graph(path)
       node = @text_nodes[path]
 
