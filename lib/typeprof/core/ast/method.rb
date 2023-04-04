@@ -19,6 +19,8 @@ module TypeProf::Core
           end
         end
         RBS::Parser.parse_method_type(comments.reverse.join)
+      else
+        nil
       end
     end
 
@@ -26,7 +28,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv, singleton, mid, raw_scope)
         super(raw_node, lenv)
 
-        # @rbs = AST.get_rbs_comment_before(code_range.first)
+        @rbs_method_type = AST.get_rbs_comment_before(code_range.first)
 
         @singleton = singleton
         @mid = mid
@@ -55,10 +57,10 @@ module TypeProf::Core
         @reused = false
       end
 
-      attr_reader :singleton, :mid, :tbl, :args, :body
+      attr_reader :singleton, :mid, :tbl, :args, :body, :rbs_method_type
 
       def subnodes = { body: }
-      def attrs = { singleton:, mid:, tbl:, args: }
+      def attrs = { singleton:, mid:, tbl:, args:, rbs_method_type: }
 
       def define0(genv)
         if @prev_node
@@ -83,6 +85,11 @@ module TypeProf::Core
 
       def install0(genv)
         unless @prev_node
+          if @rbs_method_type
+            mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type])
+            add_site(:mdecl, mdecl)
+          end
+
           # TODO: ユーザ定義 RBS があるときは検証する
 
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
