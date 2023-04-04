@@ -58,9 +58,7 @@ module TypeProf::Core
       @text_nodes[path] = node
 
       node.define(@genv)
-      if prev_node
-        prev_node.undefine(@genv)
-      end
+      prev_node.undefine(@genv) if prev_node
       @genv.define_all
 
       node.install(@genv)
