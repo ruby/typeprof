@@ -139,11 +139,12 @@ module TypeProf::Core
   end
 
   class MethodDeclSite < Site
-    def initialize(node, genv, cpath, singleton, mid)
+    def initialize(node, genv, cpath, singleton, mid, rbs_method_types)
       super(node)
       @cpath = cpath
       @singleton = singleton
       @mid = mid
+      @rbs_method_types = rbs_method_types
 
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_decl(self)
@@ -153,7 +154,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :cpath, :singleton, :mid
+    attr_reader :cpath, :singleton, :mid, :rbs_method_types
 
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -162,8 +163,8 @@ module TypeProf::Core
     end
 
     def resolve_overloads(changes, genv, node, param_map, a_args, block, ret)
-      @node.raw_rbs.overloads.each do |overload|
-        rbs_func = overload.method_type.type
+      @rbs_method_types.each do |method_type|
+        rbs_func = method_type.type
         # rbs_func.optional_keywords
         # rbs_func.optional_positionals
         # rbs_func.required_keywords
@@ -171,7 +172,7 @@ module TypeProf::Core
         # rbs_func.rest_positionals
         # rbs_func.trailing_positionals
         param_map0 = param_map.dup
-        overload.method_type.type_params.map do |param|
+        method_type.type_params.map do |param|
           param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
         end
         f_args = rbs_func.required_positionals.map do |f_arg|
@@ -180,7 +181,7 @@ module TypeProf::Core
         next if a_args.size != f_args.size
         next if !f_args.all? # skip interface type
         next if a_args.zip(f_args).any? {|a_arg, f_arg| !a_arg.match?(genv, f_arg) }
-        rbs_blk = overload.method_type.block
+        rbs_blk = method_type.block
         next if !!rbs_blk != !!block
         if rbs_blk && block
           rbs_blk_func = rbs_blk.type
@@ -248,12 +249,12 @@ module TypeProf::Core
       # TODO: support "| ..."
       decl = me.decls.to_a.first
       # TODO: support overload?
-      overload = decl.node.raw_rbs.overloads.first
-      _block = overload.method_type.block
-      rbs_func = overload.method_type.type
+      method_type = decl.rbs_method_types.first
+      _block = method_type.block
+      rbs_func = method_type.type
 
       param_map0 = {}
-      overload.method_type.type_params.map do |param|
+      method_type.type_params.map do |param|
         param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
       end
       a_args = rbs_func.required_positionals.map do |a_arg|

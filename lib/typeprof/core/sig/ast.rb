@@ -189,12 +189,13 @@ module TypeProf::Core
       end
 
       def install0(genv)
+        rbs_method_types = @raw_rbs.overloads.map {|overload| overload.method_type }
         if @singleton
-          mdecl = MethodDeclSite.new(self, genv, @base_cpath, true, @mid)
+          mdecl = MethodDeclSite.new(self, genv, @base_cpath, true, @mid, rbs_method_types)
           add_site(:mdecl, mdecl)
         end
         if @instance
-          mdecl = MethodDeclSite.new(self, genv, @base_cpath, false, @mid)
+          mdecl = MethodDeclSite.new(self, genv, @base_cpath, false, @mid, rbs_method_types)
           add_site(:mdecl, mdecl)
         end
       end
