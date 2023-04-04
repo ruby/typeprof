@@ -148,7 +148,7 @@ module TypeProf::Core
 
     def resolve_const(cpath)
       mod = resolve_cpath(cpath[0..-2])
-      mod.consts[cpath[-1]] ||= VertexEntity.new
+      mod.get_const(cpath[-1])
     end
 
     def resolve_method(cpath, singleton, mid)

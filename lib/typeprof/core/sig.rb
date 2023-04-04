@@ -17,8 +17,8 @@ module TypeProf::Core
         # TODO: decl.type_params
         # TODO: decl.super_class.args
         mod = genv.resolve_cpath(cpath)
-        mod.add_module_decl(genv, decl)
-        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(mod)))
+        ce = mod.add_module_decl(genv, decl)
+        Source.new(Type::Module.new(mod)).add_edge(genv, ce.vtx)
         superclass = decl.super_class
         if superclass
           superclass_cpath = superclass.name.namespace.path + [superclass.name.name]

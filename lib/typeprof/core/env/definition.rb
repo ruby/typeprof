@@ -29,6 +29,7 @@ module TypeProf::Core
     attr_reader :cpath
 
     attr_reader :inner_modules
+    attr_reader :outer_module
 
     attr_reader :superclass
     attr_reader :included_modules
@@ -56,8 +57,7 @@ module TypeProf::Core
 
     def on_module_added(genv)
       unless exist?
-        outer_mod = genv.resolve_cpath(@cpath[0..-2])
-        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
+        genv.add_static_eval_queue(:inner_modules_changed, @outer_module)
       end
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
@@ -65,19 +65,22 @@ module TypeProf::Core
     def on_module_removed(genv)
       genv.add_static_eval_queue(:parent_modules_changed, self)
       unless exist?
-        outer_mod = genv.resolve_cpath(@cpath[0..-2])
-        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
+        genv.add_static_eval_queue(:inner_modules_changed, @outer_module)
       end
     end
 
     def add_module_decl(genv, decl)
       on_module_added(genv)
       @module_decls << decl
-      on_module_removed(genv)
+      ce = @outer_module.get_const(@cpath.last)
+      ce.decls << decl
+      ce
     end
 
-    def remove_module_decl(genv, node)
-      @module_decls.delete(node)
+    def remove_module_decl(genv, decl)
+      @outer_module.get_const(@cpath.last).decls.delete(decl)
+      @module_decls.delete(decl)
+      on_module_removed(genv)
     end
 
     def set_superclass(mod) # for RBS
@@ -88,9 +91,13 @@ module TypeProf::Core
     def add_module_def(genv, node)
       on_module_added(genv)
       @module_defs << node
+      ce = @outer_module.get_const(@cpath.last)
+      ce.defs << node
+      ce
     end
 
     def remove_module_def(genv, node)
+      @outer_module.get_const(@cpath.last).defs.delete(node)
       @module_defs.delete(node)
       on_module_removed(genv)
     end
@@ -192,6 +199,10 @@ module TypeProf::Core
       @child_modules.each do |child_mod|
         child_mod.each_descendant(base_mod || self, &blk)
       end
+    end
+
+    def get_const(cname)
+      @consts[cname] ||= VertexEntity.new
     end
 
     def get_method(singleton, mid)
