@@ -31,8 +31,8 @@ module TypeProf::Core
         name = decl.name
         cpath = name.namespace.path + [name.name]
         mod = genv.resolve_cpath(cpath)
-        mod.add_module_decl(genv, decl)
-        genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(mod)))
+        ce = mod.add_module_decl(genv, decl)
+        Source.new(Type::Module.new(mod)).add_edge(genv, ce.vtx)
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Constant
         name = decl.name
