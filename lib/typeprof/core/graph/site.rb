@@ -177,7 +177,8 @@ module TypeProf::Core
           param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
         end
         f_args = rbs_func.required_positionals.map do |f_arg|
-          Signatures.type_to_vtx(genv, node, f_arg.type, param_map0)
+          cref = CRef::Toplevel # TODO
+          Signatures.type_to_vtx(genv, node, f_arg.type, param_map0, cref)
         end
         next if a_args.size != f_args.size
         next if !f_args.all? # skip interface type
@@ -191,20 +192,23 @@ module TypeProf::Core
             case ty
             when Type::Proc
               blk_a_args = rbs_blk_func.required_positionals.map do |blk_a_arg|
-                Signatures.type_to_vtx(genv, node, blk_a_arg.type, param_map0)
+                cref = CRef::Toplevel # TODO
+                Signatures.type_to_vtx(genv, node, blk_a_arg.type, param_map0, cref)
               end
               blk_f_args = ty.block.f_args
               if blk_a_args.size == blk_f_args.size # TODO: pass arguments for block
                 blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
                   changes.add_edge(blk_a_arg, blk_f_arg)
                 end
-                blk_f_ret = Signatures.type_to_vtx(genv, node, rbs_blk_func.return_type, param_map0) # TODO: Sink instead of Source
+                cref = CRef::Toplevel # TODO
+                blk_f_ret = Signatures.type_to_vtx(genv, node, rbs_blk_func.return_type, param_map0, cref) # TODO: Sink instead of Source
                 changes.add_edge(ty.block.ret, blk_f_ret)
               end
             end
           end
         end
-        ret_vtx = Signatures.type_to_vtx(genv, node, rbs_func.return_type, param_map0)
+        cref = CRef::Toplevel # TODO
+        ret_vtx = Signatures.type_to_vtx(genv, node, rbs_func.return_type, param_map0, cref)
         changes.add_edge(ret_vtx, ret)
       end
     end
@@ -259,7 +263,8 @@ module TypeProf::Core
         param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
       end
       a_args = rbs_func.required_positionals.map do |a_arg|
-        Signatures.type_to_vtx(genv, node, a_arg.type, param_map0)
+        cref = CRef::Toplevel # TODO
+        Signatures.type_to_vtx(genv, node, a_arg.type, param_map0, cref)
       end
 
       if a_args.size == @f_args.size

@@ -20,20 +20,33 @@ module TypeProf::Core
 
   class Service
     def initialize
-      unless defined?($rbs_builder)
+      unless defined?($rbs_env)
         loader = RBS::EnvironmentLoader.new
-        rbs_env = RBS::Environment.from_loader(loader).resolve_type_names
-        $rbs_builder = RBS::DefinitionBuilder.new(env: rbs_env)
+        $rbs_env = RBS::Environment.from_loader(loader)
       end
 
-      @genv = GlobalEnv.new($rbs_builder)
-      Signatures.build(genv)
-      Builtin.new(genv).deploy
-
       @text_nodes = {}
+
+      @genv = GlobalEnv.new
+
+      load_core_rbs($rbs_env.declarations)
+
+      Builtin.new(genv).deploy
     end
 
     attr_reader :genv
+
+    def load_core_rbs(raw_decls)
+      cref = CRef::Toplevel
+      lenv = LocalEnv.new(nil, cref, {})
+      decls = raw_decls.map do |raw_decl|
+        AST.create_rbs_decl(raw_decl, lenv)
+      end.compact
+      decls.each {|decl| decl.define(@genv) }
+      @genv.define_all
+      decls.each {|decl| decl.install(@genv) }
+      @genv.run_all
+    end
 
     def add_workspaces(folders, &blk)
       folders.each do |folder|
@@ -243,7 +256,7 @@ module TypeProf::Core
                 mod.methods[singleton].each do |mid, me|
                   sig = nil
                   me.decls.each do |mdecl|
-                    sig = mdecl.rbs_member.overloads.map {|overload| overload.method_type.to_s }.join(" | ")
+                    sig = mdecl.rbs_method_types.map {|method_type| method_type.to_s }.join(" | ")
                     break
                   end
                   unless sig

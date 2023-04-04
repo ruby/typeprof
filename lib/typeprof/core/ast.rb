@@ -180,27 +180,39 @@ module TypeProf::Core
       end
     end
 
-    def self.create_rbs_decl(raw_decl, base_cpath)
+    def self.create_rbs_decl(raw_decl, lenv)
       case raw_decl
       when RBS::AST::Declarations::Class
-        SIG_CLASS.new(raw_decl, base_cpath)
+        SIG_CLASS.new(raw_decl, lenv)
       when RBS::AST::Declarations::Module
-        SIG_MODULE.new(raw_decl, base_cpath)
+        SIG_MODULE.new(raw_decl, lenv)
       when RBS::AST::Declarations::Constant
+        SIG_CONST.new(raw_decl, lenv)
       when RBS::AST::Declarations::AliasDecl
       when RBS::AST::Declarations::TypeAlias
+        SIG_TYPE_ALIAS.new(raw_decl, lenv)
         # TODO: check
       when RBS::AST::Declarations::Interface
       when RBS::AST::Declarations::Global
+        SIG_GVAR.new(raw_decl, lenv)
       else
         raise "unsupported: #{ raw_decl.class }"
       end
     end
 
-    def self.create_rbs_member(raw_member, base_cpath)
+    def self.create_rbs_member(raw_member, lenv)
       case raw_member
       when RBS::AST::Members::MethodDefinition
-        SIG_DEF.new(raw_member, base_cpath)
+        SIG_DEF.new(raw_member, lenv)
+      when RBS::AST::Members::Include
+        SIG_INCLUDE.new(raw_member, lenv)
+      when RBS::AST::Members::Extend
+      when RBS::AST::Members::Public
+      when RBS::AST::Members::Private
+      when RBS::AST::Members::Alias
+        SIG_ALIAS.new(raw_member, lenv)
+      when RBS::AST::Declarations::Base
+        self.create_rbs_decl(raw_member, lenv)
       else
         raise "unsupported: #{ raw_member.class }"
       end
@@ -456,7 +468,7 @@ module TypeProf::Core
       end
 
       def pretty_print_instance_variables
-        super - [:@raw_node, :@lenv, :@prev_node]
+        super - [:@raw_node, :@lenv, :@prev_node, :@static_ret]
       end
     end
 

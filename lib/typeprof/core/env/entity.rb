@@ -24,6 +24,7 @@ module TypeProf::Core
 
       @module_decls = Set[]
       @module_defs = Set[]
+      @include_decls = Set[]
       @include_defs = Set[]
 
       @inner_modules = {}
@@ -31,7 +32,6 @@ module TypeProf::Core
 
       # parent modules (superclass and all modules that I include)
       @superclass = toplevel
-      @superclass_fixed = false
       @included_modules = {}
 
       # child modules (subclasses and all modules that include me)
@@ -40,6 +40,7 @@ module TypeProf::Core
       @consts = {}
       @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
+      @type_aliases = {}
 
       @const_reads = Set[]
       @ivar_reads = Set[] # should be handled in @ivars ??
@@ -102,11 +103,6 @@ module TypeProf::Core
       on_module_removed(genv)
     end
 
-    def set_superclass(mod) # for RBS
-      @superclass = mod
-      @superclass_fixed = true
-    end
-
     def add_module_def(genv, node)
       on_module_added(genv)
       @module_defs << node
@@ -121,12 +117,14 @@ module TypeProf::Core
       on_module_removed(genv)
     end
 
-    def add_include_decl(origin, mod) # for RBS
-      @included_modules[origin] = mod
+    def add_include_decl(genv, node)
+      @include_decls << node
+      genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
-    def remove_include_decl(origin)
-      @included_modules.delete(origin)
+    def remove_include_decl(genv, node)
+      @include_decls.delete(origin)
+      genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
     def add_include_def(genv, node)
@@ -139,8 +137,7 @@ module TypeProf::Core
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
-    def update_parent(genv, old_parent, const_read, default)
-      new_parent_cpath = const_read ? const_read.cpath : default
+    def update_parent(genv, old_parent, new_parent_cpath)
       new_parent = new_parent_cpath ? genv.resolve_cpath(new_parent_cpath) : nil
       if old_parent != new_parent
         old_parent.child_modules.delete(self) if old_parent
@@ -151,31 +148,51 @@ module TypeProf::Core
     end
 
     def on_parent_modules_changed(genv)
-      if @superclass_fixed
-        return @superclass
-      end
+      any_updated = false
+      new_superclass_cpath = nil
 
-      const_read = nil
-      # TODO: check with RBS's superclass if any
-      @module_defs.each do |mdef|
-        if mdef.is_a?(AST::CLASS) && mdef.superclass_cpath
-          const_read = mdef.superclass_cpath.static_ret
+      @module_decls.each do |mdecl|
+        if mdecl.is_a?(AST::SIG_CLASS) && mdecl.superclass_cpath
+          new_superclass_cpath = mdecl.superclass_cpath
           break
         end
       end
 
-      any_updated = false
+      unless new_superclass_cpath
+        const_read = nil
+        @module_defs.each do |mdef|
+          if mdef.is_a?(AST::CLASS) && mdef.superclass_cpath
+            const_read = mdef.superclass_cpath.static_ret
+            break
+          end
+        end
 
-      # TODO: report multiple inconsistent superclass
+        # TODO: report multiple inconsistent superclass
 
-      new_superclass, updated = update_parent(genv, @superclass, const_read, [])
+        new_superclass_cpath = const_read ? const_read.cpath : []
+      end
+
+      new_superclass, updated = update_parent(genv, @superclass, new_superclass_cpath)
       if updated
         @superclass = new_superclass
         any_updated = true
       end
 
+      @include_decls.each do |idecl|
+        new_parent_cpath = idecl.static_ret.last.cpath
+        new_parent, updated = update_parent(genv, @included_modules[idecl], new_parent_cpath)
+        if updated
+          if new_parent
+            @included_modules[idecl] = new_parent
+          else
+            @included_modules.delete(idecl)
+          end
+          any_updated = true
+        end
+      end
       @include_defs.each do |idef|
-        new_parent, updated = update_parent(genv, @included_modules[idef], idef.static_ret, nil)
+        new_parent_cpath = idef.static_ret ? idef.static_ret.cpath : nil
+        new_parent, updated = update_parent(genv, @included_modules[idef], new_parent_cpath)
         if updated
           if new_parent
             @included_modules[idef] = new_parent
@@ -185,11 +202,14 @@ module TypeProf::Core
           any_updated = true
         end
       end
-      @included_modules.delete_if do |idef, old_mod|
-        next if @include_defs.include?(idef)
-        _new_parent, updated = update_parent(genv, @included_modules[idef], nil, nil)
-        any_updated ||= updated
-        true
+      @included_modules.delete_if do |origin, old_mod|
+        if @include_decls.include?(origin) || @include_defs.include?(origin)
+          false
+        else
+          _new_parent, updated = update_parent(genv, old_mod, nil)
+          any_updated ||= updated
+          true
+        end
       end
 
       on_ancestors_updated(genv, nil) if any_updated
@@ -230,6 +250,10 @@ module TypeProf::Core
 
     def get_ivar(singleton, name)
       @ivars[singleton][name] ||= VertexEntity.new
+    end
+
+    def get_type_alias(name)
+      @type_aliases[name] ||= TypeAliasEntity.new
     end
 
     def get_vertexes(vtxs)
@@ -298,6 +322,18 @@ module TypeProf::Core
       @callsites.each do |callsite|
         genv.add_run(callsite)
       end
+    end
+  end
+
+  class TypeAliasEntity
+    def initialize
+      @decls = Set[]
+    end
+
+    attr_reader :decls
+
+    def exist?
+      !@decls.empty?
     end
   end
 end

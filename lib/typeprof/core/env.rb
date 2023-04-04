@@ -1,8 +1,6 @@
 module TypeProf::Core
   class GlobalEnv
-    def initialize(rbs_builder)
-      @rbs_builder = rbs_builder
-
+    def initialize
       @static_eval_queue = []
 
       @run_queue = []
@@ -56,8 +54,6 @@ module TypeProf::Core
         end
       end
     end
-
-    attr_reader :rbs_builder
 
     def add_static_eval_queue(change_type, arg)
       @static_eval_queue << [change_type, arg]
@@ -145,6 +141,12 @@ module TypeProf::Core
       # TODO: include はあとで考える
       mod = resolve_cpath(cpath)
       mod.get_ivar(singleton, name)
+    end
+
+    def resolve_type_alias(cpath, name)
+      # TODO: include はあとで考える
+      mod = resolve_cpath(cpath)
+      mod.get_type_alias(name)
     end
 
     def subclass?(cpath1, cpath2)
