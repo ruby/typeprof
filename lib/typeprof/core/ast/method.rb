@@ -22,6 +22,9 @@ module TypeProf::Core
       else
         nil
       end
+    rescue RBS::ParsingError
+      # TODO: report the error
+      nil
     end
 
     class DefNode < Node
