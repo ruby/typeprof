@@ -183,7 +183,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = Signatures.type_to_vtx(genv, self, @raw_type, {}, @lenv.cref)
+        val = Type.rbs_type_to_vtx(genv, self, @raw_type, {}, @lenv.cref)
         val.add_edge(genv, @static_ret.vtx)
         val
       end
@@ -240,7 +240,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = Signatures.type_to_vtx(genv, self, @raw_type, {}, @lenv.cref)
+        val = Type.rbs_type_to_vtx(genv, self, @raw_type, {}, @lenv.cref)
         val.add_edge(genv, @static_ret.vtx)
         val
       end
