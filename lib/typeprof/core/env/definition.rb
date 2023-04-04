@@ -1,4 +1,23 @@
 module TypeProf::Core
+  class VertexEntity
+    def initialize
+      @decls = Set[]
+      @defs = Set[]
+      @vtx = Vertex.new("gvar", self)
+    end
+
+    attr_reader :decls, :defs, :vtx
+
+    def add_decl(decl, vtx)
+      @decls << decl
+      @vtx = vtx # TODO
+    end
+
+    def exist?
+      !@decls.empty? || !@defs.empty?
+    end
+  end
+
   class ModuleEntity
     def initialize(cpath, outer_module, toplevel)
       @cpath = cpath
@@ -225,6 +244,54 @@ module TypeProf::Core
 
     def show_cpath
       @cpath.empty? ? "Object" : @cpath.join("::" )
+    end
+  end
+
+  class MethodEntity
+    def initialize
+      @builtin = nil
+      @decls = Set[]
+      @defs = Set[]
+      @aliases = {}
+      @callsites = Set[]
+    end
+
+    attr_reader :decls, :defs, :aliases, :callsites
+    attr_accessor :builtin
+
+    def add_decl(decl)
+      @decls << decl
+    end
+
+    def remove_decl(decl)
+      @decls.delete(decl)
+    end
+
+    def add_def(mdef)
+      @defs << mdef
+      self
+    end
+
+    def remove_def(mdef)
+      @defs.delete(mdef)
+    end
+
+    def add_alias(node, old_mid)
+      @aliases[node] = old_mid
+    end
+
+    def remove_alias(node)
+      @aliases.delete(node) || raise
+    end
+
+    def exist?
+      @builtin || !@decls.empty? || !@defs.empty? || !@aliases.empty?
+    end
+
+    def add_run_all_callsites(genv)
+      @callsites.each do |callsite|
+        genv.add_run(callsite)
+      end
     end
   end
 end

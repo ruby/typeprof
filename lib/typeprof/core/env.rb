@@ -1,23 +1,4 @@
 module TypeProf::Core
-  class VertexEntity
-    def initialize
-      @decls = Set[]
-      @defs = Set[]
-      @vtx = Vertex.new("gvar", self)
-    end
-
-    attr_reader :decls, :defs, :vtx
-
-    def add_decl(decl, vtx)
-      @decls << decl
-      @vtx = vtx # TODO
-    end
-
-    def exist?
-      !@decls.empty? || !@defs.empty?
-    end
-  end
-
   class GlobalEnv
     def initialize(rbs_builder)
       @rbs_builder = rbs_builder
