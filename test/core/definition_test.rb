@@ -5,7 +5,7 @@ module TypeProf::Core
     def test_definition
       core = Service.new
 
-      core.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 class Foo
   def initialize(n)
   end

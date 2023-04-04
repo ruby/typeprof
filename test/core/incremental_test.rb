@@ -3,9 +3,9 @@ require_relative "../helper"
 module TypeProf::Core
   class IncrementalTest < Test::Unit::TestCase
     def test_incremental1
-      serv = Service.new
+      core = Service.new
 
-      serv.update_file("test0.rb", <<-END)
+      core.update_rb_file("test0.rb", <<-END)
 def foo(x)
   x * x
 end
@@ -13,12 +13,12 @@ end
 
       assert_equal(
         ["def foo: (untyped) -> untyped"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
 
-      #serv.show_graph([:Object], :foo)
+      #core.show_graph([:Object], :foo)
 
-      serv.update_file("test1.rb", <<-END)
+      core.update_rb_file("test1.rb", <<-END)
 
 
 def main(_)
@@ -28,10 +28,10 @@ end
 
       assert_equal(
         ["def foo: (Integer) -> Integer"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
 
-      serv.update_file("test1.rb", <<-END)
+      core.update_rb_file("test1.rb", <<-END)
 
 
 def main(_)
@@ -41,14 +41,14 @@ end
 
       assert_equal(
         ["def foo: (String) -> untyped"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
     end
 
     def test_incremental2
-      serv = Service.new
+      core = Service.new
 
-      serv.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 def foo(x)
   x + 1
 end
@@ -60,10 +60,10 @@ end
 
       assert_equal(
         ["def foo: (Integer) -> Integer"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
 
-      serv.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 
 def foo(x)
   x + 1.0
@@ -76,14 +76,14 @@ end
 
       assert_equal(
         ["def foo: (Integer) -> Float"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
     end
 
     def test_incremental3
-      serv = Service.new
+      core = Service.new
 
-      serv.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 def foo(x)
   x + 1
 end
@@ -95,12 +95,12 @@ end
 
       assert_equal(
         ["def foo: (Integer) -> Integer"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
 
-      #serv.dump_graph("test.rb")
+      #core.dump_graph("test.rb")
 
-      serv.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 
 def foo(x)
   x + 1
@@ -113,14 +113,14 @@ end
 
       assert_equal(
         ["def foo: (String) -> untyped"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
     end
 
     def test_incremental4
-      serv = Service.new
+      core = Service.new
 
-      serv.update_file("test0.rb", <<-END)
+      core.update_rb_file("test0.rb", <<-END)
 class C
   def foo(n)
     C
@@ -128,14 +128,14 @@ class C
 end
       END
 
-      #serv.dump_graph("test0.rb")
+      #core.dump_graph("test0.rb")
 
       assert_equal(
         ["def foo: (untyped) -> singleton(C)"],
-        serv.get_method_sig([:C], false, :foo),
+        core.get_method_sig([:C], false, :foo),
       )
 
-      serv.update_file("test0.rb", <<-END)
+      core.update_rb_file("test0.rb", <<-END)
 class C
   class C
   end
@@ -145,14 +145,14 @@ class C
   end
 end
       END
-      #serv.dump_graph("test0.rb")
+      #core.dump_graph("test0.rb")
 
       assert_equal(
         ["def foo: (untyped) -> singleton(C::C)"],
-        serv.get_method_sig([:C], false, :foo),
+        core.get_method_sig([:C], false, :foo),
       )
 
-      serv.update_file("test0.rb", <<-END)
+      core.update_rb_file("test0.rb", <<-END)
 class C
   class D
   end
@@ -163,24 +163,24 @@ class C
 end
       END
 
-      #serv.dump_graph("test0.rb")
+      #core.dump_graph("test0.rb")
 
       assert_equal(
         ["def foo: (untyped) -> singleton(C)"],
-        serv.get_method_sig([:C], false, :foo),
+        core.get_method_sig([:C], false, :foo),
       )
     end
 
     def test_incremental5
-      serv = Service.new
+      core = Service.new
 
-      serv.update_file("test0.rb", <<-END)
+      core.update_rb_file("test0.rb", <<-END)
 def foo(n, &b)
   b.call(1.0)
 end
       END
 
-      serv.update_file("test1.rb", <<-END)
+      core.update_rb_file("test1.rb", <<-END)
 def bar(_)
   foo(12) do |n|
     "str"
@@ -194,13 +194,13 @@ def baz(_)
 end
       END
 
-      #serv.dump_graph("test0.rb")
+      #core.dump_graph("test0.rb")
       assert_equal(
         ["def foo: (Integer) { (Float) -> String } | { (Float) -> String } -> String"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
 
-      serv.update_file("test1.rb", <<-END)
+      core.update_rb_file("test1.rb", <<-END)
 def bar(_)
   foo(12) do |n|
     1
@@ -214,13 +214,13 @@ def baz(_)
 end
       END
 
-      #serv.dump_graph("test0.rb")
+      #core.dump_graph("test0.rb")
       assert_equal(
         ["def foo: (Integer) { (Float) -> Integer } | { (Float) -> String } -> (Integer | String)"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
 
-      serv.update_file("test1.rb", <<-END)
+      core.update_rb_file("test1.rb", <<-END)
 def bar(_)
   foo(12) do |n|
     1
@@ -234,10 +234,10 @@ def baz(_)
 end
       END
 
-      #serv.dump_graph("test0.rb")
+      #core.dump_graph("test0.rb")
       assert_equal(
         ["def foo: (Integer) { (Float) -> Integer } | { (Float) -> Integer } -> Integer"],
-        serv.get_method_sig([], false, :foo),
+        core.get_method_sig([], false, :foo),
       )
     end
   end

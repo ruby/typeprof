@@ -9,8 +9,14 @@ module TypeProf::Core
       case cmd.strip
       when /^update(?::(.*))?$/
         file = $1.strip if $1
-        core.update_file(file, code)
-        core.update_file(file, code) unless interactive
+        case File.extname(file)
+        when ".rb"
+          core.update_rb_file(file, code)
+          core.update_rb_file(file, code) unless interactive
+        when ".rbs"
+        else
+          raise "unknown ext: #{ file }"
+        end
         #core.dump_graph(file)
       when /^assert(?::(.*))?$/
         file = $1.strip if $1

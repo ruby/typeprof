@@ -5,7 +5,7 @@ module TypeProf::Core
     def test_dot_completion
       serv = Service.new
 
-      serv.update_file("test.rb", <<-END)
+      serv.update_rb_file("test.rb", <<-END)
 class Foo
   def foo(n)
     1

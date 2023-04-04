@@ -38,12 +38,13 @@ module TypeProf::Core
     def add_workspaces(folders, &blk)
       folders.each do |folder|
         Dir.glob(File.expand_path(folder + "/**/*.rb")) do |path|
-          update_file(path, nil) if !blk || blk.call(path)
+          update_rb_file(path, nil) if !blk || blk.call(path)
         end
+        # TODO: *.rbs
       end
     end
 
-    def update_file(path, code)
+    def update_rb_file(path, code)
       prev_node = @text_nodes[path]
 
       code = File.read(path) unless code
@@ -326,5 +327,5 @@ end
 if $0 == __FILE__
   core = TypeProf::Core::Service.new
   core.add_workspaces(["foo"].to_a)
-  core.update_file("foo", "foo")
+  core.update_rb_file("foo", "foo")
 end

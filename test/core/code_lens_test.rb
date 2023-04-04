@@ -5,7 +5,7 @@ module TypeProf::Core
     def test_code_lens
       core = Service.new
 
-      core.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 class Foo
   def foo(n)
     1
@@ -37,7 +37,7 @@ test(Foo.new)
     def test_code_lens_updated
       core = Service.new
 
-      core.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 class Foo
   def foo(n)
     1
@@ -52,7 +52,7 @@ end
       assert_equal(1, lens.size)
       assert_equal([TypeProf::CodeRange[2, 2, 2, 3], "def foo: (untyped) -> Integer"], lens[0])
 
-      core.update_file("test.rb", <<-END)
+      core.update_rb_file("test.rb", <<-END)
 class Foo
   # a line added
   def foo(n)
