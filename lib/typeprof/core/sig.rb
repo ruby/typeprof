@@ -17,7 +17,7 @@ module TypeProf::Core
         # TODO: decl.type_params
         # TODO: decl.super_class.args
         mod = genv.resolve_cpath(cpath)
-        mod.module_decls << decl
+        mod.add_module_decl(genv, decl)
         genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(mod)))
         superclass = decl.super_class
         if superclass
@@ -31,7 +31,7 @@ module TypeProf::Core
         name = decl.name
         cpath = name.namespace.path + [name.name]
         mod = genv.resolve_cpath(cpath)
-        mod.module_decls << decl
+        mod.add_module_decl(genv, decl)
         genv.resolve_const(cpath).add_decl(decl, Source.new(Type::Module.new(mod)))
         members(genv, cpath, decl.members)
       when RBS::AST::Declarations::Constant
@@ -70,7 +70,7 @@ module TypeProf::Core
           name = member.name
           mod_cpath = name.namespace.path + [name.name]
           mod = genv.resolve_cpath(mod_cpath)
-          genv.resolve_cpath(cpath).add_included_module(member, mod)
+          genv.resolve_cpath(cpath).add_include_decl(member, mod)
         when RBS::AST::Members::Extend
         when RBS::AST::Members::Public
         when RBS::AST::Members::Private

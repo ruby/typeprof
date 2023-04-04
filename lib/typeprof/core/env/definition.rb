@@ -1,6 +1,6 @@
 module TypeProf::Core
   class ModuleEntity
-    def initialize(cpath, toplevel)
+    def initialize(cpath, outer_module, toplevel)
       @cpath = cpath
 
       @module_decls = Set[]
@@ -8,9 +8,11 @@ module TypeProf::Core
       @include_defs = Set[]
 
       @inner_modules = {}
+      @outer_module = outer_module
 
       # parent modules (superclass and all modules that I include)
       @superclass = toplevel
+      @superclass_fixed = false
       @included_modules = {}
 
       # child modules (subclasses and all modules that include me)
@@ -25,10 +27,6 @@ module TypeProf::Core
     end
 
     attr_reader :cpath
-
-    attr_reader :module_decls
-    attr_reader :module_defs
-    attr_reader :include_defs
 
     attr_reader :inner_modules
 
@@ -48,47 +46,61 @@ module TypeProf::Core
       !@module_decls.empty? || !@module_defs.empty?
     end
 
-    def get_method(singleton, mid)
-      @methods[singleton][mid] ||= MethodEntity.new
-    end
-
-    def get_ivar(singleton, name)
-      @ivars[singleton][name] ||= VertexEntity.new
-    end
-
     def on_inner_modules_changed(genv) # TODO: accept what is a change
-      @child_modules.each {|child_mod| child_mod.on_inner_modules_changed(genv) }
+      @child_modules.each do |child_mod|
+        next if self == child_mod # for Object
+        child_mod.on_inner_modules_changed(genv)
+      end
       @const_reads.each {|const_read| genv.add_static_eval_queue(:const_read_changed, const_read) }
+    end
+
+    def on_module_added(genv)
+      unless exist?
+        outer_mod = genv.resolve_cpath(@cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
+      end
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def on_module_removed(genv)
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+      unless exist?
+        outer_mod = genv.resolve_cpath(@cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
+      end
+    end
+
+    def add_module_decl(genv, decl)
+      on_module_added(genv)
+      @module_decls << decl
+      on_module_removed(genv)
+    end
+
+    def remove_module_decl(genv, node)
+      @module_decls.delete(node)
     end
 
     def set_superclass(mod) # for RBS
       @superclass = mod
-    end
-
-    def add_included_module(origin, mod) # for RBS
-      @included_modules[origin] = mod
-    end
-
-    def remove_included_module(origin)
-      @included_modules.delete(origin)
+      @superclass_fixed = true
     end
 
     def add_module_def(genv, node)
-      if @module_defs.empty?
-        outer_mod = genv.resolve_cpath(@cpath[0..-2])
-        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
-      end
+      on_module_added(genv)
       @module_defs << node
-      genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
     def remove_module_def(genv, node)
       @module_defs.delete(node)
-      genv.add_static_eval_queue(:parent_modules_changed, self)
-      if @module_defs.empty?
-        outer_mod = genv.resolve_cpath(@cpath[0..-2])
-        genv.add_static_eval_queue(:inner_modules_changed, outer_mod)
-      end
+      on_module_removed(genv)
+    end
+
+    def add_include_decl(origin, mod) # for RBS
+      @included_modules[origin] = mod
+    end
+
+    def remove_include_decl(origin)
+      @included_modules.delete(origin)
     end
 
     def add_include_def(genv, node)
@@ -113,6 +125,10 @@ module TypeProf::Core
     end
 
     def on_parent_modules_changed(genv)
+      if @superclass_fixed
+        return @superclass
+      end
+
       const_read = nil
       # TODO: check with RBS's superclass if any
       @module_defs.each do |mdef|
@@ -170,16 +186,20 @@ module TypeProf::Core
       @ivar_reads.each {|ivar_read| genv.add_run(ivar_read) }
     end
 
-    def add_run_all_callsites(genv, singleton, mid)
-      get_method(singleton, mid).add_run_all_callsites(genv)
-    end
-
     def each_descendant(base_mod = nil, &blk)
       return if base_mod == self
       yield self
       @child_modules.each do |child_mod|
         child_mod.each_descendant(base_mod || self, &blk)
       end
+    end
+
+    def get_method(singleton, mid)
+      @methods[singleton][mid] ||= MethodEntity.new
+    end
+
+    def get_ivar(singleton, name)
+      @ivars[singleton][name] ||= VertexEntity.new
     end
 
     def get_vertexes(vtxs)
