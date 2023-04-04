@@ -1,6 +1,6 @@
 module TypeProf::Core
   class AST
-    def self.parse(path, src)
+    def self.parse_rb(path, src)
       begin
         verbose_back, $VERBOSE = $VERBOSE, nil
         raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
@@ -169,6 +169,43 @@ module TypeProf::Core
       return nil
     end
 
+    def self.parse_rbs(path, src)
+      _buffer, _directives, raw_decls = RBS::Parser.parse_signature(src)
+
+      cref = CRef::Toplevel
+      lenv = LocalEnv.new(path, cref, {})
+
+      raw_decls.map do |raw_decl|
+        AST.create_rbs_decl(raw_decl, lenv)
+      end
+    end
+
+    def self.create_rbs_decl(raw_decl, base_cpath)
+      case raw_decl
+      when RBS::AST::Declarations::Class
+        SIG_CLASS.new(raw_decl, base_cpath)
+      when RBS::AST::Declarations::Module
+        SIG_MODULE.new(raw_decl, base_cpath)
+      when RBS::AST::Declarations::Constant
+      when RBS::AST::Declarations::AliasDecl
+      when RBS::AST::Declarations::TypeAlias
+        # TODO: check
+      when RBS::AST::Declarations::Interface
+      when RBS::AST::Declarations::Global
+      else
+        raise "unsupported: #{ raw_decl.class }"
+      end
+    end
+
+    def self.create_rbs_member(raw_member, base_cpath)
+      case raw_member
+      when RBS::AST::Members::MethodDefinition
+        SIG_DEF.new(raw_member, base_cpath)
+      else
+        raise "unsupported: #{ raw_member.class }"
+      end
+    end
+
     class Node
       def initialize(raw_node, lenv)
         @raw_node = raw_node
@@ -219,7 +256,6 @@ module TypeProf::Core
       end
 
       def add_site(key, site)
-        raise unless site
         (@sites[key] ||= Set[]) << site
       end
 

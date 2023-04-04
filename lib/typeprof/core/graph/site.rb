@@ -145,6 +145,7 @@ module TypeProf::Core
       @singleton = singleton
       @mid = mid
       @rbs_method_types = rbs_method_types
+      @ret = Source.new
 
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_decl(self)
@@ -154,7 +155,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :cpath, :singleton, :mid, :rbs_method_types
+    attr_reader :cpath, :singleton, :mid, :rbs_method_types, :ret
 
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)

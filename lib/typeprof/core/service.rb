@@ -49,7 +49,7 @@ module TypeProf::Core
 
       code = File.read(path) unless code
       begin
-        node = AST.parse(path, code)
+        node = AST.parse_rb(path, code)
       rescue SyntaxError
         return
       end
@@ -101,7 +101,7 @@ module TypeProf::Core
 
       code = File.read(path) unless code
       begin
-        decls = Sig::AST.parse(path, code)
+        decls = AST.parse_rbs(path, code)
       rescue SyntaxError
         return
       end
