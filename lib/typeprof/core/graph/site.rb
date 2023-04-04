@@ -148,6 +148,7 @@ module TypeProf::Core
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_decl(self)
       me.add_run_all_callsites(genv)
+      me.add_run_all_mdefs(genv)
     end
 
     attr_accessor :node
@@ -219,7 +220,11 @@ module TypeProf::Core
       @ret = ret
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
-      me.add_run_all_callsites(genv)
+      if me.decls.empty?
+        me.add_run_all_callsites(genv)
+      else
+        genv.add_run(self)
+      end
     end
 
     attr_accessor :node
@@ -229,7 +234,40 @@ module TypeProf::Core
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.remove_def(self)
-      me.add_run_all_callsites(genv)
+      if me.decls.empty?
+        me.add_run_all_callsites(genv)
+      else
+        genv.add_run(self)
+      end
+    end
+
+    def run0(genv, changes)
+      me = genv.resolve_method(@cpath, @singleton, @mid)
+      return if me.decls.empty?
+
+      # TODO: support "| ..."
+      decl = me.decls.to_a.first
+      # TODO: support overload?
+      overload = decl.node.raw_rbs.overloads.first
+      _block = overload.method_type.block
+      rbs_func = overload.method_type.type
+
+      param_map0 = {}
+      overload.method_type.type_params.map do |param|
+        param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
+      end
+      a_args = rbs_func.required_positionals.map do |a_arg|
+        Signatures.type_to_vtx(genv, node, a_arg.type, param_map0)
+      end
+
+      if a_args.size == @f_args.size
+        a_args.zip(@f_args) do |a_arg, f_arg|
+          changes.add_edge(a_arg, f_arg)
+        end
+      end
+
+      # TODO: block
+      # TODO: return value check
     end
 
     def call(changes, genv, call_node, a_args, block, ret)

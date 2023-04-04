@@ -288,6 +288,12 @@ module TypeProf::Core
       @builtin || !@decls.empty? || !@defs.empty? || !@aliases.empty?
     end
 
+    def add_run_all_mdefs(genv)
+      @defs.each do |mdef|
+        genv.add_run(mdef)
+      end
+    end
+
     def add_run_all_callsites(genv)
       @callsites.each do |callsite|
         genv.add_run(callsite)
