@@ -1,2 +1,3 @@
 /coverage/
-stackprof.dump
+/stackprof/
+/sandbox/
