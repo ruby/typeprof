@@ -416,6 +416,7 @@ module TypeProf::Core
           mod = base_ty.mod
           singleton = base_ty.is_a?(Type::Module)
           found = false
+          # TODO: resolution for module
           while mod
             me = mod.get_method(singleton, mid)
             changes.add_depended_method_entities(me) if changes
@@ -425,21 +426,26 @@ module TypeProf::Core
             end
             if me && me.exist?
               found = true
+              yield ty, @mid, me, param_map
               break
             end
 
             unless singleton # TODO
-              mod.included_modules.each_value do |inc_mod|
+              mod.included_modules.each do |d, inc_mod|
+                #if d.is_a?(AST::SIG_INCLUDE)
+                #  pp d.args
+                #  pp inc_mod.cpath
+                #end
                 me = inc_mod.get_method(singleton, mid)
                 changes.add_depended_method_entities(me) if changes
+                # TODO: module alias??
                 if !me.aliases.empty?
                   mid = me.aliases.values.first
                   redo
                 end
-                # TODO: module alias??
                 if me && me.exist?
                   found = true
-                  break
+                  yield ty, mid, me, param_map
                 end
               end
               break if found
@@ -450,11 +456,8 @@ module TypeProf::Core
 
             mod, singleton = genv.get_superclass(mod, singleton)
           end
-          if found
-            yield ty, @mid, me, param_map
-          else
-            yield ty, @mid, nil, param_map
-          end
+
+          yield ty, @mid, nil, param_map unless mod
         end
       end
     end

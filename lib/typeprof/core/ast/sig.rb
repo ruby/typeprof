@@ -19,6 +19,7 @@ module TypeProf::Core
         @members = raw_decl.members.map do |member|
           AST.create_rbs_member(member, nlenv)
         end.compact
+        #@params = raw_decl.type_params
       end
 
       attr_reader :cpath, :members
@@ -43,7 +44,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = Source.new(Type::Module.new(genv.resolve_cpath(@cpath)))
+        val = Source.new(Type::Module.new(genv.resolve_cpath(@cpath), []))
         val.add_edge(genv, @static_ret.vtx)
         @members.each do |member|
           member.install(genv)
@@ -98,10 +99,11 @@ module TypeProf::Core
         name = raw_member.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
+        @args = raw_member.args
       end
 
-      attr_reader :cpath, :toplevel
-      def attrs = { cpath:, toplevel: }
+      attr_reader :cpath, :toplevel, :args
+      def attrs = { cpath:, toplevel:, args: }
 
       def define0(genv)
         const_reads = []

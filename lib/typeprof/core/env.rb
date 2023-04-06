@@ -15,20 +15,20 @@ module TypeProf::Core
 
       @gvars = {}
 
-      @obj_type = Type::Instance.new(resolve_cpath([:Object]))
-      @nil_type = Type::Instance.new(resolve_cpath([:NilClass]))
-      @true_type = Type::Instance.new(resolve_cpath([:TrueClass]))
-      @false_type = Type::Instance.new(resolve_cpath([:FalseClass]))
-      @str_type = Type::Instance.new(resolve_cpath([:String]))
-      @int_type = Type::Instance.new(resolve_cpath([:Integer]))
-      @float_type = Type::Instance.new(resolve_cpath([:Float]))
-      @ary_type = Type::Instance.new(resolve_cpath([:Array]))
-      @hash_type = Type::Instance.new(resolve_cpath([:Hash]))
-      @range_type = Type::Instance.new(resolve_cpath([:Range]))
-      @proc_type = Type::Instance.new(resolve_cpath([:Proc]))
-      @symbol_type = Type::Instance.new(resolve_cpath([:Symbol]))
-      @set_type = Type::Instance.new(resolve_cpath([:Set]))
-      @regexp_type = Type::Instance.new(resolve_cpath([:Regexp]))
+      @obj_type = Type::Instance.new(resolve_cpath([:Object]), [])
+      @nil_type = Type::Instance.new(resolve_cpath([:NilClass]), [])
+      @true_type = Type::Instance.new(resolve_cpath([:TrueClass]), [])
+      @false_type = Type::Instance.new(resolve_cpath([:FalseClass]), [])
+      @str_type = Type::Instance.new(resolve_cpath([:String]), [])
+      @int_type = Type::Instance.new(resolve_cpath([:Integer]), [])
+      @float_type = Type::Instance.new(resolve_cpath([:Float]), [])
+      @ary_type = Type::Instance.new(resolve_cpath([:Array]), [])
+      @hash_type = Type::Instance.new(resolve_cpath([:Hash]), [])
+      @range_type = Type::Instance.new(resolve_cpath([:Range]), [])
+      @proc_type = Type::Instance.new(resolve_cpath([:Proc]), [])
+      @symbol_type = Type::Instance.new(resolve_cpath([:Symbol]), [])
+      @set_type = Type::Instance.new(resolve_cpath([:Set]), [])
+      @regexp_type = Type::Instance.new(resolve_cpath([:Regexp]), [])
 
       @run_count = 0
     end
@@ -215,7 +215,7 @@ module TypeProf::Core
     end
 
     def get_self(genv)
-      (@singleton ? Type::Module : Type::Instance).new(genv.resolve_cpath(@cpath || []))
+      (@singleton ? Type::Module : Type::Instance).new(genv.resolve_cpath(@cpath || []), [])
     end
 
     Toplevel = self.new([], false, nil)

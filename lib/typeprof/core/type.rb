@@ -12,16 +12,17 @@ module TypeProf::Core
     class Module < Type
       include StructuralEquality
 
-      def initialize(mod)
+      def initialize(mod, args)
         raise unless mod.is_a?(ModuleEntity)
         # TODO: type_param
         @mod = mod
+        @args = args
       end
 
-      attr_reader :mod
+      attr_reader :mod, :args
 
       def show
-        "singleton(#{ @mod.show_cpath })"
+        "singleton(#{ @mod.show_cpath }#{ @args.empty? ? "" : "[#{ @args.map {|arg| arg.show }.join(", ") }]" })"
       end
 
       def match?(genv, other)
@@ -32,19 +33,20 @@ module TypeProf::Core
       end
 
       def get_instance_type
-        Instance.new(@mod)
+        Instance.new(@mod, @args)
       end
     end
 
     class Instance < Type
       include StructuralEquality
 
-      def initialize(mod)
+      def initialize(mod, args)
         raise unless mod.is_a?(ModuleEntity)
         @mod = mod
+        @args = args
       end
 
-      attr_reader :mod
+      attr_reader :mod, :args
 
       def show
         case @mod.cpath
@@ -52,7 +54,7 @@ module TypeProf::Core
         when [:TrueClass] then "true"
         when [:FalseClass] then "false"
         else
-          "#{ @mod.show_cpath }"
+          "#{ @mod.show_cpath }#{ @args.empty? ? "" : "[#{ @args.map {|arg| arg.show }.join(", ") }]" }"
         end
       end
 
@@ -217,8 +219,10 @@ module TypeProf::Core
           val_vtx = rbs_type_to_vtx(genv, node, type.args[1], param_map, cref)
           Source.new(Type::Hash.new({}, key_vtx, val_vtx, genv.hash_type)).add_edge(genv, vtx)
         else
+          # TODO: resolve with cref
+          # TODO: type.args
           mod = genv.resolve_cpath(cpath)
-          Source.new(Type::Instance.new(mod)).add_edge(genv, vtx)
+          Source.new(Type::Instance.new(mod, [])).add_edge(genv, vtx)
         end
       when RBS::Types::Tuple
         unified_elem = Vertex.new("ary-unified", node)
