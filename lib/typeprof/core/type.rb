@@ -179,7 +179,7 @@ module TypeProf::Core
       when RBS::Types::Alias
         cref0 = cref
         while cref0
-          tae = genv.resolve_type_alias(cref0.cpath, type.name.name)
+          tae = genv.resolve_type_alias(cref0.cpath + type.name.namespace.path, type.name.name)
           break if tae.exist?
           cref0 = cref0.outer
         end

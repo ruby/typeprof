@@ -51,3 +51,18 @@ class Object
   def test2: -> untyped
   def test3: (untyped) -> untyped
 end
+
+# update: test.rbs
+class Bar
+  type a = Integer
+end
+class Foo
+  def foo: (Bar::a) -> Bar::a
+end
+
+# assert: test.rb
+class Object
+  def test1: -> Integer
+  def test2: -> untyped
+  def test3: (untyped) -> untyped
+end
