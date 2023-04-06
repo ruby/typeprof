@@ -75,11 +75,14 @@ module TypeProf::Core
     end
 
     class SIG_DEF < Node
-      def initialize(raw_member, lenv)
+      def initialize(raw_decl, lenv)
         super
-        @mid = raw_member.name
-        @singleton = raw_member.singleton?
-        @instance = raw_member.instance?
+        @mid = raw_decl.name
+        @singleton = raw_decl.singleton?
+        @instance = raw_decl.instance?
+        @method_types = raw_decl.overloads.map do |overload|
+          AST.create_rbs_method_type(overload.method_type, lenv)
+        end
       end
 
       def install0(genv)
@@ -94,12 +97,12 @@ module TypeProf::Core
     end
 
     class SIG_INCLUDE < Node
-      def initialize(raw_member, lenv)
+      def initialize(raw_decl, lenv)
         super
-        name = raw_member.name
+        name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
-        @args = raw_member.args
+        @args = raw_decl.args
       end
 
       attr_reader :cpath, :toplevel, :args
@@ -133,12 +136,12 @@ module TypeProf::Core
     end
 
     class SIG_ALIAS < Node
-      def initialize(raw_member, lenv)
+      def initialize(raw_decl, lenv)
         super
-        @new_mid = raw_member.new_name
-        @old_mid = raw_member.old_name
-        @singleton = raw_member.singleton?
-        @instance = raw_member.instance?
+        @new_mid = raw_decl.new_name
+        @old_mid = raw_decl.old_name
+        @singleton = raw_decl.singleton?
+        @instance = raw_decl.instance?
       end
 
       attr_reader :new_mid, :old_mid, :singleton, :instance
@@ -250,6 +253,23 @@ module TypeProf::Core
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
         super
+      end
+    end
+
+    class SIG_METHOD_TYPE < Node
+      def initialize(raw_decl, lenv)
+        super
+        func = raw_decl.type
+        # TODO: raw_decl.type_params
+        @required_positionals = func.required_positionals.map do |ty|
+          AST.create_rbs_type(ty, lenv)
+        end
+        #@optional_positionals = func.optional_positionals
+        #@required_keywords = func.required_keywords
+        #@optional_keywords = func.optional_keywords
+        #@rest_positionals = func.rest_positionals
+        #@rest_keywords = func.rest_keywords
+        @return_type = AST.create_rbs_type(func.return_type, lenv)
       end
     end
   end

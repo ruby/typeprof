@@ -1,6 +1,7 @@
 require "rbs"
 require_relative "core/util"
 require_relative "core/ast"
+require_relative "core/ast/base"
 require_relative "core/ast/module"
 require_relative "core/ast/method"
 require_relative "core/ast/call"
