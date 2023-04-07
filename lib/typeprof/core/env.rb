@@ -1,6 +1,8 @@
 module TypeProf::Core
   class GlobalEnv
     def initialize
+      @type_table = {}
+
       @static_eval_queue = []
 
       @run_queue = []
@@ -19,34 +21,37 @@ module TypeProf::Core
       @mod_hash = resolve_cpath([:Hash])
       @mod_range = resolve_cpath([:Range])
 
-      @obj_type = Type::Instance.new(resolve_cpath([:Object]), [])
-      @nil_type = Type::Instance.new(resolve_cpath([:NilClass]), [])
-      @true_type = Type::Instance.new(resolve_cpath([:TrueClass]), [])
-      @false_type = Type::Instance.new(resolve_cpath([:FalseClass]), [])
-      @str_type = Type::Instance.new(resolve_cpath([:String]), [])
-      @int_type = Type::Instance.new(resolve_cpath([:Integer]), [])
-      @float_type = Type::Instance.new(resolve_cpath([:Float]), [])
-      @proc_type = Type::Instance.new(resolve_cpath([:Proc]), [])
-      @symbol_type = Type::Instance.new(resolve_cpath([:Symbol]), [])
-      @set_type = Type::Instance.new(resolve_cpath([:Set]), [])
-      @regexp_type = Type::Instance.new(resolve_cpath([:Regexp]), [])
+      @obj_type = Type::Instance.new(self, resolve_cpath([:Object]), [])
+      @nil_type = Type::Instance.new(self, resolve_cpath([:NilClass]), [])
+      @true_type = Type::Instance.new(self, resolve_cpath([:TrueClass]), [])
+      @false_type = Type::Instance.new(self, resolve_cpath([:FalseClass]), [])
+      @str_type = Type::Instance.new(self, resolve_cpath([:String]), [])
+      @int_type = Type::Instance.new(self, resolve_cpath([:Integer]), [])
+      @float_type = Type::Instance.new(self, resolve_cpath([:Float]), [])
+      @proc_type = Type::Instance.new(self, resolve_cpath([:Proc]), [])
+      @symbol_type = Type::Instance.new(self, resolve_cpath([:Symbol]), [])
+      @set_type = Type::Instance.new(self, resolve_cpath([:Set]), [])
+      @regexp_type = Type::Instance.new(self, resolve_cpath([:Regexp]), [])
 
       @run_count = 0
     end
 
+    attr_reader :type_table
+
+    attr_reader :mod_basic_object, :mod_object
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type
     attr_reader :proc_type, :symbol_type, :set_type, :regexp_type
 
     def gen_ary_type(elem_vtx)
-      Type::Instance.new(@mod_ary, [elem_vtx])
+      Type::Instance.new(self, @mod_ary, [elem_vtx])
     end
 
     def gen_hash_type(key_vtx, val_vtx)
-      Type::Instance.new(@mod_hash, [key_vtx, val_vtx])
+      Type::Instance.new(self, @mod_hash, [key_vtx, val_vtx])
     end
 
     def gen_range_type(elem_vtx)
-      Type::Instance.new(@mod_range, [elem_vtx])
+      Type::Instance.new(self, @mod_range, [elem_vtx])
     end
 
     attr_accessor :run_count
@@ -255,9 +260,9 @@ module TypeProf::Core
 
     def get_self(genv)
       if @singleton
-        Type::Singleton.new(genv.resolve_cpath(@cpath || []))
+        Type::Singleton.new(genv, genv.resolve_cpath(@cpath || []))
       else
-        Type::Instance.new(genv.resolve_cpath(@cpath || []), [])
+        Type::Instance.new(genv, genv.resolve_cpath(@cpath || []), [])
       end
     end
 

@@ -5,7 +5,7 @@ module TypeProf::Core
     end
 
     def class_new(changes, node, ty, a_args, ret)
-      ty = ty.get_instance_type
+      ty = ty.get_instance_type(@genv)
       recv = Source.new(ty)
       site = CallSite.new(node, @genv, recv, :initialize, a_args, nil, false) # TODO: block
       # site.ret (the return value of initialize) is discarded

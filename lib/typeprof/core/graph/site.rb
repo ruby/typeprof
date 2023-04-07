@@ -376,7 +376,7 @@ module TypeProf::Core
     def resolve_subclasses(genv, changes)
       # TODO: This does not follow new subclasses
       @recv.types.each do |ty, _source|
-        next if ty == Type::Bot.new
+        next if ty == Type::Bot.new(genv)
         ty.base_types(genv).each do |base_ty|
           singleton = base_ty.is_a?(Type::Singleton)
           mod = base_ty.mod
@@ -394,7 +394,7 @@ module TypeProf::Core
 
     def resolve(genv, changes = nil)
       @recv.types.each do |ty, _source|
-        next if ty == Type::Bot.new
+        next if ty == Type::Bot.new(genv)
         param_map = { __self: Source.new(ty) }
         case ty
         when Type::Array

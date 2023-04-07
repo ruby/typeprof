@@ -47,9 +47,9 @@ module TypeProf::Core
 
           break unless first
           break unless mod.superclass
-          break if mod.cpath == [:BasicObject]
+          break if mod == genv.mod_basic_object
           mod = mod.superclass
-          break if mod.cpath == [] && break_object
+          break if mod == genv.mod_object && break_object
         end
         first = false
         cref = cref.outer

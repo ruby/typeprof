@@ -124,7 +124,7 @@ module TypeProf::Core
           mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, block, ret)
           add_site(:mdef, mdef)
         end
-        Source.new(Type::Symbol.new(@mid))
+        Source.new(Type::Symbol.new(genv, @mid))
       end
 
       def hover(pos)

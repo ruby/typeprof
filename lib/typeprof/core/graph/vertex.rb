@@ -13,7 +13,7 @@ module TypeProf::Core
         begin
           Fiber[:show_rec] << self
           types = []
-          bot = @types.include?(Type::Bot.new)
+          bot = @types.keys.any? {|ty| ty.is_a?(Type::Bot) }
           optional = true_exist = false_exist = false
           @types.each_key do |ty|
             if ty.is_a?(Type::Instance)
@@ -31,7 +31,7 @@ module TypeProf::Core
               next if ty.mod.cpath == [:NilClass]
               next if bool && (ty.mod.cpath == [:TrueClass] || ty.mod.cpath == [:FalseClass])
             end
-            next if ty == Type::Bot.new
+            next if ty.is_a?(Type::Bot)
             types << ty.show
           end
           types = types.uniq.sort

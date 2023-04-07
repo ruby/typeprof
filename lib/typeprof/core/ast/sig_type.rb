@@ -72,7 +72,7 @@ module TypeProf::Core
 
     class SIG_TY_BASE_BOTTOM < TypeNode
       def get_vertex0(genv, vtx, subst)
-        Source.new(Type::Bot.new).add_edge(genv, vtx)
+        Source.new(Type::Bot.new(genv)).add_edge(genv, vtx)
       end
     end
 
@@ -190,7 +190,7 @@ module TypeProf::Core
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
-        Source.new(Type::Singleton.new(mod)).add_edge(genv, vtx)
+        Source.new(Type::Singleton.new(genv, mod)).add_edge(genv, vtx)
       end
     end
 
@@ -235,7 +235,7 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.get_vertex(genv, subst) }
-        Source.new(Type::Instance.new(mod, args)).add_edge(genv, vtx)
+        Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
       end
     end
 
@@ -255,7 +255,7 @@ module TypeProf::Core
           nvtx.add_edge(genv, unified_elem)
           nvtx
         end
-        Source.new(Type::Array.new(elems, genv.gen_ary_type(unified_elem))).add_edge(genv, vtx)
+        Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))).add_edge(genv, vtx)
       end
     end
 
@@ -304,7 +304,7 @@ module TypeProf::Core
       def get_vertex0(genv, vtx, subst)
         ty = case @lit
         when ::Symbol
-          Type::Symbol.new(@lit)
+          Type::Symbol.new(genv, @lit)
         when ::Integer then genv.int_type
         when ::String then genv.str_type
         when ::TrueClass then genv.true_type

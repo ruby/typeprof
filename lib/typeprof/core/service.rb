@@ -35,6 +35,26 @@ module TypeProf::Core
 
     attr_reader :genv
 
+    def destroy
+      @text_nodes.each_value do |node|
+        if node.is_a?(Array)
+          node.each {|n| n.undefine(@genv) }
+        else
+          node.undefine(@genv)
+        end
+      end
+      @genv.define_all
+      @text_nodes.each_value do |node|
+        if node.is_a?(Array)
+          node.each {|n| n.uninstall(@genv) }
+        else
+          node.uninstall(@genv)
+        end
+      end
+      @genv.run_all
+      @text_nodes.clear
+    end
+
     def add_workspaces(folders, &blk)
       folders.each do |folder|
         Dir.glob(File.expand_path(folder + "/**/*.rb")) do |path|

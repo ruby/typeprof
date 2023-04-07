@@ -202,7 +202,7 @@ module TypeProf::Core
       def install0(genv)
         arg = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
         arg.add_edge(genv, @lenv.get_var(:"*block_ret"))
-        Source.new(Type::Bot.new)
+        Source.new(Type::Bot.new(genv))
       end
 
       def dump0(dumper)
@@ -354,7 +354,7 @@ module TypeProf::Core
       def install0(genv)
         ret = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
         ret.add_edge(genv, @lenv.get_var(:"*ret"))
-        Source.new(Type::Bot.new)
+        Source.new(Type::Bot.new(genv))
       end
 
       def dump0(dumper)

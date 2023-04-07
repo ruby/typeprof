@@ -2,8 +2,8 @@ module TypeProf::Core
   module StructuralEquality
     def self.included(klass)
       klass.instance_eval do
-        def new(*args)
-          (Thread.current[:table] ||= {})[[self] + args] ||= super
+        def new(genv, *args)
+          genv.type_table[[self] + args] ||= super(*args)
         end
       end
     end

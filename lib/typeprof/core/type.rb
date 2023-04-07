@@ -31,8 +31,8 @@ module TypeProf::Core
         return false
       end
 
-      def get_instance_type
-        Instance.new(@mod, []) # Is this okay?
+      def get_instance_type(genv)
+        Instance.new(genv, @mod, []) # Is this okay?
       end
     end
 

@@ -25,7 +25,7 @@ module TypeProf::Core
         when Float then Source.new(genv.float_type)
         when Regexp then Source.new(genv.regexp_type)
         when Symbol
-          Source.new(Type::Symbol.new(@lit))
+          Source.new(Type::Symbol.new(genv, @lit))
         else
           raise "not supported yet: #{ @lit.inspect }"
         end
@@ -108,7 +108,7 @@ module TypeProf::Core
         elems = @elems.map {|e| e.install(genv).new_vertex(genv, "ary-elem", self) }
         unified_elem = Vertex.new("ary-elems-unified", self)
         elems.each {|vtx| vtx.add_edge(genv, unified_elem) }
-        Source.new(Type::Array.new(elems, genv.gen_ary_type(unified_elem)))
+        Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem)))
       end
 
       def diff(prev_node)
@@ -162,7 +162,7 @@ module TypeProf::Core
           v.add_edge(genv, unified_val)
           literal_pairs[key.lit] = v if key.is_a?(LIT) && key.lit.is_a?(Symbol)
         end
-        Source.new(Type::Hash.new(literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
+        Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
       end
 
       def diff(prev_node)
