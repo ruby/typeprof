@@ -458,7 +458,18 @@ module TypeProf::Core
             # TODO: included modules
             # TODO: update type params
 
+            mdecl1 = mod.module_decls.to_a.first
             mod, singleton = genv.get_superclass(mod, singleton)
+            if mod
+              mdecl2 = mod.module_decls.to_a.first
+              if mdecl1 && mdecl2
+                param_map2 = { __self: Source.new(ty) }
+                mdecl2.params.zip(mdecl1.superclass_args) do |param, arg|
+                  param_map2[param] = arg.get_vertex(genv, param_map)
+                end
+                param_map = param_map2
+              end
+            end
           end
 
           yield ty, @mid, nil, param_map unless mod

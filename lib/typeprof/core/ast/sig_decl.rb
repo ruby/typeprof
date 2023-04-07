@@ -65,14 +65,19 @@ module TypeProf::Core
           name = superclass.name
           @superclass_cpath = name.namespace.path + [name.name]
           @superclass_toplevel = name.namespace.absolute?
+          @superclass_args = superclass.args.map {|arg| AST.create_rbs_type(arg, lenv) }
         else
           @superclass_cpath = nil
           @superclass_toplevel = nil
+          @superclass_args = nil
         end
       end
 
-      attr_reader :superclass_cpath, :superclass_toplevel
+      attr_reader :superclass_cpath, :superclass_toplevel, :superclass_args
 
+      def subnodes
+        super.merge!({ superclass_args: })
+      end
       def attrs
         super.merge!({ superclass_cpath:, superclass_toplevel: })
       end
@@ -80,6 +85,7 @@ module TypeProf::Core
       def define0(genv)
         const_reads = super
         if @superclass_cpath
+          @superclass_args.each {|arg| arg.define(genv) }
           const_read = BaseConstRead.new(genv, @superclass_cpath.first, @superclass_toplevel ? CRef::Toplevel : @lenv.cref)
           const_reads << const_read
           @superclass_cpath[1..].each do |cname|
@@ -100,6 +106,9 @@ module TypeProf::Core
           @static_ret[1..].each do |const_read|
             const_read.destroy(genv)
           end
+        end
+        if @superclass_args
+          @superclass_args.each {|arg| arg.undefine(genv) }
         end
       end
     end
