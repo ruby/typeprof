@@ -1,24 +1,22 @@
 module TypeProf::Core
-  class ConstRead
-    def initialize(cname)
-      @cname = cname
+  class StaticRead
+    def initialize(name)
+      @name = name
       @followers = Set[]
-      @cpath = nil
-      @cdef = nil
-      @event_sources = []
+      @source_modules = []
     end
 
-    attr_reader :cref, :cname, :cpath, :cdef, :followers
+    attr_reader :name, :followers
 
     def propagate(genv)
       @followers.dup.each do |follower|
         case follower
-        when ScopedConstRead
+        when ModuleEntity
+          follower.on_parent_modules_changed(genv)
+        when ScopedStaticRead
           follower.on_cbase_updated(genv)
         when ConstReadSite, IsAFilter
           genv.add_run(follower)
-        when ModuleEntity
-          follower.on_parent_modules_changed(genv)
         else
           raise follower.inspect
         end
@@ -26,10 +24,10 @@ module TypeProf::Core
     end
 
     def destroy(genv)
-      @event_sources.each do |mod|
-        mod.const_reads[@cname].delete(self)
+      @source_modules.each do |mod|
+        mod.static_reads[@name].delete(self)
       end
-      @event_sources.clear
+      @source_modules.clear
     end
 
     def resolve(genv, cref, break_object)
@@ -40,17 +38,13 @@ module TypeProf::Core
         scope = cref.cpath
         mod = genv.resolve_cpath(scope)
         while true
-          @event_sources << mod
-          (mod.const_reads[@cname] ||= Set[]) << self
-          inner_mod = genv.resolve_cpath(mod.cpath + [@cname]) # TODO
-          if inner_mod.exist?
-            cpath = mod.cpath + [@cname]
-            return [cpath, mod.consts[@cname]]
-          end
-          if mod.consts[@cname] && mod.consts[@cname].exist?
-            return [nil, mod.consts[@cname]]
-          end
-          # TODO: include
+          @source_modules << mod
+          (mod.static_reads[@name] ||= Set[]) << self
+
+          return if check_module(genv, mod)
+
+          # TODO: included modules
+
           break unless first
           break unless mod.superclass
           break if mod.cpath == [:BasicObject]
@@ -60,51 +54,104 @@ module TypeProf::Core
         first = false
         cref = cref.outer
       end
-      return nil
+      resolution_failed(genv)
     end
   end
 
-  class BaseConstRead < ConstRead
-    def initialize(genv, cname, cref)
-      super(cname)
+  class BaseStaticRead < StaticRead
+    def initialize(genv, name, cref)
+      super(name)
       @cref = cref
-      genv.add_static_eval_queue(:const_read_changed, self)
+      genv.add_static_eval_queue(:static_read_changed, self)
     end
 
     attr_reader :cref
 
     def on_scope_updated(genv)
-      cpath, cdef = resolve(genv, @cref, false)
-      if cpath != @cpath || cdef != @cdef
-        @cpath = cpath
-        @cdef = cdef
-        propagate(genv)
-      end
+      resolve(genv, @cref, false)
     end
   end
 
-  class ScopedConstRead < ConstRead
-    def initialize(genv, cname, cbase)
-      super(cname)
-      # Note: cbase may be nil when the cbase is a dynamic expression (such as lvar::CONST)
+  class ScopedStaticRead < StaticRead
+    def initialize(name, cbase)
+      super(name)
       @cbase = cbase
       @cbase.followers << self if @cbase
     end
 
-    attr_reader :cbase
-
     def on_cbase_updated(genv)
-      raise "should not occur" unless @cbase
-      if @cbase.cpath
-        cpath, cdef = resolve(genv, CRef.new(@cbase.cpath, false, nil), true)
+      if @cbase && @cbase.cpath
+        resolve(genv, CRef.new(@cbase.cpath, false, nil), true)
       else
-        cpath = cdef = nil
+        resolution_failed(genv)
       end
+    end
+  end
+
+  module ConstRead
+    def check_module(genv, mod)
+      cdef = mod.consts[@name]
+      if cdef && cdef.exist?
+        inner_mod = genv.resolve_cpath(mod.cpath + [@name]) # TODO
+        cpath = inner_mod.exist? ? inner_mod.cpath : nil
+        update_module(genv, cpath, cdef)
+        return true
+      end
+      return false
+    end
+
+    def resolution_failed(genv)
+      update_module(genv, nil, nil)
+    end
+
+    def update_module(genv, cpath, cdef)
       if cpath != @cpath || cdef != @cdef
         @cpath = cpath
         @cdef = cdef
         propagate(genv)
       end
     end
+
+    attr_reader :cpath, :cdef
+  end
+
+  class BaseConstRead < BaseStaticRead
+    include ConstRead
+  end
+
+  class ScopedConstRead < ScopedStaticRead
+    include ConstRead
+  end
+
+  module TypeAliasRead
+    def check_module(genv, mod)
+      tae = mod.type_aliases[@name]
+      if tae && tae.exist?
+        update_type_alias(genv, tae)
+        return true
+      end
+      return false
+    end
+
+    def resolution_failed(genv)
+      update_type_alias(genv, nil)
+    end
+
+    def update_type_alias(genv, tae)
+      if tae != @type_alias_entity
+        @type_alias_entity = tae
+        propagate(genv)
+      end
+    end
+
+    attr_reader :type_alias_entity
+  end
+
+  class BaseTypeAliasRead < BaseStaticRead
+    include TypeAliasRead
+  end
+
+  class ScopedTypeAliasRead < ScopedStaticRead
+    include TypeAliasRead
   end
 end

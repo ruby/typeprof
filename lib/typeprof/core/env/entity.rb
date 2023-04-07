@@ -42,7 +42,7 @@ module TypeProf::Core
       @ivars = { true => {}, false => {} }
       @type_aliases = {}
 
-      @const_reads = {}
+      @static_reads = {}
       @ivar_reads = Set[] # should be handled in @ivars ??
     end
 
@@ -58,9 +58,9 @@ module TypeProf::Core
     attr_reader :consts
     attr_reader :methods
     attr_reader :ivars
+    attr_reader :type_aliases
 
-    attr_reader :const_reads
-    attr_reader :callsites
+    attr_reader :static_reads
     attr_reader :ivar_reads
 
     def exist?
@@ -72,9 +72,9 @@ module TypeProf::Core
         next if self == child_mod # for Object
         child_mod.on_inner_modules_changed(genv, changed_cname)
       end
-      if @const_reads[changed_cname]
-        @const_reads[changed_cname].each do |const_read|
-          genv.add_static_eval_queue(:const_read_changed, const_read)
+      if @static_reads[changed_cname]
+        @static_reads[changed_cname].each do |static_read|
+          genv.add_static_eval_queue(:static_read_changed, static_read)
         end
       end
     end
@@ -227,9 +227,9 @@ module TypeProf::Core
         return
       end
       @child_modules.each {|child_mod| child_mod.on_ancestors_updated(genv, base_mod || self) }
-      @const_reads.each_value do |const_reads|
-        const_reads.each do |const_read|
-          genv.add_static_eval_queue(:const_read_changed, const_read)
+      @static_reads.each_value do |static_reads|
+        static_reads.each do |static_read|
+          genv.add_static_eval_queue(:static_read_changed, static_read)
         end
       end
       @methods.each do |_, methods|

@@ -47,7 +47,7 @@ module TypeProf::Core
       attr_reader :cbase, :cname
 
       def define0(genv)
-        ScopedConstRead.new(genv, @cname, @cbase.define(genv))
+        ScopedConstRead.new(@cname, @cbase.define(genv))
       end
 
       def undefine0(genv)

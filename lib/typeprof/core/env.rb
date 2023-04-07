@@ -66,11 +66,11 @@ module TypeProf::Core
         case change_type
         when :inner_modules_changed
           arg[0].on_inner_modules_changed(self, arg[1])
-        when :const_read_changed
+        when :static_read_changed
           case arg
-          when BaseConstRead
+          when BaseStaticRead
             arg.on_scope_updated(self)
-          when ScopedConstRead
+          when ScopedStaticRead
             arg.on_cbase_updated(self)
           else
             raise
@@ -78,7 +78,7 @@ module TypeProf::Core
         when :parent_modules_changed
           arg.on_parent_modules_changed(self)
         else
-          raise
+          raise change_type.to_s
         end
       end
     end

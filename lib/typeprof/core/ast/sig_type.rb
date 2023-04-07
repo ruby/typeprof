@@ -98,35 +98,33 @@ module TypeProf::Core
 
       def define0(genv)
         @args.each {|arg| arg.define(genv) }
-        const_reads = []
-        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
-        const_reads << const_read
-        unless @cpath.empty?
+
+        static_reads = []
+        if @cpath.empty?
+          static_reads << BaseTypeAliasRead.new(genv, @name, @toplevel ? CRef::Toplevel : @lenv.cref)
+        else
+          static_reads << BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
           @cpath[1..].each do |cname|
-            const_read = ScopedConstRead.new(genv, cname, const_read)
-            const_reads << const_read
+            static_reads << ScopedConstRead.new(cname, static_reads.last)
           end
+          static_reads << ScopedTypeAliasRead.new(@name, static_reads.last)
         end
-        const_reads
+        static_reads
       end
 
       def undefine0(genv)
         mod = genv.resolve_cpath(@lenv.cref.cpath)
         mod.remove_include_decl(genv, self)
-        @static_ret.each do |const_read|
-          const_read.destroy(genv)
+        @static_ret.each do |static_read|
+          static_read.destroy(genv)
         end
         @args.each {|arg| arg.undefine(genv) }
       end
 
       def get_vertex0(genv, vtx, subst)
-        cpath = @static_ret.last.cpath
-        if cpath
-          tae = genv.resolve_type_alias(cpath, @name)
-          if tae.exist?
-            tae.decls.to_a.first.rbs_type.get_vertex0(genv, vtx, subst)
-            return
-          end
+        tae = @static_ret.last.type_alias_entity
+        if tae && tae.exist?
+          tae.decls.to_a.first.type.get_vertex0(genv, vtx, subst)
         end
         # TODO: report?
       end
@@ -172,7 +170,7 @@ module TypeProf::Core
         const_reads << const_read
         unless @cpath.empty?
           @cpath[1..].each do |cname|
-            const_read = ScopedConstRead.new(genv, cname, const_read)
+            const_read = ScopedConstRead.new(cname, const_read)
             const_reads << const_read
           end
         end
@@ -190,6 +188,7 @@ module TypeProf::Core
       def get_vertex0(genv, vtx, subst)
         # TODO: type.args
         cpath = @static_ret.last.cpath
+        return unless cpath
         mod = genv.resolve_cpath(cpath)
         Source.new(Type::Module.new(mod, [])).add_edge(genv, vtx)
       end
@@ -215,7 +214,7 @@ module TypeProf::Core
         const_reads << const_read
         unless @cpath.empty?
           @cpath[1..].each do |cname|
-            const_read = ScopedConstRead.new(genv, cname, const_read)
+            const_read = ScopedConstRead.new(cname, const_read)
             const_reads << const_read
           end
         end
@@ -233,6 +232,7 @@ module TypeProf::Core
 
       def get_vertex0(genv, vtx, subst)
         cpath = @static_ret.last.cpath
+        return unless cpath
         case cpath
         when [:Array]
           raise if @args.size != 1

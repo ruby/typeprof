@@ -117,7 +117,7 @@ module TypeProf::Core
         const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
         const_reads << const_read
         cpath[1..].each do |cname|
-          const_read = ScopedConstRead.new(genv, cname, const_read)
+          const_read = ScopedConstRead.new(cname, const_read)
           const_reads << const_read
         end
         mod = genv.resolve_cpath(@lenv.cref.cpath)
@@ -214,7 +214,7 @@ module TypeProf::Core
         @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
 
-      attr_reader :cpath, :name, :rbs_type
+      attr_reader :cpath, :name, :type
 
       def define0(genv)
         @type.define(genv)
