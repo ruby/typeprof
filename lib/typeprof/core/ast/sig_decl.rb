@@ -38,7 +38,7 @@ module TypeProf::Core
 
       def undefine0(genv)
         mod = genv.resolve_cpath(@cpath)
-        mod.remove_module_def(genv, self)
+        mod.remove_module_decl(genv, self)
         @members.each do |member|
           member.undefine(genv)
         end

@@ -35,7 +35,7 @@ module TypeProf::Core
 
     attr_reader :genv
 
-    def destroy
+    def reset!
       @text_nodes.each_value do |node|
         if node.is_a?(Array)
           node.each {|n| n.undefine(@genv) }

@@ -1,7 +1,8 @@
 require_relative "../lib/typeprof"
 
 module TypeProf::Core
-  def self.test_harness(smoke, interactive, core: Service.new)
+  def self.test_harness(smoke, interactive, core: nil)
+    core ||= Service.new
     file = "test.rb"
     File.read(smoke).scan(/^#(?!#)(.*)\n((?:.|\n)*?)(?=^#|\z)/) do |cmd, code|
       code = code.gsub(/\s+\z/, "")

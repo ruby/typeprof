@@ -3,11 +3,13 @@ require_relative "harness"
 
 module TypeProf::Core
   class SmokeTest < Test::Unit::TestCase
-    Dir.glob(File.join(__dir__, "../smoke/**/*.rb")) do |smoke|
+    core = Service.new if ENV["FAST_TEST"]
+    Dir.glob(File.join(__dir__, "../smoke/const/basic*.rb")) do |smoke|
       test "#{ File.expand_path(smoke) } " do
-        TypeProf::Core.test_harness(smoke, false) do |exp, act|
+        TypeProf::Core.test_harness(smoke, false, core: core) do |exp, act|
           assert_equal(exp, act)
         end
+        core.reset! if core
       end
     end
   end

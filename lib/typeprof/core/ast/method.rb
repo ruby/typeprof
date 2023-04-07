@@ -71,6 +71,7 @@ module TypeProf::Core
       def attrs = { singleton:, mid:, tbl:, args: }
 
       def define0(genv)
+        @rbs_method_type.define(genv) if @rbs_method_type
         if @prev_node
           # TODO: if possible, replace this node itself with @prev_node
           @lenv = @prev_node.lenv
