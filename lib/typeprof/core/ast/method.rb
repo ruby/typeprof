@@ -1,6 +1,6 @@
 module TypeProf::Core
   class AST
-    def self.get_rbs_comment_before(pos)
+    def self.get_rbs_comment_before(pos, lenv)
       tokens = Fiber[:tokens]
       i = tokens.bsearch_index {|_type, _str, code_range| pos <= code_range.first }
       if i
@@ -18,7 +18,12 @@ module TypeProf::Core
             break
           end
         end
-        RBS::Parser.parse_method_type(comments.reverse.join)
+        method_type = RBS::Parser.parse_method_type(comments.reverse.join)
+        if method_type
+          AST.create_rbs_func_type(method_type.type, method_type.block, lenv)
+        else
+          nil
+        end
       else
         nil
       end
@@ -31,7 +36,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv, singleton, mid, raw_scope)
         super(raw_node, lenv)
 
-        @rbs_method_type = AST.get_rbs_comment_before(code_range.first)
+        @rbs_method_type = AST.get_rbs_comment_before(code_range.first, lenv)
 
         @singleton = singleton
         @mid = mid
@@ -62,8 +67,8 @@ module TypeProf::Core
 
       attr_reader :singleton, :mid, :tbl, :args, :body, :rbs_method_type
 
-      def subnodes = { body: }
-      def attrs = { singleton:, mid:, tbl:, args:, rbs_method_type: }
+      def subnodes = { body:, rbs_method_type: }
+      def attrs = { singleton:, mid:, tbl:, args: }
 
       def define0(genv)
         if @prev_node
