@@ -123,7 +123,7 @@ module TypeProf::Core
     end
 
     def remove_include_decl(genv, node)
-      @include_decls.delete(origin)
+      @include_decls.delete(node)
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
