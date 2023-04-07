@@ -258,12 +258,13 @@ module TypeProf::Core
       def define0(genv)
         @type.define(genv)
         tae = genv.resolve_type_alias(@cpath, @name)
-        tae.decls << self
+        tae.add_decl(self)
         tae
       end
 
       def undefine0(genv)
-        genv.resolve_type_alias(@cpath, @name).decls.delete(self)
+        tae = genv.resolve_type_alias(@cpath, @name)
+        tae.remove_decl(self)
         @type.undefine(genv)
       end
 

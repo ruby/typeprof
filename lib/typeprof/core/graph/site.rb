@@ -413,9 +413,8 @@ module TypeProf::Core
           mod = base_ty.mod
           param_map2 = { __self: Source.new(ty) }
           if base_ty.is_a?(Type::Instance)
-            mdecl = mod.module_decls.to_a.first
-            if mdecl
-              mdecl.params.zip(base_ty.args) do |k, v|
+            if mod.type_params
+              mod.type_params.zip(base_ty.args) do |k, v|
                 param_map2[k] = v
               end
             end
@@ -456,19 +455,15 @@ module TypeProf::Core
             end
 
             # TODO: included modules
-            # TODO: update type params
 
-            mdecl1 = mod.module_decls.to_a.first
+            type_args = mod.superclass_type_args
             mod, singleton = genv.get_superclass(mod, singleton)
-            if mod
-              mdecl2 = mod.module_decls.to_a.first
-              if mdecl1 && mdecl2
-                param_map2 = { __self: Source.new(ty) }
-                mdecl2.params.zip(mdecl1.superclass_args) do |param, arg|
-                  param_map2[param] = arg.get_vertex(genv, param_map)
-                end
-                param_map = param_map2
+            if mod && mod.type_params
+              param_map2 = { __self: Source.new(ty) }
+              mod.type_params.zip(type_args || []) do |param, arg|
+                param_map2[param] = arg ? arg.get_vertex(genv, param_map) : Source.new
               end
+              param_map = param_map2
             end
           end
 

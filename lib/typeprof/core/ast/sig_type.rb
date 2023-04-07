@@ -124,7 +124,7 @@ module TypeProf::Core
       def get_vertex0(genv, vtx, subst)
         tae = @static_ret.last.type_alias_entity
         if tae && tae.exist?
-          tae.decls.to_a.first.type.get_vertex0(genv, vtx, subst)
+          tae.type.get_vertex0(genv, vtx, subst)
         end
         # TODO: report?
       end

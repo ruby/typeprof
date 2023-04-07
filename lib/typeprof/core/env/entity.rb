@@ -37,6 +37,10 @@ module TypeProf::Core
       # child modules (subclasses and all modules that include me)
       @child_modules = Set[]
 
+      # class Foo[X, Y, Z] < Bar[A, B, C]
+      @superclass_type_args = nil # A, B, C
+      @type_params = [] # X, Y, Z
+
       @consts = {}
       @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
@@ -56,6 +60,9 @@ module TypeProf::Core
     attr_reader :included_modules
     attr_reader :child_modules
 
+    attr_reader :superclass_type_args
+    attr_reader :type_params
+
     attr_reader :consts
     attr_reader :methods
     attr_reader :ivars
@@ -68,7 +75,7 @@ module TypeProf::Core
       !@module_decls.empty? || !@module_defs.empty?
     end
 
-    def on_inner_modules_changed(genv, changed_cname) # TODO: accept what is a change
+    def on_inner_modules_changed(genv, changed_cname)
       @child_modules.each do |child_mod|
         next if self == child_mod # for Object
         child_mod.on_inner_modules_changed(genv, changed_cname)
@@ -98,7 +105,19 @@ module TypeProf::Core
 
     def add_module_decl(genv, decl)
       on_module_added(genv)
+
       @module_decls << decl
+
+      if @type_params
+        update_type_params if @type_params != decl.params
+      else
+        @type_params = decl.params
+      end
+
+      if decl.is_a?(AST::SIG_CLASS) && !@superclass_type_args
+        @superclass_type_args = decl.superclass_args
+      end
+
       ce = @outer_module.get_const(@cpath.empty? ? :Object : @cpath.last)
       ce.decls << decl
       ce
@@ -107,7 +126,33 @@ module TypeProf::Core
     def remove_module_decl(genv, decl)
       @outer_module.get_const(@cpath.last).decls.delete(decl)
       @module_decls.delete(decl)
+
+      update_type_params if @type_params == decl.params
+      if @superclass_type_args == decl.superclass_args
+        @superclass_type_args = nil
+        @module_decls.each do |decl|
+          if decl.superclass_args
+            @superclass_type_args = decl.superclass_args
+            break
+          end
+        end
+      end
+
       on_module_removed(genv)
+    end
+
+    def update_type_params
+      @type_params = nil
+      @module_decls.each do |decl|
+        params = decl.params
+        next unless params
+        if @type_params
+          @type_params = params if (@type_params <=> params) > 0
+        else
+          @type_params = params
+        end
+      end
+      # TODO: report error if there are multiple declarations
     end
 
     def add_module_def(genv, node)
@@ -339,12 +384,26 @@ module TypeProf::Core
   class TypeAliasEntity
     def initialize
       @decls = Set[]
+      @type = nil
     end
 
-    attr_reader :decls
+    attr_reader :decls, :type
 
     def exist?
       !@decls.empty?
+    end
+
+    def add_decl(decl)
+      @decls << decl
+      @type = decl.type unless @type
+      # TODO: report error if there are multiple declarations
+    end
+
+    def remove_decl(decl)
+      @decls.delete(decl)
+      if @type == decl.type
+        @type = @decls.empty? ? nil : @decls.to_a.first.type
+      end
     end
   end
 end
