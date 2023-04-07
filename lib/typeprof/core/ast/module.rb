@@ -56,7 +56,7 @@ module TypeProf::Core
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
           @body.lenv.locals[:"*ret"] = Vertex.new("module_ret", self)
 
-          val = Source.new(Type::Module.new(genv.resolve_cpath(@static_cpath), []))
+          val = Source.new(Type::Singleton.new(genv.resolve_cpath(@static_cpath), []))
           val.add_edge(genv, @static_ret.vtx)
           ret = Vertex.new("module_return", self)
           @body.install(genv).add_edge(genv, ret)

@@ -153,7 +153,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_MODULE < TypeNode
+    class SIG_TY_SINGLETON < TypeNode
       def initialize(raw_decl, lenv)
         super
         name = raw_decl.name
@@ -190,7 +190,7 @@ module TypeProf::Core
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
-        Source.new(Type::Module.new(mod, [])).add_edge(genv, vtx)
+        Source.new(Type::Singleton.new(mod, [])).add_edge(genv, vtx)
       end
     end
 

@@ -241,7 +241,7 @@ module TypeProf::Core
     end
 
     def get_self(genv)
-      (@singleton ? Type::Module : Type::Instance).new(genv.resolve_cpath(@cpath || []), [])
+      (@singleton ? Type::Singleton : Type::Instance).new(genv.resolve_cpath(@cpath || []), [])
     end
 
     Toplevel = self.new([], false, nil)

@@ -9,7 +9,7 @@ module TypeProf::Core
       s.start_with?("(") && s.end_with?(")") ? s[1..-2] : s
     end
 
-    class Module < Type
+    class Singleton < Type
       include StructuralEquality
 
       def initialize(mod, args)

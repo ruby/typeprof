@@ -44,7 +44,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = Source.new(Type::Module.new(genv.resolve_cpath(@cpath), []))
+        val = Source.new(Type::Singleton.new(genv.resolve_cpath(@cpath), []))
         val.add_edge(genv, @static_ret.vtx)
         @members.each do |member|
           member.install(genv)

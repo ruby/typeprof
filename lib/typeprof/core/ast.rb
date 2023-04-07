@@ -250,7 +250,7 @@ module TypeProf::Core
       when RBS::Types::Intersection
         SIG_TY_INTERSECTION.new(raw_decl, lenv)
       when RBS::Types::ClassSingleton
-        SIG_TY_MODULE.new(raw_decl, lenv)
+        SIG_TY_SINGLETON.new(raw_decl, lenv)
       when RBS::Types::ClassInstance
         SIG_TY_INSTANCE.new(raw_decl, lenv)
       when RBS::Types::Tuple

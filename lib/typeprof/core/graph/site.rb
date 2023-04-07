@@ -378,7 +378,7 @@ module TypeProf::Core
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new
         ty.base_types(genv).each do |base_ty|
-          singleton = base_ty.is_a?(Type::Module)
+          singleton = base_ty.is_a?(Type::Singleton)
           mod = base_ty.mod
           mod.each_descendant do |desc_mod|
             next if mod == desc_mod
@@ -411,7 +411,7 @@ module TypeProf::Core
         mid = @mid
         ty.base_types(genv).each do |base_ty|
           mod = base_ty.mod
-          singleton = base_ty.is_a?(Type::Module)
+          singleton = base_ty.is_a?(Type::Singleton)
           found = false
           # TODO: resolution for module
           while mod

@@ -238,7 +238,7 @@ module TypeProf::Core
           node.ret.types.map do |ty, _source|
             ty.base_types(genv).each do |base_ty|
               mod = base_ty.mod
-              singleton = base_ty.is_a?(Type::Module)
+              singleton = base_ty.is_a?(Type::Singleton)
               while mod
                 mod.methods[singleton].each do |mid, me|
                   sig = nil
