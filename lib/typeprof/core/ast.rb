@@ -223,6 +223,53 @@ module TypeProf::Core
     end
 
     def self.create_rbs_type(raw_decl, lenv)
+      case raw_decl
+      when RBS::Types::Bases::Nil
+        SIG_TY_BASE_NIL.new(raw_decl, lenv)
+      when RBS::Types::Bases::Bool
+        SIG_TY_BASE_BOOL.new(raw_decl, lenv)
+      when RBS::Types::Bases::Self
+        SIG_TY_BASE_SELF.new(raw_decl, lenv)
+      when RBS::Types::Bases::Void
+        SIG_TY_BASE_VOID.new(raw_decl, lenv)
+      when RBS::Types::Bases::Any
+        SIG_TY_BASE_ANY.new(raw_decl, lenv)
+      when RBS::Types::Bases::Top
+        SIG_TY_BASE_TOP.new(raw_decl, lenv)
+      when RBS::Types::Bases::Bottom
+        SIG_TY_BASE_BOTTOM.new(raw_decl, lenv)
+      when RBS::Types::Bases::Instance
+        SIG_TY_BASE_INSTANCE.new(raw_decl, lenv)
+      when RBS::Types::Bases::Class
+        SIG_TY_BASE_CLASS.new(raw_decl, lenv)
+
+      when RBS::Types::Alias
+        SIG_TY_ALIAS.new(raw_decl, lenv)
+      when RBS::Types::Union
+        SIG_TY_UNION.new(raw_decl, lenv)
+      when RBS::Types::Intersection
+        SIG_TY_INTERSECTION.new(raw_decl, lenv)
+      when RBS::Types::ClassSingleton
+        SIG_TY_MODULE.new(raw_decl, lenv)
+      when RBS::Types::ClassInstance
+        SIG_TY_INSTANCE.new(raw_decl, lenv)
+      when RBS::Types::Tuple
+        SIG_TY_TUPLE.new(raw_decl, lenv)
+      when RBS::Types::Interface
+        SIG_TY_INTERFACE.new(raw_decl, lenv)
+      when RBS::Types::Proc
+        SIG_TY_PROC.new(raw_decl, lenv)
+      when RBS::Types::Variable
+        SIG_TY_VAR.new(raw_decl, lenv)
+      when RBS::Types::Optional
+        SIG_TY_OPTIONAL.new(raw_decl, lenv)
+      when RBS::Types::Literal
+        SIG_TY_LITERAL.new(raw_decl, lenv)
+      when RBS::Types::Function::Param
+        SIG_TY_PARAM.new(raw_decl, lenv)
+      else
+        raise "unknown RBS type: #{ raw_decl.class }"
+      end
     end
   end
 end
