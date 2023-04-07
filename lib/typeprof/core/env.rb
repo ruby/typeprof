@@ -182,6 +182,7 @@ module TypeProf::Core
       # which makes loading faster :-)
       critical_modules = [
         decls.find {|decl| decl.cpath == [:Object] },
+        decls.find {|decl| decl.cpath == [:Module] },
         decls.find {|decl| decl.cpath == [:Numeric] },
         decls.find {|decl| decl.cpath == [:Integer] },
         decls.find {|decl| decl.cpath == [:String] },

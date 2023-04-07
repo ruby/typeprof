@@ -99,7 +99,7 @@ module TypeProf::Core
     def add_module_decl(genv, decl)
       on_module_added(genv)
       @module_decls << decl
-      ce = @outer_module.get_const(@cpath.last)
+      ce = @outer_module.get_const(@cpath.empty? ? :Object : @cpath.last)
       ce.decls << decl
       ce
     end
@@ -158,14 +158,16 @@ module TypeProf::Core
       any_updated = false
       new_superclass_cpath = nil
 
-      @module_decls.each do |mdecl|
-        if mdecl.is_a?(AST::SIG_CLASS) && mdecl.superclass_cpath
-          new_superclass_cpath = mdecl.superclass_cpath
-          break
+      if !@module_decls.empty?
+        const_reads = nil
+        @module_decls.each do |mdecl|
+          if mdecl.is_a?(AST::SIG_CLASS) && mdecl.superclass_cpath
+            const_reads = mdecl.static_ret
+            break
+          end
         end
-      end
-
-      unless new_superclass_cpath
+        new_superclass_cpath = const_reads ? const_reads.last.cpath : []
+      else
         const_read = nil
         @module_defs.each do |mdef|
           if mdef.is_a?(AST::CLASS) && mdef.superclass_cpath
@@ -173,9 +175,7 @@ module TypeProf::Core
             break
           end
         end
-
         # TODO: report multiple inconsistent superclass
-
         new_superclass_cpath = const_read ? const_read.cpath : []
       end
 

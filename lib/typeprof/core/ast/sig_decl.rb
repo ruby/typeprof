@@ -33,7 +33,7 @@ module TypeProf::Core
           member.define(genv)
         end
         mod = genv.resolve_cpath(@cpath)
-        mod.add_module_decl(genv, self)
+        [mod.add_module_decl(genv, self)]
       end
 
       def undefine0(genv)
@@ -46,7 +46,7 @@ module TypeProf::Core
 
       def install0(genv)
         val = Source.new(Type::Singleton.new(genv.resolve_cpath(@cpath)))
-        val.add_edge(genv, @static_ret.vtx)
+        val.add_edge(genv, @static_ret.first.vtx)
         @members.each do |member|
           member.install(genv)
         end
@@ -62,16 +62,45 @@ module TypeProf::Core
         super
         superclass = raw_decl.super_class
         if superclass
-          @superclass_cpath = AST.resolve_rbs_name(superclass.name, lenv)
+          name = superclass.name
+          @superclass_cpath = name.namespace.path + [name.name]
+          @superclass_toplevel = name.namespace.absolute?
         else
           @superclass_cpath = nil
+          @superclass_toplevel = nil
         end
       end
 
-      attr_reader :superclass_cpath
+      attr_reader :superclass_cpath, :superclass_toplevel
 
       def attrs
-        super.merge!({ superclass_cpath: })
+        super.merge!({ superclass_cpath:, superclass_toplevel: })
+      end
+
+      def define0(genv)
+        const_reads = super
+        if @superclass_cpath
+          const_read = BaseConstRead.new(genv, @superclass_cpath.first, @superclass_toplevel ? CRef::Toplevel : @lenv.cref)
+          const_reads << const_read
+          @superclass_cpath[1..].each do |cname|
+            const_read = ScopedConstRead.new(cname, const_read)
+            const_reads << const_read
+          end
+          mod = genv.resolve_cpath(@cpath)
+          const_read.followers << mod
+        end
+        const_reads
+      end
+
+      def undefine0(genv)
+        super
+        if @static_ret
+          mod = genv.resolve_cpath(@cpath)
+          mod.remove_include_decl(genv, self)
+          @static_ret[1..].each do |const_read|
+            const_read.destroy(genv)
+          end
+        end
       end
     end
 
@@ -117,7 +146,7 @@ module TypeProf::Core
         const_reads = []
         const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
         const_reads << const_read
-        cpath[1..].each do |cname|
+        @cpath[1..].each do |cname|
           const_read = ScopedConstRead.new(cname, const_read)
           const_reads << const_read
         end
