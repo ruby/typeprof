@@ -411,6 +411,16 @@ module TypeProf::Core
         mid = @mid
         ty.base_types(genv).each do |base_ty|
           mod = base_ty.mod
+          param_map2 = { __self: Source.new(ty) }
+          if base_ty.is_a?(Type::Instance)
+            mdecl = mod.module_decls.to_a.first
+            if mdecl
+              mdecl.params.zip(base_ty.args) do |k, v|
+                param_map2[k] = v
+              end
+            end
+          end
+          param_map = param_map2
           singleton = base_ty.is_a?(Type::Singleton)
           found = false
           # TODO: resolution for module
@@ -428,11 +438,8 @@ module TypeProf::Core
             end
 
             unless singleton # TODO
+              # TODO: param_map
               mod.included_modules.each do |d, inc_mod|
-                #if d.is_a?(AST::SIG_INCLUDE)
-                #  pp d.args
-                #  pp inc_mod.cpath
-                #end
                 me = inc_mod.get_method(singleton, mid)
                 changes.add_depended_method_entities(me) if changes
                 # TODO: module alias??

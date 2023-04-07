@@ -10,5 +10,5 @@ end
 # assert
 class Object
   def foo: -> Integer
-  def bar: -> Enumerator
+  def bar: -> Enumerator[Integer, Integer]
 end

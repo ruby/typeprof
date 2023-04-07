@@ -190,7 +190,7 @@ module TypeProf::Core
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
-        Source.new(Type::Singleton.new(mod, [])).add_edge(genv, vtx)
+        Source.new(Type::Singleton.new(mod)).add_edge(genv, vtx)
       end
     end
 
@@ -233,24 +233,9 @@ module TypeProf::Core
       def get_vertex0(genv, vtx, subst)
         cpath = @static_ret.last.cpath
         return unless cpath
-        case cpath
-        when [:Array]
-          raise if @args.size != 1
-          elem_vtx = @args.first.get_vertex(genv, subst)
-          Source.new(Type::Array.new(nil, elem_vtx, genv.ary_type)).add_edge(genv, vtx)
-        when [:Set]
-          elem_vtx = @args.first.get_vertex(genv, subst)
-          Source.new(Type::Array.new(nil, elem_vtx, genv.set_type)).add_edge(genv, vtx)
-        when [:Hash]
-          raise if @args.size != 2
-          key_vtx = @args[0].get_vertex(genv, subst)
-          val_vtx = @args[1].get_vertex(genv, subst)
-          Source.new(Type::Hash.new({}, key_vtx, val_vtx, genv.hash_type)).add_edge(genv, vtx)
-        else
-          # TODO: type.args
-          mod = genv.resolve_cpath(cpath)
-          Source.new(Type::Instance.new(mod, [])).add_edge(genv, vtx)
-        end
+        mod = genv.resolve_cpath(cpath)
+        args = @args.map {|arg| arg.get_vertex(genv, subst) }
+        Source.new(Type::Instance.new(mod, args)).add_edge(genv, vtx)
       end
     end
 
@@ -270,7 +255,7 @@ module TypeProf::Core
           nvtx.add_edge(genv, unified_elem)
           nvtx
         end
-        Source.new(Type::Array.new(elems, unified_elem, genv.ary_type)).add_edge(genv, vtx)
+        Source.new(Type::Array.new(elems, genv.gen_ary_type(unified_elem))).add_edge(genv, vtx)
       end
     end
 

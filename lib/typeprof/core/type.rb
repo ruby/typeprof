@@ -12,17 +12,16 @@ module TypeProf::Core
     class Singleton < Type
       include StructuralEquality
 
-      def initialize(mod, args)
+      def initialize(mod)
         raise unless mod.is_a?(ModuleEntity)
         # TODO: type_param
         @mod = mod
-        @args = args
       end
 
-      attr_reader :mod, :args
+      attr_reader :mod
 
       def show
-        "singleton(#{ @mod.show_cpath }#{ @args.empty? ? "" : "[#{ @args.map {|arg| arg.show }.join(", ") }]" })"
+        "singleton(#{ @mod.show_cpath })"
       end
 
       def match?(genv, other)
@@ -33,7 +32,7 @@ module TypeProf::Core
       end
 
       def get_instance_type
-        Instance.new(@mod, @args)
+        Instance.new(@mod, []) # Is this okay?
       end
     end
 
@@ -54,7 +53,7 @@ module TypeProf::Core
         when [:TrueClass] then "true"
         when [:FalseClass] then "false"
         else
-          "#{ @mod.show_cpath }#{ @args.empty? ? "" : "[#{ @args.map {|arg| arg.show }.join(", ") }]" }"
+          "#{ @mod.show_cpath }#{ @args.empty? ? "" : "[#{ @args.map {|arg| Type.strip_parens(arg.show) }.join(", ") }]" }"
         end
       end
 
@@ -69,10 +68,8 @@ module TypeProf::Core
     class Array < Type
       include StructuralEquality
 
-      def initialize(elems, unified_elem, base_type)
+      def initialize(elems, base_type)
         @elems = elems
-        raise unless unified_elem
-        @unified_elem = unified_elem
         @base_type = base_type
       end
 
@@ -80,7 +77,7 @@ module TypeProf::Core
         if idx && @elems
           @elems[idx] || Source.new(genv.nil_type)
         else
-          @unified_elem
+          @base_type.args.first
         end
       end
 
@@ -100,19 +97,17 @@ module TypeProf::Core
     class Hash < Type
       include StructuralEquality
 
-      def initialize(literal_pairs, unified_key, unified_val, base_type)
+      def initialize(literal_pairs, base_type)
         @literal_pairs = literal_pairs
-        @unified_key = unified_key
-        @unified_val = unified_val
         @base_type = base_type
       end
 
       def get_key
-        @unified_key
+        @base_type.args[0]
       end
 
       def get_value(key = nil)
-        @literal_pairs[key] || @unified_val
+        @literal_pairs[key] || @base_type.args[1]
       end
 
       def base_types(genv)
@@ -120,7 +115,7 @@ module TypeProf::Core
       end
 
       def show
-        "Hash[#{ Type.strip_parens(@unified_key.show) }, #{ Type.strip_parens(@unified_val.show) }]"
+        @base_type.show
       end
     end
 

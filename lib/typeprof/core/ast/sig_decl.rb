@@ -19,13 +19,14 @@ module TypeProf::Core
         @members = raw_decl.members.map do |member|
           AST.create_rbs_member(member, nlenv)
         end.compact
-        #@params = raw_decl.type_params
+        # TODO?: param.variance, param.unchecked, param.upper_bound
+        @params = raw_decl.type_params.map {|param| param.name }
       end
 
-      attr_reader :cpath, :members
+      attr_reader :cpath, :members, :params
 
       def subnodes = { members: }
-      def attrs = { cpath: }
+      def attrs = { cpath:, params: }
 
       def define0(genv)
         @members.each do |member|
@@ -44,7 +45,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = Source.new(Type::Singleton.new(genv.resolve_cpath(@cpath), []))
+        val = Source.new(Type::Singleton.new(genv.resolve_cpath(@cpath)))
         val.add_edge(genv, @static_ret.vtx)
         @members.each do |member|
           member.install(genv)

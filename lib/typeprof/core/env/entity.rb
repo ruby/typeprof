@@ -47,6 +47,7 @@ module TypeProf::Core
     end
 
     attr_reader :cpath
+    attr_reader :module_decls
 
     attr_reader :inner_modules
     attr_reader :outer_module

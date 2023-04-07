@@ -15,6 +15,9 @@ module TypeProf::Core
       @mod_module = resolve_cpath([:Module])
 
       @gvars = {}
+      @mod_ary = resolve_cpath([:Array])
+      @mod_hash = resolve_cpath([:Hash])
+      @mod_range = resolve_cpath([:Range])
 
       @obj_type = Type::Instance.new(resolve_cpath([:Object]), [])
       @nil_type = Type::Instance.new(resolve_cpath([:NilClass]), [])
@@ -23,9 +26,6 @@ module TypeProf::Core
       @str_type = Type::Instance.new(resolve_cpath([:String]), [])
       @int_type = Type::Instance.new(resolve_cpath([:Integer]), [])
       @float_type = Type::Instance.new(resolve_cpath([:Float]), [])
-      @ary_type = Type::Instance.new(resolve_cpath([:Array]), [])
-      @hash_type = Type::Instance.new(resolve_cpath([:Hash]), [])
-      @range_type = Type::Instance.new(resolve_cpath([:Range]), [])
       @proc_type = Type::Instance.new(resolve_cpath([:Proc]), [])
       @symbol_type = Type::Instance.new(resolve_cpath([:Symbol]), [])
       @set_type = Type::Instance.new(resolve_cpath([:Set]), [])
@@ -35,7 +35,19 @@ module TypeProf::Core
     end
 
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type
-    attr_reader :ary_type, :hash_type, :range_type, :proc_type, :symbol_type, :set_type, :regexp_type
+    attr_reader :proc_type, :symbol_type, :set_type, :regexp_type
+
+    def gen_ary_type(elem_vtx)
+      Type::Instance.new(@mod_ary, [elem_vtx])
+    end
+
+    def gen_hash_type(key_vtx, val_vtx)
+      Type::Instance.new(@mod_hash, [key_vtx, val_vtx])
+    end
+
+    def gen_range_type(elem_vtx)
+      Type::Instance.new(@mod_range, [elem_vtx])
+    end
 
     attr_accessor :run_count
 
@@ -241,7 +253,11 @@ module TypeProf::Core
     end
 
     def get_self(genv)
-      (@singleton ? Type::Singleton : Type::Instance).new(genv.resolve_cpath(@cpath || []), [])
+      if @singleton
+        Type::Singleton.new(genv.resolve_cpath(@cpath || []))
+      else
+        Type::Instance.new(genv.resolve_cpath(@cpath || []), [])
+      end
     end
 
     Toplevel = self.new([], false, nil)
