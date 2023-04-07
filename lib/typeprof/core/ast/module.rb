@@ -61,9 +61,16 @@ module TypeProf::Core
           ret = Vertex.new("module_return", self)
           @body.install(genv).add_edge(genv, ret)
           @body.lenv.get_var(:"*ret").add_edge(genv, ret)
-          ret
+          val # TODO: need to return ret
         else
           Source.new
+        end
+      end
+
+      def uninstall0(genv)
+        super
+        if @static_cpath
+          @ret.remove_edge(genv, @static_ret.vtx)
         end
       end
 
