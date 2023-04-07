@@ -28,25 +28,12 @@ module TypeProf::Core
       @text_nodes = {}
 
       @genv = GlobalEnv.new
-
-      load_core_rbs($rbs_env.declarations)
+      @genv.load_core_rbs($rbs_env.declarations)
 
       Builtin.new(genv).deploy
     end
 
     attr_reader :genv
-
-    def load_core_rbs(raw_decls)
-      cref = CRef::Toplevel
-      lenv = LocalEnv.new(nil, cref, {})
-      decls = raw_decls.map do |raw_decl|
-        AST.create_rbs_decl(raw_decl, lenv)
-      end.compact
-      decls.each {|decl| decl.define(@genv) }
-      @genv.define_all
-      decls.each {|decl| decl.install(@genv) }
-      @genv.run_all
-    end
 
     def add_workspaces(folders, &blk)
       folders.each do |folder|

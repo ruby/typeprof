@@ -158,6 +158,17 @@ module TypeProf::Core
       end
       return false
     end
+
+    def load_core_rbs(raw_decls)
+      lenv = LocalEnv.new(nil, CRef::Toplevel, {})
+      decls = raw_decls.map do |raw_decl|
+        AST.create_rbs_decl(raw_decl, lenv)
+      end.compact
+      decls.each {|decl| decl.define(self) }
+      define_all
+      decls.each {|decl| decl.install(self) }
+      run_all
+    end
   end
 
   class LocalEnv
