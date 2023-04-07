@@ -27,7 +27,7 @@ module TypeProf::Core
 
     def destroy(genv)
       @event_sources.each do |mod|
-        mod.const_reads.delete(self)
+        mod.const_reads[@cname].delete(self)
       end
       @event_sources.clear
     end
@@ -41,7 +41,7 @@ module TypeProf::Core
         mod = genv.resolve_cpath(scope)
         while true
           @event_sources << mod
-          mod.const_reads << self
+          (mod.const_reads[@cname] ||= Set[]) << self
           inner_mod = genv.resolve_cpath(mod.cpath + [@cname]) # TODO
           if inner_mod.exist?
             cpath = mod.cpath + [@cname]

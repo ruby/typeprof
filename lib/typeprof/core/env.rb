@@ -61,12 +61,11 @@ module TypeProf::Core
     end
 
     def define_all
-      c = 0
       until @static_eval_queue.empty?
         change_type, arg = @static_eval_queue.shift
         case change_type
         when :inner_modules_changed
-          arg.on_inner_modules_changed(self)
+          arg[0].on_inner_modules_changed(self, arg[1])
         when :const_read_changed
           case arg
           when BaseConstRead
@@ -166,10 +165,22 @@ module TypeProf::Core
       decls = raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
+
+      # Loading frequently used modules first will reduces constant resolution
+      # which makes loading faster :-)
+      critical_modules = [
+        decls.find {|decl| decl.cpath == [:Object] },
+        decls.find {|decl| decl.cpath == [:Numeric] },
+        decls.find {|decl| decl.cpath == [:Integer] },
+        decls.find {|decl| decl.cpath == [:String] },
+        decls.find {|decl| decl.cpath == [:Array] },
+        decls.find {|decl| decl.cpath == [:Hash] },
+        decls.find {|decl| decl.cpath == [:Enumerator] },
+      ]
+      decls = critical_modules + (decls - critical_modules)
+
       decls.each {|decl| decl.define(self) }
-      t = Time.now
       define_all
-      p Time.now - t
       decls.each {|decl| decl.install(self) }
       run_all
     end

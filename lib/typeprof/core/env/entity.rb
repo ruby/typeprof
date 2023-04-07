@@ -42,7 +42,7 @@ module TypeProf::Core
       @ivars = { true => {}, false => {} }
       @type_aliases = {}
 
-      @const_reads = Set[]
+      @const_reads = {}
       @ivar_reads = Set[] # should be handled in @ivars ??
     end
 
@@ -67,25 +67,31 @@ module TypeProf::Core
       !@module_decls.empty? || !@module_defs.empty?
     end
 
-    def on_inner_modules_changed(genv) # TODO: accept what is a change
+    def on_inner_modules_changed(genv, changed_cname) # TODO: accept what is a change
       @child_modules.each do |child_mod|
         next if self == child_mod # for Object
-        child_mod.on_inner_modules_changed(genv)
+        child_mod.on_inner_modules_changed(genv, changed_cname)
       end
-      @const_reads.each {|const_read| genv.add_static_eval_queue(:const_read_changed, const_read) }
+      if @const_reads[changed_cname]
+        @const_reads[changed_cname].each do |const_read|
+          genv.add_static_eval_queue(:const_read_changed, const_read)
+        end
+      end
     end
 
     def on_module_added(genv)
+      return if @cpath.empty?
       unless exist?
-        genv.add_static_eval_queue(:inner_modules_changed, @outer_module)
+        genv.add_static_eval_queue(:inner_modules_changed, [@outer_module, @cpath.last])
       end
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
     def on_module_removed(genv)
+      return if @cpath.empty?
       genv.add_static_eval_queue(:parent_modules_changed, self)
       unless exist?
-        genv.add_static_eval_queue(:inner_modules_changed, @outer_module)
+        genv.add_static_eval_queue(:inner_modules_changed, [@outer_module, @cpath.last])
       end
     end
 
@@ -221,7 +227,11 @@ module TypeProf::Core
         return
       end
       @child_modules.each {|child_mod| child_mod.on_ancestors_updated(genv, base_mod || self) }
-      @const_reads.each {|const_read| genv.add_static_eval_queue(:const_read_changed, const_read) }
+      @const_reads.each_value do |const_reads|
+        const_reads.each do |const_read|
+          genv.add_static_eval_queue(:const_read_changed, const_read)
+        end
+      end
       @methods.each do |_, methods|
         methods.each_value do |me|
           me.callsites.each do |callsite|
