@@ -10,6 +10,7 @@ module TypeProf::Core
       @mod_object.inner_modules[:Object] = @mod_object
       @mod_object.instance_variable_set(:@outer_module, @mod_object)
       @mod_basic_object = resolve_cpath([:BasicObject])
+      @mod_object.instance_variable_set(:@superclass, @mod_basic_object)
       @mod_class = resolve_cpath([:Class])
       @mod_module = resolve_cpath([:Module])
 
@@ -60,6 +61,7 @@ module TypeProf::Core
     end
 
     def define_all
+      c = 0
       until @static_eval_queue.empty?
         change_type, arg = @static_eval_queue.shift
         case change_type
@@ -165,7 +167,9 @@ module TypeProf::Core
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
       decls.each {|decl| decl.define(self) }
+      t = Time.now
       define_all
+      p Time.now - t
       decls.each {|decl| decl.install(self) }
       run_all
     end

@@ -218,8 +218,8 @@ module TypeProf::Core
       end
     end
 
-    def self.create_rbs_method_type(raw_decl, lenv)
-      SIG_METHOD_TYPE.new(raw_decl, lenv)
+    def self.create_rbs_func_type(raw_decl, raw_block, lenv)
+      SIG_FUNC_TYPE.new(raw_decl, raw_block, lenv)
     end
 
     def self.create_rbs_type(raw_decl, lenv)
@@ -265,8 +265,6 @@ module TypeProf::Core
         SIG_TY_OPTIONAL.new(raw_decl, lenv)
       when RBS::Types::Literal
         SIG_TY_LITERAL.new(raw_decl, lenv)
-      when RBS::Types::Function::Param
-        SIG_TY_PARAM.new(raw_decl, lenv)
       else
         raise "unknown RBS type: #{ raw_decl.class }"
       end

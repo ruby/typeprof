@@ -165,7 +165,6 @@ module TypeProf::Core
 
     def resolve_overloads(changes, genv, node, param_map, a_args, block, ret)
       @rbs_method_types.each do |method_type|
-        rbs_func = method_type.type
         # rbs_func.optional_keywords
         # rbs_func.optional_positionals
         # rbs_func.required_keywords
@@ -173,11 +172,11 @@ module TypeProf::Core
         # rbs_func.rest_positionals
         # rbs_func.trailing_positionals
         param_map0 = param_map.dup
-        method_type.type_params.map do |param|
-          param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
-        end
-        f_args = rbs_func.required_positionals.map do |f_arg|
-          Type.rbs_type_to_vtx(genv, node, f_arg.type, param_map0, @node.lenv.cref)
+        #method_type.type_params.map do |param|
+        #  param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
+        #end
+        f_args = method_type.required_positionals.map do |f_arg|
+          f_arg.get_vertex(genv, param_map0)
         end
         next if a_args.size != f_args.size
         next if !f_args.all? # skip interface type
@@ -185,13 +184,12 @@ module TypeProf::Core
         rbs_blk = method_type.block
         next if !!rbs_blk != !!block
         if rbs_blk && block
-          rbs_blk_func = rbs_blk.type
           # rbs_blk_func.optional_keywords, ...
           block.types.each do |ty, _source|
             case ty
             when Type::Proc
-              blk_a_args = rbs_blk_func.required_positionals.map do |blk_a_arg|
-                Type.rbs_type_to_vtx(genv, node, blk_a_arg.type, param_map0, @node.lenv.cref)
+              blk_a_args = rbs_blk.required_positionals.map do |blk_a_arg|
+                blk_a_arg.get_vertex(genv, param_map0)
               end
               blk_f_args = ty.block.f_args
               if blk_a_args.size == blk_f_args.size # TODO: pass arguments for block
@@ -199,13 +197,13 @@ module TypeProf::Core
                   changes.add_edge(blk_a_arg, blk_f_arg)
                 end
                 # TODO: Sink instead of Source
-                blk_f_ret = Type.rbs_type_to_vtx(genv, node, rbs_blk_func.return_type, param_map0, @node.lenv.cref)
+                blk_f_ret = rbs_blk.return_type.get_vertex(genv, param_map0)
                 changes.add_edge(ty.block.ret, blk_f_ret)
               end
             end
           end
         end
-        ret_vtx = Type.rbs_type_to_vtx(genv, node, rbs_func.return_type, param_map0, @node.lenv.cref)
+        ret_vtx = method_type.return_type.get_vertex(genv, param_map0)
         changes.add_edge(ret_vtx, ret)
       end
     end
@@ -253,14 +251,13 @@ module TypeProf::Core
       # TODO: support overload?
       method_type = decl.rbs_method_types.first
       _block = method_type.block
-      rbs_func = method_type.type
 
       param_map0 = {}
-      method_type.type_params.map do |param|
-        param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
-      end
-      a_args = rbs_func.required_positionals.map do |a_arg|
-        Type.rbs_type_to_vtx(genv, node, a_arg.type, param_map0, @node.lenv.cref)
+      #method_type.type_params.map do |param|
+      #  param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
+      #end
+      a_args = method_type.required_positionals.map do |a_arg|
+        a_arg.get_vertex(genv, param_map0)
       end
 
       if a_args.size == @f_args.size

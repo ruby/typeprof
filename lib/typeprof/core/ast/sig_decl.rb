@@ -81,15 +81,19 @@ module TypeProf::Core
         @singleton = raw_decl.singleton?
         @instance = raw_decl.instance?
         @method_types = raw_decl.overloads.map do |overload|
-          AST.create_rbs_method_type(overload.method_type, lenv)
+          AST.create_rbs_func_type(overload.method_type.type, overload.method_type.block, lenv)
         end
       end
 
+      attr_reader :mid, :singleton, :instance, :method_types
+
+      def subnodes = { method_types: }
+      def attrs = { mid:, singleton:, instance: }
+
       def install0(genv)
-        rbs_method_types = @raw_node.overloads.map {|overload| overload.method_type }
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, singleton, @mid, rbs_method_types)
+          mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, singleton, @mid, @method_types)
           add_site(:mdecl, mdecl)
         end
         Source.new
@@ -110,7 +114,7 @@ module TypeProf::Core
 
       def define0(genv)
         const_reads = []
-        const_read = BaseConstRead.new(genv, cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
+        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
         const_reads << const_read
         cpath[1..].each do |cname|
           const_read = ScopedConstRead.new(genv, cname, const_read)
@@ -171,13 +175,15 @@ module TypeProf::Core
       def initialize(raw_decl, lenv)
         super
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
-        @raw_type = raw_decl.type
+        @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
 
-      attr_reader :cpath, :raw_type
-      def attrs = { cpath:, raw_type: }
+      attr_reader :cpath, :type
+      def subnodes = { type: }
+      def attrs = { cpath: }
 
       def define0(genv)
+        @type.define(genv)
         mod = genv.resolve_const(@cpath)
         mod.decls << self
         mod
@@ -185,10 +191,11 @@ module TypeProf::Core
 
       def undefine0(genv)
         genv.resolve_const(@cpath).decls.delete(self)
+        @type.undefine(genv)
       end
 
       def install0(genv)
-        val = Type.rbs_type_to_vtx(genv, self, @raw_type, {}, @lenv.cref)
+        val = @type.get_vertex(genv, {})
         val.add_edge(genv, @static_ret.vtx)
         val
       end
@@ -204,12 +211,13 @@ module TypeProf::Core
         super
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
         @name = @cpath.pop
-        @rbs_type = raw_decl.type
+        @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
 
       attr_reader :cpath, :name, :rbs_type
 
       def define0(genv)
+        @type.define(genv)
         tae = genv.resolve_type_alias(@cpath, @name)
         tae.decls << self
         tae
@@ -217,6 +225,7 @@ module TypeProf::Core
 
       def undefine0(genv)
         genv.resolve_type_alias(@cpath, @name).decls.delete(self)
+        @type.undefine(genv)
       end
 
       def install0(genv)
@@ -228,13 +237,15 @@ module TypeProf::Core
       def initialize(raw_decl, lenv)
         super
         @var = raw_decl.name
-        @raw_type = raw_decl.type
+        @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
 
-      attr_reader :var, :raw_type
-      def attrs = { var:, raw_type: }
+      attr_reader :cpath, :type
+      def subnodes = { type: }
+      def attrs = { cpath: }
 
       def define0(genv)
+        @type.define(genv)
         mod = genv.resolve_gvar(@var)
         mod.decls << self
         mod
@@ -242,10 +253,11 @@ module TypeProf::Core
 
       def undefine0(genv)
         genv.resolve_gvar(@var).decls.delete(self)
+        @type.undefine(genv)
       end
 
       def install0(genv)
-        val = Type.rbs_type_to_vtx(genv, self, @raw_type, {}, @lenv.cref)
+        val = @type.get_vertex(genv, {})
         val.add_edge(genv, @static_ret.vtx)
         val
       end
@@ -253,23 +265,6 @@ module TypeProf::Core
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
         super
-      end
-    end
-
-    class SIG_METHOD_TYPE < Node
-      def initialize(raw_decl, lenv)
-        super
-        func = raw_decl.type
-        # TODO: raw_decl.type_params
-        @required_positionals = func.required_positionals.map do |ty|
-          AST.create_rbs_type(ty, lenv)
-        end
-        #@optional_positionals = func.optional_positionals
-        #@required_keywords = func.required_keywords
-        #@optional_keywords = func.optional_keywords
-        #@rest_positionals = func.rest_positionals
-        #@rest_keywords = func.rest_keywords
-        @return_type = AST.create_rbs_type(func.return_type, lenv)
       end
     end
   end
