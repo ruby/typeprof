@@ -31,8 +31,8 @@ module TypeProf::Core
         @cpath.define(genv)
         if @static_cpath
           @body.define(genv)
-          mod = genv.resolve_cpath(@static_cpath)
-          mod.add_module_def(genv, self)
+          @mod = genv.resolve_cpath(@static_cpath)
+          @mod_cdef = @mod.add_module_def(genv, self)
         else
           kind = self.is_a?(MODULE) ? "module" : "class"
           add_diagnostic("TypeProf cannot analyze a non-static #{ kind }") # warning
@@ -42,8 +42,7 @@ module TypeProf::Core
 
       def undefine0(genv)
         if @static_cpath
-          mod = genv.resolve_cpath(@static_cpath)
-          mod.remove_module_def(genv, self)
+          @mod.remove_module_def(genv, self)
           @body.undefine(genv)
         end
         @cpath.undefine(genv)
@@ -56,12 +55,12 @@ module TypeProf::Core
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
           @body.lenv.locals[:"*ret"] = Vertex.new("module_ret", self)
 
-          val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
-          val.add_edge(genv, @static_ret.vtx)
+          @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
+          @mod_val.add_edge(genv, @mod_cdef.vtx)
           ret = Vertex.new("module_return", self)
           @body.install(genv).add_edge(genv, ret)
           @body.lenv.get_var(:"*ret").add_edge(genv, ret)
-          val # TODO: need to return ret
+          ret
         else
           Source.new
         end
@@ -70,7 +69,7 @@ module TypeProf::Core
       def uninstall0(genv)
         super
         if @static_cpath
-          @ret.remove_edge(genv, @static_ret.vtx)
+          @mod_val.remove_edge(genv, @mod_cdef.vtx)
         end
       end
 
