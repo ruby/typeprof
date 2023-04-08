@@ -128,7 +128,7 @@ module TypeProf::Core
       @module_decls.delete(decl)
 
       update_type_params if @type_params == decl.params
-      if @superclass_type_args == decl.superclass_args
+      if decl.is_a?(AST::SIG_CLASS) && @superclass_type_args == decl.superclass_args
         @superclass_type_args = nil
         @module_decls.each do |decl|
           if decl.superclass_args

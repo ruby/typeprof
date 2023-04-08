@@ -145,13 +145,15 @@ module TypeProf::Core
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
-        @args = raw_decl.args
+        @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
       end
 
       attr_reader :cpath, :toplevel, :args
-      def attrs = { cpath:, toplevel:, args: }
+      def subnodes = { args: }
+      def attrs = { cpath:, toplevel: }
 
       def define0(genv)
+        @args.each {|arg| arg.define(genv) }
         const_reads = []
         const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
         const_reads << const_read
@@ -171,6 +173,7 @@ module TypeProf::Core
         @static_ret.each do |const_read|
           const_read.destroy(genv)
         end
+        @args.each {|arg| arg.undefine(genv) }
       end
 
       def install0(genv)

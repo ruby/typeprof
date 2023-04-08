@@ -394,7 +394,15 @@ module TypeProf::Core
 
     def resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
       found = false
-      mod.included_modules.each_value do |inc_mod|
+
+      mod.included_modules.each do |inc_decl, inc_mod|
+        param_map2 = { __self: Source.new(ty) }
+        if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
+          inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
+            param_map2[param] = arg ? arg.get_vertex(genv, param_map) : Source.new
+          end
+        end
+
         me = inc_mod.get_method(singleton, mid)
         changes.add_depended_method_entities(me) if changes
         if !me.aliases.empty?
@@ -403,9 +411,9 @@ module TypeProf::Core
         end
         if me.exist?
           found = true
-          yield ty, mid, me, param_map
+          yield ty, mid, me, param_map2
         else
-          resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map, &blk)
+          resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map2, &blk)
         end
       end
       found
@@ -449,19 +457,13 @@ module TypeProf::Core
               redo
             end
             if me && me.exist?
-              found = true
               yield ty, @mid, me, param_map
               break
             end
 
             unless singleton
-              if resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
-                found = true
-                break
-              end
+              break if resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
             end
-
-            # TODO: included modules
 
             type_args = mod.superclass_type_args
             mod, singleton = genv.get_superclass(mod, singleton)
