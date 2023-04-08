@@ -392,7 +392,26 @@ module TypeProf::Core
       end
     end
 
-    def resolve(genv, changes = nil)
+    def resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
+      found = false
+      mod.included_modules.each_value do |inc_mod|
+        me = inc_mod.get_method(singleton, mid)
+        changes.add_depended_method_entities(me) if changes
+        if !me.aliases.empty?
+          mid = me.aliases.values.first
+          redo
+        end
+        if me.exist?
+          found = true
+          yield ty, mid, me, param_map
+        else
+          resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map, &blk)
+        end
+      end
+      found
+    end
+
+    def resolve(genv, changes = nil, &blk)
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new(genv)
         param_map = { __self: Source.new(ty) }
@@ -421,7 +440,6 @@ module TypeProf::Core
           end
           param_map = param_map2
           singleton = base_ty.is_a?(Type::Singleton)
-          found = false
           # TODO: resolution for module
           while mod
             me = mod.get_method(singleton, mid)
@@ -436,22 +454,11 @@ module TypeProf::Core
               break
             end
 
-            unless singleton # TODO
-              # TODO: param_map
-              mod.included_modules.each do |d, inc_mod|
-                me = inc_mod.get_method(singleton, mid)
-                changes.add_depended_method_entities(me) if changes
-                # TODO: module alias??
-                if !me.aliases.empty?
-                  mid = me.aliases.values.first
-                  redo
-                end
-                if me && me.exist?
-                  found = true
-                  yield ty, mid, me, param_map
-                end
+            unless singleton
+              if resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
+                found = true
+                break
               end
-              break if found
             end
 
             # TODO: included modules

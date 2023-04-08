@@ -12,8 +12,6 @@ class C
   end
 end
 
-## TODO: show "include M"
-
 # assert
 module M
   def foo: -> Integer
