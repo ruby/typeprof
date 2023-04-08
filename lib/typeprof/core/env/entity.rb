@@ -82,6 +82,10 @@ module TypeProf::Core
     attr_reader :static_reads
     attr_reader :ivar_reads
 
+    def get_cname
+      @cpath.empty? ? :Object : @cpath.last
+    end
+
     def exist?
       !@module_decls.empty? || !@module_defs.empty?
     end
@@ -101,7 +105,7 @@ module TypeProf::Core
     def on_module_added(genv)
       return if @cpath.empty?
       unless exist?
-        genv.add_static_eval_queue(:inner_modules_changed, [@outer_module, @cpath.last])
+        genv.add_static_eval_queue(:inner_modules_changed, [@outer_module, get_cname])
       end
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
@@ -110,7 +114,7 @@ module TypeProf::Core
       return if @cpath.empty?
       genv.add_static_eval_queue(:parent_modules_changed, self)
       unless exist?
-        genv.add_static_eval_queue(:inner_modules_changed, [@outer_module, @cpath.last])
+        genv.add_static_eval_queue(:inner_modules_changed, [@outer_module, get_cname])
       end
     end
 
@@ -129,13 +133,13 @@ module TypeProf::Core
         @superclass_type_args = decl.superclass_args
       end
 
-      ce = @outer_module.get_const(@cpath.empty? ? :Object : @cpath.last)
+      ce = @outer_module.get_const(get_cname)
       ce.add_decl(decl)
       ce
     end
 
     def remove_module_decl(genv, decl)
-      @outer_module.get_const(@cpath.last).remove_decl(decl)
+      @outer_module.get_const(get_cname).remove_decl(decl)
       @module_decls.delete(decl) || raise
 
       update_type_params if @type_params == decl.params
@@ -169,13 +173,13 @@ module TypeProf::Core
     def add_module_def(genv, node)
       on_module_added(genv)
       @module_defs << node
-      ce = @outer_module.get_const(@cpath.last)
+      ce = @outer_module.get_const(get_cname)
       ce.add_def(node)
       ce
     end
 
     def remove_module_def(genv, node)
-      @outer_module.get_const(@cpath.last).remove_def(node)
+      @outer_module.get_const(get_cname).remove_def(node)
       @module_defs.delete(node) || raise
       on_module_removed(genv)
     end
@@ -186,7 +190,7 @@ module TypeProf::Core
     end
 
     def remove_include_decl(genv, node)
-      @include_decls.delete(node) # || raise # TODO
+      @include_decls.delete(node) || raise
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 

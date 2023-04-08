@@ -117,8 +117,6 @@ module TypeProf::Core
       end
 
       def undefine0(genv)
-        mod = genv.resolve_cpath(@lenv.cref.cpath)
-        mod.remove_include_decl(genv, self)
         @static_ret.each do |static_read|
           static_read.destroy(genv)
         end
@@ -182,8 +180,6 @@ module TypeProf::Core
       end
 
       def undefine0(genv)
-        mod = genv.resolve_cpath(@lenv.cref.cpath)
-        mod.remove_include_decl(genv, self)
         @static_ret.each do |const_read|
           const_read.destroy(genv)
         end

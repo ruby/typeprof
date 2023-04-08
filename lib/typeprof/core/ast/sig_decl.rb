@@ -101,8 +101,6 @@ module TypeProf::Core
       def undefine0(genv)
         super
         if @static_ret
-          mod = genv.resolve_cpath(@cpath)
-          mod.remove_include_decl(genv, self)
           @static_ret[1..].each do |const_read|
             const_read.destroy(genv)
           end
