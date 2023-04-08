@@ -31,14 +31,14 @@ module TypeProf::Core
 
         @cond.install(genv)
 
-        vars = Set[]
+        vars = []
         vars << @cond.var if @cond.is_a?(LVAR)
         var, filtered_class = AST.is_a_class(@cond)
         vars << var if var
         @then.modified_vars(@lenv.locals.keys, vars) if @then
         @else.modified_vars(@lenv.locals.keys, vars) if @else
         modified_vtxs = {}
-        vars.each do |var|
+        vars.uniq.each do |var|
           vtx = @lenv.get_var(var)
           nvtx_then = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
           nvtx_else = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
@@ -132,9 +132,10 @@ module TypeProf::Core
       def subnodes = { cond:, body: }
 
       def install0(genv)
-        vars = Set[]
+        vars = []
         @cond.modified_vars(@lenv.locals.keys, vars)
         @body.modified_vars(@lenv.locals.keys, vars)
+        vars.uniq!
         old_vtxs = {}
         vars.each do |var|
           vtx = @lenv.get_var(var)

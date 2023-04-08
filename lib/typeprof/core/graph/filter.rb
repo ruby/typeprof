@@ -100,7 +100,7 @@ module TypeProf::Core
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:botfilter", node)
       @base_vtx = base_vtx
       base_vtx.add_edge(genv, self)
-      prev_vtx.add_edge(genv, self)
+      prev_vtx.add_edge(genv, self) if prev_vtx != base_vtx
     end
 
     attr_reader :node, :types, :prev_vtx, :next_vtx, :base_vtx

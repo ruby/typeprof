@@ -87,19 +87,28 @@ module TypeProf::Core
 
       # invariant validation
       if prev_node
-        live_vtxs = Set[]
+        live_vtxs = []
         node.get_vertexes(live_vtxs)
+        set = Set[]
+        live_vtxs.uniq.each {|vtx| set << vtx }
+        live_vtxs = set
 
-        dead_vtxs = Set[]
+        dead_vtxs = []
         prev_node.get_vertexes(dead_vtxs)
+        set = Set[]
+        dead_vtxs.uniq.each {|vtx| set << vtx }
+        dead_vtxs = set
 
         #dump_graph(path)
         live_vtxs.each do |vtx|
           raise if dead_vtxs.include?(vtx)
         end
 
-        global_vtxs = Set[]
+        global_vtxs = []
         @genv.get_vertexes(global_vtxs)
+        set = Set[]
+        global_vtxs.uniq.each {|vtx| set << vtx }
+        global_vtxs = set
 
         global_vtxs.each do |global_vtx|
           next unless global_vtx.is_a?(Vertex)

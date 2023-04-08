@@ -27,6 +27,7 @@ module TypeProf::Core
     end
 
     def <<(elem)
+      raise if @hash.include?(elem)
       @hash[elem] = true
       self
     end
@@ -48,6 +49,7 @@ module TypeProf::Core
     end
 
     def delete(elem)
+      raise unless @hash.include?(elem)
       @hash.delete(elem)
     end
 

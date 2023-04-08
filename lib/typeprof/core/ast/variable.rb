@@ -145,6 +145,7 @@ module TypeProf::Core
         site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
         add_site(:main, site)
         val = (@rhs || @dummy_rhs).install(genv)
+        val = val.new_vertex(genv, "iasgn", self) # avoid multi-edge from val to static_ret.vtx
         val.add_edge(genv, @static_ret.vtx)
         val
       end

@@ -336,6 +336,7 @@ module TypeProf::Core
 
     def run0(genv, changes)
       edges = Set[]
+      called_mdefs = Set[]
       resolve(genv, changes) do |recv_ty, mid, me, param_map|
         if !me
           # TODO: undefined method error
@@ -355,6 +356,8 @@ module TypeProf::Core
           end
         elsif !me.defs.empty?
           me.defs.each do |mdef|
+            next if called_mdefs.include?(mdef)
+            called_mdefs << mdef
             mdef.call(changes, genv, @node, @a_args, @block, @ret)
           end
         else
@@ -366,6 +369,8 @@ module TypeProf::Core
         resolve_subclasses(genv, changes) do |recv_ty, me|
           if !me.defs.empty?
             me.defs.each do |mdef|
+              next if called_mdefs.include?(mdef)
+              called_mdefs << mdef
               mdef.call(changes, genv, @node, @a_args, @block, @ret)
             end
           end

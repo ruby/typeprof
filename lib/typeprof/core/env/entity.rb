@@ -241,19 +241,16 @@ module TypeProf::Core
       unless @basic_object
         const_read = nil
         no_superclass = false
-        origin = nil
         # TODO: report multiple inconsistent superclass
         if !@module_decls.empty?
           @module_decls.each do |mdecl|
             case mdecl
             when AST::SIG_CLASS
               if mdecl.superclass_cpath
-                origin = mdecl
                 const_read = mdecl.static_ret.last
                 break
               end
             when AST::SIG_MODULE
-              origin = mdecl
               no_superclass = true
               break
             else
@@ -265,12 +262,10 @@ module TypeProf::Core
             case mdef
             when AST::CLASS
               if mdef.superclass_cpath
-                origin = mdef
                 const_read = mdef.superclass_cpath.static_ret
                 break
               end
             when AST::MODULE
-              origin = mdef
               no_superclass = true
             else
               raise
@@ -279,7 +274,7 @@ module TypeProf::Core
         end
         new_superclass_cpath = no_superclass ? nil : const_read ? const_read.cpath : []
 
-        new_superclass, updated = update_parent(genv, origin, @superclass, new_superclass_cpath)
+        new_superclass, updated = update_parent(genv, :superclass, @superclass, new_superclass_cpath)
         if updated
           @superclass = new_superclass
           any_updated = true

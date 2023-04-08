@@ -80,8 +80,9 @@ module TypeProf::Core
           @lenv.locals.each do |var, vtx|
             @block_body.lenv.set_var(var, vtx)
           end
-          vars = Set[]
+          vars = []
           @block_body.modified_vars(@lenv.locals.keys - @block_tbl, vars)
+          vars.uniq!
           vars.each do |var|
             vtx = @lenv.get_var(var)
             nvtx = vtx.new_vertex(genv, "#{ vtx.show_name }'", self)
