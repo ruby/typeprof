@@ -413,7 +413,7 @@ module TypeProf::Core
           found = true
           yield ty, mid, me, param_map2
         else
-          resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map2, &blk)
+          found ||= resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map2, &blk)
         end
       end
       found
