@@ -325,6 +325,10 @@ module TypeProf::Core
     def show_cpath
       @cpath.empty? ? "Object" : @cpath.join("::" )
     end
+
+    def pretty_print(q)
+      q.text "#<ModuleEntity[::#{ @cpath.empty? ? "Object" : @cpath.join("::") }]"
+    end
   end
 
   class MethodEntity

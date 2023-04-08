@@ -172,9 +172,11 @@ module TypeProf::Core
         # rbs_func.rest_positionals
         # rbs_func.trailing_positionals
         param_map0 = param_map.dup
-        #method_type.type_params.map do |param|
-        #  param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
-        #end
+        if method_type.type_params
+          method_type.type_params.map do |param|
+            param_map0[param] = nil
+          end
+        end
         f_args = method_type.required_positionals.map do |f_arg|
           f_arg.get_vertex(genv, param_map0)
         end
@@ -422,31 +424,17 @@ module TypeProf::Core
     def resolve(genv, changes = nil, &blk)
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new(genv)
-        param_map = { __self: Source.new(ty) }
-        case ty
-        when Type::Array
-          case ty.base_types(genv).first.mod.cpath # XXX first?
-          when [:Set]
-            param_map[:A] = ty.get_elem(genv)
-          when [:Array], [:Enumerator]
-            param_map[:Elem] = ty.get_elem(genv)
-          end
-        when Type::Hash
-          param_map[:K] = ty.get_key
-          param_map[:V] = ty.get_value
-        end
         mid = @mid
         ty.base_types(genv).each do |base_ty|
           mod = base_ty.mod
-          param_map2 = { __self: Source.new(ty) }
+          param_map = { __self: Source.new(ty) }
           if base_ty.is_a?(Type::Instance)
             if mod.type_params
               mod.type_params.zip(base_ty.args) do |k, v|
-                param_map2[k] = v
+                param_map[k] = v
               end
             end
           end
-          param_map = param_map2
           singleton = base_ty.is_a?(Type::Singleton)
           # TODO: resolution for module
           while mod

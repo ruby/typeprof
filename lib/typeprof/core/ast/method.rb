@@ -20,7 +20,7 @@ module TypeProf::Core
         end
         method_type = RBS::Parser.parse_method_type(comments.reverse.join)
         if method_type
-          AST.create_rbs_func_type(method_type.type, method_type.block, lenv)
+          AST.create_rbs_func_type(method_type.type, method_type.type_params, method_type.block, lenv)
         else
           nil
         end

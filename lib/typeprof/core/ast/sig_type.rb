@@ -1,14 +1,17 @@
 module TypeProf::Core
   class AST
     class SIG_FUNC_TYPE < Node
-      def initialize(raw_decl, raw_block, lenv)
+      def initialize(raw_decl, raw_type_params, raw_block, lenv)
         super(raw_decl, lenv)
         if raw_block
-          @block = AST.create_rbs_func_type(raw_block.type, nil, lenv)
+          @block = AST.create_rbs_func_type(raw_block.type, nil, nil, lenv)
         else
           @block = nil
         end
-        # TODO: raw_decl.type_params
+
+        # TODO?: param.variance, param.unchecked, param.upper_bound
+        @type_params = raw_type_params ? raw_type_params.map {|param| param.name } : nil
+
         @required_positionals = raw_decl.required_positionals.map do |ty|
           raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
           AST.create_rbs_type(ty.type, lenv)
@@ -21,9 +24,10 @@ module TypeProf::Core
         @return_type = AST.create_rbs_type(raw_decl.return_type, lenv)
       end
 
-      attr_reader :block, :required_positionals, :return_type
+      attr_reader :type_params, :block, :required_positionals, :return_type
 
       def subnodes = { block:, required_positionals:, return_type: }
+      def attrs = { type_params: }
     end
 
     class TypeNode < Node

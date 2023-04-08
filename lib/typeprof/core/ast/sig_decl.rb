@@ -120,7 +120,8 @@ module TypeProf::Core
         @singleton = raw_decl.singleton?
         @instance = raw_decl.instance?
         @method_types = raw_decl.overloads.map do |overload|
-          AST.create_rbs_func_type(overload.method_type.type, overload.method_type.block, lenv)
+          method_type = overload.method_type
+          AST.create_rbs_func_type(method_type.type, method_type.type_params, method_type.block, lenv)
         end
       end
 
