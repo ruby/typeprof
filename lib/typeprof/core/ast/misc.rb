@@ -34,7 +34,7 @@ module TypeProf::Core
             if !@stmts[i].prev_node
               j1 = @stmts.size - 1
               j2 = prev_node.stmts.size - 1
-              while j1 >= i
+              while j1 >= i && j2 >= i
                 @stmts[j1].diff(prev_node.stmts[j2])
                 if !@stmts[j1].prev_node
                   return
