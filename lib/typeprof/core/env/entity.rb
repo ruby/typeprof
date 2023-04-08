@@ -47,7 +47,7 @@ module TypeProf::Core
       @basic_object = @cpath == [:BasicObject]
 
       # child modules (subclasses and all modules that include me)
-      @child_modules = Set[]
+      @child_modules = {}
 
       # class Foo[X, Y, Z] < Bar[A, B, C]
       @superclass_type_args = nil # A, B, C
@@ -92,8 +92,7 @@ module TypeProf::Core
     end
 
     def on_inner_modules_changed(genv, changed_cname)
-      @child_modules.each do |child_mod|
-        next if self == child_mod # for Object
+      @child_modules.each_key do |child_mod|
         child_mod.on_inner_modules_changed(genv, changed_cname)
       end
       if @static_reads[changed_cname]
@@ -205,12 +204,32 @@ module TypeProf::Core
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
-    def update_parent(genv, old_parent, new_parent_cpath)
+    def update_parent(genv, origin, old_parent, new_parent_cpath)
       new_parent = new_parent_cpath ? genv.resolve_cpath(new_parent_cpath) : nil
       if old_parent != new_parent
-        old_parent.child_modules.delete(self) if old_parent
-        new_parent.child_modules << self if new_parent
-        return [new_parent, true]
+        # check circular inheritance
+        mod = new_parent
+        while mod
+          if mod == self
+            # TODO: report error
+            new_parent = nil
+            break
+          end
+          mod = mod.superclass
+        end
+
+        if old_parent != new_parent
+          if old_parent
+            set = old_parent.child_modules[self]
+            set.delete(origin)
+            old_parent.child_modules.delete(self) if set.empty?
+          end
+          if new_parent
+            set = new_parent.child_modules[self] ||= Set[]
+            set << origin
+          end
+          return [new_parent, true]
+        end
       end
       return [new_parent, false]
     end
@@ -222,16 +241,19 @@ module TypeProf::Core
       unless @basic_object
         const_read = nil
         no_superclass = false
+        origin = nil
         # TODO: report multiple inconsistent superclass
         if !@module_decls.empty?
           @module_decls.each do |mdecl|
             case mdecl
             when AST::SIG_CLASS
               if mdecl.superclass_cpath
+                origin = mdecl
                 const_read = mdecl.static_ret.last
                 break
               end
             when AST::SIG_MODULE
+              origin = mdecl
               no_superclass = true
               break
             else
@@ -243,10 +265,12 @@ module TypeProf::Core
             case mdef
             when AST::CLASS
               if mdef.superclass_cpath
+                origin = mdef
                 const_read = mdef.superclass_cpath.static_ret
                 break
               end
             when AST::MODULE
+              origin = mdef
               no_superclass = true
             else
               raise
@@ -255,7 +279,7 @@ module TypeProf::Core
         end
         new_superclass_cpath = no_superclass ? nil : const_read ? const_read.cpath : []
 
-        new_superclass, updated = update_parent(genv, @superclass, new_superclass_cpath)
+        new_superclass, updated = update_parent(genv, origin, @superclass, new_superclass_cpath)
         if updated
           @superclass = new_superclass
           any_updated = true
@@ -264,7 +288,7 @@ module TypeProf::Core
 
       @include_decls.each do |idecl|
         new_parent_cpath = idecl.static_ret.last.cpath
-        new_parent, updated = update_parent(genv, @included_modules[idecl], new_parent_cpath)
+        new_parent, updated = update_parent(genv, idecl, @included_modules[idecl], new_parent_cpath)
         if updated
           if new_parent
             @included_modules[idecl] = new_parent
@@ -276,7 +300,7 @@ module TypeProf::Core
       end
       @include_defs.each do |idef|
         new_parent_cpath = idef.static_ret ? idef.static_ret.cpath : nil
-        new_parent, updated = update_parent(genv, @included_modules[idef], new_parent_cpath)
+        new_parent, updated = update_parent(genv, idef, @included_modules[idef], new_parent_cpath)
         if updated
           if new_parent
             @included_modules[idef] = new_parent
@@ -290,7 +314,7 @@ module TypeProf::Core
         if @include_decls.include?(origin) || @include_defs.include?(origin)
           false
         else
-          _new_parent, updated = update_parent(genv, old_mod, nil)
+          _new_parent, updated = update_parent(genv, origin, old_mod, nil)
           any_updated ||= updated
           true
         end
@@ -300,11 +324,7 @@ module TypeProf::Core
     end
 
     def on_ancestors_updated(genv, base_mod)
-      if base_mod == self
-        # TODO: report circular inheritance
-        return
-      end
-      @child_modules.each {|child_mod| child_mod.on_ancestors_updated(genv, base_mod || self) }
+      @child_modules.each_key {|child_mod| child_mod.on_ancestors_updated(genv, base_mod || self) }
       @static_reads.each_value do |static_reads|
         static_reads.each do |static_read|
           genv.add_static_eval_queue(:static_read_changed, static_read)
@@ -323,7 +343,7 @@ module TypeProf::Core
     def each_descendant(base_mod = nil, &blk)
       return if base_mod == self
       yield self
-      @child_modules.each do |child_mod|
+      @child_modules.each_key do |child_mod|
         child_mod.each_descendant(base_mod || self, &blk)
       end
     end

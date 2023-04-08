@@ -8,18 +8,11 @@ module TypeProf::Core
       @run_queue = []
       @run_queue_set = Set[]
 
-      @mod_basic_object = ModuleEntity.new([:BasicObject], nil)
       @mod_object = ModuleEntity.new([], nil)
-
-      @mod_basic_object.instance_variable_set(:@outer_module, @mod_object)
-      @mod_object.inner_modules[:BasicObject] = @mod_basic_object
-
       @mod_object.instance_variable_set(:@outer_module, @mod_object)
       @mod_object.inner_modules[:Object] = @mod_object
 
-      @mod_object.instance_variable_set(:@superclass, @mod_basic_object)
-      @mod_basic_object.child_modules << @mod_object
-
+      @mod_basic_object = resolve_cpath([:BasicObject])
       @mod_class = resolve_cpath([:Class])
       @mod_module = resolve_cpath([:Module])
 
@@ -45,7 +38,7 @@ module TypeProf::Core
 
     attr_reader :type_table
 
-    attr_reader :mod_basic_object, :mod_object
+    attr_reader :mod_object
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type
     attr_reader :proc_type, :symbol_type, :set_type, :regexp_type
 
@@ -64,16 +57,16 @@ module TypeProf::Core
     attr_accessor :run_count
 
     def get_superclass(mod, singleton)
-      if mod == @mod_basic_object
-        if singleton
-          return [@mod_class, false]
-        else
-          return nil
-        end
+      super_mod = mod.superclass
+      if super_mod
+        return [super_mod, singleton]
       else
-        mod = mod.superclass
-        if mod
-          return [mod, singleton]
+        if mod == @mod_basic_object
+          if singleton
+            return [@mod_class, false]
+          else
+            return nil
+          end
         else
           return [@mod_module, false]
         end

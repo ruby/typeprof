@@ -9,7 +9,7 @@ module TypeProf::Core
     attr_reader :name, :followers
 
     def propagate(genv)
-      @followers.dup.each do |follower|
+      @followers.each do |follower|
         case follower
         when ModuleEntity
           follower.on_parent_modules_changed(genv)
@@ -47,7 +47,6 @@ module TypeProf::Core
 
           break unless first
           break unless mod.superclass
-          break if mod == genv.mod_basic_object
           mod = mod.superclass
           break if mod == genv.mod_object && break_object
         end

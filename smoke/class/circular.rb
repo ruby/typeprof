@@ -12,7 +12,7 @@ end
 # assert
 class A < B
 end
-class B < A
+class B # failed to identify its superclass
 end
 module M
 end
