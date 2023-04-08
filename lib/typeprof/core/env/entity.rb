@@ -30,7 +30,7 @@ module TypeProf::Core
   end
 
   class ModuleEntity
-    def initialize(cpath, outer_module, toplevel)
+    def initialize(cpath, outer_module)
       @cpath = cpath
 
       @module_decls = Set[]
@@ -42,8 +42,9 @@ module TypeProf::Core
       @outer_module = outer_module
 
       # parent modules (superclass and all modules that I include)
-      @superclass = toplevel
+      @superclass = nil
       @included_modules = {}
+      @basic_object = @cpath == [:BasicObject]
 
       # child modules (subclasses and all modules that include me)
       @child_modules = Set[]
@@ -207,7 +208,7 @@ module TypeProf::Core
     def update_parent(genv, old_parent, new_parent_cpath)
       new_parent = new_parent_cpath ? genv.resolve_cpath(new_parent_cpath) : nil
       if old_parent != new_parent
-        old_parent.child_modules.delete(self) if old_parent # || raise # TODO
+        old_parent.child_modules.delete(self) if old_parent
         new_parent.child_modules << self if new_parent
         return [new_parent, true]
       end
@@ -218,31 +219,47 @@ module TypeProf::Core
       any_updated = false
       new_superclass_cpath = nil
 
-      if !@module_decls.empty?
-        const_reads = nil
-        @module_decls.each do |mdecl|
-          if mdecl.is_a?(AST::SIG_CLASS) && mdecl.superclass_cpath
-            const_reads = mdecl.static_ret
-            break
-          end
-        end
-        new_superclass_cpath = const_reads ? const_reads.last.cpath : []
-      else
+      unless @basic_object
         const_read = nil
-        @module_defs.each do |mdef|
-          if mdef.is_a?(AST::CLASS) && mdef.superclass_cpath
-            const_read = mdef.superclass_cpath.static_ret
-            break
+        no_superclass = false
+        # TODO: report multiple inconsistent superclass
+        if !@module_decls.empty?
+          @module_decls.each do |mdecl|
+            case mdecl
+            when AST::SIG_CLASS
+              if mdecl.superclass_cpath
+                const_read = mdecl.static_ret.last
+                break
+              end
+            when AST::SIG_MODULE
+              no_superclass = true
+              break
+            else
+              raise
+            end
+          end
+        else
+          @module_defs.each do |mdef|
+            case mdef
+            when AST::CLASS
+              if mdef.superclass_cpath
+                const_read = mdef.superclass_cpath.static_ret
+                break
+              end
+            when AST::MODULE
+              no_superclass = true
+            else
+              raise
+            end
           end
         end
-        # TODO: report multiple inconsistent superclass
-        new_superclass_cpath = const_read ? const_read.cpath : []
-      end
+        new_superclass_cpath = no_superclass ? nil : const_read ? const_read.cpath : []
 
-      new_superclass, updated = update_parent(genv, @superclass, new_superclass_cpath)
-      if updated
-        @superclass = new_superclass
-        any_updated = true
+        new_superclass, updated = update_parent(genv, @superclass, new_superclass_cpath)
+        if updated
+          @superclass = new_superclass
+          any_updated = true
+        end
       end
 
       @include_decls.each do |idecl|

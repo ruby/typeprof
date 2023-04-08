@@ -8,11 +8,18 @@ module TypeProf::Core
       @run_queue = []
       @run_queue_set = Set[]
 
-      @mod_object = ModuleEntity.new([], nil, nil)
-      @mod_object.inner_modules[:Object] = @mod_object
+      @mod_basic_object = ModuleEntity.new([:BasicObject], nil)
+      @mod_object = ModuleEntity.new([], nil)
+
+      @mod_basic_object.instance_variable_set(:@outer_module, @mod_object)
+      @mod_object.inner_modules[:BasicObject] = @mod_basic_object
+
       @mod_object.instance_variable_set(:@outer_module, @mod_object)
-      @mod_basic_object = resolve_cpath([:BasicObject])
+      @mod_object.inner_modules[:Object] = @mod_object
+
       @mod_object.instance_variable_set(:@superclass, @mod_basic_object)
+      @mod_basic_object.child_modules << @mod_object
+
       @mod_class = resolve_cpath([:Class])
       @mod_module = resolve_cpath([:Module])
 
@@ -134,7 +141,7 @@ module TypeProf::Core
       mod = @mod_object
       raise unless cpath # annotation
       cpath.each do |cname|
-        mod = mod.inner_modules[cname] ||= ModuleEntity.new(mod.cpath + [cname], mod, @mod_object)
+        mod = mod.inner_modules[cname] ||= ModuleEntity.new(mod.cpath + [cname], mod)
       end
       mod
     end
