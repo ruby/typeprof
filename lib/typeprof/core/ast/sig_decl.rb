@@ -228,12 +228,12 @@ module TypeProf::Core
       def define0(genv)
         @type.define(genv)
         mod = genv.resolve_const(@cpath)
-        mod.decls << self
+        mod.add_decl(self)
         mod
       end
 
       def undefine0(genv)
-        genv.resolve_const(@cpath).decls.delete(self)
+        genv.resolve_const(@cpath).remove_decl(self)
         @type.undefine(genv)
       end
 
@@ -291,12 +291,12 @@ module TypeProf::Core
       def define0(genv)
         @type.define(genv)
         mod = genv.resolve_gvar(@var)
-        mod.decls << self
+        mod.add_decl(self)
         mod
       end
 
       def undefine0(genv)
-        genv.resolve_gvar(@var).decls.delete(self)
+        genv.resolve_gvar(@var).remove_decl(self)
         @type.undefine(genv)
       end
 

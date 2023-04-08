@@ -25,7 +25,7 @@ module TypeProf::Core
 
     def destroy(genv)
       @source_modules.each do |mod|
-        mod.static_reads[@name].delete(self)
+        mod.static_reads[@name].delete(self) # || raise # TODO
       end
       @source_modules.clear
     end

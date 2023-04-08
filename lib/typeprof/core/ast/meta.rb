@@ -108,15 +108,15 @@ module TypeProf::Core
       def define0(genv)
         @args.map do |arg|
           mod = genv.resolve_ivar(lenv.cref.cpath, false, "@#{ arg }".to_sym)
-          mod.defs << self
+          mod.add_def(self)
           mod
         end
       end
 
       def undefine0(genv)
         @args.each do |arg|
-          mod = genv.resolve_ivar(lenv.cref.cpath, false, @var)
-          mod.defs.delete(self)
+          mod = genv.resolve_ivar(lenv.cref.cpath, false, "@#{ arg }".to_sym)
+          mod.remove_def(self)
         end
       end
 

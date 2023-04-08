@@ -51,12 +51,12 @@ module TypeProf::Core
       def define0(genv)
         @rhs.define(genv) if @rhs
         mod = genv.resolve_gvar(@var)
-        mod.defs << self
+        mod.add_def(self)
         mod
       end
 
       def undefine0(genv)
-        genv.resolve_gvar(@var).defs.delete(self)
+        genv.resolve_gvar(@var).remove_def(self)
         @rhs.undefine(genv) if @rhs
       end
 
@@ -132,12 +132,12 @@ module TypeProf::Core
       def define0(genv)
         @rhs.define(genv) if @rhs
         mod = genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var)
-        mod.defs << self
+        mod.add_def(self)
         mod
       end
 
       def undefine0(genv)
-        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).defs.delete(self)
+        genv.resolve_ivar(lenv.cref.cpath, lenv.cref.singleton, @var).remove_def(self)
         @rhs.undefine(genv) if @rhs
       end
 

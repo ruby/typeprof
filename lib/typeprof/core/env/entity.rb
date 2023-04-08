@@ -8,9 +8,20 @@ module TypeProf::Core
 
     attr_reader :decls, :defs, :vtx
 
-    def add_decl(decl, vtx)
+    def add_decl(decl)
       @decls << decl
-      @vtx = vtx # TODO
+    end
+
+    def remove_decl(decl)
+      @decls.delete(decl) || raise
+    end
+
+    def add_def(def_)
+      @defs << def_
+    end
+
+    def remove_def(def_)
+      @defs.delete(def_) || raise
     end
 
     def exist?
@@ -119,13 +130,13 @@ module TypeProf::Core
       end
 
       ce = @outer_module.get_const(@cpath.empty? ? :Object : @cpath.last)
-      ce.decls << decl
+      ce.add_decl(decl)
       ce
     end
 
     def remove_module_decl(genv, decl)
-      @outer_module.get_const(@cpath.last).decls.delete(decl)
-      @module_decls.delete(decl)
+      @outer_module.get_const(@cpath.last).remove_decl(decl)
+      @module_decls.delete(decl) || raise
 
       update_type_params if @type_params == decl.params
       if decl.is_a?(AST::SIG_CLASS) && @superclass_type_args == decl.superclass_args
@@ -159,13 +170,13 @@ module TypeProf::Core
       on_module_added(genv)
       @module_defs << node
       ce = @outer_module.get_const(@cpath.last)
-      ce.defs << node
+      ce.add_def(node)
       ce
     end
 
     def remove_module_def(genv, node)
-      @outer_module.get_const(@cpath.last).defs.delete(node)
-      @module_defs.delete(node)
+      @outer_module.get_const(@cpath.last).remove_def(node)
+      @module_defs.delete(node) || raise
       on_module_removed(genv)
     end
 
@@ -175,7 +186,7 @@ module TypeProf::Core
     end
 
     def remove_include_decl(genv, node)
-      @include_decls.delete(node)
+      @include_decls.delete(node) # || raise # TODO
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
@@ -185,14 +196,14 @@ module TypeProf::Core
     end
 
     def remove_include_def(genv, node)
-      @include_defs.delete(node)
+      @include_defs.delete(node) || raise
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
     def update_parent(genv, old_parent, new_parent_cpath)
       new_parent = new_parent_cpath ? genv.resolve_cpath(new_parent_cpath) : nil
       if old_parent != new_parent
-        old_parent.child_modules.delete(self) if old_parent
+        old_parent.child_modules.delete(self) if old_parent # || raise # TODO
         new_parent.child_modules << self if new_parent
         return [new_parent, true]
       end
@@ -237,7 +248,7 @@ module TypeProf::Core
           if new_parent
             @included_modules[idecl] = new_parent
           else
-            @included_modules.delete(idecl)
+            @included_modules.delete(idecl) || raise
           end
           any_updated = true
         end
@@ -249,7 +260,7 @@ module TypeProf::Core
           if new_parent
             @included_modules[idef] = new_parent
           else
-            @included_modules.delete(idef)
+            @included_modules.delete(idef) || raise
           end
           any_updated = true
         end
@@ -348,7 +359,7 @@ module TypeProf::Core
     end
 
     def remove_decl(decl)
-      @decls.delete(decl)
+      @decls.delete(decl) || raise
     end
 
     def add_def(mdef)
@@ -357,7 +368,7 @@ module TypeProf::Core
     end
 
     def remove_def(mdef)
-      @defs.delete(mdef)
+      @defs.delete(mdef) || raise
     end
 
     def add_alias(node, old_mid)
@@ -404,7 +415,7 @@ module TypeProf::Core
     end
 
     def remove_decl(decl)
-      @decls.delete(decl)
+      @decls.delete(decl) || raise
       if @type == decl.type
         @type = @decls.empty? ? nil : @decls.to_a.first.type
       end

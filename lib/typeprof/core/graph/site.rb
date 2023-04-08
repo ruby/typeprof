@@ -54,7 +54,7 @@ module TypeProf::Core
       @new_diagnostics.clear
 
       @depended_method_entities.each do |me|
-        me.callsites.delete(@target)
+        me.callsites.delete(@target) || raise
       end
       @new_depended_method_entities.each do |me|
         me.callsites << @target

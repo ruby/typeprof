@@ -63,7 +63,7 @@ module TypeProf::Core
 
     def on_type_removed(genv, src_var, removed_types)
       removed_types.each do |ty|
-        @types.delete(ty)
+        @types.delete(ty) || raise
       end
       run(genv)
     end

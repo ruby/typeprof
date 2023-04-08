@@ -80,7 +80,10 @@ module TypeProf::Core
           @sites = @prev_node.sites
           @sites.each_value do |sites|
             sites.each do |site|
-              raise if site.node != @prev_node
+              if site.node != @prev_node
+                pp site.node, self, @prev_node
+                raise site.class.to_s
+              end
               site.reuse(self)
             end
           end

@@ -44,7 +44,7 @@ module TypeProf::Core
             "(#{ types.join(" | ") })" + (optional ? "?" : "")
           end
         #ensure
-          Fiber[:show_rec].delete(self)
+          Fiber[:show_rec].delete(self) || raise
           ret
         end
       end
@@ -90,7 +90,7 @@ module TypeProf::Core
           Fiber[:show_rec] << self
           ret = @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
         #ensure
-          Fiber[:show_rec].delete(self)
+          Fiber[:show_rec].delete(self) || raise
           ret
         end
       end
@@ -150,9 +150,9 @@ module TypeProf::Core
     def on_type_removed(genv, src_var, removed_types)
       new_removed_types = []
       removed_types.each do |ty|
-        @types[ty].delete(src_var)
+        @types[ty].delete(src_var) || raise
         if @types[ty].empty?
-          @types.delete(ty)
+          @types.delete(ty) || raise
           new_removed_types << ty
         end
       end
@@ -175,7 +175,7 @@ module TypeProf::Core
     end
 
     def remove_edge(genv, nvtx)
-      @next_vtxs.delete(nvtx)
+      @next_vtxs.delete(nvtx) || raise
       nvtx.on_type_removed(genv, self, @types.keys) unless @types.empty?
     end
 

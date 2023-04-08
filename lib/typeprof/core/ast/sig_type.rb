@@ -226,8 +226,6 @@ module TypeProf::Core
       end
 
       def undefine0(genv)
-        mod = genv.resolve_cpath(@lenv.cref.cpath)
-        mod.remove_include_decl(genv, self)
         @static_ret.each do |const_read|
           const_read.destroy(genv)
         end
@@ -276,7 +274,7 @@ module TypeProf::Core
         if subst[@var]
           subst[@var].add_edge(genv, vtx)
         else
-          #???
+          subst[@var] = Source.new(genv.str_type)
         end
       end
     end

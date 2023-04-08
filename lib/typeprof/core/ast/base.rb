@@ -54,7 +54,7 @@ module TypeProf::Core
       end
 
       def remove_site(key, site)
-        @sites[key].delete(site)
+        @sites[key].delete(site) || raise
       end
 
       def define(genv)

@@ -79,7 +79,7 @@ module TypeProf::LSP
           end
         else
           # response
-          callback = @running_requests_from_server.delete(json[:id])
+          callback = @running_requests_from_server.delete(json[:id]) || raise
           callback&.call(json[:params])
         end
         break if @exit
@@ -87,7 +87,7 @@ module TypeProf::LSP
     end
 
     def send_response(**msg)
-      @running_requests_from_client.delete(msg[:id])
+      @running_requests_from_client.delete(msg[:id]) || raise
       @writer.write(**msg)
     end
 
