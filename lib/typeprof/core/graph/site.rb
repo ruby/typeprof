@@ -56,6 +56,7 @@ module TypeProf::Core
       @depended_method_entities.each do |me|
         me.callsites.delete(@target) || raise
       end
+      @new_depended_method_entities.uniq!
       @new_depended_method_entities.each do |me|
         me.callsites << @target
       end
