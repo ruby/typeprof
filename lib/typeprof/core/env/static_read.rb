@@ -3,7 +3,7 @@ module TypeProf::Core
     def initialize(name)
       @name = name
       @followers = Set[]
-      @source_modules = []
+      @source_modules = Set[]
     end
 
     attr_reader :name, :followers
@@ -25,7 +25,7 @@ module TypeProf::Core
 
     def destroy(genv)
       @source_modules.each do |mod|
-        mod.static_reads[@name].delete(self) # || raise # TODO
+        mod.static_reads[@name].delete(self) || raise
       end
       @source_modules.clear
     end
@@ -38,8 +38,10 @@ module TypeProf::Core
         scope = cref.cpath
         mod = genv.resolve_cpath(scope)
         while true
-          @source_modules << mod
-          (mod.static_reads[@name] ||= Set[]) << self
+          unless @source_modules.include?(mod)
+            @source_modules << mod
+            (mod.static_reads[@name] ||= Set[]) << self
+          end
 
           return if check_module(genv, mod)
 
