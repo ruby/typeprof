@@ -61,7 +61,7 @@ module TypeProf::Core
       end
 
       @depended_method_entities, @new_depended_method_entities = @new_depended_method_entities, @depended_method_entities
-      @depended_method_entities.clear
+      @new_depended_method_entities.clear
     end
   end
 
