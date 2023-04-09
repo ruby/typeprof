@@ -31,57 +31,57 @@ module TypeProf::Core
     end
 
     class TypeNode < Node
-      def get_vertex(genv, subst)
+      def get_vertex(genv, changes, subst)
         vtx = Vertex.new("rbs_type", self)
-        get_vertex0(genv, vtx, subst)
+        get_vertex0(genv, changes, vtx, subst)
         vtx
       end
     end
 
     class SIG_TY_BASE_BOOL < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         Source.new(genv.true_type, genv.false_type).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_NIL < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         Source.new(genv.nil_type).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_SELF < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         subst[:__self].add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_VOID < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         Source.new(genv.obj_type).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_ANY < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         # TODO
       end
     end
 
     class SIG_TY_BASE_TOP < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         # TODO
       end
     end
 
     class SIG_TY_BASE_BOTTOM < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         Source.new(Type::Bot.new(genv)).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_INSTANCE < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         raise NotImplementedError
       end
     end
@@ -123,10 +123,11 @@ module TypeProf::Core
         @args.each {|arg| arg.undefine(genv) }
       end
 
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
         tae = @static_ret.last.type_alias_entity
         if tae && tae.exist?
-          tae.type.get_vertex0(genv, vtx, subst)
+          tae.type.get_vertex0(genv, changes, vtx, subst)
         end
         # TODO: report?
       end
@@ -142,15 +143,15 @@ module TypeProf::Core
 
       def subnodes = { types: }
 
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         @types.each do |type|
-          type.get_vertex0(genv, vtx, subst)
+          type.get_vertex0(genv, changes, vtx, subst)
         end
       end
     end
 
     class SIG_TY_INTERSECTION < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
       end
     end
@@ -185,8 +186,9 @@ module TypeProf::Core
         end
       end
 
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         # TODO: type.args
+        changes.add_depended_static_read(@static_ret.last)
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
@@ -228,11 +230,12 @@ module TypeProf::Core
         @args.each {|arg| arg.undefine(genv) }
       end
 
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
-        args = @args.map {|arg| arg.get_vertex(genv, subst) }
+        args = @args.map {|arg| arg.get_vertex(genv, changes, subst) }
         Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
       end
     end
@@ -246,10 +249,10 @@ module TypeProf::Core
       attr_reader :types
       def subnodes = { types: }
 
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         unified_elem = Vertex.new("ary-unified", self)
         elems = @types.map do |type|
-          nvtx = type.get_vertex(genv, subst)
+          nvtx = type.get_vertex(genv, changes, subst)
           nvtx.add_edge(genv, unified_elem)
           nvtx
         end
@@ -266,7 +269,7 @@ module TypeProf::Core
       attr_reader :type
       def attrs = { var: }
 
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         if subst[@var]
           subst[@var].add_edge(genv, vtx)
         else
@@ -284,8 +287,8 @@ module TypeProf::Core
       attr_reader :type
       def subnodes = { type: }
 
-      def get_vertex0(genv, vtx, subst)
-        @type.get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
+        @type.get_vertex0(genv, changes, vtx, subst)
         Source.new(genv.nil_type).add_edge(genv, vtx)
       end
     end
@@ -299,7 +302,7 @@ module TypeProf::Core
       attr_reader :lit
       def attrs = { lit: }
 
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         ty = case @lit
         when ::Symbol
           Type::Symbol.new(genv, @lit)
@@ -315,13 +318,13 @@ module TypeProf::Core
     end
 
     class SIG_TY_PROC < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         raise NotImplementedError
       end
     end
 
     class SIG_TY_INTERFACE < TypeNode
-      def get_vertex0(genv, vtx, subst)
+      def get_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
       end
     end

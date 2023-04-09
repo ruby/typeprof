@@ -15,7 +15,7 @@ module TypeProf::Core
           follower.on_parent_modules_changed(genv)
         when ScopedStaticRead
           follower.on_cbase_updated(genv)
-        when ConstReadSite, IsAFilter
+        when Site, IsAFilter
           genv.add_run(follower)
         else
           raise follower.inspect

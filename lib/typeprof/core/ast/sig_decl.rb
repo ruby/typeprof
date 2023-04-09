@@ -236,9 +236,10 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = @type.get_vertex(genv, {})
-        val.add_edge(genv, @static_ret.vtx)
-        val
+        site = TypeReadSite.new(self, genv, @type)
+        add_site(:main, site)
+        site.ret.add_edge(genv, @static_ret.vtx)
+        site.ret
       end
 
       def uninstall0(genv)
@@ -299,9 +300,10 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = @type.get_vertex(genv, {})
-        val.add_edge(genv, @static_ret.vtx)
-        val
+        site = TypeReadSite.new(self, genv, @type)
+        add_site(:main, site)
+        site.ret.add_edge(genv, @static_ret.vtx)
+        site.ret
       end
 
       def uninstall0(genv)
