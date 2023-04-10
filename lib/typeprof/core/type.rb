@@ -20,6 +20,28 @@ module TypeProf::Core
 
       attr_reader :mod
 
+      def check_match(genv, changes, subst, vtx)
+        vtx.types.each do |other_ty, _source|
+          other_ty.base_types(genv).each do |other_base_ty|
+            case other_base_ty
+            when Singleton
+              other_mod = other_base_ty.mod
+              if other_mod.module?
+                # TODO: implement
+              else
+                mod = @mod
+                while mod
+                  return true if mod == other_mod
+                  changes.add_depended_superclass(mod)
+                  mod = mod.superclass
+                end
+              end
+            end
+          end
+        end
+        return false
+      end
+
       def show
         "singleton(#{ @mod.show_cpath })"
       end
@@ -46,6 +68,28 @@ module TypeProf::Core
       end
 
       attr_reader :mod, :args
+
+      def check_match(genv, changes, subst, vtx)
+        # TODO: type parameters
+        vtx.types.each do |other_ty, _source|
+          other_ty.base_types(genv).each do |other_base_ty|
+            if other_base_ty.is_a?(Instance)
+              other_mod = other_base_ty.mod
+              if other_mod.module?
+                # TODO: implement
+              else
+                mod = @mod
+                while mod
+                  return true if mod == other_mod
+                  changes.add_depended_superclass(mod)
+                  mod = mod.superclass
+                end
+              end
+            end
+          end
+        end
+        return false
+      end
 
       def show
         case @mod.cpath

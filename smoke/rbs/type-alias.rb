@@ -22,7 +22,7 @@ end
 class Object
   def test1: -> (Integer | String)
   def test2: -> (Integer | String)
-  def test3: (untyped) -> untyped
+  def test3: (untyped) -> (Integer | String)
 end
 
 # update: test.rbs
@@ -36,7 +36,7 @@ end
 class Object
   def test1: -> Integer
   def test2: -> untyped
-  def test3: (untyped) -> untyped
+  def test3: (untyped) -> Integer
 end
 
 # update: test.rbs
@@ -49,7 +49,7 @@ end
 class Object
   def test1: -> Integer
   def test2: -> untyped
-  def test3: (untyped) -> untyped
+  def test3: (untyped) -> Integer
 end
 
 # update: test.rbs
@@ -64,5 +64,5 @@ end
 class Object
   def test1: -> Integer
   def test2: -> untyped
-  def test3: (untyped) -> untyped
+  def test3: (untyped) -> Integer
 end

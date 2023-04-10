@@ -12,6 +12,8 @@ module TypeProf::Core
       @new_depended_method_entities = []
       @depended_static_reads = []
       @new_depended_static_reads = []
+      @depended_superclasses = []
+      @new_depended_superclasses = []
     end
 
     attr_reader :diagnostics
@@ -34,6 +36,10 @@ module TypeProf::Core
 
     def add_depended_static_read(static_read)
       @new_depended_static_reads << static_read
+    end
+
+    def add_depended_superclass(mod)
+      @new_depended_superclasses << mod
     end
 
     def reinstall(genv)
@@ -80,6 +86,17 @@ module TypeProf::Core
 
       @depended_static_reads, @new_depended_static_reads = @new_depended_static_reads, @depended_static_reads
       @new_depended_static_reads.clear
+
+      @depended_superclasses.each do |mod|
+        mod.subclass_checks.delete(@target)
+      end
+      @new_depended_superclasses.uniq!
+      @new_depended_superclasses.each do |mod|
+        mod.subclass_checks << @target
+      end
+
+      @depended_superclasses, @new_depended_superclasses = @new_depended_superclasses, @depended_superclasses
+      @new_depended_superclasses.clear
     end
   end
 
@@ -219,8 +236,15 @@ module TypeProf::Core
           f_arg.get_vertex(genv, changes, param_map0)
         end
         next if a_args.size != f_args.size
-        next if !f_args.all? # skip interface type
-        next if a_args.zip(f_args).any? {|a_arg, f_arg| !a_arg.match?(genv, f_arg) }
+        subst = {}
+        match = true
+        a_args.zip(f_args) do |a_arg, f_arg|
+          unless a_arg.check_match(genv, changes, subst, f_arg)
+            match = false
+            break
+          end
+        end
+        next unless match
         rbs_blk = method_type.block
         next if !!rbs_blk != !!block
         if rbs_blk && block

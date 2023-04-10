@@ -273,6 +273,7 @@ module TypeProf::Core
         if subst[@var]
           subst[@var].add_edge(genv, vtx)
         else
+          #p subst.include?(@var)
           #subst[@var] = Type::Var.new(@var)
         end
       end

@@ -59,6 +59,7 @@ module TypeProf::Core
       @type_aliases = {}
 
       @static_reads = {}
+      @subclass_checks = Set[]
       @ivar_reads = Set[] # should be handled in @ivars ??
     end
 
@@ -81,7 +82,12 @@ module TypeProf::Core
     attr_reader :type_aliases
 
     attr_reader :static_reads
+    attr_reader :subclass_checks
     attr_reader :ivar_reads
+
+    def module?
+      !@superclass && !@basic_object
+    end
 
     def get_cname
       @cpath.empty? ? :Object : @cpath.last
@@ -315,7 +321,12 @@ module TypeProf::Core
         end
       end
 
-      on_ancestors_updated(genv, nil) if any_updated
+      if any_updated
+        @subclass_checks.each do |callsite|
+          genv.add_run(callsite)
+        end
+        on_ancestors_updated(genv, nil)
+      end
     end
 
     def on_ancestors_updated(genv, base_mod)

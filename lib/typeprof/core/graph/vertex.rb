@@ -6,6 +6,14 @@ module TypeProf::Core
 
     attr_reader :types
 
+    def check_match(genv, changes, subst, vtx)
+      @types.each do |ty, _source|
+        next if vtx.types.include?(ty) # fast path
+        return false unless ty.check_match(genv, changes, subst, vtx)
+      end
+      return true
+    end
+
     def show
       if Fiber[:show_rec].include?(self)
         "untyped"
