@@ -84,11 +84,11 @@ module TypeProf::Core
               # TODO: implement
             else
               mod = @mod
+              args = @args
               while mod
                 if mod == other_mod
                   args_all_match = true
-                  # TODO: other_args need to be handled more correctly
-                  @args.zip(other_ty.args) do |arg, other_arg|
+                  args.zip(other_ty.args) do |arg, other_arg|
                     unless arg.check_match(genv, changes, subst, other_arg)
                       args_all_match = false
                       break
@@ -97,7 +97,20 @@ module TypeProf::Core
                   return true if args_all_match
                 end
                 changes.add_depended_superclass(mod)
-                mod = mod.superclass
+
+                super_mod = mod.superclass
+                args2 = []
+                if super_mod && super_mod.type_params
+                  subst2 = {}
+                  mod.type_params.zip(@args) do |param, vtx|
+                    subst2[param] = vtx
+                  end
+                  super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
+                    args2 << arg.get_vertex(genv, changes, subst2)
+                  end
+                end
+                mod = super_mod
+                args = args2
               end
             end
           end
