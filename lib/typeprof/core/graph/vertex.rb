@@ -6,21 +6,19 @@ module TypeProf::Core
 
     attr_reader :types
 
-    def check_match(genv, changes, subst, vtx)
-      @types.each do |ty, _source|
-        next if vtx.types.include?(ty) # fast path
-        unless ty.check_match(genv, changes, subst, vtx)
-          var_match = false
-          vtx.types.each do |ty, _source|
-            if ty.is_a?(Type::Var)
-              var_match = true
-              changes.add_edge(self, ty.vtx)
-              break
-            end
-          end
-          return false unless var_match
+    def check_match(genv, changes, vtx)
+      vtx.types.each do |ty, _source|
+        if ty.is_a?(Type::Var)
+          changes.add_edge(self, ty.vtx)
+          return true
         end
       end
+
+      @types.each do |ty, _source|
+        next if vtx.types.include?(ty) # fast path
+        return false unless ty.check_match(genv, changes, vtx)
+      end
+
       return true
     end
 

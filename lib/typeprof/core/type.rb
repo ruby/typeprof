@@ -20,7 +20,7 @@ module TypeProf::Core
         self
       end
 
-      def check_match(genv, changes, subst, vtx)
+      def check_match(genv, changes, vtx)
         vtx.types.each do |other_ty, _source|
           case other_ty
           when Singleton
@@ -37,7 +37,7 @@ module TypeProf::Core
             end
           when Instance
             base_ty = @mod.module? ? genv.mod_type : genv.cls_type
-            return true if base_ty.check_match(genv, changes, subst, Source.new(other_ty))
+            return true if base_ty.check_match(genv, changes, Source.new(other_ty))
           end
         end
         return false
@@ -75,7 +75,7 @@ module TypeProf::Core
         self
       end
 
-      def check_match(genv, changes, subst, vtx)
+      def check_match(genv, changes, vtx)
         vtx.types.each do |other_ty, _source|
           case other_ty
           when Instance
@@ -89,7 +89,7 @@ module TypeProf::Core
                 if mod == other_mod
                   args_all_match = true
                   args.zip(other_ty.args) do |arg, other_arg|
-                    unless arg.check_match(genv, changes, subst, other_arg)
+                    unless arg.check_match(genv, changes, other_arg)
                       args_all_match = false
                       break
                     end
@@ -159,13 +159,13 @@ module TypeProf::Core
         @base_type
       end
 
-      def check_match(genv, changes, subst, vtx)
+      def check_match(genv, changes, vtx)
         vtx.types.each do |other_ty, _source|
           if other_ty.is_a?(Array)
             if @elems.size == other_ty.elems.size
               match = true
               @elems.zip(other_ty.elems) do |elem, other_elem|
-                unless elem.check_match(genv, changes, subst, other_elem)
+                unless elem.check_match(genv, changes, other_elem)
                   match = false
                   break
                 end
@@ -174,7 +174,7 @@ module TypeProf::Core
             end
           end
         end
-        @base_type.check_match(genv, changes, subst, vtx)
+        @base_type.check_match(genv, changes, vtx)
       end
 
       def show
@@ -207,9 +207,9 @@ module TypeProf::Core
         @base_type
       end
 
-      def check_match(genv, changes, subst, vtx)
+      def check_match(genv, changes, vtx)
         # TODO: implement
-        @base_type.check_match(genv, changes, subst, vtx)
+        @base_type.check_match(genv, changes, vtx)
       end
 
       def show
@@ -246,13 +246,13 @@ module TypeProf::Core
         genv.symbol_type
       end
 
-      def check_match(genv, changes, subst, vtx)
+      def check_match(genv, changes, vtx)
         vtx.types.each do |other_ty, _source|
           case other_ty
           when Symbol
             return true if @sym == other_ty.sym
           when Instance
-            return true if genv.symbol_type.check_match(genv, changes, subst, Source.new(other_ty))
+            return true if genv.symbol_type.check_match(genv, changes, Source.new(other_ty))
           end
         end
         return false
@@ -270,7 +270,7 @@ module TypeProf::Core
         genv.obj_type
       end
 
-      def check_match(genv, changes, subst, vtx)
+      def check_match(genv, changes, vtx)
         return true
       end
 
@@ -293,7 +293,7 @@ module TypeProf::Core
         raise "unsupported"
       end
 
-      def check_match(genv, changes, subst, vtx)
+      def check_match(genv, changes, vtx)
         raise "unsupported"
       end
 

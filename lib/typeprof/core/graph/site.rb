@@ -237,10 +237,9 @@ module TypeProf::Core
           f_arg.get_vertex(genv, changes, param_map0)
         end
         next if a_args.size != f_args.size
-        subst = {}
         match = true
         a_args.zip(f_args) do |a_arg, f_arg|
-          unless a_arg.check_match(genv, changes, subst, f_arg)
+          unless a_arg.check_match(genv, changes, f_arg)
             match = false
             break
           end
@@ -253,6 +252,10 @@ module TypeProf::Core
           block.types.each do |ty, _source|
             case ty
             when Type::Proc
+              blk_f_ret = rbs_blk.return_type.get_vertex(genv, changes, param_map0)
+              unless ty.block.ret.check_match(genv, changes, blk_f_ret)
+                # TODO: wrong return type of block, need to report
+              end
               blk_a_args = rbs_blk.required_positionals.map do |blk_a_arg|
                 blk_a_arg.get_vertex(genv, changes, param_map0)
               end
@@ -261,9 +264,6 @@ module TypeProf::Core
                 blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
                   changes.add_edge(blk_a_arg, blk_f_arg)
                 end
-                # TODO: Sink instead of Source
-                blk_f_ret = rbs_blk.return_type.get_vertex(genv, changes, param_map0)
-                changes.add_edge(ty.block.ret, blk_f_ret)
               end
             end
           end
