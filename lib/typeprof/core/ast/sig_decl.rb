@@ -55,6 +55,7 @@ module TypeProf::Core
 
       def uninstall0(genv)
         @mod_val.remove_edge(genv, @static_ret.first.vtx)
+        super
       end
     end
 
