@@ -22,21 +22,22 @@ module TypeProf::Core
 
       def check_match(genv, changes, subst, vtx)
         vtx.types.each do |other_ty, _source|
-          other_ty.base_types(genv).each do |other_base_ty|
-            case other_base_ty
-            when Singleton
-              other_mod = other_base_ty.mod
-              if other_mod.module?
-                # TODO: implement
-              else
-                mod = @mod
-                while mod
-                  return true if mod == other_mod
-                  changes.add_depended_superclass(mod)
-                  mod = mod.superclass
-                end
+          case other_ty
+          when Singleton
+            other_mod = other_ty.mod
+            if other_mod.module?
+              # TODO: implement
+            else
+              mod = @mod
+              while mod
+                return true if mod == other_mod
+                changes.add_depended_superclass(mod)
+                mod = mod.superclass
               end
             end
+          when Instance
+            base_ty = @mod.module? ? genv.mod_type : genv.cls_type
+            return true if base_ty.check_match(genv, changes, subst, Source.new(other_ty))
           end
         end
         return false
@@ -62,7 +63,7 @@ module TypeProf::Core
       include StructuralEquality
 
       def initialize(mod, args)
-        raise unless mod.is_a?(ModuleEntity)
+        raise mod.class.to_s unless mod.is_a?(ModuleEntity)
         @mod = mod
         @args = args
       end
@@ -72,18 +73,16 @@ module TypeProf::Core
       def check_match(genv, changes, subst, vtx)
         # TODO: type parameters
         vtx.types.each do |other_ty, _source|
-          other_ty.base_types(genv).each do |other_base_ty|
-            if other_base_ty.is_a?(Instance)
-              other_mod = other_base_ty.mod
-              if other_mod.module?
-                # TODO: implement
-              else
-                mod = @mod
-                while mod
-                  return true if mod == other_mod
-                  changes.add_depended_superclass(mod)
-                  mod = mod.superclass
-                end
+          if other_ty.is_a?(Instance)
+            other_mod = other_ty.mod
+            if other_mod.module?
+              # TODO: implement
+            else
+              mod = @mod
+              while mod
+                return true if mod == other_mod
+                changes.add_depended_superclass(mod)
+                mod = mod.superclass
               end
             end
           end
@@ -117,6 +116,8 @@ module TypeProf::Core
         @base_type = base_type
       end
 
+      attr_reader :elems
+
       def get_elem(genv, idx = nil)
         if idx && @elems
           @elems[idx] || Source.new(genv.nil_type)
@@ -127,6 +128,24 @@ module TypeProf::Core
 
       def base_types(genv)
         [@base_type]
+      end
+
+      def check_match(genv, changes, subst, vtx)
+        vtx.types.each do |other_ty, _source|
+          if other_ty.is_a?(Array)
+            if @elems.size == other_ty.elems.size
+              match = true
+              @elems.zip(other_ty.elems) do |elem, other_elem|
+                unless elem.check_match(genv, changes, subst, other_elem)
+                  match = false
+                  break
+                end
+              end
+              return true if match
+            end
+          end
+        end
+        @base_type.check_match(genv, changes, subst, vtx)
       end
 
       def show
@@ -156,6 +175,11 @@ module TypeProf::Core
 
       def base_types(genv)
         [@base_type]
+      end
+
+      def check_match(genv, changes, subst, vtx)
+        # TODO: implement
+        @base_type.check_match(genv, changes, subst, vtx)
       end
 
       def show
@@ -192,6 +216,18 @@ module TypeProf::Core
         [genv.symbol_type]
       end
 
+      def check_match(genv, changes, subst, vtx)
+        vtx.types.each do |other_ty, _source|
+          case other_ty
+          when Symbol
+            return true if @sym == other_ty.sym
+          when Instance
+            return true if genv.symbol_type.check_match(genv, changes, subst, Source.new(other_ty))
+          end
+        end
+        return false
+      end
+
       def show
         @sym.inspect
       end
@@ -202,6 +238,10 @@ module TypeProf::Core
 
       def base_types(genv)
         [genv.obj_type]
+      end
+
+      def check_match(genv, changes, subst, vtx)
+        return true
       end
 
       def show

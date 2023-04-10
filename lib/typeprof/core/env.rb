@@ -21,6 +21,8 @@ module TypeProf::Core
       @mod_hash = resolve_cpath([:Hash])
       @mod_range = resolve_cpath([:Range])
 
+      @cls_type = Type::Instance.new(self, @mod_class, [])
+      @mod_type = Type::Instance.new(self, @mod_module, [])
       @obj_type = Type::Instance.new(self, resolve_cpath([:Object]), [])
       @nil_type = Type::Instance.new(self, resolve_cpath([:NilClass]), [])
       @true_type = Type::Instance.new(self, resolve_cpath([:TrueClass]), [])
@@ -39,6 +41,7 @@ module TypeProf::Core
     attr_reader :type_table
 
     attr_reader :mod_object
+    attr_reader :cls_type, :mod_type
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type
     attr_reader :proc_type, :symbol_type, :set_type, :regexp_type
 
