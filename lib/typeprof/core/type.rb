@@ -76,7 +76,6 @@ module TypeProf::Core
       end
 
       def check_match(genv, changes, subst, vtx)
-        # TODO: type parameters
         vtx.types.each do |other_ty, _source|
           case other_ty
           when Instance
@@ -86,7 +85,17 @@ module TypeProf::Core
             else
               mod = @mod
               while mod
-                return true if mod == other_mod
+                if mod == other_mod
+                  args_all_match = true
+                  # TODO: other_args need to be handled more correctly
+                  @args.zip(other_ty.args) do |arg, other_arg|
+                    unless arg.check_match(genv, changes, subst, other_arg)
+                      args_all_match = false
+                      break
+                    end
+                  end
+                  return true if args_all_match
+                end
                 changes.add_depended_superclass(mod)
                 mod = mod.superclass
               end
