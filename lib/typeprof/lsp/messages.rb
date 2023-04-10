@@ -176,7 +176,7 @@ module TypeProf::LSP
     METHOD = "textDocument/didClose" # notification
     def run
       @params => { textDocument: { uri: } }
-      text = @server.open_texts.delete(uri) || raise
+      text = @server.open_texts.delete(uri)
       return unless text
       @server.core.update_rb_file(text.path, nil)
     end
