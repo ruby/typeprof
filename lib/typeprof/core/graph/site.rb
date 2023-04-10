@@ -418,52 +418,6 @@ module TypeProf::Core
       end
     end
 
-    def resolve_subclasses(genv, changes)
-      # TODO: This does not follow new subclasses
-      @recv.types.each do |ty, _source|
-        next if ty == Type::Bot.new(genv)
-        ty.base_types(genv).each do |base_ty|
-          singleton = base_ty.is_a?(Type::Singleton)
-          mod = base_ty.mod
-          mod.each_descendant do |desc_mod|
-            next if mod == desc_mod
-            me = desc_mod.get_method(singleton, @mid)
-            changes.add_depended_method_entities(me)
-            if me && me.exist?
-              yield ty, me
-            end
-          end
-        end
-      end
-    end
-
-    def resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
-      found = false
-
-      mod.included_modules.each do |inc_decl, inc_mod|
-        param_map2 = { __self: Source.new(ty) }
-        if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
-          inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
-            param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new
-          end
-        end
-
-        me = inc_mod.get_method(singleton, mid)
-        changes.add_depended_method_entities(me) if changes
-        if !me.aliases.empty?
-          mid = me.aliases.values.first
-          redo
-        end
-        if me.exist?
-          found = true
-          yield ty, mid, me, param_map2
-        else
-          found ||= resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map2, &blk)
-        end
-      end
-      found
-    end
-
     def resolve(genv, changes = nil, &blk)
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new(genv)
@@ -508,6 +462,52 @@ module TypeProf::Core
           end
 
           yield ty, @mid, nil, param_map unless mod
+        end
+      end
+    end
+
+    def resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
+      found = false
+
+      mod.included_modules.each do |inc_decl, inc_mod|
+        param_map2 = { __self: Source.new(ty) }
+        if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
+          inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
+            param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new
+          end
+        end
+
+        me = inc_mod.get_method(singleton, mid)
+        changes.add_depended_method_entities(me) if changes
+        if !me.aliases.empty?
+          mid = me.aliases.values.first
+          redo
+        end
+        if me.exist?
+          found = true
+          yield ty, mid, me, param_map2
+        else
+          found ||= resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map2, &blk)
+        end
+      end
+      found
+    end
+
+    def resolve_subclasses(genv, changes)
+      # TODO: This does not follow new subclasses
+      @recv.types.each do |ty, _source|
+        next if ty == Type::Bot.new(genv)
+        ty.base_types(genv).each do |base_ty|
+          singleton = base_ty.is_a?(Type::Singleton)
+          mod = base_ty.mod
+          mod.each_descendant do |desc_mod|
+            next if mod == desc_mod
+            me = desc_mod.get_method(singleton, @mid)
+            changes.add_depended_method_entities(me)
+            if me && me.exist?
+              yield ty, me
+            end
+          end
         end
       end
     end
