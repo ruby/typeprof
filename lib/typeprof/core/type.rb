@@ -55,7 +55,8 @@ module TypeProf::Core
       end
 
       def get_instance_type(genv)
-        Instance.new(genv, @mod, []) # Is this okay?
+        params = @mod.type_params
+        Instance.new(genv, @mod, params ? params.map { Source.new } : [])
       end
     end
 
@@ -77,7 +78,8 @@ module TypeProf::Core
       def check_match(genv, changes, subst, vtx)
         # TODO: type parameters
         vtx.types.each do |other_ty, _source|
-          if other_ty.is_a?(Instance)
+          case other_ty
+          when Instance
             other_mod = other_ty.mod
             if other_mod.module?
               # TODO: implement
@@ -252,6 +254,29 @@ module TypeProf::Core
 
       def show
         "bot"
+      end
+    end
+
+    class Var < Type
+      include StructuralEquality
+
+      def initialize(name, vtx)
+        @name = name
+        @vtx = vtx
+      end
+
+      attr_reader :name, :vtx
+
+      def base_type(genv)
+        raise "unsupported"
+      end
+
+      def check_match(genv, changes, subst, vtx)
+        raise "unsupported"
+      end
+
+      def show
+        "var[#{ @name }]"
       end
     end
   end

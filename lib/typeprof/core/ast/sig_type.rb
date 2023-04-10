@@ -270,12 +270,8 @@ module TypeProf::Core
       def attrs = { var: }
 
       def get_vertex0(genv, changes, vtx, subst)
-        if subst[@var]
-          subst[@var].add_edge(genv, vtx)
-        else
-          #p subst.include?(@var)
-          #subst[@var] = Type::Var.new(@var)
-        end
+        raise "unknown type variable: #{ @var }" unless subst[@var]
+        subst[@var].add_edge(genv, vtx)
       end
     end
 

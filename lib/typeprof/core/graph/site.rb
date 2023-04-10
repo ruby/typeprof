@@ -228,8 +228,9 @@ module TypeProf::Core
         # rbs_func.trailing_positionals
         param_map0 = param_map.dup
         if method_type.type_params
-          method_type.type_params.map do |param|
-            param_map0[param] = nil
+          method_type.type_params.map do |var|
+            vtx = Vertex.new("ty-var-#{ var }", node)
+            param_map0[var] = Source.new(Type::Var.new(genv, var, vtx))
           end
         end
         f_args = method_type.required_positionals.map do |f_arg|
@@ -265,6 +266,12 @@ module TypeProf::Core
                 changes.add_edge(ty.block.ret, blk_f_ret)
               end
             end
+          end
+        end
+        if method_type.type_params
+          method_type.type_params.map do |var|
+            var_vtx = param_map0[var].types.keys.first
+            param_map0[var] = var_vtx.vtx
           end
         end
         ret_vtx = method_type.return_type.get_vertex(genv, changes, param_map0)
