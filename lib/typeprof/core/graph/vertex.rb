@@ -51,7 +51,7 @@ module TypeProf::Core
             types << ty.show
           end
           types = types.uniq.sort
-          ret = case types.size
+          case types.size
           when 0
             optional ? "nil" : bot ? "bot" : "untyped"
           when 1
@@ -59,9 +59,8 @@ module TypeProf::Core
           else
             "(#{ types.join(" | ") })" + (optional ? "?" : "")
           end
-        #ensure
+        ensure
           Fiber[:show_rec].delete(self) || raise
-          ret
         end
       end
     end
@@ -104,10 +103,9 @@ module TypeProf::Core
       else
         begin
           Fiber[:show_rec] << self
-          ret = @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
-        #ensure
+          @types.empty? ? "untyped" : @types.keys.map {|ty| ty.show }.sort.join(" | ")
+        ensure
           Fiber[:show_rec].delete(self) || raise
-          ret
         end
       end
     end

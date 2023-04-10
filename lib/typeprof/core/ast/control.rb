@@ -366,17 +366,89 @@ module TypeProf::Core
     class RESCUE < Node
       def initialize(raw_node, lenv)
         super
-        raw_body, _raw_rescue = raw_node.children
+        raw_body, raw_rescue = raw_node.children
         @body = AST.create_node(raw_body, lenv)
-        # TODO: raw_rescue
+        @cond_lists = []
+        @clauses = []
+        while raw_rescue
+          raise unless raw_rescue.type == :RESBODY
+          raw_cond_list, raw_clause, raw_rescue = raw_rescue.children
+          @cond_lists << (raw_cond_list ? AST.create_node(raw_cond_list, lenv) : nil)
+          @clauses << AST.create_node(raw_clause, lenv)
+        end
       end
 
-      attr_reader :body
+      attr_reader :body, :cond_lists, :clauses
 
-      def subnodes = { body: }
+      def subnodes = { body:, cond_lists:, clauses: }
+
+      def define0(genv)
+        @body.define(genv)
+        @cond_lists.zip(@clauses) do |cond_list, clause|
+          cond_list.define(genv) if cond_list
+          clause.define(genv)
+        end
+      end
+
+      def undefine0(genv)
+        @body.undefine(genv)
+        @cond_lists.zip(@clauses) do |cond_list, clause|
+          cond_list.undefine(genv) if cond_list
+          clause.undefine(genv)
+        end
+      end
 
       def install0(genv)
-        @body.install(genv)
+        ret = Vertex.new("rescue-ret", self)
+        @body.install(genv).add_edge(genv, ret)
+        @cond_lists.zip(@clauses) do |cond_list, clause|
+          cond_list.install(genv) if cond_list
+          clause.install(genv).add_edge(genv, ret)
+        end
+        ret
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(RESCUE) && @cond_lists.size == prev_node.cond_lists.size && @clauses.size == prev_node.clauses.size
+          @body.diff(prev_node.body)
+          return unless @body.prev_node
+
+          @cond_lists.zip(prev_node.cond_lists) do |cond_list, prev_cond_list|
+            if cond_list && prev_cond_list
+              cond_list.diff(prev_cond_list)
+              return unless cond_list.prev_node
+            else
+              return if cond_list != prev_cond_list
+            end
+          end
+
+          @clauses.zip(prev_node.clauses) do |clause, prev_clause|
+            clause.diff(prev_clause)
+            return unless clause.prev_node
+          end
+
+          @prev_node = prev_node
+        end
+      end
+    end
+
+    class ENSURE < Node
+      def initialize(raw_node, lenv)
+        super
+        raw_body, raw_ensure = raw_node.children
+        @body = AST.create_node(raw_body, lenv)
+        @ensure = AST.create_node(raw_ensure, lenv)
+      end
+
+      attr_reader :body, :ensure
+
+      def subnodes = { body:, ensure: }
+
+      def install0(genv)
+        # TODO: take a union type of each local var of the begninng and the end of the body
+        ret = @body.install(genv)
+        @ensure.install(genv)
+        ret
       end
     end
   end

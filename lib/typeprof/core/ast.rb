@@ -47,6 +47,7 @@ module TypeProf::Core
       when :OR then OR.new(raw_node, lenv)
       when :RETURN then RETURN.new(raw_node, lenv)
       when :RESCUE then RESCUE.new(raw_node, lenv)
+      when :ENSURE then ENSURE.new(raw_node, lenv)
 
       # variable
       when :CONST, :COLON2, :COLON3

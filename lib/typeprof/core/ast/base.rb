@@ -25,7 +25,7 @@ module TypeProf::Core
           when AST::Node
             yield subnode
           when Array
-            subnode.each {|n| yield n }
+            subnode.each {|n| yield n if n }
           else
             raise subnode.class.to_s
           end
