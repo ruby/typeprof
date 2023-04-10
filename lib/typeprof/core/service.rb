@@ -265,28 +265,27 @@ module TypeProf::Core
       @text_nodes[path].hover(pos) do |node|
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
-            ty.base_types(genv).each do |base_ty|
-              mod = base_ty.mod
-              singleton = base_ty.is_a?(Type::Singleton)
-              while mod
-                mod.methods[singleton].each do |mid, me|
-                  sig = nil
-                  me.decls.each do |mdecl|
-                    sig = mdecl.rbs_method_types.map {|method_type| method_type.to_s }.join(" | ")
+            base_ty = ty.base_type(genv)
+            mod = base_ty.mod
+            singleton = base_ty.is_a?(Type::Singleton)
+            while mod
+              mod.methods[singleton].each do |mid, me|
+                sig = nil
+                me.decls.each do |mdecl|
+                  sig = mdecl.rbs_method_types.map {|method_type| method_type.to_s }.join(" | ")
+                  break
+                end
+                unless sig
+                  me.defs.each do |mdef|
+                    sig = mdef.show
                     break
                   end
-                  unless sig
-                    me.defs.each do |mdef|
-                      sig = mdef.show
-                      break
-                    end
-                  end
-                  yield mid, "#{ mod.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
                 end
-                # TODO: support aliases
-                # TODO: support include module
-                mod, singleton = genv.get_superclass(mod, singleton)
+                yield mid, "#{ mod.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
               end
+              # TODO: support aliases
+              # TODO: support include module
+              mod, singleton = genv.get_superclass(mod, singleton)
             end
           end
           return

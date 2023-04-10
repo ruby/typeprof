@@ -446,47 +446,46 @@ module TypeProf::Core
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new(genv)
         mid = @mid
-        ty.base_types(genv).each do |base_ty|
-          mod = base_ty.mod
-          param_map = { __self: Source.new(ty) }
-          if base_ty.is_a?(Type::Instance)
-            if mod.type_params
-              mod.type_params.zip(base_ty.args) do |k, v|
-                param_map[k] = v
-              end
+        base_ty = ty.base_type(genv)
+        mod = base_ty.mod
+        param_map = { __self: Source.new(ty) }
+        if base_ty.is_a?(Type::Instance)
+          if mod.type_params
+            mod.type_params.zip(base_ty.args) do |k, v|
+              param_map[k] = v
             end
           end
-          singleton = base_ty.is_a?(Type::Singleton)
-          # TODO: resolution for module
-          while mod
-            me = mod.get_method(singleton, mid)
-            changes.add_depended_method_entities(me) if changes
-            if !me.aliases.empty?
-              mid = me.aliases.values.first
-              redo
-            end
-            if me && me.exist?
-              yield ty, @mid, me, param_map
-              break
-            end
-
-            unless singleton
-              break if resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
-            end
-
-            type_args = mod.superclass_type_args
-            mod, singleton = genv.get_superclass(mod, singleton)
-            if mod && mod.type_params
-              param_map2 = { __self: Source.new(ty) }
-              mod.type_params.zip(type_args || []) do |param, arg|
-                param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new
-              end
-              param_map = param_map2
-            end
-          end
-
-          yield ty, @mid, nil, param_map unless mod
         end
+        singleton = base_ty.is_a?(Type::Singleton)
+        # TODO: resolution for module
+        while mod
+          me = mod.get_method(singleton, mid)
+          changes.add_depended_method_entities(me) if changes
+          if !me.aliases.empty?
+            mid = me.aliases.values.first
+            redo
+          end
+          if me && me.exist?
+            yield ty, @mid, me, param_map
+            break
+          end
+
+          unless singleton
+            break if resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
+          end
+
+          type_args = mod.superclass_type_args
+          mod, singleton = genv.get_superclass(mod, singleton)
+          if mod && mod.type_params
+            param_map2 = { __self: Source.new(ty) }
+            mod.type_params.zip(type_args || []) do |param, arg|
+              param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new
+            end
+            param_map = param_map2
+          end
+        end
+
+        yield ty, @mid, nil, param_map unless mod
       end
     end
 
@@ -521,16 +520,15 @@ module TypeProf::Core
       # TODO: This does not follow new subclasses
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new(genv)
-        ty.base_types(genv).each do |base_ty|
-          singleton = base_ty.is_a?(Type::Singleton)
-          mod = base_ty.mod
-          mod.each_descendant do |desc_mod|
-            next if mod == desc_mod
-            me = desc_mod.get_method(singleton, @mid)
-            changes.add_depended_method_entities(me)
-            if me && me.exist?
-              yield ty, me
-            end
+        base_ty = ty.base_type(genv)
+        singleton = base_ty.is_a?(Type::Singleton)
+        mod = base_ty.mod
+        mod.each_descendant do |desc_mod|
+          next if mod == desc_mod
+          me = desc_mod.get_method(singleton, @mid)
+          changes.add_depended_method_entities(me)
+          if me && me.exist?
+            yield ty, me
           end
         end
       end

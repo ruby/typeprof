@@ -51,7 +51,7 @@ module TypeProf::Core
 
     def filter(genv, types)
       # TODO: @const_read may change
-      types.select {|ty| ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.cpath, @const_read.cpath) != @neg } }
+      types.select {|ty| genv.subclass?(ty.base_type(genv), @const_read.cpath) != @neg }
     end
 
     def on_type_added(genv, src_var, added_types)
@@ -72,7 +72,7 @@ module TypeProf::Core
       if @const_read.cpath
         passed_types = []
         @types.each do |ty|
-          if ty.base_types(genv).any? {|base_ty| genv.subclass?(base_ty.mod.cpath, @const_read.cpath) } != @neg
+          if genv.subclass?(ty.base_type(genv).mod.cpath, @const_read.cpath) != @neg
             passed_types << ty
           end
         end

@@ -1,9 +1,5 @@
 module TypeProf::Core
   class Type
-    def base_types(_)
-      [self]
-    end
-
     def self.strip_parens(s)
       #s =~ /\A\((.*)\)\z/ ? $1 : s
       s.start_with?("(") && s.end_with?(")") ? s[1..-2] : s
@@ -19,6 +15,10 @@ module TypeProf::Core
       end
 
       attr_reader :mod
+
+      def base_type(_)
+        self
+      end
 
       def check_match(genv, changes, subst, vtx)
         vtx.types.each do |other_ty, _source|
@@ -70,6 +70,10 @@ module TypeProf::Core
 
       attr_reader :mod, :args
 
+      def base_type(_)
+        self
+      end
+
       def check_match(genv, changes, subst, vtx)
         # TODO: type parameters
         vtx.types.each do |other_ty, _source|
@@ -114,6 +118,7 @@ module TypeProf::Core
       def initialize(elems, base_type)
         @elems = elems
         @base_type = base_type
+        raise unless base_type.is_a?(Instance)
       end
 
       attr_reader :elems
@@ -126,8 +131,8 @@ module TypeProf::Core
         end
       end
 
-      def base_types(genv)
-        [@base_type]
+      def base_type(genv)
+        @base_type
       end
 
       def check_match(genv, changes, subst, vtx)
@@ -163,6 +168,7 @@ module TypeProf::Core
       def initialize(literal_pairs, base_type)
         @literal_pairs = literal_pairs
         @base_type = base_type
+        raise unless base_type.is_a?(Instance)
       end
 
       def get_key
@@ -173,8 +179,8 @@ module TypeProf::Core
         @literal_pairs[key] || @base_type.args[1]
       end
 
-      def base_types(genv)
-        [@base_type]
+      def base_type(genv)
+        @base_type
       end
 
       def check_match(genv, changes, subst, vtx)
@@ -194,8 +200,8 @@ module TypeProf::Core
 
       attr_reader :block
 
-      def base_types(genv)
-        [genv.proc_type]
+      def base_type(genv)
+        genv.proc_type
       end
 
       def show
@@ -212,8 +218,8 @@ module TypeProf::Core
 
       attr_reader :sym
 
-      def base_types(genv)
-        [genv.symbol_type]
+      def base_type(genv)
+        genv.symbol_type
       end
 
       def check_match(genv, changes, subst, vtx)
@@ -236,8 +242,8 @@ module TypeProf::Core
     class Bot < Type
       include StructuralEquality
 
-      def base_types(genv)
-        [genv.obj_type]
+      def base_type(genv)
+        genv.obj_type
       end
 
       def check_match(genv, changes, subst, vtx)
