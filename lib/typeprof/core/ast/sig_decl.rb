@@ -45,12 +45,16 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@cpath)))
-        val.add_edge(genv, @static_ret.first.vtx)
+        @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@cpath)))
+        @mod_val.add_edge(genv, @static_ret.first.vtx)
         @members.each do |member|
           member.install(genv)
         end
         Source.new
+      end
+
+      def uninstall0(genv)
+        @mod_val.remove_edge(genv, @static_ret.first.vtx)
       end
     end
 
