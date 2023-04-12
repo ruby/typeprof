@@ -52,11 +52,23 @@ module TypeProf
     def initialize(first, last)
       @first = first
       @last = last
+      raise unless first
     end
 
     def self.from_node(node)
-      pos1 = CodePosition.new(node.first_lineno, node.first_column)
-      pos2 = CodePosition.new(node.last_lineno, node.last_column)
+      if node.is_a?(RubyVM::AbstractSyntaxTree::Node)
+        pos1 = CodePosition.new(node.first_lineno, node.first_column)
+        pos2 = CodePosition.new(node.last_lineno, node.last_column)
+      elsif node.respond_to?(:location)
+        loc = node.location
+        row, col = loc.start_loc
+        pos1 = CodePosition.new(row, col) # TODO: use SPLAT
+        row, col = loc.end_loc
+        pos2 = CodePosition.new(row, col)
+      else
+        p node.class.ancestors
+        raise "unknown type: #{ node.class }"
+      end
       new(pos1, pos2)
     end
 

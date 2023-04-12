@@ -101,6 +101,7 @@ module TypeProf::Core
 
         #dump_graph(path)
         live_vtxs.each do |vtx|
+          next unless vtx
           raise if dead_vtxs.include?(vtx)
         end
 

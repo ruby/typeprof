@@ -4,7 +4,7 @@ module TypeProf::Core
       def initialize(raw_decl, raw_type_params, raw_block, lenv)
         super(raw_decl, lenv)
         if raw_block
-          @block = AST.create_rbs_func_type(raw_block.type, nil, nil, lenv)
+          @block = AST.create_rbs_func_type(raw_block, nil, nil, lenv)
         else
           @block = nil
         end
@@ -12,7 +12,7 @@ module TypeProf::Core
         # TODO?: param.variance, param.unchecked, param.upper_bound
         @type_params = raw_type_params ? raw_type_params.map {|param| param.name } : nil
 
-        @required_positionals = raw_decl.required_positionals.map do |ty|
+        @required_positionals = raw_decl.type.required_positionals.map do |ty|
           raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
           AST.create_rbs_type(ty.type, lenv)
         end
@@ -21,7 +21,7 @@ module TypeProf::Core
         #@optional_keywords = func.optional_keywords
         #@rest_positionals = func.rest_positionals
         #@rest_keywords = func.rest_keywords
-        @return_type = AST.create_rbs_type(raw_decl.return_type, lenv)
+        @return_type = AST.create_rbs_type(raw_decl.type.return_type, lenv)
       end
 
       attr_reader :type_params, :block, :required_positionals, :return_type

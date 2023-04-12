@@ -7,20 +7,21 @@ module TypeProf::Core
         comments = []
         while i > 0
           i -= 1
-          type, str, = tokens[i]
+          type, str, cr = tokens[i]
           case type
           when :tSP
             # ignore
           when :tCOMMENT
             break unless str.start_with?("#:")
-            comments << str[2..]
+            comments[cr.first.lineno - 1] = " " * (cr.first.column + 2) + str[2..]
           else
             break
           end
         end
-        method_type = RBS::Parser.parse_method_type(comments.reverse.join)
+        comments = comments.map {|line| line || "" }.join("\n")
+        method_type = RBS::Parser.parse_method_type(comments)
         if method_type
-          AST.create_rbs_func_type(method_type.type, method_type.type_params, method_type.block, lenv)
+          AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
         else
           nil
         end
@@ -131,7 +132,12 @@ module TypeProf::Core
         Source.new(Type::Symbol.new(genv, @mid))
       end
 
-      def hover(pos)
+      def hover(pos, &blk)
+        if @rbs_method_type
+          if @rbs_method_type.code_range.include?(pos)
+            @rbs_method_type.hover(pos, &blk)
+          end
+        end
         @args_code_ranges.each_with_index do |cr, i|
           if cr.include?(pos)
             yield DummySymbolNode.new(@tbl[i], cr, @body.lenv.get_var(@tbl[i]))

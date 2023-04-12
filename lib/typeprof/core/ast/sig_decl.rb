@@ -124,7 +124,7 @@ module TypeProf::Core
         @instance = raw_decl.instance?
         @method_types = raw_decl.overloads.map do |overload|
           method_type = overload.method_type
-          AST.create_rbs_func_type(method_type.type, method_type.type_params, method_type.block, lenv)
+          AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
         end
       end
 
