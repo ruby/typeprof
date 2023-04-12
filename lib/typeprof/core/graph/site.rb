@@ -219,6 +219,7 @@ module TypeProf::Core
     end
 
     def resolve_overloads(changes, genv, node, param_map, a_args, block, ret)
+      match_any_overload = false
       @rbs_method_types.each do |method_type|
         # rbs_func.optional_keywords
         # rbs_func.optional_positionals
@@ -276,6 +277,13 @@ module TypeProf::Core
         end
         ret_vtx = method_type.return_type.get_vertex(genv, changes, param_map0)
         changes.add_edge(ret_vtx, ret)
+        match_any_overload = true
+      end
+      unless match_any_overload
+        meth = node.mid_code_range ? :mid_code_range : :code_range
+        changes.add_diagnostic(
+          TypeProf::Diagnostic.new(node, meth, "failed to resolve overloads")
+        )
       end
     end
   end
