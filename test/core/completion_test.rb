@@ -15,8 +15,12 @@ class Foo
   end
 end
 
-def test(x)
+def test1(x)
   x
+end
+
+def test2
+  test1(Foo.new)
 end
 
 Foo.new.foo(1.0)
@@ -25,6 +29,13 @@ test(Foo.new)
 
       comps = []
       serv.completion("test.rb", ".", TypeProf::CodePosition.new(11, 2)) do |mid, hint|
+        comps << [mid, hint]
+      end
+      assert_equal([:foo, "Foo#foo : (Float) -> Integer"], comps[0])
+      assert_equal([:bar, "Foo#bar : (untyped) -> String"], comps[1])
+
+      comps = []
+      serv.completion("test.rb", ".", TypeProf::CodePosition.new(15, 15)) do |mid, hint|
         comps << [mid, hint]
       end
       assert_equal([:foo, "Foo#foo : (Float) -> Integer"], comps[0])

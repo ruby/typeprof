@@ -170,6 +170,15 @@ module TypeProf::Core
         end
       end
 
+      def retrieve_at(pos, &blk)
+        if code_range.include?(pos)
+          each_subnode do |subnode|
+            subnode.retrieve_at(pos, &blk)
+          end
+          yield self
+        end
+      end
+
       def hover(pos, &blk)
         if code_range.include?(pos)
           each_subnode do |subnode|

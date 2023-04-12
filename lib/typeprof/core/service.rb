@@ -263,7 +263,7 @@ module TypeProf::Core
     end
 
     def completion(path, trigger, pos)
-      @text_nodes[path].hover(pos) do |node|
+      @text_nodes[path].retrieve_at(pos) do |node|
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
             base_ty = ty.base_type(genv)

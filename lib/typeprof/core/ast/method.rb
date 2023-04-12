@@ -134,7 +134,7 @@ module TypeProf::Core
 
       def hover(pos, &blk)
         if @rbs_method_type
-          if @rbs_method_type.code_range.include?(pos)
+          if @rbs_method_type.code_range.include?(pos) # annotation
             @rbs_method_type.hover(pos, &blk)
           end
         end
