@@ -193,7 +193,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         super
         raw_arg, = raw_node.children
-        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : nil
+        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : NilNode.new(code_range, lenv)
       end
 
       attr_reader :arg
@@ -201,8 +201,7 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        arg = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
-        arg.add_edge(genv, @lenv.get_var(:"*block_ret"))
+        @arg.install(genv)
         Source.new(Type::Bot.new(genv))
       end
 

@@ -67,7 +67,6 @@ module TypeProf::Core
           @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
           @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(genv.nil_type) }
           @block_body.lenv.locals[:"*self"] = Source.new(@block_body.lenv.cref.get_self(genv))
-          @block_body.lenv.locals[:"*block_ret"] = Vertex.new("block_ret", self)
 
           blk_f_args = []
           if @block_f_args
@@ -75,7 +74,6 @@ module TypeProf::Core
               blk_f_args << @block_body.lenv.new_var(@block_tbl[i], self)
             end
           end
-          blk_ret = @block_body.lenv.get_var(:"*block_ret")
 
           @lenv.locals.each do |var, vtx|
             @block_body.lenv.set_var(var, vtx)
@@ -90,12 +88,16 @@ module TypeProf::Core
             @block_body.lenv.set_var(var, nvtx)
           end
 
-          @block_body.install(genv).add_edge(genv, blk_ret)
+          @block_body.install(genv)
 
           vars.each do |var|
             @block_body.lenv.get_var(var).add_edge(genv, @lenv.get_var(var))
           end
 
+          blk_ret = Vertex.new("block_ret", self)
+          each_return_node do |node|
+            node.ret.add_edge(genv, blk_ret)
+          end
           block = Block.new(@block_body, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(block))
         elsif @block_pass
@@ -104,6 +106,14 @@ module TypeProf::Core
         site = CallSite.new(self, genv, recv, @mid, positional_args, blk_ty, self.is_a?(FCALL))
         add_site(:main, site)
         site.ret
+      end
+
+      def each_return_node
+        yield @block_body
+        traverse_children do |node|
+          yield node.arg if node.is_a?(NEXT)
+          !node.is_a?(CallSite) # do not entering nested blocks
+        end
       end
 
       def hover(pos, &blk)

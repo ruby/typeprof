@@ -173,6 +173,7 @@ module TypeProf::Core
           @type_params = params
         end
       end
+      @type_params ||= []
       # TODO: report error if there are multiple declarations
     end
 
