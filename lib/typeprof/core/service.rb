@@ -250,8 +250,12 @@ module TypeProf::Core
           end
         else
           if event == :enter && node.sites[:mdef] && !node.sites[:mdef].empty?
+            if node.is_a?(AST::DefNode) && node.rbs_method_type
+              p :skip
+              next
+            end
             node.sites[:mdef].each do |mdef|
-              hint = "def #{ mdef.mid }: " + mdef.show
+              hint = mdef.show
               if hint
                 pos = mdef.node.code_range.first
                 yield TypeProf::CodeRange.new(pos, pos.right), hint

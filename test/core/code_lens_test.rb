@@ -29,9 +29,9 @@ test(Foo.new)
         lens << [cr, hint]
       end
       assert_equal(3, lens.size)
-      assert_equal([TypeProf::CodeRange[2, 2, 2, 3], "def foo: (Float) -> Integer"], lens[0])
-      assert_equal([TypeProf::CodeRange[6, 2, 6, 3], "def bar: (untyped) -> String"], lens[1])
-      assert_equal([TypeProf::CodeRange[11, 0, 11, 1], "def test: (Foo) -> Foo"], lens[2])
+      assert_equal([TypeProf::CodeRange[2, 2, 2, 3], "(Float) -> Integer"], lens[0])
+      assert_equal([TypeProf::CodeRange[6, 2, 6, 3], "(untyped) -> String"], lens[1])
+      assert_equal([TypeProf::CodeRange[11, 0, 11, 1], "(Foo) -> Foo"], lens[2])
     end
 
     def test_code_lens_updated
@@ -50,7 +50,7 @@ end
         lens << [cr, hint]
       end
       assert_equal(1, lens.size)
-      assert_equal([TypeProf::CodeRange[2, 2, 2, 3], "def foo: (untyped) -> Integer"], lens[0])
+      assert_equal([TypeProf::CodeRange[2, 2, 2, 3], "(untyped) -> Integer"], lens[0])
 
       core.update_rb_file("test.rb", <<-END)
 class Foo
@@ -66,7 +66,26 @@ end
         lens << [cr, hint]
       end
       assert_equal(1, lens.size)
-      assert_equal([TypeProf::CodeRange[3, 2, 3, 3], "def foo: (untyped) -> Integer"], lens[0])
+      assert_equal([TypeProf::CodeRange[3, 2, 3, 3], "(untyped) -> Integer"], lens[0])
+    end
+
+    def test_code_lens_inline_rbs
+      core = Service.new
+
+      core.update_rb_file("test.rb", <<-END)
+class Foo
+  #: (Integer) -> Integer
+  def foo(n)
+    1
+  end
+end
+      END
+
+      lens = []
+      core.code_lens("test.rb") do |cr, hint|
+        lens << [cr, hint]
+      end
+      assert_equal(0, lens.size)
     end
   end
 end

@@ -53,13 +53,14 @@ module TypeProf::LSP
       @running_requests_from_server = {}
       @open_texts = {}
       @exit = false
+      @signature_enabled = true
     end
 
     attr_reader :core, :open_texts
+    attr_accessor :signature_enabled
 
     def target_path?(path)
       # XXX: hard-coded for dog-fooding
-      p path
       return false unless path.start_with?(File.dirname(__dir__))
       return false if path.start_with?(File.join(File.dirname(__dir__), "lsp"))
       return true
@@ -80,7 +81,7 @@ module TypeProf::LSP
         else
           # response
           callback = @running_requests_from_server.delete(json[:id])
-          callback&.call(json[:params])
+          callback&.call(json[:params], json[:error])
         end
         break if @exit
       end

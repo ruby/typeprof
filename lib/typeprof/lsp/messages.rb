@@ -238,7 +238,7 @@ module TypeProf::LSP
     def run
       @params => { textDocument: { uri: } }
       text = @server.open_texts[uri]
-      unless text
+      if !text || !@server.signature_enabled
         respond(nil)
         return
       end
@@ -247,8 +247,9 @@ module TypeProf::LSP
         ret << {
           range: code_range.to_lsp,
           command: {
-            title: title,
-            command: "typeprof.jumpToRBS",
+            title: "#: " + title,
+            command: "typeprof.createPrototypeRBS",
+            arguments: [uri, code_range.first.lineno, code_range.first.column, title],
           },
         }
       end
@@ -263,7 +264,7 @@ module TypeProf::LSP
   #   workspace/diagnostic/refresh request
 
   class Message::TextDocument::Completion < Message
-    METHOD = "textDocument/completion"
+    METHOD = "textDocument/completion" # request
     def run
       @params => {
         textDocument: { uri: },
@@ -303,12 +304,44 @@ module TypeProf::LSP
   # textDocument/rename request
   # textDocument/prepareRename request
 
+  module Message::Workspace
+  end
+
   # workspace/symbol request
   #   workspaceSymbol/resolve request
 
   # workspace/didChangeWatchedFiles notification
 
-  # workspace/executeCommand request
+  class Message::Workspace::ExecuteCommand < Message
+    METHOD = "workspace/executeCommand" # request
+    def run
+      case @params[:command]
+      when "typeprof.enableSignature"
+        @server.sinature_enabled = true
+        @server.send_request("workspace/codeLens/refresh")
+        respond(nil)
+      when "typeprof.disableSignature"
+        @server.sinature_enabled = true
+        @server.send_request("workspace/codeLens/refresh")
+        respond(nil)
+      when "typeprof.createPrototypeRBS"
+        uri, row, col, str = @params[:arguments]
+        @server.send_request(
+          "workspace/applyEdit",
+          edit: {
+            changes: {
+              uri => [{
+                range: TypeProf::CodeRange[row, col, row, col].to_lsp,
+                newText: "#: #{ str }\n" + " " * col,
+              }],
+            },
+          },
+        ) do |res, err|
+        end
+        respond(nil)
+      end
+    end
+  end
 
   Message.build_table
 end
