@@ -258,9 +258,8 @@ module TypeProf::Core
             case ty
             when Type::Proc
               blk_f_ret = rbs_blk.return_type.get_vertex(genv, changes, param_map0)
-              unless ty.block.ret.check_match(genv, changes, blk_f_ret)
-                # TODO: wrong return type of block, need to report
-              end
+              changes.add_site(:check_return, CheckReturnSite.new(ty.block.node, genv, ty.block.ret, blk_f_ret))
+
               blk_a_args = rbs_blk.required_positionals.map do |blk_a_arg|
                 blk_a_arg.get_vertex(genv, changes, param_map0)
               end
