@@ -64,7 +64,7 @@ module TypeProf::Core
 
     class SIG_TY_BASE_ANY < TypeNode
       def get_vertex0(genv, changes, vtx, subst)
-        # TODO
+        Source.new(genv.obj_type).add_edge(genv, vtx) # TODO
       end
     end
 
