@@ -124,17 +124,21 @@ module TypeProf::Core
           end
           @body.install(genv) if @body
           ret = Vertex.new("ret", self)
-          @body.ret.add_edge(genv, ret)
-          traverse do |event, node|
-            next if event == :leave
-            if node.is_a?(RETURN)
-              node.arg.ret.add_edge(genv, ret)
-            end
+          each_return_node do |node|
+            node.ret.add_edge(genv, ret)
           end
           mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, block, ret)
           add_site(:mdef, mdef)
         end
         Source.new(Type::Symbol.new(genv, @mid))
+      end
+
+      def each_return_node
+        yield @body
+        traverse_children do |node|
+          yield node.arg if node.is_a?(RETURN)
+          true
+        end
       end
 
       def hover(pos, &blk)

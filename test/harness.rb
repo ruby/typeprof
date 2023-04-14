@@ -29,6 +29,7 @@ module TypeProf::Core
         end
         RBS::Parser.parse_signature(actual)
       when /^diagnostics(?::(.*))?$/
+        file = $1.strip if $1
         actual = []
         core.diagnostics(file) do |diag|
           actual << "#{ diag.code_range.to_s }: #{ diag.msg }"

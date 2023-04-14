@@ -10,7 +10,7 @@ module TypeProf::Core
       site = CallSite.new(node, @genv, recv, :initialize, a_args, nil, false) # TODO: block
       # site.ret (the return value of initialize) is discarded
       changes.add_edge(Source.new(ty), ret)
-      changes.add_callsite(:class_new, site)
+      changes.add_site(:class_new, site)
     end
 
     def proc_call(changes, node, ty, a_args, ret)

@@ -4,8 +4,8 @@ module TypeProf::Core
       @target = target
       @edges = Set[]
       @new_edges = Set[]
-      @callsites = {}
-      @new_callsites = {}
+      @sites = {}
+      @new_sites = {}
       @diagnostics = []
       @new_diagnostics = []
       @depended_method_entities = []
@@ -22,8 +22,12 @@ module TypeProf::Core
       @new_edges << [src, dst]
     end
 
-    def add_callsite(key, callsite)
-      @new_callsites[key] = callsite
+    def add_site(key, site)
+      @new_sites[key] = site
+    end
+
+    def add_check_return_site(key, check_return_site)
+      @new_check_return_sites[key] = check_return_site
     end
 
     def add_diagnostic(diag)
@@ -52,15 +56,15 @@ module TypeProf::Core
       @edges, @new_edges = @new_edges, @edges
       @new_edges.clear
 
-      @callsites.each do |key, callsite|
-        callsite.destroy(genv)
-        callsite.node.remove_site(key, callsite)
+      @sites.each do |key, site|
+        site.destroy(genv)
+        site.node.remove_site(key, site)
       end
-      @new_callsites.each do |key, callsite|
-        callsite.node.add_site(key, callsite)
+      @new_sites.each do |key, site|
+        site.node.add_site(key, site)
       end
-      @callsites, @new_callsites = @new_callsites, @callsites
-      @new_callsites.clear
+      @sites, @new_sites = @new_sites, @sites
+      @new_sites.clear
 
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
@@ -288,6 +292,30 @@ module TypeProf::Core
     end
   end
 
+  class CheckReturnSite < Site
+    def initialize(node, genv, a_ret, f_ret)
+      super(node)
+      @a_ret = a_ret
+      @f_ret = f_ret
+      genv.add_run(self)
+    end
+
+    def ret = @a_ret
+
+    def run0(genv, changes)
+      unless @a_ret.check_match(genv, changes, @f_ret)
+        @node.each_return_node do |node|
+          next if node.ret.check_match(genv, changes, @f_ret)
+
+          node = node.stmts.last if node.is_a?(AST::BLOCK)
+          changes.add_diagnostic(
+            TypeProf::Diagnostic.new(node, :code_range, "expected: #{ @f_ret.show }; actual: #{ node.ret.show }")
+          )
+        end
+      end
+    end
+  end
+
   class MethodDefSite < Site
     def initialize(node, genv, cpath, singleton, mid, f_args, block, ret)
       super(node)
@@ -298,7 +326,6 @@ module TypeProf::Core
       @f_args = f_args
       @block = block
       @ret = ret
-      ret.add_edge(genv, self)
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
       if me.decls.empty?
@@ -348,21 +375,7 @@ module TypeProf::Core
 
       # TODO: block
       f_ret = method_type.return_type.get_vertex(genv, changes, param_map0)
-      unless @ret.check_match(genv, changes, f_ret)
-        unless @node.body.ret.check_match(genv, changes, f_ret)
-          body = @node.body
-          body = body.stmts.last if body.is_a?(AST::BLOCK)
-          body.add_diagnostic("expected: #{ f_ret.show }")
-        end
-        @node.traverse do |event, node|
-          next if event == :leave
-          if node.is_a?(AST::RETURN)
-            unless node.arg.ret.check_match(genv, changes, f_ret)
-              node.arg.add_diagnostic("expected: #{ f_ret.show }")
-            end
-          end
-        end
-      end
+      changes.add_site(:check_return, CheckReturnSite.new(@node, genv, @ret, f_ret))
     end
 
     def call(changes, genv, call_node, a_args, block, ret)
