@@ -55,7 +55,9 @@ module TypeProf::Core
         if raw_body
           @body = AST.create_node(raw_body, nlenv)
         else
-          @body = NilNode.new(code_range, nlenv)
+          pos = code_range.last.left.left.left # before "end"
+          cr = TypeProf::CodeRange.new(pos, pos)
+          @body = NilNode.new(cr, nlenv)
         end
 
         @args_code_ranges = []
@@ -120,13 +122,15 @@ module TypeProf::Core
             block = @body.lenv.new_var(:"*given_block", self)
             @body.lenv.set_var(@args[9], block) if @args[9]
           end
-          ret = @body.lenv.get_var(:"*ret")
-          if @body
-            body_ret = @body.install(genv)
-          else
-            body_ret = Source.new(genv.nil_type)
+          @body.install(genv) if @body
+          ret = Vertex.new("ret", self)
+          @body.ret.add_edge(genv, ret)
+          traverse do |event, node|
+            next if event == :leave
+            if node.is_a?(RETURN)
+              node.arg.ret.add_edge(genv, ret)
+            end
           end
-          body_ret.add_edge(genv, ret)
           mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, block, ret)
           add_site(:mdef, mdef)
         end

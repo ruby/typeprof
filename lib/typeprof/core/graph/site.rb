@@ -298,6 +298,7 @@ module TypeProf::Core
       @f_args = f_args
       @block = block
       @ret = ret
+      ret.add_edge(genv, self)
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
       if me.decls.empty?
@@ -346,7 +347,22 @@ module TypeProf::Core
       end
 
       # TODO: block
-      # TODO: return value check
+      f_ret = method_type.return_type.get_vertex(genv, changes, param_map0)
+      unless @ret.check_match(genv, changes, f_ret)
+        unless @node.body.ret.check_match(genv, changes, f_ret)
+          body = @node.body
+          body = body.stmts.last if body.is_a?(AST::BLOCK)
+          body.add_diagnostic("expected: #{ f_ret.show }")
+        end
+        @node.traverse do |event, node|
+          next if event == :leave
+          if node.is_a?(AST::RETURN)
+            unless node.arg.ret.check_match(genv, changes, f_ret)
+              node.arg.add_diagnostic("expected: #{ f_ret.show }")
+            end
+          end
+        end
+      end
     end
 
     def call(changes, genv, call_node, a_args, block, ret)

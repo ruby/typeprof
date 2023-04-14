@@ -250,10 +250,7 @@ module TypeProf::Core
           end
         else
           if event == :enter && node.sites[:mdef] && !node.sites[:mdef].empty?
-            if node.is_a?(AST::DefNode) && node.rbs_method_type
-              p :skip
-              next
-            end
+            next if node.is_a?(AST::DefNode) && node.rbs_method_type
             node.sites[:mdef].each do |mdef|
               hint = mdef.show
               if hint
