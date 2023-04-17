@@ -1,4 +1,4 @@
-# update
+## update
 class C
   def run(n)
     run0(n)
@@ -16,7 +16,7 @@ end
 
 C.new.run(1)
 
-# assert
+## assert
 class C
   def run: (Integer) -> nil
   def run0: (Integer) -> bot

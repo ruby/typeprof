@@ -1,4 +1,4 @@
-# update
+## update
 def foo(n)
   case n
   when 1
@@ -30,7 +30,7 @@ def baz(n)
   end
 end
 
-# assert
+## assert
 class Object
   def foo: (untyped) -> (Float | Integer | String)
   def bar: (untyped) -> (Integer | String)?

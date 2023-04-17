@@ -1,12 +1,12 @@
-# update
+## update
 def foo
   n = raise
   n.bar
 end
 
-# assert
+## assert
 class Object
   def foo: -> untyped
 end
 
-# diagnostics
+## diagnostics

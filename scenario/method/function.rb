@@ -1,4 +1,4 @@
-# update
+## update
 def foo(n)
   n
 end
@@ -9,7 +9,7 @@ class Foo
   end
 end
 
-# assert
+## assert
 class Object
   def foo: (Integer) -> Integer
 end

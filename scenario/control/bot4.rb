@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   ary = []
   n = 0
@@ -12,7 +12,7 @@ def foo
   end
 end
 
-# update
+## update
 def foo
   ary = []
   n = 0
@@ -26,10 +26,10 @@ def foo
   end
 end
 
-# assert
+## assert
 class Object
   def foo: -> Integer
 end
 
-# diagnostics
+## diagnostics
 (7,8)-(7,17): failed to resolve overloads

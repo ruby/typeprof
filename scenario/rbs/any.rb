@@ -1,4 +1,4 @@
-# update
+## update
 def test(x)
   return if x == :foo
 end
@@ -6,9 +6,9 @@ end
 test(:foo)
 test(:bar)
 
-# diagnostics
+## diagnostics
 
-# assert
+## assert
 class Object
   def test: (:bar | :foo) -> nil
 end

@@ -1,4 +1,4 @@
-# update
+## update
 def bar(x)
 end
 
@@ -8,13 +8,13 @@ end
 
 foo(1, 2)
 
-# assert
+## assert
 class Object
   def bar: (untyped) -> nil
   def foo: (Integer, Integer) -> untyped
 end
 
-# update
+## update
 def bar(x)
 end
 
@@ -24,13 +24,13 @@ end
 
 foo(1, 2)
 
-# assert
+## assert
 class Object
   def bar: (Integer) -> nil
   def foo: (Integer, Integer) -> nil
 end
 
-# update
+## update
 def bar(x)
 end
 
@@ -40,13 +40,13 @@ end
 
 foo(1, 2)
 
-# assert
+## assert
 class Object
   def bar: (untyped) -> nil
   def foo: (Integer, Integer) -> untyped
 end
 
-# update
+## update
 def bar(x)
 end
 
@@ -56,7 +56,7 @@ end
 
 foo(1, 2)
 
-# assert
+## assert
 class Object
   def bar: (Integer) -> nil
   def foo: (Integer, Integer) -> nil

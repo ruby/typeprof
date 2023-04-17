@@ -1,4 +1,4 @@
-# update: test0.rb
+## update: test0.rb
 class A
   class B
   end
@@ -11,7 +11,7 @@ class X
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class A
   class A::B
   end
@@ -23,7 +23,7 @@ class X
   end
 end
 
-# update: test1.rb
+## update: test1.rb
 class X
   class A
     class B
@@ -31,7 +31,7 @@ class X
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class A
   class A::B
   end

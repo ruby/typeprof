@@ -1,4 +1,4 @@
-# update
+## update
 def bar(n)
 end
 
@@ -12,7 +12,7 @@ end
 
 foo(1)
 
-# assert
+## assert
 class Object
   def bar: (String) -> nil
   def foo: (Integer) -> Float

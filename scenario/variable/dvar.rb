@@ -1,4 +1,4 @@
-# update
+## update
 def foo(&blk)
   blk.call(42)
 end
@@ -12,7 +12,7 @@ def bar
   a
 end
 
-# assert
+## assert
 class Object
   def foo: { (Integer) -> Integer } -> Integer
   def bar: -> (Integer | String)

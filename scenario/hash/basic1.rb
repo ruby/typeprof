@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   {
     a: 1,
@@ -15,7 +15,7 @@ def baz
   foo[:c]
 end
 
-# assert
+## assert
 class Object
   def foo: -> Hash[:a | :b, Float | Integer | String]
   def bar: -> Integer

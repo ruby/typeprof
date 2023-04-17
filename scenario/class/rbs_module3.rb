@@ -1,4 +1,4 @@
-# update: test.rbs
+## update: test.rbs
 module M2[X]
   def foo: -> X
 end
@@ -11,12 +11,12 @@ class Foo
   include M[Integer]
 end
 
-# update: test.rb
+## update: test.rb
 def test
   Foo.new.foo
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test: -> [Integer, Integer]
 end

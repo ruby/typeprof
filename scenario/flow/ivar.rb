@@ -1,4 +1,4 @@
-# update
+## update
 class Foo
   def initialize
     @var = nil
@@ -15,5 +15,5 @@ class Foo
   end
 end
 
-# diagnostics
+## diagnostics
 (12,11)-(12,14): undefined method: Integer#foo

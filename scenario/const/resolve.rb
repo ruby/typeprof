@@ -1,10 +1,10 @@
-# update: test0.rb
+## update: test0.rb
 module M
   class A
   end
 end
 
-# update: test1.rb
+## update: test1.rb
 module M
   class B
     # Defining M::B iterates its const_reads and fires the following

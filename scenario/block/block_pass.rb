@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   yield 42
 end
@@ -15,14 +15,14 @@ def bar
   ret
 end
 
-# assert
+## assert
 class Object
   def foo: { (Integer) -> Integer } -> Integer
   def proxy: -> Integer
   def bar: -> Integer?
 end
 
-# update
+## update
 def foo(x)
   yield 42
 end
@@ -39,7 +39,7 @@ def bar
   ret
 end
 
-# assert
+## assert
 class Object
   def foo: (Integer) { (Integer) -> Integer } -> Integer
   def proxy: -> Integer

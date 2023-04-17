@@ -1,4 +1,4 @@
-# update
+## update
 class C
   class D
     def foo(n)
@@ -9,7 +9,7 @@ end
 
 C::D.new(1).foo("str")
 
-# assert
+## assert
 class C
   class C::D
     def foo: (String) -> singleton(C)

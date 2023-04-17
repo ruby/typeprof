@@ -1,4 +1,4 @@
-# update
+## update
 class C
   def foo=(x)
     @foo = x
@@ -12,7 +12,7 @@ end
 f = C.new
 f.foo = 42
 
-# assert
+## assert
 class C
   def foo=: (Integer) -> Integer
   def foo: -> Integer

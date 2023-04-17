@@ -1,10 +1,10 @@
-# update
+## update
 def foo
   x = x.nil?
   x
 end
 
-# assert
+## assert
 class Object
   def foo: -> true
 end

@@ -38,9 +38,9 @@ class ScenarioCompiler
     end
     close_str = ""
     File.foreach(scenario, chomp: true) do |line|
-      if line =~ /\A#(?!#)\s*/
+      if line =~ /\A##\s*/
         out << close_str
-        if line =~ /\A#\s*(\w+)(?::(.*))?\z/
+        if line =~ /\A##\s*(\w+)(?::(.*))?\z/
           @file = $2.strip if $2
           ary = send("handle_#{ $1 }").lines.map {|s| s.strip }.join(";").split("DATA")
           raise if ary.size != 2

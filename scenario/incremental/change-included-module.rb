@@ -1,4 +1,4 @@
-# update: test0.rb
+## update: test0.rb
 module M
   def foo(n)
   end
@@ -10,7 +10,7 @@ end
 
 C.new.foo(1)
 
-# assert: test0.rb
+## assert: test0.rb
 module M
   def foo: (Integer) -> nil
 end
@@ -18,7 +18,7 @@ class C
   include M
 end
 
-# update: test1.rb
+## update: test1.rb
 class C
   module M
     def foo(n)
@@ -26,7 +26,7 @@ class C
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 module M
   def foo: (untyped) -> nil
 end
@@ -34,7 +34,7 @@ class C
   include C::M
 end
 
-# assert: test1.rb
+## assert: test1.rb
 class C
   include C::M
   module C::M

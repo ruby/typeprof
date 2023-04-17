@@ -1,4 +1,4 @@
-# update: test.rbs
+## update: test.rbs
 class Foo[X]
   def foo: -> X
 end
@@ -6,12 +6,12 @@ end
 class Bar < Foo[[Integer, String]]
 end
 
-# update: test.rb
+## update: test.rb
 def test
   Bar.new.foo
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test: -> [Integer, String]
 end

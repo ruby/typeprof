@@ -1,10 +1,10 @@
-# update: test.rb
+## update: test.rb
 def foo
 end
 
 foo
 
-# update: test.rb
+## update: test.rb
 def foo
 end
 
@@ -13,7 +13,7 @@ end
 
 foo
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def foo: -> nil
   def foo: -> nil

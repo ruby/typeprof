@@ -1,4 +1,4 @@
-# update: test0.rb
+## update: test0.rb
 class C
   def foo = (@x = :C)
   def x = @x
@@ -13,7 +13,7 @@ class E < X::D
   def foo = (@x = :E)
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
   def foo: -> :C
   def x: -> (:C | :E)
@@ -26,7 +26,7 @@ class E < X::D
   def foo: -> :E
 end
 
-# update: test1.rb
+## update: test1.rb
 class X
   class C
     def foo = (@x = :XC)
@@ -34,7 +34,7 @@ class X
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
   def foo: -> :C
   def x: -> :C
@@ -47,7 +47,7 @@ class E < X::D
   def foo: -> :E
 end
 
-# assert: test1.rb
+## assert: test1.rb
 class X
   class X::C
     def foo: -> :XC

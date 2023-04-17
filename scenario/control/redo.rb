@@ -1,4 +1,4 @@
-# update
+## update
 def foo
 end
 
@@ -8,7 +8,7 @@ def bar
   end
 end
 
-# assert
+## assert
 class Object
   def foo: { (untyped) -> untyped } -> nil
   def bar: -> nil

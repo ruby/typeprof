@@ -1,4 +1,4 @@
-# update: test0.rb
+## update: test0.rb
 class C
 end
 
@@ -7,7 +7,7 @@ class D
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
 end
 class D
@@ -15,13 +15,13 @@ class D
   end
 end
 
-# update: test1.rb
+## update: test1.rb
 class D
   class C # Defining D::C changes the superclass of D::E from ::C to D::C
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
 end
 class D
@@ -29,12 +29,12 @@ class D
   end
 end
 
-# update: test1.rb
+## update: test1.rb
 class D
   # Removing D::C restores the superclass of D::E back to ::C
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
 end
 class D

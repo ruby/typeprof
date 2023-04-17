@@ -1,4 +1,4 @@
-# update
+## update
 class C
   X = 1
 end
@@ -10,7 +10,7 @@ def foo(_)
   D::X
 end
 
-# assert
+## assert
 class C
   C::X: Integer
 end

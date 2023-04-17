@@ -1,4 +1,4 @@
-# update
+## update
 class C
   def initialize(x)
     @x = 42
@@ -17,7 +17,7 @@ class D < C
   end
 end
 
-# assert
+## assert
 class C
   def initialize: (untyped) -> Integer
   def foo: (untyped) -> Integer
@@ -26,7 +26,7 @@ class D < C
   def bar: (untyped) -> Integer
 end
 
-# update
+## update
 class C
   def initialize(x)
     @x = "42"
@@ -43,7 +43,7 @@ class D < C
   end
 end
 
-# assert
+## assert
 class C
   def initialize: (untyped) -> String
   def foo: (untyped) -> String

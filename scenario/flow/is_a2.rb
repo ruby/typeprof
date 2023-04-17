@@ -1,4 +1,4 @@
-# update: test0.rb
+## update: test0.rb
 class C
 end
 
@@ -14,27 +14,27 @@ end
 
 D.new.foo(C.new)
 
-# assert: test0.rb
+## assert: test0.rb
 class C
 end
 class D
   def foo: (C) -> (C | String)
 end
 
-# update: test1.rb
+## update: test1.rb
 class D
   class C
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
 end
 class D
   def foo: (C) -> String
 end
 
-# update: test1.rb
+## update: test1.rb
 class D
 end
 "
@@ -43,7 +43,7 @@ class A::C
 end
 "
 
-# assert: test0.rb
+## assert: test0.rb
 class C
 end
 class D

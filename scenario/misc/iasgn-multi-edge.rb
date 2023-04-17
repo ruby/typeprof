@@ -1,4 +1,4 @@
-# update
+## update
 class Foo
   def foo(n)
     # assigning the same lvar to an ivar multiple times
@@ -8,7 +8,7 @@ class Foo
   end
 end
 
-# assert
+## assert
 class Foo
   def foo: (untyped) -> untyped
 end

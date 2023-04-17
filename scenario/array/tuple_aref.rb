@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   ary = [1, "str"]
   ary[0]
@@ -10,7 +10,7 @@ def bar
   ary[i]
 end
 
-# assert
+## assert
 class Object
   def foo: -> Integer
   def bar: -> (Integer | String)

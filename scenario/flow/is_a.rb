@@ -1,4 +1,4 @@
-# update
+## update
 def test(x)
   if x.is_a?(Integer)
     x.foo # 3
@@ -10,11 +10,11 @@ end
 test(1)
 test("str")
 
-# diagnostics
+## diagnostics
 (3,6)-(3,9): undefined method: Integer#foo
 (5,6)-(5,9): undefined method: String#bar
 
-# update
+## update
 class C
   class D
   end
@@ -31,7 +31,7 @@ end
 C.new.foo(C::D.new)
 C.new.foo(1)
 
-# assert
+## assert
 class C
   class C::D
   end

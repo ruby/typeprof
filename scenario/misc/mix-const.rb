@@ -1,14 +1,14 @@
-# update
+## update
 class C
 end
 
-# update
+## update
 C = 1
 def foo
   C
 end
 
-# assert
+## assert
 C: Integer
 class Object
   def foo: -> Integer

@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   yield 1
   yield "str"
@@ -9,4 +9,4 @@ foo do |x|
   x + 1
 end
 
-# diagnostics
+## diagnostics

@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   $x
 end
@@ -6,7 +6,7 @@ end
 $x ||= 1
 $x ||= "str"
 
-# assert
+## assert
 class Object
   def foo: -> (Integer | String)
 end

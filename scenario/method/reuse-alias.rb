@@ -1,4 +1,4 @@
-# update
+## update
 class C
   def bar(n)
   end
@@ -9,7 +9,7 @@ class C
   end
 end
 
-# update
+## update
 class C
   def bar(n)
   end
@@ -20,7 +20,7 @@ class C
   end
 end
 
-# update
+## update
 class C
   def bar(n)
   end
@@ -31,7 +31,7 @@ class C
   end
 end
 
-# assert
+## assert
 class C
   def bar: (untyped) -> nil
   def test: -> untyped

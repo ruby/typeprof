@@ -1,11 +1,11 @@
-# update: test.rbs
+## update: test.rbs
 class C
   def foo: ([Integer]) -> :a
          | ([Integer, Integer]) -> :b
          | ([Integer, String]) -> :c
   end
 
-# update: test.rb
+## update: test.rb
 def test1
   C.new.foo([1])
 end
@@ -26,7 +26,7 @@ def test5
   C.new.foo(["str", "str"])
 end
 
-# assert
+## assert
 class Object
   def test1: -> :a
   def test2: -> untyped

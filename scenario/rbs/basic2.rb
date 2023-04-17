@@ -1,9 +1,9 @@
-# update: test.rbs
+## update: test.rbs
 class C
   def foo: (Integer) -> Integer
 end
 
-# update: test.rb
+## update: test.rb
 class C
   def foo(n)
     bar(n)
@@ -13,7 +13,7 @@ class C
   end
 end
 
-# assert: test.rb
+## assert: test.rb
 class C
   def foo: (Integer) -> nil
   def bar: (Integer) -> nil

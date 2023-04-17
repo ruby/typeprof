@@ -1,11 +1,11 @@
-# update
+## update
 class C
   def foo
     @x
   end
 end
 
-# assert
+## assert
 class C
   def foo: -> untyped
 end

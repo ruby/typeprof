@@ -1,4 +1,4 @@
-# update
+## update
 def baz
   [1, 1.0, "str"]
 end
@@ -16,12 +16,12 @@ def bar
   x
 end
 
-# assert
+## assert
 class Object
   def baz: -> [Integer, Float, String]
   def foo: -> Integer
   def bar: -> Integer?
 end
 
-# update
+## update
 C, @x, $v = 1, 2, 3

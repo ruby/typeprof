@@ -1,4 +1,4 @@
-# update
+## update
 class A
 end
 
@@ -15,7 +15,7 @@ def foo
   B.new(1) # 14
 end
 
-# assert
+## assert
 class A
 end
 class B
@@ -27,10 +27,10 @@ class Object
   def foo: -> B
 end
 
-# hover
+## hover
 (5, 19)
 Integer
 
-# hover
+## hover
 (14, 6)
 B#initialize : (Integer) -> Integer

@@ -1,4 +1,4 @@
-# update
+## update
 class A < B
 end
 
@@ -9,7 +9,7 @@ module M
   include M
 end
 
-# assert
+## assert
 class A < B
 end
 class B # failed to identify its superclass

@@ -1,4 +1,4 @@
-# update: test.rbs
+## update: test.rbs
 class Foo
   def foo: -> Integer
 end
@@ -6,12 +6,12 @@ end
 class Bar < Foo
 end
 
-# update: test.rb
+## update: test.rb
 def test
   Bar.new.foo
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test: -> Integer
 end

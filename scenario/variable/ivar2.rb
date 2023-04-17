@@ -1,4 +1,4 @@
-# update
+## update
 class C
 end
 
@@ -16,7 +16,7 @@ end
 class G < F
 end
 
-# assert
+## assert
 class C
 end
 class D < C
@@ -30,7 +30,7 @@ end
 class G < F
 end
 
-# update
+## update
 class C
 end
 
@@ -49,7 +49,7 @@ class G < F
   def foo = (@x = :G)
 end
 
-# assert
+## assert
 class C
 end
 class D < C
@@ -64,7 +64,7 @@ class G < F
   def foo: -> :G
 end
 
-# update
+## update
 class C
 end
 
@@ -84,7 +84,7 @@ class G < F
   def foo = (@x = :G)
 end
 
-# assert
+## assert
 class C
 end
 class D < C
@@ -100,7 +100,7 @@ class G < F
   def foo: -> :G
 end
 
-# update
+## update
 class C
 end
 
@@ -119,7 +119,7 @@ class G < F
   def foo = (@x = :G)
 end
 
-# assert
+## assert
 class C
 end
 class D < C
@@ -134,7 +134,7 @@ class G < F
   def foo: -> :G
 end
 
-# update
+## update
 class C
 end
 
@@ -154,7 +154,7 @@ class G < F
   def foo = (@x = :G)
 end
 
-# assert
+## assert
 class C
 end
 class D < C
@@ -170,7 +170,7 @@ class G < F
   def foo: -> :G
 end
 
-# update
+## update
 class C
 end
 
@@ -189,7 +189,7 @@ class G < F
   def foo = (@x = :G)
 end
 
-# assert
+## assert
 class C
 end
 class D < C
@@ -204,7 +204,7 @@ class G < F
   def foo: -> :G
 end
 
-# update
+## update
 class C
 end
 
@@ -224,7 +224,7 @@ class G < F
   def foo = (@x = :G)
 end
 
-# assert
+## assert
 class C
 end
 class D < C
@@ -240,7 +240,7 @@ class G < F
   def foo: -> :G
 end
 
-# update
+## update
 class C
 end
 
@@ -259,7 +259,7 @@ end
 class G < F
 end
 
-# assert
+## assert
 class C
 end
 class D < C

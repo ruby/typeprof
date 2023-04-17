@@ -1,4 +1,4 @@
-# update
+## update
 class Foo
   def initialize(x, y, z)
     @x = x
@@ -9,7 +9,7 @@ end
 
 Foo.new(1, 1.0, "String")
 
-# assert
+## assert
 class Foo
   def initialize: (Integer, Float, String) -> String
 end

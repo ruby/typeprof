@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   "foo#{ bar(1) }"
   "foo#{ bar(1) }baz#{ qux(1.0) }"
@@ -12,7 +12,7 @@ def qux(n)
   "qux"
 end
 
-# assert
+## assert
 class Object
   def foo: -> String
   def bar: (Integer) -> String

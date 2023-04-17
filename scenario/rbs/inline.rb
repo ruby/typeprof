@@ -1,4 +1,4 @@
-# update
+## update
 class C
   #: (Integer) -> Integer
   def foo(n)
@@ -10,7 +10,7 @@ class C
   end
 end
 
-# assert
+## assert
 class C
   def foo: (Integer) -> untyped
   def bar: -> Integer

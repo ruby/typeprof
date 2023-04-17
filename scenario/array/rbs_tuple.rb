@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   {
     a: 1,
@@ -18,7 +18,7 @@ def baz
   ret
 end
 
-# assert
+## assert
 class Object
   def foo: -> Array[[:a | :b, Integer | String]]
   def bar: -> [Integer?, Integer?]

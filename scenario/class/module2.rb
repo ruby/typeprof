@@ -1,4 +1,4 @@
-# update
+## update
 module M1
   def foo(n)
   end
@@ -27,7 +27,7 @@ end
 
 C.new.foo(:test)
 
-# assert
+## assert
 module M1
   def foo: (:test) -> nil
 end

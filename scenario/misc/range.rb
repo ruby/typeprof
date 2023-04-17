@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   0..1
 end
@@ -12,7 +12,7 @@ def qux
   nil..nil
 end
 
-# assert
+## assert
 class Object
   def foo: -> Range[Integer]
   def bar: -> Range[Integer?]

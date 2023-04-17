@@ -1,9 +1,9 @@
-# update: test0.rbs
+## update: test0.rbs
 class Foo
   def self.foo: (A) -> :foo_a
 end
 
-# update: test.rb
+## update: test.rb
 class A
 end
 class B
@@ -12,7 +12,7 @@ def test
   Foo.foo(B.new)
 end
 
-# assert: test.rb
+## assert: test.rb
 class A
 end
 class B
@@ -21,7 +21,7 @@ class Object
   def test: -> untyped
 end
 
-# update: test.rb
+## update: test.rb
 class A
 end
 class B < A
@@ -30,7 +30,7 @@ def test
   Foo.foo(B.new)
 end
 
-# assert: test.rb
+## assert: test.rb
 class A
 end
 class B < A

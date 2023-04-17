@@ -1,4 +1,4 @@
-# update
+## update
 def foo(n)
   if n
     x = n
@@ -11,7 +11,7 @@ end
 foo(1)
 foo(nil)
 
-# assert
+## assert
 class Object
   def foo: (Integer?) -> (Integer | String)
 end

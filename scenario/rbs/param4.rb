@@ -1,4 +1,4 @@
-# update: test.rbs
+## update: test.rbs
 class Foo[Y]
 end
 class Bar[X] < Foo[[X, X]]
@@ -8,7 +8,7 @@ class Object
   def foo: [Z] (Foo[Z]) -> Z
 end
 
-# update: test.rb
+## update: test.rb
 def test
   foo(Bar.create)
 end

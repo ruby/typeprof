@@ -1,9 +1,9 @@
-# update: test.rbs
+## update: test.rbs
 class C
   def foo: (singleton(C)) -> :ok
 end
 
-# update: test.rb
+## update: test.rb
 C = 1
 class Foo
   def foo
@@ -11,16 +11,16 @@ class Foo
   end
 end
 
-# assert: test.rb
+## assert: test.rb
 C: Integer
 class Foo
   def foo: -> (Integer | singleton(C))
 end
 
-# update: test.rbs
-## class C is removed
+## update: test.rbs
+# class C is removed
 
-# assert: test.rb
+## assert: test.rb
 C: Integer
 class Foo
   def foo: -> Integer

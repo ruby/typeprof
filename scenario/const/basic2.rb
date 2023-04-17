@@ -1,4 +1,4 @@
-# update
+## update
 C = 1
 class Foo
   C = 1.0
@@ -7,7 +7,7 @@ class Foo
   end
 end
 
-# assert
+## assert
 C: Integer
 class Foo
   Foo::C: Float

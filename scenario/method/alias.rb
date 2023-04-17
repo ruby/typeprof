@@ -1,4 +1,4 @@
-# update
+## update
 class Foo
   def foo(n)
     n
@@ -9,7 +9,7 @@ end
 
 Foo.new.bar(1)
 
-# assert
+## assert
 class Foo
   def foo: (Integer) -> Integer
 end

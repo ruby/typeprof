@@ -1,10 +1,10 @@
-# update: test.rbs
+## update: test.rbs
 class C
   def foo: (:a) -> :ok
   def bar: (Symbol) -> :ok
 end
 
-# update: test.rb
+## update: test.rb
 def test1
   C.new.foo(:a)
 end
@@ -21,7 +21,7 @@ def test4
   C.new.bar(:b)
 end
 
-# assert
+## assert
 class Object
   def test1: -> :ok
   def test2: -> untyped

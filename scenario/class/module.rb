@@ -1,4 +1,4 @@
-# update
+## update
 module M
   def foo
     42
@@ -12,7 +12,7 @@ class C
   end
 end
 
-# assert
+## assert
 module M
   def foo: -> Integer
 end

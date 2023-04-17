@@ -1,4 +1,4 @@
-# update
+## update
 def bar(n)
   :b
 end
@@ -17,7 +17,7 @@ end
 
 foo(1)
 
-# assert
+## assert
 class Object
   def bar: (String) -> :b
   def foo: (Integer) -> (:a | :b | Float)

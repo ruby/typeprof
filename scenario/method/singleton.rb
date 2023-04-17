@@ -1,4 +1,4 @@
-# update
+## update
 class Foo
   def self.foo
     1
@@ -13,7 +13,7 @@ def test
   Foo.foo
 end
 
-# assert
+## assert
 class Foo
   def self.foo: -> Integer
   def self.bar: -> Integer

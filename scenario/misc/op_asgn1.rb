@@ -1,11 +1,11 @@
-# update
+## update
 def foo
   ary = [0]
   ary[0] ||= "str"
   ary
 end
 
-# assert
+## assert
 class Object
   def foo: -> [Integer | String]
 end

@@ -1,4 +1,4 @@
-# update: test.rbs
+## update: test.rbs
 class A
 end
 class B < A
@@ -8,7 +8,7 @@ end
 class D < C
 end
 
-# update: test1.rbs
+## update: test1.rbs
 class Object
   def accept_a: (A) -> :a
   def accept_b: (B) -> :b
@@ -16,7 +16,7 @@ class Object
   def accept_d: (D) -> :d
 end
 
-# update: test.rb
+## update: test.rb
 
 def test_a_a = accept_a(A.new)
 def test_a_b = accept_a(B.new)
@@ -38,7 +38,7 @@ def test_d_b = accept_d(B.new)
 def test_d_c = accept_d(C.new)
 def test_d_d = accept_d(D.new)
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test_a_a: -> :a
   def test_a_b: -> :a
@@ -58,7 +58,7 @@ class Object
   def test_d_d: -> :d
 end
 
-# update: test.rbs
+## update: test.rbs
 class A
 end
 class B < A
@@ -70,7 +70,7 @@ end
 class D < C2
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test_a_a: -> :a
   def test_a_b: -> :a

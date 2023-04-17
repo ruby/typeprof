@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   yield 1
     "str"
@@ -11,9 +11,9 @@ def foo
   end
 end
 
-## TODO: These expectation are wrong! Need to implement break correctly
+# TODO: These expectation are wrong! Need to implement break correctly
 
-# assert
+## assert
 class Object
   def foo: { (Integer) -> Float } -> String
   def bar: -> String

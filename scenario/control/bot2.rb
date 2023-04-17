@@ -1,4 +1,4 @@
-# update
+## update
 def foo(n)
   if n
     n = raise
@@ -15,7 +15,7 @@ def bar(n)
   n
 end
 
-# assert
+## assert
 class Object
   def foo: (untyped) -> bot
   def bar: (untyped) -> untyped

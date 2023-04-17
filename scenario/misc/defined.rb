@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   if defined?($x)
     1
@@ -7,7 +7,7 @@ def foo
   end
 end
 
-# assert
+## assert
 class Object
   def foo: -> (Integer | String)
 end

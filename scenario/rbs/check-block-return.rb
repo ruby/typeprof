@@ -1,4 +1,4 @@
-# update: test0.rb
+## update: test0.rb
  #: { () -> Integer } -> void
 def foo
   yield
@@ -12,7 +12,7 @@ foo do
   1.0
 end
 
-# diagnostics: test0.rb
+## diagnostics: test0.rb
 (11,2)-(11,5): expected: Integer; actual: Float
 (7,2)-(7,6): expected: Integer; actual: nil
 (9,7)-(9,12): expected: Integer; actual: String

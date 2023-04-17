@@ -1,4 +1,4 @@
-# update
+## update
 def foo
   $foo = "str"
 end
@@ -11,7 +11,7 @@ def baz
   $VERBOSE
 end
 
-# assert
+## assert
 class Object
   def foo: -> String
   def bar: -> String

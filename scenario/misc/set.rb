@@ -1,14 +1,14 @@
-# update
+## update
 def foo
   s = Set[]
   s << 42 # special handling of Set#<< is not implemented
   s
 end
 
-# assert
+## assert
 class Object
   def foo: -> Set[untyped]
 end
 
-# diagnostics
+## diagnostics
 (3,2)-(3,9): failed to resolve overloads

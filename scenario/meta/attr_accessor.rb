@@ -1,4 +1,4 @@
-# update
+## update
 class Foo
   attr_accessor :x
 
@@ -10,7 +10,7 @@ end
 foo = Foo.new
 foo.x = "str"
 
-# assert
+## assert
 class Foo
   def x: -> String
   def x=: (String) -> String

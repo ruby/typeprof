@@ -1,4 +1,4 @@
-# update
+## update
 def foo(x)
   return if x
   "str"
@@ -16,7 +16,7 @@ def baz(x)
   "str"
 end
 
-# assert
+## assert
 class Object
   def foo: (untyped) -> String?
   def bar: (untyped) -> (Integer | String)

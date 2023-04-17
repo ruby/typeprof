@@ -1,4 +1,4 @@
-# update
+## update
 class C
   def initialize(n)
     n
@@ -11,7 +11,7 @@ end
 
 C.new(1).foo("str")
 
-# assert
+## assert
 class C
   def initialize: (Integer) -> Integer
   def foo: (String) -> singleton(C)

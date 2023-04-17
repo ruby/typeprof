@@ -1,4 +1,4 @@
-# update
+## update
 def test
   if rand < 0.5
     nil
@@ -17,7 +17,7 @@ def bar
   b
 end
 
-# assert
+## assert
 class Object
   def test: -> [Integer, String]?
   def foo: -> Integer?

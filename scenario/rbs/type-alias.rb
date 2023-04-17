@@ -1,11 +1,11 @@
-# update: test.rbs
+## update: test.rbs
 type a = Integer
 class Foo
   type a = Integer | String
   def foo: (a) -> a
 end
 
-# update: test.rb
+## update: test.rb
 def test1
   Foo.new.foo(1)
 end
@@ -18,41 +18,41 @@ def test3(unknown)
   Foo.new.foo(unknown)
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test1: -> (Integer | String)
   def test2: -> (Integer | String)
   def test3: (untyped) -> (Integer | String)
 end
 
-# update: test.rbs
+## update: test.rbs
 type a = Integer
 class Foo
   type a = Integer | String
   def foo: (::a) -> ::a
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test1: -> Integer
   def test2: -> untyped
   def test3: (untyped) -> Integer
 end
 
-# update: test.rbs
+## update: test.rbs
 type a = Integer
 class Foo
   def foo: (a) -> a
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test1: -> Integer
   def test2: -> untyped
   def test3: (untyped) -> Integer
 end
 
-# update: test.rbs
+## update: test.rbs
 class Bar
   type a = Integer
 end
@@ -60,7 +60,7 @@ class Foo
   def foo: (Bar::a) -> Bar::a
 end
 
-# assert: test.rb
+## assert: test.rb
 class Object
   def test1: -> Integer
   def test2: -> untyped

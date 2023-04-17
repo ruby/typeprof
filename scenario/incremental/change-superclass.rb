@@ -1,4 +1,4 @@
-# update: test0.rb
+## update: test0.rb
 class C
   def target(n) = n
 end
@@ -13,7 +13,7 @@ class X
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
   def target: (Integer) -> Integer
 end
@@ -26,7 +26,7 @@ class X
   end
 end
 
-# update: test1.rb
+## update: test1.rb
 class X
   # This class definition changes the superclass of D, and
   # also changes the call to "target" will invoke C2#target
@@ -34,7 +34,7 @@ class X
   end
 end
 
-# assert: test0.rb
+## assert: test0.rb
 class C
   def target: (untyped) -> untyped
 end

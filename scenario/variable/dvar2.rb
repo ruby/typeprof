@@ -1,4 +1,4 @@
-# update
+## update
 def foo(x)
   x = "str"
   1.times do |_|
@@ -15,7 +15,7 @@ def bar(x)
   x
 end
 
-# assert
+## assert
 class Object
   def foo: (untyped) -> (Integer | String)
   def bar: (untyped) -> String
