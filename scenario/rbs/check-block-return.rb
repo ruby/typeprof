@@ -1,5 +1,5 @@
 ## update: test0.rb
- #: { () -> Integer } -> void
+#: { () -> Integer } -> void
 def foo
   yield
 end

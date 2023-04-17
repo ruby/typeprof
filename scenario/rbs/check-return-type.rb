@@ -1,5 +1,5 @@
 ## update
- #: -> Integer
+#: -> Integer
 def foo
   return
 
