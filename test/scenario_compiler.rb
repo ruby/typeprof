@@ -1,7 +1,8 @@
 class ScenarioCompiler
-  def initialize(scenarios, interactive: true)
+  def initialize(scenarios, interactive: true, fast: true)
     @scenarios = scenarios
     @interactive = interactive
+    @fast = fast
   end
 
   def compile
@@ -18,6 +19,7 @@ class ScenarioCompiler
       require #{ File.join(__dir__, "helper").dump }
       class ScenarioTest < Test::Unit::TestCase
         core = TypeProf::Core::Service.new
+        _ = core # stop "unused" warning
     END
   end
 
@@ -31,6 +33,9 @@ class ScenarioCompiler
     @file = "test.rb"
     out = %(eval(<<'TYPEPROF_SCENARIO_END', nil, #{ scenario.dump }, 1)\n)
     out << %(test(#{ scenario.dump }) {)
+    unless @fast
+      out << "core = TypeProf::Core::Service.new;"
+    end
     close_str = ""
     File.foreach(scenario, chomp: true) do |line|
       if line =~ /\A#(?!#)\s*/
