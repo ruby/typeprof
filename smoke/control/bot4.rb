@@ -32,3 +32,4 @@ class Object
 end
 
 # diagnostics
+(7,8)-(7,17): failed to resolve overloads
