@@ -64,8 +64,9 @@ class ScenarioCompiler
           core.diagnostics(#{ @file.dump }) {|diag| pp diag }
         end
       END
+    else
+      out << "core.reset!\n"
     end
-    out << "core.reset!\n"
     out << "}\n"
     out << %(TYPEPROF_SCENARIO_END\n)
   end
