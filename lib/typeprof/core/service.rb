@@ -273,7 +273,7 @@ module TypeProf::Core
               mod.methods[singleton].each do |mid, me|
                 sig = nil
                 me.decls.each do |mdecl|
-                  sig = mdecl.rbs_method_types.map {|method_type| method_type.to_s }.join(" | ")
+                  sig = mdecl.rbs_method_types.map {|method_type| method_type.instance_variable_get(:@raw_node).to_s }.join(" | ")
                   break
                 end
                 unless sig
@@ -282,7 +282,7 @@ module TypeProf::Core
                     break
                   end
                 end
-                yield mid, "#{ mod.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }"
+                yield mid, "#{ mod.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }" if sig
               end
               # TODO: support aliases
               # TODO: support include module

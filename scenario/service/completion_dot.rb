@@ -6,6 +6,10 @@ class Foo
   def bar(n)
     "str"
   end
+  #: (Foo) -> Foo
+  def baz(_)
+    _
+  end
 end
 
 def test1(x)
@@ -20,11 +24,13 @@ Foo.new.foo(1.0)
 test(Foo.new)
 
 ## completion
-(11, 2)
+(15, 2)
 Foo#foo : (Float) -> Integer
 Foo#bar : (untyped) -> String
+Foo#baz : (Foo) -> Foo
 
 ## completion
-(15, 15)
+(19, 15)
 Foo#foo : (Float) -> Integer
 Foo#bar : (untyped) -> String
+Foo#baz : (Foo) -> Foo
