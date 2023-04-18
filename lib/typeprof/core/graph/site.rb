@@ -222,6 +222,18 @@ module TypeProf::Core
       me.add_run_all_callsites(genv)
     end
 
+    def match_arguments?(genv, changes, param_map, a_args, method_type)
+      f_args = method_type.required_positionals.map do |f_arg|
+        f_arg.get_vertex(genv, changes, param_map)
+      end
+      return false if a_args.size != f_args.size
+      a_args.zip(f_args) do |a_arg, f_arg|
+        return false unless a_arg.check_match(genv, changes, f_arg)
+      end
+      #pp method_type.rest_positionals
+      return true
+    end
+
     def resolve_overloads(changes, genv, node, param_map, a_args, block, ret)
       match_any_overload = false
       @rbs_method_types.each do |method_type|
@@ -231,6 +243,7 @@ module TypeProf::Core
         # rbs_func.rest_keywords
         # rbs_func.rest_positionals
         # rbs_func.trailing_positionals
+
         param_map0 = param_map.dup
         if method_type.type_params
           method_type.type_params.map do |var|
@@ -238,18 +251,9 @@ module TypeProf::Core
             param_map0[var] = Source.new(Type::Var.new(genv, var, vtx))
           end
         end
-        f_args = method_type.required_positionals.map do |f_arg|
-          f_arg.get_vertex(genv, changes, param_map0)
-        end
-        next if a_args.size != f_args.size
-        match = true
-        a_args.zip(f_args) do |a_arg, f_arg|
-          unless a_arg.check_match(genv, changes, f_arg)
-            match = false
-            break
-          end
-        end
-        next unless match
+
+        next unless match_arguments?(genv, changes, param_map0, a_args, method_type)
+
         rbs_blk = method_type.block
         next if !!rbs_blk != !!block
         if rbs_blk && block
