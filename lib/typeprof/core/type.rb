@@ -1,10 +1,10 @@
 module TypeProf::Core
   class Type
-    eval <<-END
-      def self.new(genv, *args)
-        genv.type_table[[self] + args] ||= super(genv, *args)
-      end
-    END
+    # This new method does memoize creation of types
+    #: (TypeProf::Core::GlobalEnv) -> instance
+    def self.new(genv, *args)
+      genv.type_table[[self] + args] ||= super(genv, *args)
+    end
 
     def self.strip_parens(s)
       #s =~ /\A\((.*)\)\z/ ? $1 : s

@@ -116,4 +116,14 @@ output = output.join(\"\\n\")
 assert_equal(%q\0DATA\0.rstrip, output)
     END
   end
+
+  def handle_completion
+    re = /\A\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*\n/
+    <<-END
+raise unless %q\0DATA\0 =~ %r{#{ re }}
+output = []
+core.completion(#{ @file.dump }, ".", TypeProf::CodePosition.new($1.to_i, $2.to_i)) {|_mid, hint| output << hint }
+assert_equal($'.rstrip, output[0, $'.rstrip.count(\"\\n\") + 1].join(\"\\n\"))
+    END
+  end
 end
