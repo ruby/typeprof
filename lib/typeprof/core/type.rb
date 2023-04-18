@@ -1,14 +1,18 @@
 module TypeProf::Core
   class Type
+    eval <<-END
+      def self.new(genv, *args)
+        genv.type_table[[self] + args] ||= super(genv, *args)
+      end
+    END
+
     def self.strip_parens(s)
       #s =~ /\A\((.*)\)\z/ ? $1 : s
       s.start_with?("(") && s.end_with?(")") ? s[1..-2] : s
     end
 
     class Singleton < Type
-      include StructuralEquality
-
-      def initialize(mod)
+      def initialize(genv, mod)
         raise unless mod.is_a?(ModuleEntity)
         # TODO: type_param
         @mod = mod
@@ -61,9 +65,7 @@ module TypeProf::Core
     end
 
     class Instance < Type
-      include StructuralEquality
-
-      def initialize(mod, args)
+      def initialize(genv, mod, args)
         raise mod.class.to_s unless mod.is_a?(ModuleEntity)
         @mod = mod
         @args = args
@@ -137,9 +139,7 @@ module TypeProf::Core
     end
 
     class Array < Type
-      include StructuralEquality
-
-      def initialize(elems, base_type)
+      def initialize(genv, elems, base_type)
         @elems = elems
         @base_type = base_type
         raise unless base_type.is_a?(Instance)
@@ -187,9 +187,7 @@ module TypeProf::Core
     end
 
     class Hash < Type
-      include StructuralEquality
-
-      def initialize(literal_pairs, base_type)
+      def initialize(genv, literal_pairs, base_type)
         @literal_pairs = literal_pairs
         @base_type = base_type
         raise unless base_type.is_a?(Instance)
@@ -218,7 +216,7 @@ module TypeProf::Core
     end
 
     class Proc < Type
-      def initialize(block)
+      def initialize(genv, block)
         @block = block
       end
 
@@ -234,9 +232,7 @@ module TypeProf::Core
     end
 
     class Symbol < Type
-      include StructuralEquality
-
-      def initialize(sym)
+      def initialize(genv, sym)
         @sym = sym
       end
 
@@ -264,7 +260,8 @@ module TypeProf::Core
     end
 
     class Bot < Type
-      include StructuralEquality
+      def initialize(genv)
+      end
 
       def base_type(genv)
         genv.obj_type
@@ -280,9 +277,7 @@ module TypeProf::Core
     end
 
     class Var < Type
-      include StructuralEquality
-
-      def initialize(name, vtx)
+      def initialize(genv, name, vtx)
         @name = name
         @vtx = vtx
       end

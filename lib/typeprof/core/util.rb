@@ -1,14 +1,4 @@
 module TypeProf::Core
-  module StructuralEquality
-    def self.included(klass)
-      klass.instance_eval do
-        def new(genv, *args)
-          genv.type_table[[self] + args] ||= super(*args)
-        end
-      end
-    end
-  end
-
   class Set
     def self.[](*elems)
       h = Hash.new(false)

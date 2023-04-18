@@ -99,7 +99,7 @@ module TypeProf::Core
             node.ret.add_edge(genv, blk_ret)
           end
           block = Block.new(self, blk_f_args, blk_ret)
-          blk_ty = Source.new(Type::Proc.new(block))
+          blk_ty = Source.new(Type::Proc.new(genv, block))
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
         end
