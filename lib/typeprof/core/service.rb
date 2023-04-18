@@ -254,8 +254,7 @@ module TypeProf::Core
             node.sites[:mdef].each do |mdef|
               hint = mdef.show
               if hint
-                pos = mdef.node.code_range.first
-                yield TypeProf::CodeRange.new(pos, pos.right), hint
+                yield mdef.node.code_range, hint
               end
             end
           end

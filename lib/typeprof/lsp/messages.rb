@@ -244,8 +244,9 @@ module TypeProf::LSP
       end
       ret = []
       @server.core.code_lens(text.path) do |code_range, title|
+        pos = code_range.first
         ret << {
-          range: code_range.to_lsp,
+          range: TypeProf::CodeRange.new(pos, pos.right).to_lsp,
           command: {
             title: "#: " + title,
             command: "typeprof.createPrototypeRBS",

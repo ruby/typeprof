@@ -107,4 +107,13 @@ output = core.hover(#{ @file.dump }, TypeProf::CodePosition.new($1.to_i, $2.to_i
 assert_equal($'.strip, output.strip)
     END
   end
+
+  def handle_code_lens
+    <<-END
+output = []
+core.code_lens(#{ @file.dump }) {|cr, hint| output << (cr.first.to_s + ": " + hint) }
+output = output.join(\"\\n\")
+assert_equal(%q\0DATA\0.rstrip, output)
+    END
+  end
 end
