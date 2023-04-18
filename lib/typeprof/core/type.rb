@@ -11,6 +11,16 @@ module TypeProf::Core
       s.start_with?("(") && s.end_with?(")") ? s[1..-2] : s
     end
 
+    def self.default_param_map(genv, ty)
+      instance_ty = ty.is_a?(Type::Instance) ? ty : Type::Instance.new(genv, ty.mod, []) # TODO: type params
+      singleton_ty = ty.is_a?(Type::Instance) ? Type::Singleton.new(genv, ty.mod) : ty
+      {
+        "*self": Source.new(ty),
+        "*instance": Source.new(instance_ty),
+        "*class": Source.new(singleton_ty),
+      }
+    end
+
     class Singleton < Type
       def initialize(genv, mod)
         raise unless mod.is_a?(ModuleEntity)

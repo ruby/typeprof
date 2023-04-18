@@ -358,7 +358,9 @@ module TypeProf::Core
       method_type = decl.rbs_method_types.first
       _block = method_type.block
 
-      param_map0 = {}
+      mod = genv.resolve_cpath(@cpath)
+      ty = @singleton ? Type::Singleton.new(genv, mod) : Type::Instance.new(genv, mod, []) # TODO: type params
+      param_map0 = Type.default_param_map(genv, ty)
       #method_type.type_params.map do |param|
       #  param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
       #end
@@ -491,7 +493,7 @@ module TypeProf::Core
         mid = @mid
         base_ty = ty.base_type(genv)
         mod = base_ty.mod
-        param_map = { __self: Source.new(ty) }
+        param_map = Type.default_param_map(genv, ty)
         if base_ty.is_a?(Type::Instance)
           if mod.type_params
             mod.type_params.zip(base_ty.args) do |k, v|
@@ -520,7 +522,7 @@ module TypeProf::Core
           type_args = mod.superclass_type_args
           mod, singleton = genv.get_superclass(mod, singleton)
           if mod && mod.type_params
-            param_map2 = { __self: Source.new(ty) }
+            param_map2 = Type.default_param_map(genv, ty)
             mod.type_params.zip(type_args || []) do |param, arg|
               param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new
             end
@@ -536,7 +538,7 @@ module TypeProf::Core
       found = false
 
       mod.included_modules.each do |inc_decl, inc_mod|
-        param_map2 = { __self: Source.new(ty) }
+        param_map2 = Type.default_param_map(genv, ty)
         if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
           inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
             param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new

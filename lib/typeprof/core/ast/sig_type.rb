@@ -52,7 +52,7 @@ module TypeProf::Core
 
     class SIG_TY_BASE_SELF < TypeNode
       def get_vertex0(genv, changes, vtx, subst)
-        subst[:__self].add_edge(genv, vtx)
+        subst[:"*self"].add_edge(genv, vtx)
       end
     end
 
@@ -82,7 +82,13 @@ module TypeProf::Core
 
     class SIG_TY_BASE_INSTANCE < TypeNode
       def get_vertex0(genv, changes, vtx, subst)
-        raise NotImplementedError
+        subst[:"*instance"].add_edge(genv, vtx)
+      end
+    end
+
+    class SIG_TY_BASE_CLASS < TypeNode
+      def get_vertex0(genv, changes, vtx, subst)
+        subst[:"*class"].add_edge(genv, vtx)
       end
     end
 
