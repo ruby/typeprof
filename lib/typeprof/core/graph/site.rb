@@ -401,6 +401,7 @@ module TypeProf::Core
     def show
       block_show = []
       if @block
+        # TODO: record what are yielded, not what the blocks accepted
         @block.types.each_key do |ty|
           case ty
           when Type::Proc

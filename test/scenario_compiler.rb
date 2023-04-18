@@ -92,6 +92,13 @@ RBS::Parser.parse_signature(output)
     END
   end
 
+  def handle_assert_without_validation
+    <<-END
+output = core.dump_declarations(#{ @file.dump })
+assert_equal(%q\0DATA\0.rstrip, output.rstrip)
+    END
+  end
+
   def handle_diagnostics
     <<-END
 output = []
@@ -123,7 +130,6 @@ assert_equal(%q\0DATA\0.rstrip, output)
     <<-END
 output = []
 core.completion(#{ @file.dump }, ".", TypeProf::CodePosition.new(#{ @pos.join(",") })) {|_mid, hint| output << hint }
-
 assert_equal(exp = %q\0DATA\0.rstrip, output[0..exp.count(\"\\n\")].join(\"\\n\"))
     END
   end
