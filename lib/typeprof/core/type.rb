@@ -12,6 +12,7 @@ module TypeProf::Core
     end
 
     def self.default_param_map(genv, ty)
+      ty = ty.base_type(genv)
       instance_ty = ty.is_a?(Type::Instance) ? ty : Type::Instance.new(genv, ty.mod, []) # TODO: type params
       singleton_ty = ty.is_a?(Type::Instance) ? Type::Singleton.new(genv, ty.mod) : ty
       {
