@@ -78,7 +78,7 @@ class ScenarioCompiler
   def handle_update
     ext = File.extname(@file)[1..]
     <<-END
-#{ @interactive ? 2 : 1 }.times {
+#{ @interactive ? 1 : 2 }.times {
   core.update_#{ ext }_file(#{ @file.dump }, %q\0DATA\0)
 };
     END
