@@ -127,4 +127,11 @@ core.completion(#{ @file.dump }, ".", TypeProf::CodePosition.new(#{ @pos.join(",
 assert_equal(exp = %q\0DATA\0.rstrip, output[0..exp.count(\"\\n\")].join(\"\\n\"))
     END
   end
+
+  def handle_definition
+    <<-END
+output = core.definitions(#{ @file.dump }, TypeProf::CodePosition.new(#{ @pos.join(",") }))
+assert_equal(exp = %q\0DATA\0.rstrip, output.map {|file, cr| file + ":" + cr.to_s }.join(\"\\n\"))
+    END
+  end
 end
