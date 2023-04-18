@@ -27,10 +27,8 @@ class Object
   def foo: -> B
 end
 
-## hover
-(5, 19)
+## hover: test.rb:5:19
 Integer
 
-## hover
-(14, 6)
+## hover: test.rb:14:6
 B#initialize : (Integer) -> Integer

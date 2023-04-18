@@ -31,6 +31,7 @@ class ScenarioCompiler
 
   def compile_scenario(scenario)
     @file = "test.rb"
+    @pos = [0, 0]
     out = %(eval(<<'TYPEPROF_SCENARIO_END', nil, #{ scenario.dump }, 1)\n)
     out << %(test(#{ scenario.dump }) {)
     unless @fast
@@ -40,8 +41,11 @@ class ScenarioCompiler
     File.foreach(scenario, chomp: true) do |line|
       if line =~ /\A##\s*/
         out << close_str
-        if line =~ /\A##\s*(\w+)(?::(.*))?\z/
-          @file = $2.strip if $2
+        if line =~ /\A##\s*(\w+)(?::\s*(.*?)(?::(\d+)(?::(\d+))?)?)?\z/
+          if $2
+            @file = $2
+            @pos = [$3.to_i, $4.to_i]
+          end
           ary = send("handle_#{ $1 }").lines.map {|s| s.strip }.join(";").split("DATA")
           raise if ary.size != 2
           open_str, close_str = ary
@@ -100,11 +104,9 @@ assert_equal(%q\0DATA\0.rstrip, output)
   end
 
   def handle_hover
-    re = /\A\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*\n/
     <<-END
-raise unless %q\0DATA\0 =~ %r{#{ re }}
-output = core.hover(#{ @file.dump }, TypeProf::CodePosition.new($1.to_i, $2.to_i))
-assert_equal($'.strip, output.strip)
+output = core.hover(#{ @file.dump }, TypeProf::CodePosition.new(#{ @pos.join(",") }))
+assert_equal(%q\0DATA\0.strip, output.strip)
     END
   end
 
@@ -118,12 +120,11 @@ assert_equal(%q\0DATA\0.rstrip, output)
   end
 
   def handle_completion
-    re = /\A\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*\n/
     <<-END
-raise unless %q\0DATA\0 =~ %r{#{ re }}
 output = []
-core.completion(#{ @file.dump }, ".", TypeProf::CodePosition.new($1.to_i, $2.to_i)) {|_mid, hint| output << hint }
-assert_equal($'.rstrip, output[0, $'.rstrip.count(\"\\n\") + 1].join(\"\\n\"))
+core.completion(#{ @file.dump }, ".", TypeProf::CodePosition.new(#{ @pos.join(",") })) {|_mid, hint| output << hint }
+
+assert_equal(exp = %q\0DATA\0.rstrip, output[0..exp.count(\"\\n\")].join(\"\\n\"))
     END
   end
 end

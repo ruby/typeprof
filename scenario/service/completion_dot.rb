@@ -23,14 +23,12 @@ end
 Foo.new.foo(1.0)
 test(Foo.new)
 
-## completion
-(15, 2)
+## completion: test.rb:15:2
 Foo#foo : (Float) -> Integer
 Foo#bar : (untyped) -> String
 Foo#baz : (Foo) -> Foo
 
-## completion
-(19, 15)
+## completion: test.rb:19:15
 Foo#foo : (Float) -> Integer
 Foo#bar : (untyped) -> String
 Foo#baz : (Foo) -> Foo
