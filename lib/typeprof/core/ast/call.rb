@@ -1,5 +1,36 @@
 module TypeProf::Core
   class AST
+    def self.parse_positional_args(raw_args, args, splat_flags)
+      return unless raw_args
+      case raw_args.type
+      when :LIST
+        raw_args.children.compact.each do |raw_arg|
+          args << raw_arg
+          splat_flags << false
+        end
+      when :SPLAT
+        raw_arg, = raw_args.children
+        args << raw_arg
+        splat_flags << true
+      when :ARGSPUSH
+        raw_args, raw_arg = raw_args.children
+        parse_positional_args(raw_args, args, splat_flags)
+        args << raw_arg
+        splat_flags << false
+      when :ARGSCAT
+        raw_args1, raw_args2 = raw_args.children
+        parse_positional_args(raw_args1, args, splat_flags)
+        if raw_args2.type == :LIST
+          parse_positional_args(raw_args2, args, splat_flags)
+        else
+          args << raw_args2
+          splat_flags << true
+        end
+      else
+        raise "not supported argument type: #{ raw_args.type }"
+      end
+    end
+
     class CallNode < Node
       def initialize(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args, raw_last_arg = nil)
         super(raw_node, lenv)
@@ -7,32 +38,38 @@ module TypeProf::Core
         @recv = AST.create_node(raw_recv, lenv) if raw_recv
         @mid = mid
         @mid_code_range = mid_code_range
-        @block_pass = nil
+
+        # args
         @positional_args = []
+        @splat_flags = []
+        @keyword_args = nil
+
+        @block_pass = nil
+        @block_tbl = nil
+        @block_f_args = nil
+        @block_body = nil
+
         if raw_args
           if raw_args.type == :BLOCK_PASS
             raw_args, raw_block_pass = raw_args.children
             @block_pass = AST.create_node(raw_block_pass, lenv)
           end
-          if raw_args
-            # TODO
-            case raw_args.type
-            when :LIST
-              args = raw_args.children.compact
-              @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
-            when :ARGSPUSH, :ARGSCAT
-              raise NotImplementedError
-            else
-              raise "not supported yet: #{ raw_args.type }"
-            end
-            if raw_last_arg
-              @positional_args << AST.create_node(raw_last_arg, lenv)
-            end
+
+          args = []
+          @splat_flags = []
+          AST.parse_positional_args(raw_args, args, @splat_flags)
+          args << raw_last_arg if raw_last_arg
+          @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
+
+          last_arg = @positional_args.last
+          if last_arg.is_a?(HASH) && last_arg.keywords
+            @positional_args.pop
+            @keyword_args = last_arg
           end
         end
 
         if raw_block
-          raise if @block_pass
+          raise "should not occur" if @block_pass
           @block_tbl, raw_block_args, raw_block_body = raw_block.children
           @block_f_args = raw_block_args ? raw_block_args.children : nil
           if @block_f_args
@@ -41,24 +78,28 @@ module TypeProf::Core
           ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
           nlenv = LocalEnv.new(@lenv.path, ncref, {})
           @block_body = AST.create_node(raw_block_body, nlenv)
-        else
-          @block_tbl = @block_f_args = @block_body = nil
         end
 
         @yield = raw_recv == false
       end
 
-      attr_reader :recv, :mid, :positional_args, :block_tbl, :block_f_args, :block_body, :mid_code_range, :yield
+      attr_reader :recv, :mid, :mid_code_range, :yield
+      attr_reader :positional_args, :splat_flags, :keyword_args
+      attr_reader :block_tbl, :block_f_args, :block_body, :block_pass
 
-      def subnodes = { recv:, block_body:, positional_args: }
-      def attrs = { mid:, block_tbl:, block_f_args:, yield: }
+      def subnodes = { recv:, positional_args:, keyword_args:, block_body:, block_pass: }
+      def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield: }
       def code_ranges = { mid_code_range: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")
-        positional_args = @positional_args.map do |node|
-          node.install(genv)
+
+        positional_args = @positional_args.map do |arg|
+          arg.install(genv)
         end
+
+        keyword_args = @keyword_args ? @keyword_args.install(genv) : nil
+
         if @block_body
           @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
           @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(genv.nil_type) }
@@ -99,7 +140,8 @@ module TypeProf::Core
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
         end
-        site = CallSite.new(self, genv, recv, @mid, positional_args, blk_ty, self.is_a?(FCALL))
+
+        site = CallSite.new(self, genv, recv, @mid, positional_args, @splat_flags, keyword_args, blk_ty, self.is_a?(FCALL))
         add_site(:main, site)
         site.ret
       end
@@ -132,24 +174,32 @@ module TypeProf::Core
           return if @recv != prev_node.recv
         end
 
+        return unless @splat_flags == prev_node.splat_flags
+
+        @positional_args.zip(prev_node.positional_args) do |node, prev_node|
+          node.diff(prev_node)
+          return unless node.prev_node
+        end
+
+        if @keyword_args
+          @keyword_args.diff(prev_node.keyword_args)
+          return unless @keyword_args.prev_node
+        else
+          return unless @keyword_args == prev_node.keyword_args
+        end
+
+        if @block_pass
+          @block_pass.diff(prev_node.block_pass)
+          return unless @block_pass.prev_node
+        else
+          return unless @block_pass == prev_node.block_pass
+        end
+
         if @block_body
           @block_body.diff(prev_node.block_body)
           return unless @block_body.prev_node
         else
           return if @block_body != prev_node.block_body
-        end
-
-        if @positional_args && prev_node.positional_args
-          if @positional_args.size == prev_node.positional_args.size
-            @positional_args.zip(prev_node.positional_args) do |node, prev_node|
-              node.diff(prev_node)
-              return unless node.prev_node
-            end
-          else
-            return
-          end
-        else
-          return if @positional_args != prev_node.positional_args
         end
 
         @prev_node = prev_node
@@ -175,7 +225,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
         dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ args })")
       end
     end
@@ -202,7 +252,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
         dump_call("#{ @mid }", "(#{ args })")
       end
     end
@@ -216,12 +266,8 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        if @positional_args
-          args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
-          dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ args })")
-        else
-          dump_call("(#{ @mid }", "#{ @recv.dump(dumper) })")
-        end
+        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
+        dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ args })")
       end
     end
 
@@ -235,7 +281,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
         dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ args })")
       end
     end
@@ -248,7 +294,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
+        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
         dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ args })")
       end
     end

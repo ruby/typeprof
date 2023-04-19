@@ -134,11 +134,19 @@ module TypeProf::Core
         contents = cs.first
         @keys = []
         @vals = []
+        @keywords = false
         if contents
+          if raw_node.first_lineno == contents.first_lineno && raw_node.first_column == contents.first_column
+            # Looks like there is no open brace
+            @keywords = true
+          end
+
           case contents.type
           when :LIST
-            cs.first.children.compact.each_slice(2) do |key, val|
-              @keys << AST.create_node(key, lenv)
+            list = cs.first.children
+            list.pop if list.last.nil?
+            list.each_slice(2) do |key, val|
+              @keys << (key ? AST.create_node(key, lenv) : nil)
               @vals << AST.create_node(val, lenv)
             end
           else
@@ -147,20 +155,26 @@ module TypeProf::Core
         end
       end
 
-      attr_reader :keys, :vals
+      attr_reader :keys, :vals, :keywords
 
       def subnodes = { keys:, vals: }
+      def attrs = { keywords: }
 
       def install0(genv)
         unified_key = Vertex.new("hash-keys-unified", self)
         unified_val = Vertex.new("hash-vals-unified", self)
         literal_pairs = {}
         @keys.zip(@vals) do |key, val|
-          k = key.install(genv).new_vertex(genv, "hash-key", self)
-          v = val.install(genv).new_vertex(genv, "hash-val", self)
-          k.add_edge(genv, unified_key)
-          v.add_edge(genv, unified_val)
-          literal_pairs[key.lit] = v if key.is_a?(LIT) && key.lit.is_a?(Symbol)
+          if key
+            k = key.install(genv).new_vertex(genv, "hash-key", self)
+            v = val.install(genv).new_vertex(genv, "hash-val", self)
+            k.add_edge(genv, unified_key)
+            v.add_edge(genv, unified_val)
+            literal_pairs[key.lit] = v if key.is_a?(LIT) && key.lit.is_a?(Symbol)
+          else
+            _h = val.install(genv)
+            # TODO: if h is a hash, we need to connect its elements to the new hash
+          end
         end
         Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
       end

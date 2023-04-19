@@ -424,13 +424,13 @@ module TypeProf::Core
   end
 
   class CallSite < Site
-    def initialize(node, genv, recv, mid, a_args, block, subclasses)
+    def initialize(node, genv, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses)
       raise mid.to_s unless mid
       super(node)
       @recv = recv.new_vertex(genv, "recv:#{ mid }", node)
       @recv.add_edge(genv, self)
       @mid = mid
-      @a_args = a_args.map do |a_arg|
+      @a_args = positional_args.map do |a_arg|
         a_arg = a_arg.new_vertex(genv, "arg:#{ mid }", node)
         a_arg.add_edge(genv, self)
         a_arg

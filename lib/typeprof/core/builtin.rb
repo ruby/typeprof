@@ -7,7 +7,7 @@ module TypeProf::Core
     def class_new(changes, node, ty, a_args, ret)
       ty = ty.get_instance_type(@genv)
       recv = Source.new(ty)
-      site = CallSite.new(node, @genv, recv, :initialize, a_args, nil, false) # TODO: block
+      site = CallSite.new(node, @genv, recv, :initialize, a_args, nil, nil, nil, false) # TODO: block
       # site.ret (the return value of initialize) is discarded
       changes.add_edge(Source.new(ty), ret)
       changes.add_site(:class_new, site)
@@ -58,10 +58,10 @@ module TypeProf::Core
             changes.add_edge(val, ty.get_elem(@genv))
           end
         else
-          puts "??? array_aset"
+          puts "??? array_aset #{ ty.class }"
         end
       else
-        puts "??? array_aset"
+        puts "??? array_aset #{ a_args.size }"
       end
     end
 
