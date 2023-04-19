@@ -8,13 +8,13 @@ module TypeProf::Core
         @mid = mid
         @mid_code_range = mid_code_range
         @block_pass = nil
+        @positional_args = []
         if raw_args
           if raw_args.type == :BLOCK_PASS
             raw_args, raw_block_pass = raw_args.children
             @block_pass = AST.create_node(raw_block_pass, lenv)
           end
           if raw_args
-            @positional_args = []
             # TODO
             case raw_args.type
             when :LIST
@@ -56,12 +56,8 @@ module TypeProf::Core
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")
-        if @positional_args
-          positional_args = @positional_args.map do |node|
-            node.install(genv)
-          end
-        else
-          positional_args = []
+        positional_args = @positional_args.map do |node|
+          node.install(genv)
         end
         if @block_body
           @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
