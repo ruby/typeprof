@@ -222,19 +222,19 @@ module TypeProf::Core
       me.add_run_all_callsites(genv)
     end
 
-    def match_arguments?(genv, changes, param_map, a_args, method_type)
+    def match_arguments?(genv, changes, param_map, positional_args, splat_flags, method_type)
       f_args = method_type.required_positionals.map do |f_arg|
         f_arg.get_vertex(genv, changes, param_map)
       end
-      return false if a_args.size != f_args.size
-      a_args.zip(f_args) do |a_arg, f_arg|
+      return false if positional_args.size != f_args.size
+      positional_args.zip(f_args) do |a_arg, f_arg|
         return false unless a_arg.check_match(genv, changes, f_arg)
       end
       #pp method_type.rest_positionals
       return true
     end
 
-    def resolve_overloads(changes, genv, node, param_map, a_args, block, ret)
+    def resolve_overloads(changes, genv, node, param_map, positional_args, splat_flags, block, ret)
       match_any_overload = false
       @rbs_method_types.each do |method_type|
         # rbs_func.optional_keywords
@@ -252,7 +252,7 @@ module TypeProf::Core
           end
         end
 
-        next unless match_arguments?(genv, changes, param_map0, a_args, method_type)
+        next unless match_arguments?(genv, changes, param_map0, positional_args, splat_flags, method_type)
 
         rbs_blk = method_type.block
         next if !!rbs_blk != !!block
@@ -430,10 +430,10 @@ module TypeProf::Core
       @recv = recv.new_vertex(genv, "recv:#{ mid }", node)
       @recv.add_edge(genv, self)
       @mid = mid
-      @a_args = positional_args.map do |a_arg|
-        a_arg = a_arg.new_vertex(genv, "arg:#{ mid }", node)
-        a_arg.add_edge(genv, self)
-        a_arg
+      @positional_args = positional_args.map do |arg|
+        arg = arg.new_vertex(genv, "arg:#{ mid }", node)
+        arg.add_edge(genv, self)
+        arg
       end
       if block
         @block = block.new_vertex(genv, "block:#{ mid }", node)
@@ -443,7 +443,7 @@ module TypeProf::Core
       @subclasses = subclasses
     end
 
-    attr_reader :recv, :mid, :a_args, :block, :ret
+    attr_reader :recv, :mid, :positional_args, :block, :ret
 
     def run0(genv, changes)
       edges = Set[]
@@ -457,19 +457,19 @@ module TypeProf::Core
           )
         elsif me.builtin
           # TODO: block? diagnostics?
-          me.builtin[changes, @node, recv_ty, @a_args, @ret]
+          me.builtin[changes, @node, recv_ty, @positional_args, @ret]
         elsif !me.decls.empty?
           # TODO: support "| ..."
           me.decls.each do |mdecl|
             # TODO: union type is ok?
             # TODO: add_depended_method_entities for types used to resolve overloads
-            mdecl.resolve_overloads(changes, genv, @node, param_map, @a_args, @block, @ret)
+            mdecl.resolve_overloads(changes, genv, @node, param_map, @positional_args, @splat_flags, @block, @ret)
           end
         elsif !me.defs.empty?
           me.defs.each do |mdef|
             next if called_mdefs.include?(mdef)
             called_mdefs << mdef
-            mdef.call(changes, genv, @node, @a_args, @block, @ret)
+            mdef.call(changes, genv, @node, @positional_args, @block, @ret)
           end
         else
           pp me
@@ -482,7 +482,7 @@ module TypeProf::Core
             me.defs.each do |mdef|
               next if called_mdefs.include?(mdef)
               called_mdefs << mdef
-              mdef.call(changes, genv, @node, @a_args, @block, @ret)
+              mdef.call(changes, genv, @node, @positional_args, @block, @ret)
             end
           end
         end
