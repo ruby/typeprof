@@ -16,22 +16,37 @@ module TypeProf::Core
           raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
           AST.create_rbs_type(ty.type, lenv)
         end
-        #@optional_positionals = func.optional_positionals
+        @trailing_positionals = raw_decl.type.trailing_positionals.map do |ty|
+          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+          AST.create_rbs_type(ty.type, lenv)
+        end
+        @optional_positionals = raw_decl.type.optional_positionals.map do |ty|
+          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+          AST.create_rbs_type(ty.type, lenv)
+        end
         #@required_keywords = func.required_keywords
         #@optional_keywords = func.optional_keywords
         param = raw_decl.type.rest_positionals
         @rest_positionals = param ? AST.create_rbs_type(param.type, lenv) : nil
-        #@rest_positionals = raw_decl.type.rest_positionals
         #@rest_keywords = func.rest_keywords
         @return_type = AST.create_rbs_type(raw_decl.type.return_type, lenv)
       end
 
       attr_reader :type_params, :block
       attr_reader :required_positionals
+      attr_reader :trailing_positionals
+      attr_reader :optional_positionals
       attr_reader :rest_positionals
       attr_reader :return_type
 
-      def subnodes = { block:, required_positionals:, return_type: }
+      def subnodes = {
+        block:,
+        required_positionals:,
+        trailing_positionals:,
+        optional_positionals:,
+        rest_positionals:,
+        return_type:,
+      }
       def attrs = { type_params: }
     end
 

@@ -222,15 +222,85 @@ module TypeProf::Core
       me.add_run_all_callsites(genv)
     end
 
+    def get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
+      vtxs = []
+
+      start_rest.upto(end_rest - 1) do |i|
+        a_arg = positional_args[i]
+        if splat_flags[i]
+          a_arg.types.each do |ty, _source|
+            ty = ty.base_type(genv)
+            if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
+              vtxs << ty.args[0]
+            else
+              "???"
+            end
+          end
+        else
+          vtxs << a_arg
+        end
+      end
+
+      vtxs.uniq
+    end
+
     def match_arguments?(genv, changes, param_map, positional_args, splat_flags, method_type)
-      f_args = method_type.required_positionals.map do |f_arg|
-        f_arg.get_vertex(genv, changes, param_map)
+      if splat_flags.any?
+        return false unless method_type.rest_positionals
+        method_type.required_positionals.size.times do |i|
+          return false if splat_flags[i]
+        end
+        method_type.trailing_positionals.size.times do |i|
+          return false if splat_flags[-i - 1]
+        end
+      else
+        actual = positional_args.size
+        required_formal = method_type.required_positionals.size + method_type.trailing_positionals.size
+        if actual < required_formal
+          # too few actual arguments
+          return false
+        end
+        if !method_type.rest_positionals && actual > required_formal + method_type.optional_positionals.size
+          # too many actual arguments
+          return false
+        end
       end
-      return false if positional_args.size != f_args.size
-      positional_args.zip(f_args) do |a_arg, f_arg|
-        return false unless a_arg.check_match(genv, changes, f_arg)
+
+      method_type.required_positionals.each_with_index do |ty, i|
+        f_arg = ty.get_vertex(genv, changes, param_map)
+        return false unless positional_args[i].check_match(genv, changes, f_arg)
       end
-      #pp method_type.rest_positionals
+      method_type.trailing_positionals.each_with_index do |ty, i|
+        f_arg = ty.get_vertex(genv, changes, param_map)
+        i -= method_type.trailing_positionals.size
+        return false unless positional_args[i].check_match(genv, changes, f_arg)
+      end
+
+      start_rest = method_type.required_positionals.size
+      end_rest = positional_args.size - method_type.trailing_positionals.size
+
+      i = 0
+      while i < method_type.optional_positionals.size && start_rest < end_rest
+        break if splat_flags[start_rest]
+        f_arg = method_type.optional_positionals[i].get_vertex(genv, changes, param_map)
+        return false unless positional_args[start_rest].check_match(genv, changes, f_arg)
+        i += 1
+        start_rest += 1
+      end
+
+      if start_rest < end_rest
+        vtxs = get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
+        while i < method_type.optional_positionals.size
+          f_arg = method_type.optional_positionals[i].get_vertex(genv, changes, param_map)
+          return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
+          i += 1
+        end
+        if method_type.rest_positionals
+          f_arg = method_type.rest_positionals.get_vertex(genv, changes, param_map)
+          return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
+        end
+      end
+
       return true
     end
 
@@ -435,6 +505,9 @@ module TypeProf::Core
         arg.add_edge(genv, self)
         arg
       end
+      @splat_flags = splat_flags
+      @keyword_args = keyword_args # TODO
+      raise unless splat_flags
       if block
         @block = block.new_vertex(genv, "block:#{ mid }", node)
         @block.add_edge(genv, self) # needed?
@@ -457,7 +530,7 @@ module TypeProf::Core
           )
         elsif me.builtin
           # TODO: block? diagnostics?
-          me.builtin[changes, @node, recv_ty, @positional_args, @ret]
+          me.builtin[changes, @node, recv_ty, @positional_args, @splat_flags, @keyword_args, @ret]
         elsif !me.decls.empty?
           # TODO: support "| ..."
           me.decls.each do |mdecl|

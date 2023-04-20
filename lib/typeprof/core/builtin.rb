@@ -4,20 +4,20 @@ module TypeProf::Core
       @genv = genv
     end
 
-    def class_new(changes, node, ty, a_args, ret)
+    def class_new(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
       ty = ty.get_instance_type(@genv)
       recv = Source.new(ty)
-      site = CallSite.new(node, @genv, recv, :initialize, a_args, nil, nil, nil, false) # TODO: block
+      site = CallSite.new(node, @genv, recv, :initialize, positional_args, splat_flags, keyword_args, nil, false) # TODO: block
       # site.ret (the return value of initialize) is discarded
       changes.add_edge(Source.new(ty), ret)
       changes.add_site(:class_new, site)
     end
 
-    def proc_call(changes, node, ty, a_args, ret)
+    def proc_call(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
       case ty
       when Type::Proc
-        if a_args.size == ty.block.f_args.size
-          a_args.zip(ty.block.f_args) do |a_arg, f_arg|
+        if positional_args.size == ty.block.f_args.size
+          positional_args.zip(ty.block.f_args) do |a_arg, f_arg|
             changes.add_edge(a_arg, f_arg)
           end
         end
@@ -27,8 +27,8 @@ module TypeProf::Core
       end
     end
 
-    def array_aref(changes, node, ty, a_args, ret)
-      if a_args.size == 1
+    def array_aref(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
+      if positional_args.size == 1
         case ty
         when Type::Array
           idx = node.positional_args[0]
@@ -46,11 +46,11 @@ module TypeProf::Core
       end
     end
 
-    def array_aset(changes, node, ty, a_args, ret)
-      if a_args.size == 2
+    def array_aset(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
+      if positional_args.size == 2
         case ty
         when Type::Array
-          val = a_args[1]
+          val = positional_args[1]
           idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(@genv, idx.lit)
             changes.add_edge(val, ty.get_elem(@genv, idx.lit))
@@ -61,12 +61,12 @@ module TypeProf::Core
           puts "??? array_aset #{ ty.class }"
         end
       else
-        puts "??? array_aset #{ a_args.size }"
+        puts "??? array_aset #{ positional_args.size }"
       end
     end
 
-    def hash_aref(changes, node, ty, a_args, ret)
-      if a_args.size == 1
+    def hash_aref(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
+      if positional_args.size == 1
         case ty
         when Type::Hash
           idx = node.positional_args[0]
@@ -84,11 +84,11 @@ module TypeProf::Core
       end
     end
 
-    def hash_aset(changes, node, ty, a_args, ret)
-      if a_args.size == 2
+    def hash_aset(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
+      if positional_args.size == 2
         case ty
         when Type::Hash
-          val = a_args[1]
+          val = positional_args[1]
           idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol) && ty.get_value(idx.lit)
             # TODO: how to handle new key?
