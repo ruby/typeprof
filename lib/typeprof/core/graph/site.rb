@@ -248,42 +248,42 @@ module TypeProf::Core
       # TODO: handle a tuple as a splat argument?
       if splat_flags.any?
         return false unless method_type.rest_positionals
-        method_type.required_positionals.size.times do |i|
+        method_type.req_positionals.size.times do |i|
           return false if splat_flags[i]
         end
-        method_type.trailing_positionals.size.times do |i|
+        method_type.post_positionals.size.times do |i|
           return false if splat_flags[-i - 1]
         end
       else
         actual = positional_args.size
-        required_formal = method_type.required_positionals.size + method_type.trailing_positionals.size
+        required_formal = method_type.req_positionals.size + method_type.post_positionals.size
         if actual < required_formal
           # too few actual arguments
           return false
         end
-        if !method_type.rest_positionals && actual > required_formal + method_type.optional_positionals.size
+        if !method_type.rest_positionals && actual > required_formal + method_type.opt_positionals.size
           # too many actual arguments
           return false
         end
       end
 
-      method_type.required_positionals.each_with_index do |ty, i|
+      method_type.req_positionals.each_with_index do |ty, i|
         f_arg = ty.get_vertex(genv, changes, param_map)
         return false unless positional_args[i].check_match(genv, changes, f_arg)
       end
-      method_type.trailing_positionals.each_with_index do |ty, i|
+      method_type.post_positionals.each_with_index do |ty, i|
         f_arg = ty.get_vertex(genv, changes, param_map)
-        i -= method_type.trailing_positionals.size
+        i -= method_type.post_positionals.size
         return false unless positional_args[i].check_match(genv, changes, f_arg)
       end
 
-      start_rest = method_type.required_positionals.size
-      end_rest = positional_args.size - method_type.trailing_positionals.size
+      start_rest = method_type.req_positionals.size
+      end_rest = positional_args.size - method_type.post_positionals.size
 
       i = 0
-      while i < method_type.optional_positionals.size && start_rest < end_rest
+      while i < method_type.opt_positionals.size && start_rest < end_rest
         break if splat_flags[start_rest]
-        f_arg = method_type.optional_positionals[i].get_vertex(genv, changes, param_map)
+        f_arg = method_type.opt_positionals[i].get_vertex(genv, changes, param_map)
         return false unless positional_args[start_rest].check_match(genv, changes, f_arg)
         i += 1
         start_rest += 1
@@ -291,8 +291,8 @@ module TypeProf::Core
 
       if start_rest < end_rest
         vtxs = get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
-        while i < method_type.optional_positionals.size
-          f_arg = method_type.optional_positionals[i].get_vertex(genv, changes, param_map)
+        while i < method_type.opt_positionals.size
+          f_arg = method_type.opt_positionals[i].get_vertex(genv, changes, param_map)
           return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
           i += 1
         end
@@ -332,7 +332,7 @@ module TypeProf::Core
               blk_f_ret = rbs_blk.return_type.get_vertex(genv, changes, param_map0)
               changes.add_site(:check_return, CheckReturnSite.new(ty.block.node, genv, ty.block.ret, blk_f_ret))
 
-              blk_a_args = rbs_blk.required_positionals.map do |blk_a_arg|
+              blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
                 blk_a_arg.get_vertex(genv, changes, param_map0)
               end
               blk_f_args = ty.block.f_args
@@ -436,7 +436,7 @@ module TypeProf::Core
       #method_type.type_params.map do |param|
       #  param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
       #end
-      a_args = method_type.required_positionals.map do |a_arg|
+      a_args = method_type.req_positionals.map do |a_arg|
         a_arg.get_vertex(genv, changes, param_map0)
       end
 

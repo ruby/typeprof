@@ -12,38 +12,38 @@ module TypeProf::Core
         # TODO?: param.variance, param.unchecked, param.upper_bound
         @type_params = raw_type_params ? raw_type_params.map {|param| param.name } : nil
 
-        @required_positionals = raw_decl.type.required_positionals.map do |ty|
+        @req_positionals = raw_decl.type.required_positionals.map do |ty|
           raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
           AST.create_rbs_type(ty.type, lenv)
         end
-        @trailing_positionals = raw_decl.type.trailing_positionals.map do |ty|
+        @post_positionals = raw_decl.type.trailing_positionals.map do |ty|
           raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
           AST.create_rbs_type(ty.type, lenv)
         end
-        @optional_positionals = raw_decl.type.optional_positionals.map do |ty|
+        @opt_positionals = raw_decl.type.optional_positionals.map do |ty|
           raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
           AST.create_rbs_type(ty.type, lenv)
         end
-        #@required_keywords = func.required_keywords
-        #@optional_keywords = func.optional_keywords
         param = raw_decl.type.rest_positionals
         @rest_positionals = param ? AST.create_rbs_type(param.type, lenv) : nil
+        #@required_keywords = func.required_keywords
+        #@optional_keywords = func.optional_keywords
         #@rest_keywords = func.rest_keywords
         @return_type = AST.create_rbs_type(raw_decl.type.return_type, lenv)
       end
 
       attr_reader :type_params, :block
-      attr_reader :required_positionals
-      attr_reader :trailing_positionals
-      attr_reader :optional_positionals
+      attr_reader :req_positionals
+      attr_reader :post_positionals
+      attr_reader :opt_positionals
       attr_reader :rest_positionals
       attr_reader :return_type
 
       def subnodes = {
         block:,
-        required_positionals:,
-        trailing_positionals:,
-        optional_positionals:,
+        req_positionals:,
+        post_positionals:,
+        opt_positionals:,
         rest_positionals:,
         return_type:,
       }
