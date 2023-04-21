@@ -35,7 +35,7 @@ module TypeProf::Core
     end
 
     def self.parse_params(tbl, raw_args, lenv)
-      return [[], [], [], nil, [], [], [], [], nil, nil] unless raw_args
+      return [FormalArguments::Empty, [], []] unless raw_args
 
       args = raw_args.children
 
@@ -83,18 +83,14 @@ module TypeProf::Core
         rest_keywords = args[8].children[0]
       end
 
-      block_param = args[9]
+      block = args[9]
 
-      [
-        req_positionals,
-        opt_positionals, opt_positional_defaults,
-        rest_positionals,
-        post_positionals,
-        req_keywords,
-        opt_keywords, opt_keyword_defaults,
-        rest_keywords,
-        block_param,
-      ]
+      f_args = FormalArguments.new(
+        req_positionals, opt_positionals, rest_positionals, post_positionals,
+        req_keywords, opt_keywords, rest_keywords, block,
+      )
+
+      return [f_args, opt_positional_defaults, opt_keyword_defaults]
     end
 
     class DefNode < Node
@@ -119,17 +115,11 @@ module TypeProf::Core
           @body = NilNode.new(cr, nlenv)
         end
 
-        @req_positionals,
-        @opt_positionals, @opt_positional_defaults,
-        @rest_positionals,
-        @post_positionals,
-        @req_keywords,
-        @opt_keywords, @opt_keyword_defaults,
-        @rest_keywords,
-        @block_param = AST.parse_params(@tbl, raw_args, nlenv)
+        @f_args, @opt_positional_defaults, @opt_keyword_defaults =
+          AST.parse_params(@tbl, raw_args, nlenv)
 
         @args_code_ranges = []
-        @req_positionals.size.times do |i|
+        @f_args.req_positionals.size.times do |i|
           pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
           @args_code_ranges << AST.find_sym_code_range(pos, @tbl[i])
           # TODO: support opts, keywords, etc.
@@ -140,14 +130,9 @@ module TypeProf::Core
 
       attr_reader :singleton, :mid
       attr_reader :tbl
-      attr_reader :req_positionals
-      attr_reader :opt_positionals, :opt_positional_defaults
-      attr_reader :rest_positionals
-      attr_reader :post_positionals
-      attr_reader :req_keywords
-      attr_reader :opt_keywords, :opt_keyword_defaults
-      attr_reader :rest_keywords
-      attr_reader :block_param
+      attr_reader :f_args
+      attr_reader :opt_positional_defaults
+      attr_reader :opt_keyword_defaults
       attr_reader :body
       attr_reader :rbs_method_type
 
@@ -161,14 +146,7 @@ module TypeProf::Core
         singleton:,
         mid:,
         tbl:,
-        req_positionals:,
-        opt_positionals:,
-        rest_positionals:,
-        post_positionals:,
-        req_keywords:,
-        opt_keywords:,
-        rest_keywords:,
-        block_param:,
+        f_args:,
       }
 
       def define0(genv)
@@ -213,24 +191,23 @@ module TypeProf::Core
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
           @body.lenv.locals[:"*ret"] = Vertex.new("method_ret", self)
 
-          @opt_positionals.zip(@opt_positional_defaults) do |var, expr|
-            @body.lenv.locals[var] = expr.install(genv)
-          end
-          @opt_keywords.zip(@opt_keyword_defaults) do |var, expr|
-            @body.lenv.locals[var] = expr.install(genv)
+          f_arg_vtxs = {}
+          @f_args.each_var do |var|
+            f_arg_vtxs[var] = @body.lenv.new_var(var, self)
           end
 
-          f_args = {}
-          @req_positionals.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
-          @opt_positionals.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
-          @post_positionals.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
-          @req_keywords.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
-          @opt_keywords.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
-          f_args[@rest_positionals] = @body.lenv.new_var(@rest_positionals, self) if @rest_positionals
-          f_args[@rest_keywords] = @body.lenv.new_var(@rest_keywords, self) if @rest_keywords
+          @f_args.opt_positionals.zip(@opt_positional_defaults) do |var, expr|
+            expr.install(genv).add_edge(genv, f_arg_vtxs[var])
+          end
+          @f_args.opt_keywords.zip(@opt_keyword_defaults) do |var, expr|
+            expr.install(genv).add_edge(genv, f_arg_vtxs[var])
+          end
 
-          block = @body.lenv.new_var(:"*given_block", self)
-          @body.lenv.set_var(@block_param, block) if @block_param
+          if @f_args.block
+            block = @body.lenv.set_var(:"*given_block", f_arg_vtxs[@f_args.block])
+          else
+            block = @body.lenv.new_var(:"*given_block", self)
+          end
 
           @body.install(genv) if @body
 
@@ -238,7 +215,7 @@ module TypeProf::Core
           each_return_node do |node|
             node.ret.add_edge(genv, ret)
           end
-          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, block, ret)
+          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, @f_args, f_arg_vtxs, block, ret)
           add_site(:mdef, mdef)
         end
         Source.new(Type::Symbol.new(genv, @mid))

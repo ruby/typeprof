@@ -1,10 +1,10 @@
 ## update
 def foo
   yield 1
-    "str"
-  end
+  "str"
+end
 
-  def bar
+def bar
   foo do |n|
     break
     1.0

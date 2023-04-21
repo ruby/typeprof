@@ -388,14 +388,16 @@ module TypeProf::Core
   end
 
   class MethodDefSite < Site
-    def initialize(node, genv, cpath, singleton, mid, f_args, block, ret)
+    def initialize(node, genv, cpath, singleton, mid, f_args, f_arg_vtxs, block, ret)
       super(node)
       @cpath = cpath
       @singleton = singleton
       @mid = mid
       raise unless f_args
       @f_args = f_args
-      raise unless f_args.is_a?(Hash)
+      raise unless f_args.is_a?(FormalArguments)
+      @f_arg_vtxs = f_arg_vtxs
+      raise unless f_arg_vtxs.is_a?(Hash)
       @block = block
       @ret = ret
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -409,7 +411,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :cpath, :singleton, :mid, :f_args, :block, :ret
+    attr_reader :cpath, :singleton, :mid, :f_args, :f_arg_vtxs, :block, :ret
 
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -441,8 +443,8 @@ module TypeProf::Core
         a_arg.get_vertex(genv, changes, param_map0)
       end
 
-      if a_args.size == @f_args.size
-        a_args.zip(@f_args.values) do |a_arg, f_arg|
+      if a_args.size == @f_arg_vtxs.size
+        a_args.zip(@f_arg_vtxs.values) do |a_arg, f_arg|
           changes.add_edge(a_arg, f_arg)
         end
       end
@@ -453,21 +455,56 @@ module TypeProf::Core
     end
 
     def call(changes, genv, call_node, positional_args, splat_flags, block, ret)
-      if positional_args.size == @f_args.size
-        if block && @block
-          changes.add_edge(block, @block)
-        end
-        # check arity
-        positional_args.zip(@f_args.values) do |a_arg, f_arg|
-          break unless f_arg
-          changes.add_edge(a_arg, f_arg)
-        end
-        changes.add_edge(@ret, ret)
+      if splat_flags.any?
+        # there is at least one splat actual argument
+        raise NotImplementedError
       else
-        meth = call_node.mid_code_range ? :mid_code_range : :code_range
-        changes.add_diagnostic(
-          TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ positional_args.size } for #{ @f_args.size })")
-        )
+        # there is no splat actual argument
+
+        # A. only req_positionals
+        # B. req_positionals + opt_positionals + post_positionals
+        # C. req_positionals + rest_positionals + post_positionals
+
+        lower = @f_args.req_positionals.size + @f_args.post_positionals.size
+        upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
+        if positional_args.size < lower || (upper && upper < positional_args.size)
+          meth = call_node.mid_code_range ? :mid_code_range : :code_range
+          err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+          changes.add_diagnostic(
+            TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
+          )
+          return
+        end
+
+        @f_args.req_positionals.each_with_index do |var, i|
+          changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+        end
+        @f_args.post_positionals.each_with_index do |var, i|
+          i -= @f_args.post_positionals.size
+          changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+        end
+        start_rest = @f_args.req_positionals.size
+        end_rest = positional_args.size - @f_args.post_positionals.size
+        i = 0
+        while i < @f_args.opt_positionals.size && start_rest < end_rest
+          f_arg = @f_arg_vtxs[@f_args.opt_positionals[i]]
+          changes.add_edge(positional_args[start_rest], f_arg)
+          i += 1
+          start_rest += 1
+        end
+
+        if start_rest < end_rest
+          if @f_args.rest_positionals
+            f_arg = @f_arg_vtxs[@f_args.rest_positionals]
+            (start_rest..end_rest-1).each do |i|
+              changes.add_edge(positional_args[i], f_arg)
+            end
+          end
+        end
+
+        changes.add_edge(block, @block) if @block && block
+
+        changes.add_edge(@ret, ret)
       end
     end
 
@@ -484,8 +521,22 @@ module TypeProf::Core
           end
         end
       end
-      s = []
-      s << "(#{ @f_args.values.map {|arg| Type.strip_parens(arg.show) }.join(", ") })" unless @f_args.empty?
+      args = []
+      @f_args.req_positionals.each do |var|
+        args << Type.strip_parens(@f_arg_vtxs[var].show)
+      end
+      @f_args.opt_positionals.each do |var|
+        args << ("?" + Type.strip_parens(@f_arg_vtxs[var].show))
+      end
+      if @f_args.rest_positionals
+        args << ("*" + Type.strip_parens(@f_arg_vtxs[@f_args.rest_positionals].show))
+      end
+      @f_args.post_positionals.each do |var|
+        args << Type.strip_parens(@f_arg_vtxs[var].show)
+      end
+      # TODO: keywords
+      args = args.join(", ")
+      s = args.empty? ? [] : ["(#{ args })"]
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
       s << "-> #{ @ret.show }"
       s.join(" ")
