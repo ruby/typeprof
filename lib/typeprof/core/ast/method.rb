@@ -34,6 +34,69 @@ module TypeProf::Core
       nil
     end
 
+    def self.parse_params(tbl, raw_args, lenv)
+      return [[], [], [], nil, [], [], [], [], nil, nil] unless raw_args
+
+      args = raw_args.children
+
+      req_positionals = tbl[0, args[0]]
+
+      # pre_init = args[1]
+
+      opt_positionals = []
+      opt_positional_defaults = []
+      opt = args[2]
+      while opt
+        raise unless opt.type == :OPT_ARG
+        lasgn, opt = opt.children
+        var, expr = lasgn.children
+        opt_positionals << var
+        opt_positional_defaults << AST.create_node(expr, lenv)
+      end
+
+      post_positionals = args[3] ? tbl[tbl.index(args[3]), args[4]] : []
+
+      # post_init = args[5]
+
+      rest_positionals = args[6]
+
+      req_keywords = []
+      opt_keywords = []
+      opt_keyword_defaults = []
+
+      kw = args[7]
+      while kw
+        raise unless kw.type == :KW_ARG
+        lasgn, kw = kw.children
+        var, expr = lasgn.children
+        if expr == :NODE_SPECIAL_REQUIRED_KEYWORD
+          req_keywords << var
+        else
+          opt_keywords << var
+          opt_keyword_defaults << AST.create_node(lasgn, lenv)
+        end
+      end
+
+      rest_keywords = nil
+      if args[8]
+        raise unless args[8].type == :DVAR
+        rest_keywords = args[8].children[0]
+      end
+
+      block_param = args[9]
+
+      [
+        req_positionals,
+        opt_positionals, opt_positional_defaults,
+        rest_positionals,
+        post_positionals,
+        req_keywords,
+        opt_keywords, opt_keyword_defaults,
+        rest_keywords,
+        block_param,
+      ]
+    end
+
     class DefNode < Node
       def initialize(raw_node, lenv, singleton, mid, raw_scope)
         super(raw_node, lenv)
@@ -46,10 +109,6 @@ module TypeProf::Core
         raise unless raw_scope.type == :SCOPE
         @tbl, raw_args, raw_body = raw_scope.children
 
-        # TODO: default expression for optional args
-        @args = raw_args.children
-        @args[2] = nil # temporarily delete OPT_ARG
-
         ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
         nlenv = LocalEnv.new(@lenv.path, ncref, {})
         if raw_body
@@ -60,21 +119,65 @@ module TypeProf::Core
           @body = NilNode.new(cr, nlenv)
         end
 
+        @req_positionals,
+        @opt_positionals, @opt_positional_defaults,
+        @rest_positionals,
+        @post_positionals,
+        @req_keywords,
+        @opt_keywords, @opt_keyword_defaults,
+        @rest_keywords,
+        @block_param = AST.parse_params(@tbl, raw_args, nlenv)
+
         @args_code_ranges = []
-        @args[0].times do |i|
+        @req_positionals.size.times do |i|
           pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
           @args_code_ranges << AST.find_sym_code_range(pos, @tbl[i])
+          # TODO: support opts, keywords, etc.
         end
 
         @reused = false
       end
 
-      attr_reader :singleton, :mid, :tbl, :args, :body, :rbs_method_type
+      attr_reader :singleton, :mid
+      attr_reader :tbl
+      attr_reader :req_positionals
+      attr_reader :opt_positionals, :opt_positional_defaults
+      attr_reader :rest_positionals
+      attr_reader :post_positionals
+      attr_reader :req_keywords
+      attr_reader :opt_keywords, :opt_keyword_defaults
+      attr_reader :rest_keywords
+      attr_reader :block_param
+      attr_reader :body
+      attr_reader :rbs_method_type
 
-      def subnodes = { body:, rbs_method_type: }
-      def attrs = { singleton:, mid:, tbl:, args: }
+      def subnodes = {
+        body:,
+        opt_positional_defaults:,
+        opt_keyword_defaults:,
+        rbs_method_type:,
+      }
+      def attrs = {
+        singleton:,
+        mid:,
+        tbl:,
+        req_positionals:,
+        opt_positionals:,
+        rest_positionals:,
+        post_positionals:,
+        req_keywords:,
+        opt_keywords:,
+        rest_keywords:,
+        block_param:,
+      }
 
       def define0(genv)
+        @opt_positional_defaults.each do |expr|
+          expr.define(genv)
+        end
+        @opt_keyword_defaults.each do |expr|
+          expr.define(genv)
+        end
         @rbs_method_type.define(genv) if @rbs_method_type
         if @prev_node
           # TODO: if possible, replace this node itself with @prev_node
@@ -106,23 +209,31 @@ module TypeProf::Core
             add_site(:mdecl, mdecl)
           end
 
-          # TODO: ユーザ定義 RBS があるときは検証する
-
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
           @body.lenv.locals[:"*ret"] = Vertex.new("method_ret", self)
 
-          f_args = []
-          block = nil
-          if @args
-            @args[0].times do |i|
-              f_args << @body.lenv.new_var(@tbl[i], self)
-            end
-            # &block
-            block = @body.lenv.new_var(:"*given_block", self)
-            @body.lenv.set_var(@args[9], block) if @args[9]
+          @opt_positionals.zip(@opt_positional_defaults) do |var, expr|
+            @body.lenv.locals[var] = expr.install(genv)
           end
+          @opt_keywords.zip(@opt_keyword_defaults) do |var, expr|
+            @body.lenv.locals[var] = expr.install(genv)
+          end
+
+          f_args = {}
+          @req_positionals.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
+          @opt_positionals.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
+          @post_positionals.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
+          @req_keywords.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
+          @opt_keywords.each {|var| f_args[var] = @body.lenv.new_var(var, self) }
+          f_args[@rest_positionals] = @body.lenv.new_var(@rest_positionals, self) if @rest_positionals
+          f_args[@rest_keywords] = @body.lenv.new_var(@rest_keywords, self) if @rest_keywords
+
+          block = @body.lenv.new_var(:"*given_block", self)
+          @body.lenv.set_var(@block_param, block) if @block_param
+
           @body.install(genv) if @body
+
           ret = Vertex.new("ret", self)
           each_return_node do |node|
             node.ret.add_edge(genv, ret)

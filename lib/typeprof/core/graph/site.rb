@@ -395,6 +395,7 @@ module TypeProf::Core
       @mid = mid
       raise unless f_args
       @f_args = f_args
+      raise unless f_args.is_a?(Hash)
       @block = block
       @ret = ret
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -441,7 +442,7 @@ module TypeProf::Core
       end
 
       if a_args.size == @f_args.size
-        a_args.zip(@f_args) do |a_arg, f_arg|
+        a_args.zip(@f_args.values) do |a_arg, f_arg|
           changes.add_edge(a_arg, f_arg)
         end
       end
@@ -457,7 +458,7 @@ module TypeProf::Core
           changes.add_edge(block, @block)
         end
         # check arity
-        positional_args.zip(@f_args) do |a_arg, f_arg|
+        positional_args.zip(@f_args.values) do |a_arg, f_arg|
           break unless f_arg
           changes.add_edge(a_arg, f_arg)
         end
@@ -484,7 +485,7 @@ module TypeProf::Core
         end
       end
       s = []
-      s << "(#{ @f_args.map {|arg| Type.strip_parens(arg.show) }.join(", ") })" unless @f_args.empty?
+      s << "(#{ @f_args.values.map {|arg| Type.strip_parens(arg.show) }.join(", ") })" unless @f_args.empty?
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
       s << "-> #{ @ret.show }"
       s.join(" ")
