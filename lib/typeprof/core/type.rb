@@ -1,7 +1,7 @@
 module TypeProf::Core
   class Type
     # This new method does memoize creation of types
-    #: (TypeProf::Core::GlobalEnv) -> instance
+    #: (TypeProf::Core::GlobalEnv, *untyped) -> instance
     def self.new(genv, *args)
       genv.type_table[[self] + args] ||= super(genv, *args)
     end

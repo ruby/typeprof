@@ -245,6 +245,7 @@ module TypeProf::Core
     end
 
     def match_arguments?(genv, changes, param_map, positional_args, splat_flags, method_type)
+      # TODO: handle a tuple as a splat argument?
       if splat_flags.any?
         return false unless method_type.rest_positionals
         method_type.required_positionals.size.times do |i|
@@ -308,11 +309,8 @@ module TypeProf::Core
       match_any_overload = false
       @rbs_method_types.each do |method_type|
         # rbs_func.optional_keywords
-        # rbs_func.optional_positionals
         # rbs_func.required_keywords
         # rbs_func.rest_keywords
-        # rbs_func.rest_positionals
-        # rbs_func.trailing_positionals
 
         param_map0 = param_map.dup
         if method_type.type_params
