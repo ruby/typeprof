@@ -451,13 +451,13 @@ module TypeProf::Core
       changes.add_site(:check_return, CheckReturnSite.new(@node, genv, @ret, f_ret))
     end
 
-    def call(changes, genv, call_node, a_args, block, ret)
-      if a_args.size == @f_args.size
+    def call(changes, genv, call_node, positional_args, splat_flags, block, ret)
+      if positional_args.size == @f_args.size
         if block && @block
           changes.add_edge(block, @block)
         end
         # check arity
-        a_args.zip(@f_args) do |a_arg, f_arg|
+        positional_args.zip(@f_args) do |a_arg, f_arg|
           break unless f_arg
           changes.add_edge(a_arg, f_arg)
         end
@@ -465,7 +465,7 @@ module TypeProf::Core
       else
         meth = call_node.mid_code_range ? :mid_code_range : :code_range
         changes.add_diagnostic(
-          TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ a_args.size } for #{ @f_args.size })")
+          TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ positional_args.size } for #{ @f_args.size })")
         )
       end
     end
@@ -540,7 +540,7 @@ module TypeProf::Core
           me.defs.each do |mdef|
             next if called_mdefs.include?(mdef)
             called_mdefs << mdef
-            mdef.call(changes, genv, @node, @positional_args, @block, @ret)
+            mdef.call(changes, genv, @node, @positional_args, @splat_flags, @block, @ret)
           end
         else
           pp me
@@ -553,7 +553,7 @@ module TypeProf::Core
             me.defs.each do |mdef|
               next if called_mdefs.include?(mdef)
               called_mdefs << mdef
-              mdef.call(changes, genv, @node, @positional_args, @block, @ret)
+              mdef.call(changes, genv, @node, @positional_args, @splat_flags, @block, @ret)
             end
           end
         end
