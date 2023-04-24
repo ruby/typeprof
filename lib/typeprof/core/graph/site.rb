@@ -198,12 +198,13 @@ module TypeProf::Core
   end
 
   class MethodDeclSite < Site
-    def initialize(node, genv, cpath, singleton, mid, rbs_method_types)
+    def initialize(node, genv, cpath, singleton, mid, method_types, overloading)
       super(node)
       @cpath = cpath
       @singleton = singleton
       @mid = mid
-      @rbs_method_types = rbs_method_types
+      @method_types = method_types
+      @overloading = overloading
       @ret = Source.new
 
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -214,7 +215,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :cpath, :singleton, :mid, :rbs_method_types, :ret
+    attr_reader :cpath, :singleton, :mid, :method_types, :overloading, :ret
 
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -285,7 +286,7 @@ module TypeProf::Core
 
     def resolve_overloads(changes, genv, node, param_map, positional_args, splat_flags, block, ret)
       match_any_overload = false
-      @rbs_method_types.each do |method_type|
+      @method_types.each do |method_type|
         # rbs_func.optional_keywords
         # rbs_func.required_keywords
         # rbs_func.rest_keywords
@@ -346,6 +347,7 @@ module TypeProf::Core
       super(node)
       @a_ret = a_ret
       @f_ret = f_ret
+      @a_ret.add_edge(genv, self)
       genv.add_run(self)
     end
 
@@ -408,43 +410,56 @@ module TypeProf::Core
       # TODO: support "| ..."
       decl = me.decls.to_a.first
       # TODO: support overload?
-      method_type = decl.rbs_method_types.first
+      method_type = decl.method_types.first
       _block = method_type.block
 
       mod = genv.resolve_cpath(@cpath)
       ty = @singleton ? Type::Singleton.new(genv, mod) : Type::Instance.new(genv, mod, []) # TODO: type params
       param_map0 = Type.default_param_map(genv, ty)
-      #method_type.type_params.map do |param|
-      #  param_map0[param.name] = Vertex.new("type-param:#{ param.name }", node)
-      #end
-      a_args = method_type.req_positionals.map do |a_arg|
-        a_arg.get_vertex(genv, changes, param_map0)
+
+      positional_args = []
+      splat_flags = []
+
+      method_type.req_positionals.each do |a_arg|
+        positional_args << a_arg.get_vertex(genv, changes, param_map0)
+        splat_flags << false
+      end
+      method_type.opt_positionals.each do |a_arg|
+        positional_args << a_arg.get_vertex(genv, changes, param_map0)
+        splat_flags << false
+      end
+      if method_type.rest_positionals
+        elems = method_type.rest_positionals.get_vertex(genv, changes, param_map0)
+        positional_args << Source.new(genv.gen_ary_type(elems))
+        splat_flags << true
+      end
+      method_type.post_positionals.each do |a_arg|
+        positional_args << a_arg.get_vertex(genv, changes, param_map0)
+        splat_flags << false
       end
 
-      if a_args.size == @f_arg_vtxs.size
-        a_args.zip(@f_arg_vtxs.values) do |a_arg, f_arg|
-          changes.add_edge(a_arg, f_arg)
-        end
+      if pass_positionals(changes, genv, nil, positional_args, splat_flags)
+        # TODO: block
+        f_ret = method_type.return_type.get_vertex(genv, changes, param_map0)
+        changes.add_site(:check_return, CheckReturnSite.new(@node, genv, @ret, f_ret))
       end
-
-      # TODO: block
-      f_ret = method_type.return_type.get_vertex(genv, changes, param_map0)
-      changes.add_site(:check_return, CheckReturnSite.new(@node, genv, @ret, f_ret))
     end
 
-    def call(changes, genv, call_node, positional_args, splat_flags, block, ret)
+    def pass_positionals(changes, genv, call_node, positional_args, splat_flags)
       if splat_flags.any?
         # there is at least one splat actual argument
 
         lower = @f_args.req_positionals.size + @f_args.post_positionals.size
         upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
         if upper && upper < positional_args.size
-          meth = call_node.mid_code_range ? :mid_code_range : :code_range
-          err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-          changes.add_diagnostic(
-            TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
-          )
-          return
+          if call_node
+            meth = call_node.mid_code_range ? :mid_code_range : :code_range
+            err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+            changes.add_diagnostic(
+              TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
+            )
+          end
+          return false
         end
 
         start_rest = [splat_flags.index(true), @f_args.req_positionals.size + @f_args.opt_positionals.size].min
@@ -492,12 +507,14 @@ module TypeProf::Core
         lower = @f_args.req_positionals.size + @f_args.post_positionals.size
         upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
         if positional_args.size < lower || (upper && upper < positional_args.size)
-          meth = call_node.mid_code_range ? :mid_code_range : :code_range
-          err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-          changes.add_diagnostic(
-            TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
-          )
-          return
+          if call_node
+            meth = call_node.mid_code_range ? :mid_code_range : :code_range
+            err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+            changes.add_diagnostic(
+              TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
+            )
+          end
+          return false
         end
 
         @f_args.req_positionals.each_with_index do |var, i|
@@ -526,10 +543,15 @@ module TypeProf::Core
           end
         end
       end
+      return true
+    end
 
-      changes.add_edge(block, @block) if @block && block
+    def call(changes, genv, call_node, positional_args, splat_flags, block, ret)
+      if pass_positionals(changes, genv, call_node, positional_args, splat_flags)
+        changes.add_edge(block, @block) if @block && block
 
-      changes.add_edge(@ret, ret)
+        changes.add_edge(@ret, ret)
+      end
     end
 
     def show

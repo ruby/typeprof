@@ -183,7 +183,7 @@ module TypeProf::Core
       def install0(genv)
         unless @prev_node
           if @rbs_method_type
-            mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type])
+            mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
             add_site(:mdecl, mdecl)
           end
 

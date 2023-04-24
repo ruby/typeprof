@@ -126,17 +126,18 @@ module TypeProf::Core
           method_type = overload.method_type
           AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
         end
+        @overloading = raw_decl.overloading
       end
 
-      attr_reader :mid, :singleton, :instance, :method_types
+      attr_reader :mid, :singleton, :instance, :method_types, :overloading
 
       def subnodes = { method_types: }
-      def attrs = { mid:, singleton:, instance: }
+      def attrs = { mid:, singleton:, instance:, overloading: }
 
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, singleton, @mid, @method_types)
+          mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, singleton, @mid, @method_types, @overloading)
           add_site(:mdecl, mdecl)
         end
         Source.new
