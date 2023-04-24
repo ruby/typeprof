@@ -222,28 +222,6 @@ module TypeProf::Core
       me.add_run_all_callsites(genv)
     end
 
-    def get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
-      vtxs = []
-
-      start_rest.upto(end_rest - 1) do |i|
-        a_arg = positional_args[i]
-        if splat_flags[i]
-          a_arg.types.each do |ty, _source|
-            ty = ty.base_type(genv)
-            if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
-              vtxs << ty.args[0]
-            else
-              "???"
-            end
-          end
-        else
-          vtxs << a_arg
-        end
-      end
-
-      vtxs.uniq
-    end
-
     def match_arguments?(genv, changes, param_map, positional_args, splat_flags, method_type)
       # TODO: handle a tuple as a splat argument?
       if splat_flags.any?
@@ -290,7 +268,7 @@ module TypeProf::Core
       end
 
       if start_rest < end_rest
-        vtxs = get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
+        vtxs = ActualArguments.get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
         while i < method_type.opt_positionals.size
           f_arg = method_type.opt_positionals[i].get_vertex(genv, changes, param_map)
           return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
@@ -457,13 +435,59 @@ module TypeProf::Core
     def call(changes, genv, call_node, positional_args, splat_flags, block, ret)
       if splat_flags.any?
         # there is at least one splat actual argument
-        raise NotImplementedError
+
+        lower = @f_args.req_positionals.size + @f_args.post_positionals.size
+        upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
+        if upper && upper < positional_args.size
+          meth = call_node.mid_code_range ? :mid_code_range : :code_range
+          err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+          changes.add_diagnostic(
+            TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
+          )
+          return
+        end
+
+        start_rest = [splat_flags.index(true), @f_args.req_positionals.size + @f_args.opt_positionals.size].min
+        end_rest = [splat_flags.rindex(true) + 1, positional_args.size - @f_args.post_positionals.size].max
+        rest_vtxs = ActualArguments.get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
+
+        @f_args.req_positionals.each_with_index do |var, i|
+          if i < start_rest
+            changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(vtx, @f_arg_vtxs[var])
+            end
+          end
+        end
+        @f_args.opt_positionals.each_with_index do |var, i|
+          i += @f_args.opt_positionals.size
+          if i < start_rest
+            changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(vtx, @f_arg_vtxs[var])
+            end
+          end
+        end
+        @f_args.post_positionals.each_with_index do |var, i|
+          i += positional_args.size - @f_args.post_positionals.size
+          if end_rest <= i
+            changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(vtx, @f_arg_vtxs[var])
+            end
+          end
+        end
+
+        if @f_args.rest_positionals
+          rest_vtxs.each do |vtx|
+            changes.add_edge(vtx, @f_arg_vtxs[@f_args.rest_positionals])
+          end
+        end
       else
         # there is no splat actual argument
-
-        # A. only req_positionals
-        # B. req_positionals + opt_positionals + post_positionals
-        # C. req_positionals + rest_positionals + post_positionals
 
         lower = @f_args.req_positionals.size + @f_args.post_positionals.size
         upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
@@ -501,11 +525,11 @@ module TypeProf::Core
             end
           end
         end
-
-        changes.add_edge(block, @block) if @block && block
-
-        changes.add_edge(@ret, ret)
       end
+
+      changes.add_edge(block, @block) if @block && block
+
+      changes.add_edge(@ret, ret)
     end
 
     def show

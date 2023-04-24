@@ -46,6 +46,30 @@ module TypeProf::Core
     end
   end
 
+  class ActualArguments
+    def self.get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
+      vtxs = []
+
+      start_rest.upto(end_rest - 1) do |i|
+        a_arg = positional_args[i]
+        if splat_flags[i]
+          a_arg.types.each do |ty, _source|
+            ty = ty.base_type(genv)
+            if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
+              vtxs << ty.args[0]
+            else
+              "???"
+            end
+          end
+        else
+          vtxs << a_arg
+        end
+      end
+
+      vtxs.uniq
+    end
+  end
+
   class Block
     def initialize(node, f_args, ret)
       @node = node
