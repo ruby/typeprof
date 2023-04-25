@@ -12,6 +12,6 @@ end
 
 ## assert
 class C
-  def foo: (Integer) -> untyped
+  def foo: (Integer) -> bot
   def bar: -> Integer
 end

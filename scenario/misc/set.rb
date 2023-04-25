@@ -9,6 +9,3 @@ end
 class Object
   def foo: -> Set[untyped]
 end
-
-## diagnostics
-(3,2)-(3,9): failed to resolve overloads

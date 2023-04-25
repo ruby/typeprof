@@ -14,6 +14,8 @@ module TypeProf::Core
         end
       end
 
+      return true if vtx.types.empty?
+
       @types.each do |ty, _source|
         next if vtx.types.include?(ty) # fast path
         return false unless ty.check_match(genv, changes, vtx)
