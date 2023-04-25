@@ -77,7 +77,7 @@ module TypeProf::Core
     end
 
     class Instance < Type
-      #: (GlobalEnv, ModuleEntity, Array[Vertex]) -> void
+      #: (GlobalEnv, ModuleEntity, ::Array[Vertex]) -> void
       def initialize(genv, mod, args)
         raise mod.class.to_s unless mod.is_a?(ModuleEntity)
         @mod = mod
@@ -152,7 +152,7 @@ module TypeProf::Core
     end
 
     class Array < Type
-      #: (GlobalEnv, Array[Vertex], Instance) -> void
+      #: (GlobalEnv, ::Array[Vertex], Instance) -> void
       def initialize(genv, elems, base_type)
         @elems = elems
         @base_type = base_type
@@ -201,7 +201,7 @@ module TypeProf::Core
     end
 
     class Hash < Type
-      #: (GlobalEnv, Array[Vertex], Instance) -> void
+      #: (GlobalEnv, ::Array[Vertex], Instance) -> void
       def initialize(genv, literal_pairs, base_type)
         @literal_pairs = literal_pairs
         @base_type = base_type
