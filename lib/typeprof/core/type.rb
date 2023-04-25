@@ -1,7 +1,7 @@
 module TypeProf::Core
   class Type
     # This new method does memoize creation of types
-    #: (TypeProf::Core::GlobalEnv, *untyped) -> instance
+    #: (GlobalEnv, *untyped) -> instance
     def self.new(genv, *args)
       genv.type_table[[self] + args] ||= super(genv, *args)
     end
@@ -23,6 +23,7 @@ module TypeProf::Core
     end
 
     class Singleton < Type
+      #: (GlobalEnv, ModuleEntity) -> void
       def initialize(genv, mod)
         raise unless mod.is_a?(ModuleEntity)
         # TODO: type_param
@@ -76,6 +77,7 @@ module TypeProf::Core
     end
 
     class Instance < Type
+      #: (GlobalEnv, ModuleEntity, Array[Vertex]) -> void
       def initialize(genv, mod, args)
         raise mod.class.to_s unless mod.is_a?(ModuleEntity)
         @mod = mod
@@ -150,6 +152,7 @@ module TypeProf::Core
     end
 
     class Array < Type
+      #: (GlobalEnv, Array[Vertex], Instance) -> void
       def initialize(genv, elems, base_type)
         @elems = elems
         @base_type = base_type
@@ -198,6 +201,7 @@ module TypeProf::Core
     end
 
     class Hash < Type
+      #: (GlobalEnv, Array[Vertex], Instance) -> void
       def initialize(genv, literal_pairs, base_type)
         @literal_pairs = literal_pairs
         @base_type = base_type
@@ -243,6 +247,7 @@ module TypeProf::Core
     end
 
     class Symbol < Type
+      #: (GlobalEnv, ::Symbol) -> void
       def initialize(genv, sym)
         @sym = sym
       end
@@ -288,6 +293,7 @@ module TypeProf::Core
     end
 
     class Var < Type
+      #: (GlobalEnv, ::Symbol, Vertex) -> void
       def initialize(genv, name, vtx)
         @name = name
         @vtx = vtx
