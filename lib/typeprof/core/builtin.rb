@@ -109,8 +109,10 @@ module TypeProf::Core
             changes.add_edge(val, ty.get_value(idx.lit))
           else
             # TODO: literal_pairs will not be updated
+            changes.add_edge(positional_args[0], ty.get_key)
             changes.add_edge(val, ty.get_value)
           end
+          changes.add_edge(val, ret)
         else
           #puts "??? hash_aset 1 #{ ty.object_id } #{ ty.inspect }"
         end

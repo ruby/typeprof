@@ -2,8 +2,8 @@ module TypeProf::Core
   class Changes
     def initialize(target)
       @target = target
-      @edges = Set[]
-      @new_edges = Set[]
+      @edges = []
+      @new_edges = []
       @sites = {}
       @new_sites = {}
       @diagnostics = []
@@ -47,6 +47,7 @@ module TypeProf::Core
     end
 
     def reinstall(genv)
+      @new_edges.uniq!
       @new_edges.each do |src, dst|
         src.add_edge(genv, dst) unless @edges.include?([src, dst])
       end
