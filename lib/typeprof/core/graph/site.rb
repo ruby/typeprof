@@ -2,6 +2,7 @@ module TypeProf::Core
   class Changes
     def initialize(target)
       @target = target
+      @covariant_types = {}
       @edges = []
       @new_edges = []
       @sites = {}
@@ -16,7 +17,7 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :diagnostics
+    attr_reader :diagnostics, :covariant_types
 
     def add_edge(src, dst)
       @new_edges << [src, dst]
@@ -288,19 +289,17 @@ module TypeProf::Core
     def resolve_overloads(changes, genv, node, param_map, positional_args, splat_flags, block, ret)
       match_any_overload = false
       @method_types.each do |method_type|
-        # rbs_func.optional_keywords
-        # rbs_func.required_keywords
-        # rbs_func.rest_keywords
-
         param_map0 = param_map.dup
+        param_map1 = param_map.dup
         if method_type.type_params
           method_type.type_params.map do |var|
             vtx = Vertex.new("ty-var-#{ var }", node)
-            param_map0[var] = Source.new(Type::Var.new(genv, var, vtx))
+            param_map0[var] = vtx
+            param_map1[var] = Source.new(Type::Var.new(genv, var, vtx))
           end
         end
 
-        next unless match_arguments?(genv, changes, param_map0, positional_args, splat_flags, method_type)
+        next unless match_arguments?(genv, changes, param_map1, positional_args, splat_flags, method_type)
 
         rbs_blk = method_type.block
         next if !!rbs_blk != !!block
@@ -309,7 +308,7 @@ module TypeProf::Core
           block.types.each do |ty, _source|
             case ty
             when Type::Proc
-              blk_f_ret = rbs_blk.return_type.get_vertex(genv, changes, param_map0)
+              blk_f_ret = rbs_blk.return_type.get_vertex(genv, changes, param_map1)
               changes.add_site(:check_return, CheckReturnSite.new(ty.block.node, genv, ty.block.ret, blk_f_ret))
 
               blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
@@ -324,13 +323,13 @@ module TypeProf::Core
             end
           end
         end
-        if method_type.type_params
-          method_type.type_params.map do |var|
-            var_vtx = param_map0[var].types.keys.first
-            param_map0[var] = var_vtx.vtx
-          end
+        # TODO: very ad-hoc
+        if changes.covariant_types.include?(method_type.return_type)
+          ret_vtx = changes.covariant_types[method_type.return_type]
+        else
+          ret_vtx = method_type.return_type.get_vertex(genv, changes, param_map0)
+          changes.covariant_types[method_type.return_type] = ret_vtx
         end
-        ret_vtx = method_type.return_type.get_vertex(genv, changes, param_map0)
         changes.add_edge(ret_vtx, ret)
         match_any_overload = true
       end
