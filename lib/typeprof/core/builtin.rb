@@ -65,6 +65,20 @@ module TypeProf::Core
       end
     end
 
+    def array_push(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
+      if positional_args.size == 1
+        case ty
+        when Type::Array
+          val = positional_args[0]
+          changes.add_edge(val, ty.get_elem(@genv))
+        else
+          puts "??? array_aset #{ ty.class }"
+        end
+      else
+        puts "??? array_aset #{ positional_args.size }"
+      end
+    end
+
     def hash_aref(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
       if positional_args.size == 1
         case ty
@@ -111,6 +125,7 @@ module TypeProf::Core
         proc_call: [[:Proc], false, :call],
         array_aref: [[:Array], false, :[]],
         array_aset: [[:Array], false, :[]=],
+        array_push: [[:Array], false, :<<],
         hash_aref: [[:Hash], false, :[]],
         hash_aset: [[:Hash], false, :[]=],
       }.each do |key, (cpath, singleton, mid)|
