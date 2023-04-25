@@ -292,7 +292,8 @@ module TypeProf::Core
         @var = raw_decl.name
       end
 
-      attr_reader :type
+      attr_reader :var
+
       def attrs = { var: }
 
       def get_vertex0(genv, changes, vtx, subst)
