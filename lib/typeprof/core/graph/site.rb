@@ -618,13 +618,17 @@ module TypeProf::Core
     def run0(genv, changes)
       edges = Set[]
       called_mdefs = Set[]
+      error_count = 0
       resolve(genv, changes) do |recv_ty, mid, me, param_map|
         if !me
           # TODO: undefined method error
-          meth = @node.mid_code_range ? :mid_code_range : :code_range
-          changes.add_diagnostic(
-            TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ recv_ty.show }##{ @mid }")
-          )
+          if error_count < 3
+            meth = @node.mid_code_range ? :mid_code_range : :code_range
+            changes.add_diagnostic(
+              TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ recv_ty.show }##{ @mid }")
+            )
+          end
+          error_count += 1
         elsif me.builtin
           # TODO: block? diagnostics?
           me.builtin[changes, @node, recv_ty, @positional_args, @splat_flags, @keyword_args, @ret]
@@ -659,6 +663,12 @@ module TypeProf::Core
       end
       edges.each do |src, dst|
         changes.add_edge(src, dst)
+      end
+      if error_count > 3
+        meth = @node.mid_code_range ? :mid_code_range : :code_range
+        changes.add_diagnostic(
+          TypeProf::Diagnostic.new(@node, meth, "... and other #{ error_count - 3 } errors")
+        )
       end
     end
 
