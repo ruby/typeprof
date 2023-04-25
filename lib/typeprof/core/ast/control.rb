@@ -330,7 +330,9 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new("or", self)
-        @e1.install(genv).add_edge(genv, ret)
+        v1 = @e1.install(genv)
+        v1 = NilFilter.new(genv, self, v1, false).next_vtx
+        v1.add_edge(genv, ret)
         @e2.install(genv).add_edge(genv, ret)
         ret
       end
