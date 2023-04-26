@@ -304,7 +304,8 @@ module TypeProf::Core
         next unless match_arguments?(genv, changes, param_map0, positional_args, splat_flags, method_type)
 
         rbs_blk = method_type.block
-        next if !!rbs_blk != !!block
+        next if method_type.block_required && !block
+        next if !rbs_blk && block
         if rbs_blk && block
           # rbs_blk_func.optional_keywords, ...
           block.types.each do |ty, _source|

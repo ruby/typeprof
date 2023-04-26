@@ -4,8 +4,10 @@ module TypeProf::Core
       def initialize(raw_decl, raw_type_params, raw_block, lenv)
         super(raw_decl, lenv)
         if raw_block
+          @block_required = raw_block.required
           @block = AST.create_rbs_func_type(raw_block, nil, nil, lenv)
         else
+          @block_required = false
           @block = nil
         end
 
@@ -32,7 +34,7 @@ module TypeProf::Core
         @return_type = AST.create_rbs_type(raw_decl.type.return_type, lenv)
       end
 
-      attr_reader :type_params, :block
+      attr_reader :type_params, :block, :block_required
       attr_reader :req_positionals
       attr_reader :post_positionals
       attr_reader :opt_positionals
@@ -47,7 +49,7 @@ module TypeProf::Core
         rest_positionals:,
         return_type:,
       }
-      def attrs = { type_params: }
+      def attrs = { type_params:, block_required: }
     end
 
     class TypeNode < Node
@@ -106,7 +108,6 @@ module TypeProf::Core
 
     class SIG_TY_BASE_ANY < TypeNode
       def covariant_vertex0(genv, changes, vtx, subst)
-        changes.add_edge(Source.new(genv.obj_type), vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
