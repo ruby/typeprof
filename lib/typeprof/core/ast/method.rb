@@ -105,7 +105,7 @@ module TypeProf::Core
         raise unless raw_scope.type == :SCOPE
         @tbl, raw_args, raw_body = raw_scope.children
 
-        ncref = CRef.new(lenv.cref.cpath, @singleton, lenv.cref)
+        ncref = CRef.new(lenv.cref.cpath, @singleton, @mid, lenv.cref)
         nlenv = LocalEnv.new(@lenv.path, ncref, {})
         if raw_body
           @body = AST.create_node(raw_body, nlenv)

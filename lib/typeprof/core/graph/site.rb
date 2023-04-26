@@ -670,7 +670,13 @@ module TypeProf::Core
     def resolve(genv, changes = nil, &blk)
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new(genv)
-        mid = @mid
+        if @mid == :"*super"
+          mid = @node.lenv.cref.mid
+          skip = true
+        else
+          mid = @mid
+          skip = false
+        end
         base_ty = ty.base_type(genv)
         mod = base_ty.mod
         param_map = Type.default_param_map(genv, ty)
@@ -684,16 +690,20 @@ module TypeProf::Core
         singleton = base_ty.is_a?(Type::Singleton)
         # TODO: resolution for module
         while mod
-          me = mod.get_method(singleton, mid)
-          changes.add_depended_method_entities(me) if changes
-          if !me.aliases.empty?
-            mid = me.aliases.values.first
-            redo
+          unless skip
+            me = mod.get_method(singleton, mid)
+            changes.add_depended_method_entities(me) if changes
+            if !me.aliases.empty?
+              mid = me.aliases.values.first
+              redo
+            end
+            if me && me.exist?
+              yield ty, @mid, me, param_map
+              break
+            end
           end
-          if me && me.exist?
-            yield ty, @mid, me, param_map
-            break
-          end
+
+          skip = false
 
           unless singleton
             break if resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)

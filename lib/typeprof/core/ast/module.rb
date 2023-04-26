@@ -14,7 +14,7 @@ module TypeProf::Core
           @tbl, args, raw_body = raw_scope.children
           raise unless args == nil
 
-          ncref = CRef.new(@static_cpath, true, lenv.cref)
+          ncref = CRef.new(@static_cpath, true, nil, lenv.cref)
           nlenv = LocalEnv.new(@lenv.path, ncref, {})
           @body = AST.create_node(raw_body, nlenv)
         else

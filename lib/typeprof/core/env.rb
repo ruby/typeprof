@@ -249,17 +249,14 @@ module TypeProf::Core
   end
 
   class CRef
-    def initialize(cpath, singleton, outer)
+    def initialize(cpath, singleton, mid, outer)
       @cpath = cpath
       @singleton = singleton
+      @mid = mid
       @outer = outer
     end
 
-    attr_reader :cpath, :singleton, :outer
-
-    def extend(cpath, singleton)
-      CRef.new(cpath, singleton, self)
-    end
+    attr_reader :cpath, :singleton, :mid, :outer
 
     def get_self(genv)
       if @singleton
@@ -269,6 +266,6 @@ module TypeProf::Core
       end
     end
 
-    Toplevel = self.new([], false, nil)
+    Toplevel = self.new([], false, nil, nil)
   end
 end

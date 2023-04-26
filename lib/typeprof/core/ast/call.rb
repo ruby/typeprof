@@ -75,7 +75,7 @@ module TypeProf::Core
           if @block_f_args
             @block_f_args[1] = nil # temporarily delete RubyVM::AST
           end
-          ncref = CRef.new(lenv.cref.cpath, false, lenv.cref)
+          ncref = CRef.new(lenv.cref.cpath, false, @mid, lenv.cref)
           nlenv = LocalEnv.new(@lenv.path, ncref, {})
           @block_body = AST.create_node(raw_block_body, nlenv)
         end
@@ -299,15 +299,12 @@ module TypeProf::Core
       end
     end
 
-    class SUPER < Node # CallNode
+    class SUPER < CallNode
       def initialize(raw_node, raw_call, raw_block, lenv)
-        # completely dummy
-        super(raw_node, lenv)
-      end
-
-      def install0(genv)
-        # completely dummy
-        Source.new(genv.nil_type)
+        raw_args, = raw_call.children
+        pos = TypeProf::CodePosition.new(raw_call.first_lineno, raw_call.first_column)
+        mid_code_range = AST.find_sym_code_range(pos, mid)
+        super(raw_node, raw_call, raw_block, lenv, nil, :"*super", mid_code_range, raw_args)
       end
 
       def dump0(dumper)
