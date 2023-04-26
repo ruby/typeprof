@@ -61,7 +61,8 @@ module TypeProf::LSP
 
     def target_path?(path)
       # XXX: hard-coded for dog-fooding
-      return false unless path.start_with?(File.dirname(__dir__))
+      return true if path.start_with?(File.join(File.dirname(File.dirname(File.dirname(__dir__))), "sig"))
+      return false if !path.start_with?(File.dirname(__dir__))
       return false if path.start_with?(File.join(File.dirname(__dir__), "lsp"))
       return true
     end

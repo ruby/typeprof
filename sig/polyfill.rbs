@@ -1,0 +1,3 @@
+class Object
+  def pretty_print_instance_variables: -> Array[Symbol]
+end
