@@ -15,5 +15,5 @@ end
 
 ## assert: test.rb
 class Object
-  def test: -> Integer
+  def test: -> (Integer | String)
 end

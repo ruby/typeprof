@@ -19,7 +19,12 @@ module TypeProf::Core
 
     attr_reader :diagnostics, :covariant_types
 
+    def new_vertex(genv, sig_type_node, subst)
+      @covariant_types[sig_type_node] ||= Vertex.new("rbs_type", sig_type_node)
+    end
+
     def add_edge(src, dst)
+      raise unless src.is_a?(BasicVertex)
       @new_edges << [src, dst]
     end
 
@@ -189,8 +194,7 @@ module TypeProf::Core
     attr_reader :node, :rbs_type, :ret
 
     def run0(genv, changes)
-      #pp @rbs_type
-      vtx = @rbs_type.get_vertex(genv, changes, {})
+      vtx = @rbs_type.covariant_vertex(genv, changes, {})
       changes.add_edge(vtx, @ret)
     end
 
@@ -249,11 +253,11 @@ module TypeProf::Core
       end
 
       method_type.req_positionals.each_with_index do |ty, i|
-        f_arg = ty.get_vertex(genv, changes, param_map)
+        f_arg = ty.contravariant_vertex(genv, changes, param_map)
         return false unless positional_args[i].check_match(genv, changes, f_arg)
       end
       method_type.post_positionals.each_with_index do |ty, i|
-        f_arg = ty.get_vertex(genv, changes, param_map)
+        f_arg = ty.contravariant_vertex(genv, changes, param_map)
         i -= method_type.post_positionals.size
         return false unless positional_args[i].check_match(genv, changes, f_arg)
       end
@@ -264,7 +268,7 @@ module TypeProf::Core
       i = 0
       while i < method_type.opt_positionals.size && start_rest < end_rest
         break if splat_flags[start_rest]
-        f_arg = method_type.opt_positionals[i].get_vertex(genv, changes, param_map)
+        f_arg = method_type.opt_positionals[i].contravariant_vertex(genv, changes, param_map)
         return false unless positional_args[start_rest].check_match(genv, changes, f_arg)
         i += 1
         start_rest += 1
@@ -273,12 +277,12 @@ module TypeProf::Core
       if start_rest < end_rest
         vtxs = ActualArguments.get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
         while i < method_type.opt_positionals.size
-          f_arg = method_type.opt_positionals[i].get_vertex(genv, changes, param_map)
+          f_arg = method_type.opt_positionals[i].contravariant_vertex(genv, changes, param_map)
           return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
           i += 1
         end
         if method_type.rest_positionals
-          f_arg = method_type.rest_positionals.get_vertex(genv, changes, param_map)
+          f_arg = method_type.rest_positionals.contravariant_vertex(genv, changes, param_map)
           return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
         end
       end
@@ -290,16 +294,14 @@ module TypeProf::Core
       match_any_overload = false
       @method_types.each do |method_type|
         param_map0 = param_map.dup
-        param_map1 = param_map.dup
         if method_type.type_params
           method_type.type_params.map do |var|
             vtx = Vertex.new("ty-var-#{ var }", node)
             param_map0[var] = vtx
-            param_map1[var] = Source.new(Type::Var.new(genv, var, vtx))
           end
         end
 
-        next unless match_arguments?(genv, changes, param_map1, positional_args, splat_flags, method_type)
+        next unless match_arguments?(genv, changes, param_map0, positional_args, splat_flags, method_type)
 
         rbs_blk = method_type.block
         next if !!rbs_blk != !!block
@@ -308,11 +310,11 @@ module TypeProf::Core
           block.types.each do |ty, _source|
             case ty
             when Type::Proc
-              blk_f_ret = rbs_blk.return_type.get_vertex(genv, changes, param_map1)
+              blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
               changes.add_site(:check_return, CheckReturnSite.new(ty.block.node, genv, ty.block.ret, blk_f_ret))
 
               blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
-                blk_a_arg.get_vertex(genv, changes, param_map0)
+                blk_a_arg.covariant_vertex(genv, changes, param_map0)
               end
               blk_f_args = ty.block.f_args
               if blk_a_args.size == blk_f_args.size # TODO: pass arguments for block
@@ -323,13 +325,7 @@ module TypeProf::Core
             end
           end
         end
-        # TODO: very ad-hoc
-        if changes.covariant_types.include?(method_type.return_type)
-          ret_vtx = changes.covariant_types[method_type.return_type]
-        else
-          ret_vtx = method_type.return_type.get_vertex(genv, changes, param_map0)
-          changes.covariant_types[method_type.return_type] = ret_vtx
-        end
+        ret_vtx = method_type.return_type.covariant_vertex(genv, changes, param_map0)
         changes.add_edge(ret_vtx, ret)
         match_any_overload = true
       end
@@ -421,26 +417,26 @@ module TypeProf::Core
       splat_flags = []
 
       method_type.req_positionals.each do |a_arg|
-        positional_args << a_arg.get_vertex(genv, changes, param_map0)
+        positional_args << a_arg.contravariant_vertex(genv, changes, param_map0)
         splat_flags << false
       end
       method_type.opt_positionals.each do |a_arg|
-        positional_args << a_arg.get_vertex(genv, changes, param_map0)
+        positional_args << a_arg.contravariant_vertex(genv, changes, param_map0)
         splat_flags << false
       end
       if method_type.rest_positionals
-        elems = method_type.rest_positionals.get_vertex(genv, changes, param_map0)
+        elems = method_type.rest_positionals.contravariant_vertex(genv, changes, param_map0)
         positional_args << Source.new(genv.gen_ary_type(elems))
         splat_flags << true
       end
       method_type.post_positionals.each do |a_arg|
-        positional_args << a_arg.get_vertex(genv, changes, param_map0)
+        positional_args << a_arg.contravariant_vertex(genv, changes, param_map0)
         splat_flags << false
       end
 
       if pass_positionals(changes, genv, nil, positional_args, splat_flags)
         # TODO: block
-        f_ret = method_type.return_type.get_vertex(genv, changes, param_map0)
+        f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
         changes.add_site(:check_return, CheckReturnSite.new(@node, genv, @ret, f_ret))
       end
     end
@@ -708,7 +704,7 @@ module TypeProf::Core
           if mod && mod.type_params
             param_map2 = Type.default_param_map(genv, ty)
             mod.type_params.zip(type_args || []) do |param, arg|
-              param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new
+              param_map2[param] = arg ? arg.covariant_vertex(genv, changes, param_map) : Source.new
             end
             param_map = param_map2
           end
@@ -725,7 +721,7 @@ module TypeProf::Core
         param_map2 = Type.default_param_map(genv, ty)
         if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
           inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
-            param_map2[param] = arg ? arg.get_vertex(genv, changes, param_map) : Source.new
+            param_map2[param] = arg ? arg.covariant_vertex(genv, changes, param_map) : Source.new
           end
         end
 

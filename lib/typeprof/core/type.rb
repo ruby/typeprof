@@ -8,7 +8,7 @@ module TypeProf::Core
 
     def self.strip_parens(s)
       #s =~ /\A\((.*)\)\z/ ? $1 : s
-      s.start_with?("(") && s.end_with?(")") ? s[1..-2] : s
+      s.start_with?("(") && s.end_with?(")") ? s[1..-2] || raise : s
     end
 
     def self.default_param_map(genv, ty)
@@ -121,7 +121,7 @@ module TypeProf::Core
                     subst2[param] = vtx
                   end
                   super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
-                    args2 << arg.get_vertex(genv, changes, subst2)
+                    args2 << arg.covariant_vertex(genv, changes, subst2)
                   end
                 end
                 mod = super_mod

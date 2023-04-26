@@ -51,63 +51,105 @@ module TypeProf::Core
     end
 
     class TypeNode < Node
-      def get_vertex(genv, changes, subst)
+      def covariant_vertex(genv, changes, subst)
+        vtx = changes.new_vertex(genv, self, subst)
+        covariant_vertex0(genv, changes, vtx, subst)
+        vtx
+      end
+
+      def contravariant_vertex(genv, changes, subst)
         vtx = Vertex.new("rbs_type", self)
-        get_vertex0(genv, changes, vtx, subst)
+        contravariant_vertex0(genv, changes, vtx, subst)
         vtx
       end
     end
 
     class SIG_TY_BASE_BOOL < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(Source.new(genv.true_type, genv.false_type), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.true_type, genv.false_type).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_NIL < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(Source.new(genv.nil_type), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.nil_type).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_SELF < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(subst[:"*self"], vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         subst[:"*self"].add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_VOID < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(Source.new(genv.obj_type), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.obj_type).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_ANY < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(Source.new(genv.obj_type), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.obj_type).add_edge(genv, vtx) # TODO
       end
     end
 
     class SIG_TY_BASE_TOP < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        # TODO
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         # TODO
       end
     end
 
     class SIG_TY_BASE_BOTTOM < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(Source.new(Type::Bot.new(genv)), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(Type::Bot.new(genv)).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_INSTANCE < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(subst[:"*instance"], vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         subst[:"*instance"].add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_BASE_CLASS < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(subst[:"*class"], vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         subst[:"*class"].add_edge(genv, vtx)
       end
     end
@@ -149,11 +191,19 @@ module TypeProf::Core
         @args.each {|arg| arg.undefine(genv) }
       end
 
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_depended_static_read(@static_ret.last)
         tae = @static_ret.last.type_alias_entity
         if tae && tae.exist?
-          tae.type.get_vertex0(genv, changes, vtx, subst)
+          tae.type.covariant_vertex0(genv, changes, vtx, subst)
+        end
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
+        tae = @static_ret.last.type_alias_entity
+        if tae && tae.exist?
+          tae.type.contravariant_vertex0(genv, changes, vtx, subst)
         end
         # TODO: report?
       end
@@ -169,15 +219,25 @@ module TypeProf::Core
 
       def subnodes = { types: }
 
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
         @types.each do |type|
-          type.get_vertex0(genv, changes, vtx, subst)
+          type.covariant_vertex0(genv, changes, vtx, subst)
+        end
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
+        @types.each do |type|
+          type.contravariant_vertex0(genv, changes, vtx, subst)
         end
       end
     end
 
     class SIG_TY_INTERSECTION < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        #raise NotImplementedError
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
       end
     end
@@ -212,7 +272,16 @@ module TypeProf::Core
         end
       end
 
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        # TODO: type.args
+        changes.add_depended_static_read(@static_ret.last)
+        cpath = @static_ret.last.cpath
+        return unless cpath
+        mod = genv.resolve_cpath(cpath)
+        changes.add_edge(Source.new(Type::Singleton.new(genv, mod)), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         # TODO: type.args
         changes.add_depended_static_read(@static_ret.last)
         cpath = @static_ret.last.cpath
@@ -256,12 +325,21 @@ module TypeProf::Core
         @args.each {|arg| arg.undefine(genv) }
       end
 
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_depended_static_read(@static_ret.last)
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
-        args = @args.map {|arg| arg.get_vertex(genv, changes, subst) }
+        args = @args.map {|arg| arg.covariant_vertex(genv, changes, subst) }
+        changes.add_edge(Source.new(Type::Instance.new(genv, mod, args)), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
+        cpath = @static_ret.last.cpath
+        return unless cpath
+        mod = genv.resolve_cpath(cpath)
+        args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
         Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
       end
     end
@@ -275,10 +353,20 @@ module TypeProf::Core
       attr_reader :types
       def subnodes = { types: }
 
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        unified_elem = Vertex.new("ary-unified", self) # TODO
+        elems = @types.map do |type|
+          nvtx = type.covariant_vertex(genv, changes, subst)
+          nvtx.add_edge(genv, unified_elem)
+          nvtx
+        end
+        changes.add_edge(Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         unified_elem = Vertex.new("ary-unified", self)
         elems = @types.map do |type|
-          nvtx = type.get_vertex(genv, changes, subst)
+          nvtx = type.contravariant_vertex(genv, changes, subst)
           nvtx.add_edge(genv, unified_elem)
           nvtx
         end
@@ -296,9 +384,14 @@ module TypeProf::Core
 
       def attrs = { var: }
 
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
         raise "unknown type variable: #{ @var }" unless subst[@var]
-        subst[@var].add_edge(genv, vtx)
+        changes.add_edge(subst[@var], vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
+        raise "unknown type variable: #{ @var }" unless subst[@var]
+        Source.new(Type::Var.new(genv, @var, subst[@var])).add_edge(genv, vtx)
       end
     end
 
@@ -311,8 +404,13 @@ module TypeProf::Core
       attr_reader :type
       def subnodes = { type: }
 
-      def get_vertex0(genv, changes, vtx, subst)
-        @type.get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        @type.covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(Source.new(genv.nil_type), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
+        @type.contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.nil_type).add_edge(genv, vtx)
       end
     end
@@ -326,8 +424,8 @@ module TypeProf::Core
       attr_reader :lit
       def attrs = { lit: }
 
-      def get_vertex0(genv, changes, vtx, subst)
-        ty = case @lit
+      def get_type(genv)
+        case @lit
         when ::Symbol
           Type::Symbol.new(genv, @lit)
         when ::Integer then genv.int_type
@@ -337,18 +435,33 @@ module TypeProf::Core
         else
           raise "unknown RBS literal: #{ @lit.inspect }"
         end
-        Source.new(ty).add_edge(genv, vtx)
+      end
+
+      def covariant_vertex0(genv, changes, vtx, subst)
+        changes.add_edge(Source.new(get_type(genv)), vtx)
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
+        Source.new(get_type(genv)).add_edge(genv, vtx)
       end
     end
 
     class SIG_TY_PROC < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        raise NotImplementedError
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         raise NotImplementedError
       end
     end
 
     class SIG_TY_INTERFACE < TypeNode
-      def get_vertex0(genv, changes, vtx, subst)
+      def covariant_vertex0(genv, changes, vtx, subst)
+        #raise NotImplementedError
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
       end
     end

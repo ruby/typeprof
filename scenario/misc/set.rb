@@ -7,5 +7,5 @@ end
 
 ## assert
 class Object
-  def foo: -> Set[untyped]
+  def foo: -> Set[Integer]
 end

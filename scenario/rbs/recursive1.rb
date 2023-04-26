@@ -12,5 +12,5 @@ end
 ## assert
 class Foo
   def initialize: -> []
-  def foo: -> Array[untyped]
+  def foo: -> Array[Integer]
 end
