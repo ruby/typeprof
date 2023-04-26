@@ -82,6 +82,10 @@ module TypeProf::Core
         end
         s << "end"
       end
+
+      def modified_vars(tbl, vars)
+        # skip
+      end
     end
 
     class MODULE < ModuleNode

@@ -226,6 +226,10 @@ module TypeProf::Core
       def dump0(dumper)
         "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
+
+      def modified_vars(tbl, vars)
+        vars << self.var if tbl.include?(self.var)
+      end
     end
 
     class MASGN < Node

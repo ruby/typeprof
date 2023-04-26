@@ -242,26 +242,8 @@ module TypeProf::Core
       end
 
       def modified_vars(tbl, vars)
-        case self
-        when LASGN
-          vars << self.var if tbl.include?(self.var)
-        when ModuleNode, DefNode
-          # skip
-        when CallNode
-          subnodes.each do |key, subnode|
-            next unless subnode
-            if key == :block_body
-              subnode.modified_vars(tbl - self.block_tbl, vars)
-            elsif subnode.is_a?(AST::Node)
-              subnode.modified_vars(tbl, vars)
-            else
-              subnode.each {|n| n.modified_vars(tbl, vars) }
-            end
-          end
-        else
-          each_subnode do |subnode|
-            subnode.modified_vars(tbl, vars)
-          end
+        each_subnode do |subnode|
+          subnode.modified_vars(tbl, vars)
         end
       end
 

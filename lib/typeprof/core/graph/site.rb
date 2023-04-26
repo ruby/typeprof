@@ -620,7 +620,7 @@ module TypeProf::Core
           if error_count < 3
             meth = @node.mid_code_range ? :mid_code_range : :code_range
             changes.add_diagnostic(
-              TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ recv_ty.show }##{ @mid }")
+              TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ recv_ty.show }##{ mid }")
             )
           end
           error_count += 1
@@ -667,7 +667,7 @@ module TypeProf::Core
       end
     end
 
-    def resolve(genv, changes = nil, &blk)
+    def resolve(genv, changes, &blk)
       @recv.types.each do |ty, _source|
         next if ty == Type::Bot.new(genv)
         if @mid == :"*super"
@@ -698,7 +698,7 @@ module TypeProf::Core
               redo
             end
             if me && me.exist?
-              yield ty, @mid, me, param_map
+              yield ty, mid, me, param_map
               break
             end
           end
@@ -720,7 +720,7 @@ module TypeProf::Core
           end
         end
 
-        yield ty, @mid, nil, param_map unless mod
+        yield ty, mid, nil, param_map unless mod
       end
     end
 

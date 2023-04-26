@@ -203,7 +203,7 @@ module TypeProf::Core
               end
             end
           when CallSite
-            site.resolve(genv) do |_ty, mid, me, _param_map|
+            site.resolve(genv, nil) do |_ty, mid, me, _param_map|
               next unless me
               me.defs.each do |mdef|
                 defs << [mdef.node.lenv.path, mdef.node.code_range]
@@ -221,7 +221,7 @@ module TypeProf::Core
         if sites
           sites.each do |site|
             if site.is_a?(CallSite)
-              site.resolve(genv) do |ty, mid, me, _param_map|
+              site.resolve(genv, nil) do |ty, mid, me, _param_map|
                 if me && !me.defs.empty?
                   me.defs.each do |mdef|
                     return "#{ ty.show }##{ mid } : #{ mdef.show }"

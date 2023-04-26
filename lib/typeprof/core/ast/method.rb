@@ -251,6 +251,10 @@ module TypeProf::Core
         s << @body.dump(dumper).gsub(/^/, "  ") + "\n" if @body
         s << "end"
       end
+
+      def modified_vars(tbl, vars)
+        # skip
+      end
     end
 
     class DEFN < DefNode

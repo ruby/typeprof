@@ -214,6 +214,19 @@ module TypeProf::Core
         end
         s
       end
+
+      def modified_vars(tbl, vars)
+        subnodes.each do |key, subnode|
+          next unless subnode
+          if key == :block_body
+            subnode.modified_vars(tbl - self.block_tbl, vars)
+          elsif subnode.is_a?(AST::Node)
+            subnode.modified_vars(tbl, vars)
+          else
+            subnode.each {|n| n.modified_vars(tbl, vars) }
+          end
+        end
+      end
     end
 
     class CALL < CallNode
