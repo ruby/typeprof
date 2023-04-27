@@ -30,7 +30,7 @@ module TypeProf::Core
   end
 
   class ModuleEntity
-    def initialize(cpath, outer_module)
+    def initialize(cpath, outer_module = self)
       @cpath = cpath
 
       @module_decls = Set[]

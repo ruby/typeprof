@@ -8,8 +8,7 @@ module TypeProf::Core
       @run_queue = []
       @run_queue_set = Set[]
 
-      @mod_object = ModuleEntity.new([], nil)
-      @mod_object.instance_variable_set(:@outer_module, @mod_object)
+      @mod_object = ModuleEntity.new([])
       @mod_object.inner_modules[:Object] = @mod_object
 
       @mod_basic_object = resolve_cpath([:BasicObject])
