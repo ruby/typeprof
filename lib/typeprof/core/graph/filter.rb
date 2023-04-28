@@ -9,8 +9,8 @@ module TypeProf::Core
     def initialize(genv, node, prev_vtx, allow_nil)
       @node = node
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
-      prev_vtx.add_edge(genv, self)
       @allow_nil = allow_nil
+      prev_vtx.add_edge(genv, self)
     end
 
     attr_reader :show_name, :node, :next_vtx, :allow_nil

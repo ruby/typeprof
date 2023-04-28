@@ -22,6 +22,7 @@ module TypeProf::Core
       ProgramNode.new(raw_scope, lenv)
     end
 
+    #: (untyped, TypeProf::Core::LocalEnv) -> TypeProf::Core::AST::Node
     def self.create_node(raw_node, lenv)
       case raw_node.type
 

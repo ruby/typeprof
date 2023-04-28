@@ -133,6 +133,7 @@ module TypeProf::Core
 
       def install0(genv)
         vars = []
+        vars << @cond.var if @cond.is_a?(LVAR)
         @cond.modified_vars(@lenv.locals.keys, vars)
         @body.modified_vars(@lenv.locals.keys, vars)
         vars.uniq!
@@ -145,11 +146,19 @@ module TypeProf::Core
         end
 
         @cond.install(genv)
+        if @cond.is_a?(LVAR)
+          nvtx_then = NilFilter.new(genv, self, old_vtxs[@cond.var], self.is_a?(UNTIL)).next_vtx
+          @lenv.set_var(@cond.var, nvtx_then)
+        end
         @body.install(genv)
 
         vars.each do |var|
           @lenv.get_var(var).add_edge(genv, old_vtxs[var])
           @lenv.set_var(var, old_vtxs[var])
+        end
+        if @cond.is_a?(LVAR)
+          nvtx_then = NilFilter.new(genv, self, old_vtxs[@cond.var], !self.is_a?(UNTIL)).next_vtx
+          @lenv.set_var(@cond.var, nvtx_then)
         end
 
         Source.new(genv.nil_type)

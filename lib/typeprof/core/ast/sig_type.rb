@@ -111,7 +111,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new(genv.obj_type).add_edge(genv, vtx) # TODO
+        #Source.new(genv.obj_type).add_edge(genv, vtx) # TODO
       end
     end
 
