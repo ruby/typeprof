@@ -15,7 +15,7 @@ module TypeProf::Core
 
     class BranchNode < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_cond, raw_then, raw_else = raw_node.children
         @cond = AST.create_node(raw_cond, lenv)
         @then = raw_then ? AST.create_node(raw_then, lenv) : nil
@@ -121,7 +121,7 @@ module TypeProf::Core
 
     class LoopNode < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_cond, raw_body, _do_while_flag = raw_node.children
         @cond = AST.create_node(raw_cond, lenv)
         @body = AST.create_node(raw_body, lenv)
@@ -179,7 +179,7 @@ module TypeProf::Core
 
     class BREAK < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_arg, = raw_node.children
         @arg = raw_arg ? AST.create_node(raw_arg, lenv) : nil
       end
@@ -200,7 +200,7 @@ module TypeProf::Core
 
     class NEXT < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_arg, = raw_node.children
         @arg = raw_arg ? AST.create_node(raw_arg, lenv) : NilNode.new(code_range, lenv)
       end
@@ -221,7 +221,7 @@ module TypeProf::Core
 
     class REDO < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
       end
 
       def install0(genv)
@@ -236,7 +236,7 @@ module TypeProf::Core
 
     class CASE < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_pivot, raw_when = raw_node.children
         @pivot = AST.create_node(raw_pivot, lenv)
         @whens = []
@@ -303,7 +303,7 @@ module TypeProf::Core
 
     class AND < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_e1, raw_e2 = raw_node.children
         @e1 = AST.create_node(raw_e1, lenv)
         @e2 = AST.create_node(raw_e2, lenv)
@@ -327,7 +327,7 @@ module TypeProf::Core
 
     class OR < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_e1, raw_e2 = raw_node.children
         @e1 = AST.create_node(raw_e1, lenv)
         @e2 = AST.create_node(raw_e2, lenv)
@@ -353,7 +353,7 @@ module TypeProf::Core
 
     class RETURN < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_arg, = raw_node.children
         @arg = raw_arg ? AST.create_node(raw_arg, lenv) : NilNode.new(code_range, lenv)
       end
@@ -374,7 +374,7 @@ module TypeProf::Core
 
     class RESCUE < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_body, raw_rescue = raw_node.children
         @body = AST.create_node(raw_body, lenv)
         @cond_lists = []
@@ -443,7 +443,7 @@ module TypeProf::Core
 
     class ENSURE < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_body, raw_ensure = raw_node.children
         @body = AST.create_node(raw_body, lenv)
         @ensure = AST.create_node(raw_ensure, lenv)

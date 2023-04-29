@@ -2,7 +2,7 @@ module TypeProf::Core
   class AST
     class GVAR < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         var, = raw_node.children
         @var = var
         @iv = nil
@@ -29,7 +29,7 @@ module TypeProf::Core
 
     class GASGN < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         var, raw_rhs = raw_node.children
         @var = var
         @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
@@ -68,12 +68,12 @@ module TypeProf::Core
 
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
-        super
+        super(genv)
       end
 
-      def hover(pos)
+      def hover(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
-        super
+        super(pos, &blk)
       end
 
       def dump0(dumper)
@@ -83,7 +83,7 @@ module TypeProf::Core
 
     class IVAR < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         var, = raw_node.children
         @var = var
         @iv = nil
@@ -110,7 +110,7 @@ module TypeProf::Core
 
     class IASGN < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         var, raw_rhs = raw_node.children
         @var = var
         @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
@@ -152,12 +152,12 @@ module TypeProf::Core
 
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
-        super
+        super(genv)
       end
 
-      def hover(pos)
+      def hover(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
-        super
+        super(pos, &blk)
       end
 
       def dump0(dumper)
@@ -167,7 +167,7 @@ module TypeProf::Core
 
     class LVAR < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         var, = raw_node.children
         @var = var
       end
@@ -191,7 +191,7 @@ module TypeProf::Core
 
     class LASGN < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         var, raw_rhs = raw_node.children
         @var = var
         @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
@@ -218,9 +218,9 @@ module TypeProf::Core
         val
       end
 
-      def hover(pos)
+      def hover(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
-        super
+        super(pos, &blk)
       end
 
       def dump0(dumper)
@@ -234,7 +234,7 @@ module TypeProf::Core
 
     class MASGN < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         rhs, lhss = raw_node.children
         @rhs = AST.create_node(rhs, lenv)
         raise if lhss.type != :LIST # TODO: ARGSPUSH, ARGSCAT
@@ -259,9 +259,9 @@ module TypeProf::Core
         site.ret
       end
 
-      def hover(pos)
+      def hover(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
-        super
+        super(pos, &blk)
       end
 
       def dump0(dumper)
@@ -271,7 +271,7 @@ module TypeProf::Core
 
     class OP_ASGN_OR < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_read, _raw_op, raw_write = raw_node.children
         @read = AST.create_node(raw_read, lenv)
         @write = AST.create_node(raw_write, lenv)

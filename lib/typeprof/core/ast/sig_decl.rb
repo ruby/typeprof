@@ -10,7 +10,7 @@ module TypeProf::Core
 
     class SigModuleNode < Node
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
         # TODO: decl.type_params
         # TODO: decl.super_class.args
@@ -55,7 +55,7 @@ module TypeProf::Core
 
       def uninstall0(genv)
         @mod_val.remove_edge(genv, @static_ret.first.vtx)
-        super
+        super(genv)
       end
     end
 
@@ -64,7 +64,7 @@ module TypeProf::Core
 
     class SIG_CLASS < SigModuleNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         superclass = raw_decl.super_class
         if superclass
           name = superclass.name
@@ -88,7 +88,7 @@ module TypeProf::Core
       end
 
       def define0(genv)
-        const_reads = super
+        const_reads = super(genv)
         if @superclass_cpath
           @superclass_args.each {|arg| arg.define(genv) }
           const_read = BaseConstRead.new(genv, @superclass_cpath.first, @superclass_toplevel ? CRef::Toplevel : @lenv.cref)
@@ -104,7 +104,7 @@ module TypeProf::Core
       end
 
       def undefine0(genv)
-        super
+        super(genv)
         if @static_ret
           @static_ret[1..].each do |const_read|
             const_read.destroy(genv)
@@ -118,7 +118,7 @@ module TypeProf::Core
 
     class SIG_DEF < Node
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @mid = raw_decl.name
         @singleton = raw_decl.singleton?
         @instance = raw_decl.instance?
@@ -146,7 +146,7 @@ module TypeProf::Core
 
     class SIG_INCLUDE < Node
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
@@ -188,7 +188,7 @@ module TypeProf::Core
 
     class SIG_ALIAS < Node
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @new_mid = raw_decl.new_name
         @old_mid = raw_decl.old_name
         @singleton = raw_decl.singleton?
@@ -220,7 +220,7 @@ module TypeProf::Core
 
     class SIG_CONST < Node
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
         @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
@@ -250,13 +250,13 @@ module TypeProf::Core
 
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
-        super
+        super(genv)
       end
     end
 
     class SIG_TYPE_ALIAS < Node
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
         @name = @cpath.pop
         @type = AST.create_rbs_type(raw_decl.type, lenv)
@@ -284,7 +284,7 @@ module TypeProf::Core
 
     class SIG_GVAR < Node
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @var = raw_decl.name
         @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
@@ -314,7 +314,7 @@ module TypeProf::Core
 
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
-        super
+        super(genv)
       end
     end
   end

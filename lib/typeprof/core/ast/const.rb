@@ -39,7 +39,7 @@ module TypeProf::Core
 
     class COLON2 < ConstNode
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         cbase_raw, @cname = raw_node.children
         @cbase = AST.create_node(cbase_raw, lenv)
       end
@@ -59,7 +59,7 @@ module TypeProf::Core
 
       def install0(genv)
         @cbase.install(genv)
-        super
+        super(genv)
       end
 
       def dump0(dumper)
@@ -69,7 +69,7 @@ module TypeProf::Core
 
     class CDECL < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         children = raw_node.children
         if children.size == 2
           # C = expr
@@ -115,7 +115,7 @@ module TypeProf::Core
 
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
-        super
+        super(genv)
       end
 
       def dump0(dumper)

@@ -176,7 +176,7 @@ module TypeProf::Core
           @body = @prev_node.body
           @prev_node.instance_variable_set(:@reused, true)
         else
-          super
+          super(genv)
         end
       end
 
@@ -241,7 +241,7 @@ module TypeProf::Core
             break
           end
         end
-        super
+        super(pos, &blk)
       end
 
       def dump0(dumper)
@@ -307,7 +307,7 @@ module TypeProf::Core
           me.remove_alias(self)
           me.add_run_all_callsites(genv)
         end
-        super
+        super(genv)
       end
 
       def dump0(dumper)

@@ -157,7 +157,7 @@ module TypeProf::Core
 
     class SIG_TY_ALIAS < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         name = raw_decl.name
         @cpath = name.namespace.path
         @toplevel = name.namespace.absolute?
@@ -212,7 +212,7 @@ module TypeProf::Core
 
     class SIG_TY_UNION < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @types = raw_decl.types.map {|type| AST.create_rbs_type(type, lenv) }
       end
 
@@ -245,7 +245,7 @@ module TypeProf::Core
 
     class SIG_TY_SINGLETON < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
@@ -294,7 +294,7 @@ module TypeProf::Core
 
     class SIG_TY_INSTANCE < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
@@ -347,7 +347,7 @@ module TypeProf::Core
 
     class SIG_TY_TUPLE < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @types = raw_decl.types.map {|type| AST.create_rbs_type(type, lenv) }
       end
 
@@ -377,7 +377,7 @@ module TypeProf::Core
 
     class SIG_TY_VAR < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @var = raw_decl.name
       end
 
@@ -398,7 +398,7 @@ module TypeProf::Core
 
     class SIG_TY_OPTIONAL < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
 
@@ -418,7 +418,7 @@ module TypeProf::Core
 
     class SIG_TY_LITERAL < TypeNode
       def initialize(raw_decl, lenv)
-        super
+        super(raw_decl, lenv)
         @lit = raw_decl.literal
       end
 

@@ -2,7 +2,7 @@ module TypeProf::Core
   class AST
     class BLOCK < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_stmts = raw_node.children
         @stmts = raw_stmts.map do |n|
           if n
@@ -61,7 +61,7 @@ module TypeProf::Core
 
     class BEGIN_ < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raise NotImplementedError if raw_node.children != [nil]
       end
 
@@ -86,7 +86,7 @@ module TypeProf::Core
 
     class DEFINED < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         raw_arg, = raw_node.children
         @arg = AST.create_node(raw_arg, lenv)
       end

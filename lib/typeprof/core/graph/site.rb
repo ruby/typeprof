@@ -810,7 +810,7 @@ module TypeProf::Core
 
     def destroy(genv)
       genv.resolve_cpath(@cpath).ivar_reads.delete(self)
-      super
+      super(genv)
     end
 
     def run0(genv, changes)

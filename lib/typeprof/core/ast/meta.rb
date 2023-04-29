@@ -2,7 +2,7 @@ module TypeProf::Core
   class AST
     class META_INCLUDE < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         _mid, raw_args = raw_node.children
         @args = raw_args.children.compact.map do |raw_arg|
           AST.create_node(raw_arg, lenv)
@@ -34,7 +34,7 @@ module TypeProf::Core
           end
           arg.undefine(genv)
         end
-        super
+        super(genv)
       end
 
       def install0(genv)
@@ -49,7 +49,7 @@ module TypeProf::Core
 
     class META_ATTR_READER < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         _mid, raw_args = raw_node.children
         @args = []
         raw_args.children.compact.each do |raw_arg|
@@ -94,7 +94,7 @@ module TypeProf::Core
 
     class META_ATTR_ACCESSOR < Node
       def initialize(raw_node, lenv)
-        super
+        super(raw_node, lenv)
         _mid, raw_args = raw_node.children
         @args = []
         raw_args.children.compact.each do |raw_arg|

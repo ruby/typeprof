@@ -67,7 +67,7 @@ module TypeProf::Core
       end
 
       def uninstall0(genv)
-        super
+        super(genv)
         if @static_cpath
           @mod_val.remove_edge(genv, @mod_cdef.vtx)
         end
@@ -117,17 +117,17 @@ module TypeProf::Core
           const = @superclass_cpath.define(genv)
           const.followers << genv.resolve_cpath(@static_cpath) if const
         end
-        super
+        super(genv)
       end
 
       def undefine0(genv)
-        super
+        super(genv)
         @superclass_cpath.undefine(genv) if @superclass_cpath
       end
 
       def install0(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
-        super
+        super(genv)
       end
 
       def dump0(dumper)
