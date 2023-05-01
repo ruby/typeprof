@@ -202,9 +202,8 @@ module TypeProf::Core
 
       def dump(dumper)
         s = dump0(dumper)
-        sites = @sites # annotation
-        if sites
-          if !sites.empty? # want to avoid this nesting
+        if @sites
+          if !@sites.empty? # want to avoid this nesting
             s += "\e[32m:#{ @sites.to_a.join(",") }\e[m"
           end
         end
