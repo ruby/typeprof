@@ -318,11 +318,11 @@ module TypeProf::LSP
     def run
       case @params[:command]
       when "typeprof.enableSignature"
-        @server.sinature_enabled = true
+        @server.signature_enabled = true
         @server.send_request("workspace/codeLens/refresh")
         respond(nil)
       when "typeprof.disableSignature"
-        @server.sinature_enabled = true
+        @server.signature_enabled = false
         @server.send_request("workspace/codeLens/refresh")
         respond(nil)
       when "typeprof.createPrototypeRBS"

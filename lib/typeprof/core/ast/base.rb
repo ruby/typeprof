@@ -12,7 +12,11 @@ module TypeProf::Core
         @reused = false
       end
 
-      attr_reader :lenv, :prev_node, :static_ret, :ret, :sites
+      attr_reader :lenv
+      attr_reader :prev_node
+      attr_reader :static_ret
+      attr_reader :ret
+      attr_reader :sites
 
       def subnodes = {}
       def attrs = {}
