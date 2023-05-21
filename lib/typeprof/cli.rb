@@ -118,9 +118,9 @@ module TypeProf
         lsp_options: lsp_options,
       )
 
-    rescue OptionParser::InvalidOption
+    rescue OptionParser::InvalidOption, OptionParser::MissingArgument
       puts $!
-      exit
+      exit 1
     end
   end
 end
