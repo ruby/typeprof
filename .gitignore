@@ -2,7 +2,6 @@ coverage.dump
 coverage.info
 coverage/
 stackprof*.dump
-testbed/goodcheck
 testbed/diff-lcs
 pkg/
 *.log
