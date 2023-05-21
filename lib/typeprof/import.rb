@@ -31,7 +31,7 @@ module TypeProf
           lock_path = RBS::Collection::Config.to_lockfile_path(collection_path)
           if lock_path.exist?
             collection_lock = RBS::Collection::Config::Lockfile.from_lockfile(lockfile_path: lock_path, data: YAML.load_file(lock_path.to_s))
-            collection_lock.gems.each_value {|gem| @loaded_gems << gem["name"] }
+            collection_lock.gems.each_value {|gem| @loaded_gems << gem[:name] }
             loader.add_collection(collection_lock)
           else
             raise "Please execute 'rbs collection install'"
