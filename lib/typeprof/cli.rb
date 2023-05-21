@@ -23,7 +23,8 @@ module TypeProf
       gem_rbs_features = []
       show_version = false
       max_sec = max_iter = nil
-      collection_path = RBS::Collection::Config::PATH
+      collection_path = nil
+      no_collection = false
 
       load_path_ext = []
 
@@ -35,8 +36,8 @@ module TypeProf
       opt.on("--version", "Display typeprof version") { show_version = true }
       opt.on("-I DIR", "Add DIR to the load/require path") {|v| load_path_ext << v }
       opt.on("-r FEATURE", "Require RBS of the FEATURE gem") {|v| gem_rbs_features << v }
-      opt.on("--collection PATH", "File path of collection configuration") { |v| collection_path = v }
-      opt.on("--no-collection", "Ignore collection configuration") { collection_path = nil }
+      opt.on("--collection PATH", "File path of collection configuration") { |v| collection_path = Pathname(v) }
+      opt.on("--no-collection", "Ignore collection configuration") { no_collection = true }
       opt.on("--lsp", "LSP mode") {|v| options[:lsp] = true }
 
       opt.separator ""
@@ -103,6 +104,14 @@ module TypeProf
         exit if show_version
         raise OptionParser::InvalidOption.new("lsp options with non-lsp mode")
       end
+
+      if !no_collection && collection_path && !collection_path.exist?
+        exit if show_version
+        raise OptionParser::InvalidOption.new("collection path not found (#{collection_path})")
+      end
+
+      collection_path ||= RBS::Collection::Config::PATH
+      collection_path = nil if no_collection
 
       ConfigData.new(
         rb_files: rb_files,
