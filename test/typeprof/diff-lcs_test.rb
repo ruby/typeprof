@@ -15,8 +15,6 @@ module TypeProf
 
         actual = TestRun.run(name, show_errors: false, show_untyped: false)
 
-        # No special reason to choose these two classes (Goodcheck::Analyzer and Trigger)
-
         assert(actual =~ /^module Diff\n  module LCS\n(?:(?:    .*?\n|\n)*)^  end\n^end\n/)
         assert_include($&, "def self.diff: (Array[T] | LCS seq1, Array[T] seq2, ?nil callbacks) ?{ (Array[Change] | Change | ContextChange) -> nil } -> (Array[(Array[Change?] | Change | ContextChange)?])")
 

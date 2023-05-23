@@ -380,6 +380,7 @@ module TypeProf
             }
           })
 
+          @ctx.assert_equal(@rx.pop[:method], "typeprof.enableToggleButton")
           @ctx.assert_equal(@rx.pop[:method], "workspace/codeLens/refresh")
           @ctx.assert_equal(@rx.pop[:method], "textDocument/publishDiagnostics")
 

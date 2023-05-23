@@ -56,7 +56,7 @@ module RBSWiki
 
 ### Troubleshooting
 
-* Note that in bash, `~/.bashrc` and `~/.bash_profile` do not contain scripts that assume that pseudo-TTYs are available (such as the `bind` command). 
+* Note that in bash, `~/.bashrc` and `~/.bash_profile` do not contain scripts that assume that pseudo-TTYs are available (such as the `bind` command).
   * TypeProf for IDE will run `typeprof --version` at startup to parse STDOUT and make sure the proper version is running.
   * If the `.bashrc` contains a command that requires a pseudo-TTY, such as the `bind` command, unexpected error messages will be output to STDOUT, and the LSP server will stop because it fails to parse the execution results of the `typeprof` command.
 
@@ -79,7 +79,7 @@ TypeProf for IDE is extremely preliminary! Please give it a try with a warm hear
 
 ## How to develop TypeProf for IDE
 
-See [../vscode/development.md](../vscode/development.md).
+See the [TypeProf VSCode document](https://github.com/ruby/vscode-typeprof/blob/master/development.md).
 
 ## See also
 

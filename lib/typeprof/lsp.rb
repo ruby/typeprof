@@ -352,6 +352,7 @@ module TypeProf
           }
         end
 
+        @server.send_notification('typeprof.enableToggleButton')
         @server.send_request("workspace/codeLens/refresh")
 
         @server.send_notification(
@@ -827,6 +828,13 @@ module TypeProf
       end
     end
 
+    module MessageType
+      Error = 1
+      Warning = 2
+      Info = 3
+      Log = 4
+    end
+
     class Server
       class Exit < StandardError; end
 
@@ -861,6 +869,20 @@ module TypeProf
           end
         end
       rescue Exit
+      rescue => e
+        msg = "Tyeprof fatal error: #{e.message}"
+        send_notification(
+          'window/showMessage',
+          type: MessageType::Error,
+          message: msg
+        )
+        send_notification(
+          'window/logMessage',
+          type: MessageType::Error,
+          message: "#{msg} Backtrace: #{e.backtrace}"
+        )
+        send_notification('typeprof.showErrorStatus')
+        retry
       end
 
       def send_response(**msg)
