@@ -458,11 +458,26 @@ module TypeProf::Core
     end
 
     class SIG_TY_INTERFACE < TypeNode
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        # Very ad-hoc!!!
+        if raw_decl.name.name == :_ToAry
+          @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
+        else
+          @args = nil
+        end
+      end
+
       def covariant_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
+        if @args
+          mod = genv.resolve_cpath([:Array])
+          args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
+          Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
+        end
         #raise NotImplementedError
       end
     end
