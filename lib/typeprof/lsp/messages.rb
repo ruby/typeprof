@@ -104,7 +104,7 @@ module TypeProf::LSP
             ],
           },
           #typeDefinitionProvider: true,
-          #referencesProvider: true,
+          referencesProvider: true,
         },
         serverInfo: {
           name: "typeprof",
@@ -210,7 +210,31 @@ module TypeProf::LSP
     end
   end
 
-  # textDocument/references request
+  class Message::TextDocument::References < Message
+    METHOD = "textDocument/references" # request
+    def run
+      @params => {
+        textDocument: { uri: },
+        position: pos,
+      }
+      text = @server.open_texts[uri]
+      unless text
+        respond(nil)
+        return
+      end
+      callsites = @server.core.references(text.path, TypeProf::CodePosition.from_lsp(pos))
+      if callsites
+        respond(callsites.map do |path, code_range|
+          {
+            uri: "file://" + path,
+            range: code_range.to_lsp,
+          }
+        end)
+      else
+        respond(nil)
+      end
+    end
+  end
 
   class Message::TextDocument::Hover < Message
     METHOD = "textDocument/hover" # request

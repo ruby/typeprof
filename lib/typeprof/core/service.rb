@@ -220,6 +220,26 @@ module TypeProf::Core
       return defs
     end
 
+    def references(path, pos)
+      refs = []
+      @text_nodes[path].hover(pos) do |node|
+        if node.is_a?(AST::DEFN) && node.sites[:mdef]
+          mdefs = node.sites[:mdef]
+          mdefs.each do |mdef|
+            me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
+            if me
+              me.callsites.each do |callsite|
+                node = callsite.node
+                refs << [node.lenv.path, node.code_range]
+              end
+            end
+          end
+        end
+      end
+      refs = refs.uniq
+      return refs.empty? ? nil : refs
+    end
+
     def hover(path, pos)
       @text_nodes[path].hover(pos) do |node|
         sites = node.sites[:class_new] || node.sites[:main]
