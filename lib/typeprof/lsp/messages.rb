@@ -96,6 +96,9 @@ module TypeProf::LSP
           codeLensProvider: {
             resolveProvider: false,
           },
+          renameProvider: {
+            prepareProvider: false,
+          },
           executeCommandProvider: {
             commands: [
               "typeprof.createPrototypeRBS",
@@ -326,8 +329,38 @@ module TypeProf::LSP
 
   # textDocument/signatureHelp request
 
-  # textDocument/rename request
   # textDocument/prepareRename request
+
+  class Message::TextDocument::Rename < Message
+    METHOD = "textDocument/rename" # request
+    def run
+      @params => {
+        textDocument: { uri: },
+        position: pos,
+        newName:,
+      }
+      text = @server.open_texts[uri]
+      unless text
+        respond(nil)
+        return
+      end
+      renames = @server.core.rename(text.path, TypeProf::CodePosition.from_lsp(pos))
+      if renames
+        changes = {}
+        renames.each do |path, cr|
+          (changes["file://" + path] ||= []) << {
+            range: cr.to_lsp,
+            newText: newName,
+          }
+        end
+        respond({
+          changes:,
+        })
+      else
+        respond(nil)
+      end
+    end
+  end
 
   module Message::Workspace
   end

@@ -240,6 +240,47 @@ module TypeProf::Core
       return refs.empty? ? nil : refs
     end
 
+    def rename(path, pos)
+      mdefs = []
+      @text_nodes[path].hover(pos) do |node|
+        sites = node.sites[:main]
+        if sites
+          sites.each do |site|
+            if site.is_a?(CallSite)
+              site.resolve(genv, nil) do |_ty, mid, me, _param_map|
+                next unless me
+                me.defs.each do |mdef|
+                  mdefs << mdef
+                end
+              end
+            end
+          end
+        elsif node.is_a?(AST::DEFN) && node.sites[:mdef]
+          node.sites[:mdef].each do |mdef|
+            mdefs << mdef
+          end
+        end
+      end
+      targets = []
+      mdefs.each do |mdef|
+        # TODO: support all method definition nodes rather than defn/defs (e.g., attr_reader, alias, SIG_DEF, etc.)
+        targets << [mdef.node.lenv.path, mdef.node.mid_code_range]
+        me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
+        if me
+          me.callsites.each do |callsite|
+            # TODO: if it is a super node, we need to change its method name too
+            targets << [callsite.node.lenv.path, callsite.node.mid_code_range]
+          end
+        end
+      end
+      if targets.all? {|_path, cr| cr }
+        targets
+      else
+        # TODO: report an error
+        nil
+      end
+    end
+
     def hover(path, pos)
       @text_nodes[path].hover(pos) do |node|
         sites = node.sites[:class_new] || node.sites[:main]

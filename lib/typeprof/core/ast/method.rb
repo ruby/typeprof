@@ -94,13 +94,14 @@ module TypeProf::Core
     end
 
     class DefNode < Node
-      def initialize(raw_node, lenv, singleton, mid, raw_scope)
+      def initialize(raw_node, lenv, singleton, mid, mid_code_range, raw_scope)
         super(raw_node, lenv)
 
         @rbs_method_type = AST.get_rbs_comment_before(code_range.first, lenv)
 
         @singleton = singleton
         @mid = mid
+        @mid_code_range = mid_code_range
 
         raise unless raw_scope.type == :SCOPE
         @tbl, raw_args, raw_body = raw_scope.children
@@ -128,7 +129,7 @@ module TypeProf::Core
         @reused = false
       end
 
-      attr_reader :singleton, :mid
+      attr_reader :singleton, :mid, :mid_code_range
       attr_reader :tbl
       attr_reader :f_args
       attr_reader :opt_positional_defaults
@@ -145,6 +146,7 @@ module TypeProf::Core
       def attrs = {
         singleton:,
         mid:,
+        mid_code_range:,
         tbl:,
         f_args:,
       }
@@ -260,7 +262,11 @@ module TypeProf::Core
     class DEFN < DefNode
       def initialize(raw_node, lenv)
         mid, raw_scope = raw_node.children
-        super(raw_node, lenv, false, mid, raw_scope)
+
+        pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
+        mid_range = AST.find_sym_code_range(pos, mid)
+
+        super(raw_node, lenv, false, mid, mid_range, raw_scope)
       end
     end
 
@@ -271,7 +277,10 @@ module TypeProf::Core
         unless @recv.is_a?(SELF)
           puts "???"
         end
-        super(raw_node, lenv, true, mid, raw_scope)
+
+        mid_range = AST.find_sym_code_range(@recv.code_range.last, mid)
+
+        super(raw_node, lenv, true, mid, mid_range, raw_scope)
       end
     end
 

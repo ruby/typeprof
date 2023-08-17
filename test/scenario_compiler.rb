@@ -147,4 +147,11 @@ output = core.references(#{ @file.dump }, TypeProf::CodePosition.new(#{ @pos.joi
 assert_equal(exp = %q\0DATA\0.rstrip, output.map {|file, cr| file + ":" + cr.to_s }.join(\"\\n\"))
     END
   end
+
+  def handle_rename
+    <<-END
+output = core.rename(#{ @file.dump }, TypeProf::CodePosition.new(#{ @pos.join(",") }))
+assert_equal(exp = %q\0DATA\0.rstrip, output.map {|file, cr| file + ":" + cr.to_s }.join(\"\\n\"))
+    END
+  end
 end
