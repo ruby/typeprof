@@ -177,6 +177,7 @@ module TypeProf::Core
           @body.copy_code_ranges
           @body = @prev_node.body
           @prev_node.instance_variable_set(:@reused, true)
+          @static_ret
         else
           super(genv)
         end
