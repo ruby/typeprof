@@ -1,5 +1,5 @@
 def number?(ty)
-  %w[integer float].include?(ty).then { puts 1 }
+  %w[integer float].include?(ty).then { nil }
 end
 number?('string')
 
