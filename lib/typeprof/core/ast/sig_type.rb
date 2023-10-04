@@ -468,6 +468,9 @@ module TypeProf::Core
         end
       end
 
+      attr_reader :args
+      def subnodes = { args: }
+
       def covariant_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
       end
