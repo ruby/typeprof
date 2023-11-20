@@ -489,7 +489,7 @@ module TypeProf::Core
 
       def show
         s = @type.show
-        if @type.is_a?(SIG_INTERSECTION) || @type.is_a?(SIG_UNION)
+        if @type.is_a?(SIG_TY_INTERSECTION) || @type.is_a?(SIG_TY_UNION)
           s = "(#{ s })"
         end
         s + "?"
