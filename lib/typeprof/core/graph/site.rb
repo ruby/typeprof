@@ -337,6 +337,23 @@ module TypeProf::Core
         )
       end
     end
+
+    def show
+      @method_types.map do |method_type|
+        args = []
+        method_type.req_positionals.each do |arg|
+          args << arg.show
+        end
+        # TODO
+        method_type.opt_positionals
+        method_type.rest_positionals
+        method_type.post_positionals
+        # method_type.req_keywords
+        # method_type.req_keywords
+        s = args.empty? ? "-> " : "(#{ args.join(", ") }) -> "
+        s += method_type.return_type.show
+      end.join(" | ")
+    end
   end
 
   class CheckReturnSite < Site

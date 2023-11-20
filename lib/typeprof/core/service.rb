@@ -288,9 +288,16 @@ module TypeProf::Core
           sites.each do |site|
             if site.is_a?(CallSite)
               site.resolve(genv, nil) do |ty, mid, me, _param_map|
-                if me && !me.defs.empty?
-                  me.defs.each do |mdef|
-                    return "#{ ty.show }##{ mid } : #{ mdef.show }"
+                if me
+                  if !me.decls.empty?
+                    me.decls.each do |mdecl|
+                      return "#{ ty.show }##{ mid } : #{ mdecl.show }"
+                    end
+                  end
+                  if !me.defs.empty?
+                    me.defs.each do |mdef|
+                      return "#{ ty.show }##{ mid } : #{ mdef.show }"
+                    end
                   end
                 end
               end

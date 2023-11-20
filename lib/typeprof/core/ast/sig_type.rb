@@ -74,6 +74,10 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.true_type, genv.false_type).add_edge(genv, vtx)
       end
+
+      def show
+        "bool"
+      end
     end
 
     class SIG_TY_BASE_NIL < TypeNode
@@ -83,6 +87,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.nil_type).add_edge(genv, vtx)
+      end
+
+      def show
+        "nil"
       end
     end
 
@@ -94,6 +102,10 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         subst[:"*self"].add_edge(genv, vtx)
       end
+
+      def show
+        "self"
+      end
     end
 
     class SIG_TY_BASE_VOID < TypeNode
@@ -104,6 +116,10 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.obj_type).add_edge(genv, vtx)
       end
+
+      def show
+        "void"
+      end
     end
 
     class SIG_TY_BASE_ANY < TypeNode
@@ -112,6 +128,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         #Source.new(genv.obj_type).add_edge(genv, vtx) # TODO
+      end
+
+      def show
+        "untyped"
       end
     end
 
@@ -123,6 +143,10 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         # TODO
       end
+
+      def show
+        "top"
+      end
     end
 
     class SIG_TY_BASE_BOTTOM < TypeNode
@@ -132,6 +156,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(Type::Bot.new(genv)).add_edge(genv, vtx)
+      end
+
+      def show
+        "bot"
       end
     end
 
@@ -143,6 +171,10 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         subst[:"*instance"].add_edge(genv, vtx)
       end
+
+      def show
+        "instance"
+      end
     end
 
     class SIG_TY_BASE_CLASS < TypeNode
@@ -152,6 +184,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         subst[:"*class"].add_edge(genv, vtx)
+      end
+
+      def show
+        "class"
       end
     end
 
@@ -208,12 +244,16 @@ module TypeProf::Core
         end
         # TODO: report?
       end
+
+      def show
+        "(...alias...)"
+      end
     end
 
     class SIG_TY_UNION < TypeNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
-        @types = raw_decl.types.map {|type| AST.create_rbs_type(type, lenv) }
+        @types = (raw_decl.types || []).map {|type| AST.create_rbs_type(type, lenv) }
       end
 
       attr_reader :types
@@ -231,6 +271,10 @@ module TypeProf::Core
           type.contravariant_vertex0(genv, changes, vtx, subst)
         end
       end
+
+      def show
+        @types.map {|ty| ty.show }.join(" | ")
+      end
     end
 
     class SIG_TY_INTERSECTION < TypeNode
@@ -240,6 +284,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
+      end
+
+      def show
+        "(...intersection...)"
       end
     end
 
@@ -290,6 +338,14 @@ module TypeProf::Core
         mod = genv.resolve_cpath(cpath)
         Source.new(Type::Singleton.new(genv, mod)).add_edge(genv, vtx)
       end
+
+      def show
+        s = "::#{ @cpath.join("::") }"
+        if !@args.empty?
+          s << "[...]"
+        end
+        "singleton(#{ s })"
+      end
     end
 
     class SIG_TY_INSTANCE < TypeNode
@@ -297,7 +353,7 @@ module TypeProf::Core
         super(raw_decl, lenv)
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
-        @toplevel = name.namespace.absolute?
+        @toplevel = name.namespace.absolute? # "::Foo" or "Foo"
         @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
       end
 
@@ -343,6 +399,14 @@ module TypeProf::Core
         args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
         Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
       end
+
+      def show
+        s = "::#{ @cpath.join("::") }"
+        if !@args.empty?
+          s << "[...]"
+        end
+        s
+      end
     end
 
     class SIG_TY_TUPLE < TypeNode
@@ -373,6 +437,10 @@ module TypeProf::Core
         end
         Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))).add_edge(genv, vtx)
       end
+
+      def show
+        "[#{ @types.map {|ty| ty.show }.join(", ") }]"
+      end
     end
 
     class SIG_TY_VAR < TypeNode
@@ -394,6 +462,10 @@ module TypeProf::Core
         raise "unknown type variable: #{ @var }" unless subst[@var]
         Source.new(Type::Var.new(genv, @var, subst[@var])).add_edge(genv, vtx)
       end
+
+      def show
+        "#{ @var }"
+      end
     end
 
     class SIG_TY_OPTIONAL < TypeNode
@@ -413,6 +485,14 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         @type.contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(genv.nil_type).add_edge(genv, vtx)
+      end
+
+      def show
+        s = @type.show
+        if @type.is_a?(SIG_INTERSECTION) || @type.is_a?(SIG_UNION)
+          s = "(#{ s })"
+        end
+        s + "?"
       end
     end
 
@@ -445,6 +525,10 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         Source.new(get_type(genv)).add_edge(genv, vtx)
       end
+
+      def show
+        @lit.inspect
+      end
     end
 
     class SIG_TY_PROC < TypeNode
@@ -454,6 +538,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         raise NotImplementedError
+      end
+
+      def show
+        "(...proc...)"
       end
     end
 
@@ -482,6 +570,10 @@ module TypeProf::Core
           Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
         end
         #raise NotImplementedError
+      end
+
+      def show
+        "(...interface...)"
       end
     end
   end
