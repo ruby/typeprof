@@ -220,6 +220,26 @@ module TypeProf::Core
       return defs
     end
 
+    def type_definitions(path, pos)
+      @text_nodes[path].hover(pos) do |node|
+        if node.ret
+          ty_defs = []
+          node.ret.types.map do |ty, _source|
+            if ty.is_a?(Type::Instance)
+              ty.mod.module_decls.each do |mdecl|
+                # TODO
+              end
+              ty.mod.module_defs.each do |mdef_node|
+                ty_defs << [mdef_node.lenv.path, mdef_node.code_range]
+              end
+            end
+          end
+          return ty_defs
+        end
+      end
+      []
+    end
+
     def references(path, pos)
       refs = []
       @text_nodes[path].hover(pos) do |node|

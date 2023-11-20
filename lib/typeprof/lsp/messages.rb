@@ -87,6 +87,7 @@ module TypeProf::LSP
           },
           hoverProvider: true,
           definitionProvider: true,
+          typeDefinitionProvider: true,
           completionProvider: {
             triggerCharacters: [".", ":"],
           },
@@ -200,6 +201,32 @@ module TypeProf::LSP
         return
       end
       defs = @server.core.definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
+      if defs.empty?
+        respond(nil)
+      else
+        respond(defs.map do |path, code_range|
+          {
+            uri: "file://" + path,
+            range: code_range.to_lsp,
+          }
+        end)
+      end
+    end
+  end
+
+  class Message::TextDocument::TypeDefinition < Message
+    METHOD = "textDocument/typeDefinition" # request
+    def run
+      @params => {
+        textDocument: { uri: },
+        position: pos,
+      }
+      text = @server.open_texts[uri]
+      unless text
+        respond(nil)
+        return
+      end
+      defs = @server.core.type_definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
       if defs.empty?
         respond(nil)
       else
