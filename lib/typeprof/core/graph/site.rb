@@ -708,6 +708,7 @@ module TypeProf::Core
         singleton = base_ty.is_a?(Type::Singleton)
         # TODO: resolution for module
         while mod
+          # pp [mod, singleton]
           unless skip
             me = mod.get_method(singleton, mid)
             changes.add_depended_method_entities(me) if changes
@@ -749,7 +750,7 @@ module TypeProf::Core
         param_map2 = Type.default_param_map(genv, ty)
         if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
           inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
-            param_map2[param] = arg ? arg.covariant_vertex(genv, changes, param_map) : Source.new
+            param_map2[param] = arg && changes ? arg.covariant_vertex(genv, changes, param_map) : Source.new
           end
         end
 
