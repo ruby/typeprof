@@ -386,7 +386,7 @@ module TypeProf::Core
     end
 
     def pretty_print(q)
-      q.text "#<ModuleEntity[::#{ @cpath.empty? ? "Object" : @cpath.join("::") }]"
+      q.text "#<ModuleEntity[::#{ @cpath.empty? ? "Object" : @cpath.join("::") }]>"
     end
   end
 
