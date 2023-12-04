@@ -6,6 +6,7 @@ module TypeProf::Core
       @edges = []
       @new_edges = []
       @sites = {}
+      @sites_to_remove = []
       @new_sites = {}
       @diagnostics = []
       @new_diagnostics = []
@@ -29,6 +30,8 @@ module TypeProf::Core
     end
 
     def add_site(key, site)
+      # Reanalysis may require immediate destruction of the old Site.
+      @sites_to_remove << @new_sites[key] if @new_sites[key]
       @new_sites[key] = site
     end
 
@@ -63,6 +66,9 @@ module TypeProf::Core
       @edges, @new_edges = @new_edges, @edges
       @new_edges.clear
 
+      @sites_to_remove.each do |site|
+        site.destroy(genv)
+      end
       @sites.each do |key, site|
         site.destroy(genv)
         site.node.remove_site(key, site)
@@ -71,6 +77,7 @@ module TypeProf::Core
         site.node.add_site(key, site)
       end
       @sites, @new_sites = @new_sites, @sites
+      @sites_to_remove.clear
       @new_sites.clear
 
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
@@ -318,8 +325,12 @@ module TypeProf::Core
                 blk_a_arg.covariant_vertex(genv, changes, param_map0)
               end
               blk_f_args = ty.block.f_args
-              if blk_a_args.size == blk_f_args.size # TODO: pass arguments for block
+              # TODO: lambda?
+              if blk_a_args.size == 1 && blk_f_args.size >= 2
+                changes.add_site(:block_args_splat, MAsgnSite.new(ty.block.node, genv, blk_a_args[0], blk_f_args))
+              else
                 blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
+                  next unless blk_f_arg
                   changes.add_edge(blk_a_arg, blk_f_arg)
                 end
               end
@@ -363,6 +374,11 @@ module TypeProf::Core
       @f_ret = f_ret
       @a_ret.add_edge(genv, self)
       genv.add_run(self)
+    end
+
+    def destroy(genv)
+      @a_ret.remove_edge(genv, self) # TODO: Is this really needed?
+      super(genv)
     end
 
     def ret = @a_ret
@@ -415,6 +431,7 @@ module TypeProf::Core
       else
         genv.add_run(self)
       end
+      super(genv)
     end
 
     def run0(genv, changes)
@@ -732,6 +749,7 @@ module TypeProf::Core
           mod, singleton = genv.get_superclass(mod, singleton)
           if mod && mod.type_params
             param_map2 = Type.default_param_map(genv, ty)
+            # annotate                   vvvvvv
             mod.type_params.zip(type_args || []) do |param, arg|
               param_map2[param] = arg ? arg.covariant_vertex(genv, changes, param_map) : Source.new
             end
@@ -871,6 +889,11 @@ module TypeProf::Core
     end
 
     attr_reader :node, :rhs, :lhss
+
+    def destroy(genv)
+      @rhs.remove_edge(genv, self) # TODO: Is this really needed?
+      super(genv)
+    end
 
     def ret = @rhs
 
