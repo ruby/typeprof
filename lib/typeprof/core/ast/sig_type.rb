@@ -232,7 +232,14 @@ module TypeProf::Core
         changes.add_depended_static_read(@static_ret.last)
         tae = @static_ret.last.type_alias_entity
         if tae && tae.exist?
-          tae.type.covariant_vertex0(genv, changes, vtx, subst)
+          # need to check tae decls are all consistent?
+          decl = tae.decls.each {|decl| break decl }
+          subst0 = subst.dup
+          # raise if decl.params.size != @args.size # ?
+          decl.params.zip(@args) do |param, arg|
+            subst0[param] = arg.covariant_vertex(genv, changes, subst0) # passing subst0 is ok?
+          end
+          tae.type.covariant_vertex0(genv, changes, vtx, subst0)
         end
       end
 
@@ -240,7 +247,14 @@ module TypeProf::Core
         changes.add_depended_static_read(@static_ret.last)
         tae = @static_ret.last.type_alias_entity
         if tae && tae.exist?
-          tae.type.contravariant_vertex0(genv, changes, vtx, subst)
+          # need to check tae decls are all consistent?
+          decl = tae.decls.each {|decl| break decl }
+          subst0 = subst.dup
+          # raise if decl.params.size != @args.size # ?
+          decl.params.zip(@args) do |param, arg|
+            subst0[param] = arg.contravariant_vertex(genv, changes, subst0)
+          end
+          tae.type.contravariant_vertex0(genv, changes, vtx, subst0)
         end
         # TODO: report?
       end
@@ -440,6 +454,20 @@ module TypeProf::Core
 
       def show
         "[#{ @types.map {|ty| ty.show }.join(", ") }]"
+      end
+    end
+
+    class SIG_TY_RECORD < TypeNode
+      def covariant_vertex0(genv, changes, vtx, subst)
+        raise NotImplementedError
+      end
+
+      def contravariant_vertex0(genv, changes, vtx, subst)
+        raise NotImplementedError
+      end
+
+      def show
+        "(...record...)"
       end
     end
 

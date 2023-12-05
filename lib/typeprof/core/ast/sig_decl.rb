@@ -260,9 +260,10 @@ module TypeProf::Core
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
         @name = @cpath.pop
         @type = AST.create_rbs_type(raw_decl.type, lenv)
+        @params = raw_decl.type_params.map {|param| param.name }
       end
 
-      attr_reader :cpath, :name, :type
+      attr_reader :cpath, :name, :type, :params
 
       def define0(genv)
         @type.define(genv)

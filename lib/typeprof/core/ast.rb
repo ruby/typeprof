@@ -257,6 +257,8 @@ module TypeProf::Core
         SIG_TY_INSTANCE.new(raw_decl, lenv)
       when RBS::Types::Tuple
         SIG_TY_TUPLE.new(raw_decl, lenv)
+      when RBS::Types::Record
+        SIG_TY_RECORD.new(raw_decl, lenv)
       when RBS::Types::Interface
         SIG_TY_INTERFACE.new(raw_decl, lenv)
       when RBS::Types::Proc
