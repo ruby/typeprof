@@ -6,7 +6,6 @@ module TypeProf::Core
       @edges = []
       @new_edges = []
       @sites = {}
-      @sites_to_remove = []
       @new_sites = {}
       @diagnostics = []
       @new_diagnostics = []
@@ -18,7 +17,7 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :diagnostics, :covariant_types
+    attr_reader :sites, :diagnostics, :covariant_types
 
     def new_vertex(genv, sig_type_node, subst)
       @covariant_types[sig_type_node] ||= Vertex.new("rbs_type", sig_type_node)
@@ -29,14 +28,24 @@ module TypeProf::Core
       @new_edges << [src, dst]
     end
 
-    def add_site(key, site)
-      # Reanalysis may require immediate destruction of the old Site.
-      @sites_to_remove << @new_sites[key] if @new_sites[key]
-      @new_sites[key] = site
+    # TODO: if an edge is removed during one analysis, we may need to remove sub-sites?
+
+    def add_callsite(genv, node, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses)
+      key = [:callsite, node, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses]
+      return if @new_sites[key]
+      @new_sites[key] = CallSite.new(node, genv, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses)
     end
 
-    def add_check_return_site(key, check_return_site)
-      @new_check_return_sites[key] = check_return_site
+    def add_check_return_site(genv, node, a_ret, f_ret)
+      key = [:check_return, node, a_ret, f_ret]
+      return if @new_sites[key]
+      @new_sites[key] = CheckReturnSite.new(node, genv, a_ret, f_ret)
+    end
+
+    def add_masgn_site(genv, node, rhs, lhss)
+      key = [:masgn, node, rhs, lhss]
+      return if @new_sites[key]
+      @new_sites[key] = MAsgnSite.new(node, genv, rhs, lhss)
     end
 
     def add_diagnostic(diag)
@@ -66,18 +75,10 @@ module TypeProf::Core
       @edges, @new_edges = @new_edges, @edges
       @new_edges.clear
 
-      @sites_to_remove.each do |site|
-        site.destroy(genv)
-      end
       @sites.each do |key, site|
         site.destroy(genv)
-        site.node.remove_site(key, site)
-      end
-      @new_sites.each do |key, site|
-        site.node.add_site(key, site)
       end
       @sites, @new_sites = @new_sites, @sites
-      @sites_to_remove.clear
       @new_sites.clear
 
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
@@ -128,6 +129,8 @@ module TypeProf::Core
       $site_counts[self.class] += 1
     end
 
+    attr_reader :changes
+
     attr_reader :node, :destroyed
 
     def destroy(genv)
@@ -158,6 +161,9 @@ module TypeProf::Core
     def diagnostics(genv, &blk)
       raise self.to_s if !@changes
       @changes.diagnostics.each(&blk)
+      @changes.sites.each_value do |site|
+        site.diagnostics(genv, &blk)
+      end
     end
 
     #@@new_id = 0
@@ -319,7 +325,7 @@ module TypeProf::Core
             case ty
             when Type::Proc
               blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
-              changes.add_site(:check_return, CheckReturnSite.new(ty.block.node, genv, ty.block.ret, blk_f_ret))
+              changes.add_check_return_site(genv, ty.block.node, ty.block.ret, blk_f_ret)
 
               blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
                 blk_a_arg.covariant_vertex(genv, changes, param_map0)
@@ -327,7 +333,7 @@ module TypeProf::Core
               blk_f_args = ty.block.f_args
               # TODO: lambda?
               if blk_a_args.size == 1 && blk_f_args.size >= 2
-                changes.add_site(:block_args_splat, MAsgnSite.new(ty.block.node, genv, blk_a_args[0], blk_f_args))
+                changes.add_masgn_site(genv, ty.block.node, blk_a_args[0], blk_f_args)
               else
                 blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
                   next unless blk_f_arg
@@ -472,7 +478,7 @@ module TypeProf::Core
       if pass_positionals(changes, genv, nil, positional_args, splat_flags)
         # TODO: block
         f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
-        changes.add_site(:check_return, CheckReturnSite.new(@node, genv, @ret, f_ret))
+        changes.add_check_return_site(genv, @node, @ret, f_ret)
       end
     end
 

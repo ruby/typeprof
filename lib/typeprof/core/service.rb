@@ -197,7 +197,7 @@ module TypeProf::Core
     def definitions(path, pos)
       defs = []
       @text_nodes[path].hover(pos) do |node|
-        sites = node.sites[:class_new] || node.sites[:main]
+        sites = node.sites[:main]
         next unless sites
         sites.each do |site|
           case site
@@ -208,10 +208,20 @@ module TypeProf::Core
               end
             end
           when CallSite
-            site.resolve(genv, nil) do |_ty, mid, me, _param_map|
-              next unless me
-              me.defs.each do |mdef|
-                defs << [mdef.node.lenv.path, mdef.node.code_range]
+            sites = []
+            site.changes.sites.each do |key, site|
+              # ad-hocly handle Class#new calls
+              if key[0] == :callsite && key[3] == :initialize # XXX: better condition?
+                sites << site
+              end
+            end
+            sites << site if sites.empty?
+            sites.each do |site|
+              site.resolve(genv, nil) do |_ty, mid, me, _param_map|
+                next unless me
+                me.defs.each do |mdef|
+                  defs << [mdef.node.lenv.path, mdef.node.code_range]
+                end
               end
             end
           end
@@ -303,20 +313,30 @@ module TypeProf::Core
 
     def hover(path, pos)
       @text_nodes[path].hover(pos) do |node|
-        sites = node.sites[:class_new] || node.sites[:main]
+        sites = node.sites[:main]
         if sites
           sites.each do |site|
             if site.is_a?(CallSite)
-              site.resolve(genv, nil) do |ty, mid, me, _param_map|
-                if me
-                  if !me.decls.empty?
-                    me.decls.each do |mdecl|
-                      return "#{ ty.show }##{ mid } : #{ mdecl.show }"
+              sites = []
+              site.changes.sites.each do |key, site|
+                # ad-hocly handle Class#new calls
+                if key[0] == :callsite && key[3] == :initialize # XXX: better condition?
+                  sites << site
+                end
+              end
+              sites << site if sites.empty?
+              sites.each do |site|
+                site.resolve(genv, nil) do |ty, mid, me, _param_map|
+                  if me
+                    if !me.decls.empty?
+                      me.decls.each do |mdecl|
+                        return "#{ ty.show }##{ mid } : #{ mdecl.show }"
+                      end
                     end
-                  end
-                  if !me.defs.empty?
-                    me.defs.each do |mdef|
-                      return "#{ ty.show }##{ mid } : #{ mdef.show }"
+                    if !me.defs.empty?
+                      me.defs.each do |mdef|
+                        return "#{ ty.show }##{ mid } : #{ mdef.show }"
+                      end
                     end
                   end
                 end

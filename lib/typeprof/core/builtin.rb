@@ -7,10 +7,8 @@ module TypeProf::Core
     def class_new(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
       ty = ty.get_instance_type(@genv)
       recv = Source.new(ty)
-      site = CallSite.new(node, @genv, recv, :initialize, positional_args, splat_flags, keyword_args, nil, false) # TODO: block
-      # site.ret (the return value of initialize) is discarded
+      changes.add_callsite(@genv, node, recv, :initialize, positional_args, splat_flags, keyword_args, nil, false) # TODO: block
       changes.add_edge(Source.new(ty), ret)
-      changes.add_site(:class_new, site)
     end
 
     def proc_call(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
