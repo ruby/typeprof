@@ -14,7 +14,9 @@ module TypeProf::Core
     def proc_call(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
       case ty
       when Type::Proc
-        if positional_args.size == ty.block.f_args.size
+        if positional_args.size == 1 && ty.block.f_args.size >= 2
+          changes.add_masgn_site(@genv, ty.block.node, positional_args[0], ty.block.f_args)
+        else
           positional_args.zip(ty.block.f_args) do |a_arg, f_arg|
             changes.add_edge(a_arg, f_arg)
           end
