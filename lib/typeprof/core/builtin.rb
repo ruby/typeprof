@@ -4,20 +4,20 @@ module TypeProf::Core
       @genv = genv
     end
 
-    def class_new(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
+    def class_new(changes, node, ty, a_args, ret)
       ty = ty.get_instance_type(@genv)
       recv = Source.new(ty)
-      changes.add_callsite(@genv, node, recv, :initialize, positional_args, splat_flags, keyword_args, nil, false) # TODO: block
+      changes.add_callsite(@genv, node, recv, :initialize, a_args, false)
       changes.add_edge(Source.new(ty), ret)
     end
 
-    def proc_call(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
+    def proc_call(changes, node, ty, a_args, ret)
       case ty
       when Type::Proc
-        if positional_args.size == 1 && ty.block.f_args.size >= 2
-          changes.add_masgn_site(@genv, ty.block.node, positional_args[0], ty.block.f_args)
+        if a_args.positionals.size == 1 && ty.block.f_args.size >= 2
+          changes.add_masgn_site(@genv, ty.block.node, a_args.positionals[0], ty.block.f_args)
         else
-          positional_args.zip(ty.block.f_args) do |a_arg, f_arg|
+          a_args.positionals.zip(ty.block.f_args) do |a_arg, f_arg|
             changes.add_edge(a_arg, f_arg)
           end
         end
@@ -27,8 +27,8 @@ module TypeProf::Core
       end
     end
 
-    def array_aref(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
-      if positional_args.size == 1
+    def array_aref(changes, node, ty, a_args, ret)
+      if a_args.positionals.size == 1
         case ty
         when Type::Array
           idx = node.positional_args[0]
@@ -46,11 +46,11 @@ module TypeProf::Core
       end
     end
 
-    def array_aset(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
-      if positional_args.size == 2
+    def array_aset(changes, node, ty, a_args, ret)
+      if a_args.positionals.size == 2
         case ty
         when Type::Array
-          val = positional_args[1]
+          val = a_args.positionals[1]
           idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(@genv, idx.lit)
             changes.add_edge(val, ty.get_elem(@genv, idx.lit))
@@ -61,26 +61,26 @@ module TypeProf::Core
           puts "??? array_aset #{ ty.class }"
         end
       else
-        puts "??? array_aset #{ positional_args.size }"
+        puts "??? array_aset #{ a_args.positionals.size }"
       end
     end
 
-    def array_push(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
-      if positional_args.size == 1
+    def array_push(changes, node, ty, a_args, ret)
+      if a_args.positionals.size == 1
         case ty
         when Type::Array
-          val = positional_args[0]
+          val = a_args.positionals[0]
           changes.add_edge(val, ty.get_elem(@genv))
         else
           puts "??? array_aset #{ ty.class }"
         end
       else
-        puts "??? array_aset #{ positional_args.size }"
+        puts "??? array_aset #{ a_args.positionals.size }"
       end
     end
 
-    def hash_aref(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
-      if positional_args.size == 1
+    def hash_aref(changes, node, ty, a_args, ret)
+      if a_args.positionals.size == 1
         case ty
         when Type::Hash
           idx = node.positional_args[0]
@@ -98,18 +98,18 @@ module TypeProf::Core
       end
     end
 
-    def hash_aset(changes, node, ty, positional_args, splat_flags, keyword_args, ret)
-      if positional_args.size == 2
+    def hash_aset(changes, node, ty, a_args, ret)
+      if a_args.positionals.size == 2
         case ty
         when Type::Hash
-          val = positional_args[1]
+          val = a_args.positionals[1]
           idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol) && ty.get_value(idx.lit)
             # TODO: how to handle new key?
             changes.add_edge(val, ty.get_value(idx.lit))
           else
             # TODO: literal_pairs will not be updated
-            changes.add_edge(positional_args[0], ty.get_key)
+            changes.add_edge(a_args.positionals[0], ty.get_key)
             changes.add_edge(val, ty.get_value)
           end
           changes.add_edge(val, ret)

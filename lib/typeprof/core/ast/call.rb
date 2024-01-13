@@ -141,7 +141,8 @@ module TypeProf::Core
           blk_ty = @block_pass.install(genv)
         end
 
-        site = CallSite.new(self, genv, recv, @mid, positional_args, @splat_flags, keyword_args, blk_ty, self.is_a?(FCALL))
+        a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
+        site = CallSite.new(self, genv, recv, @mid, a_args, self.is_a?(FCALL))
         add_site(:main, site)
         site.ret
       end

@@ -30,10 +30,10 @@ module TypeProf::Core
 
     # TODO: if an edge is removed during one analysis, we may need to remove sub-sites?
 
-    def add_callsite(genv, node, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses)
-      key = [:callsite, node, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses]
+    def add_callsite(genv, node, recv, mid, a_args, subclasses)
+      key = [:callsite, node, recv, mid, a_args, subclasses]
       return if @new_sites[key]
-      @new_sites[key] = CallSite.new(node, genv, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses)
+      @new_sites[key] = CallSite.new(node, genv, recv, mid, a_args, subclasses)
     end
 
     def add_check_return_site(genv, node, a_ret, f_ret)
@@ -242,18 +242,18 @@ module TypeProf::Core
       me.add_run_all_callsites(genv)
     end
 
-    def match_arguments?(genv, changes, param_map, positional_args, splat_flags, method_type)
+    def match_arguments?(genv, changes, param_map, a_args, method_type)
       # TODO: handle a tuple as a splat argument?
-      if splat_flags.any?
+      if a_args.splat_flags.any?
         return false unless method_type.rest_positionals
         method_type.req_positionals.size.times do |i|
-          return false if splat_flags[i]
+          return false if a_args.splat_flags[i]
         end
         method_type.post_positionals.size.times do |i|
-          return false if splat_flags[-i - 1]
+          return false if a_args.splat_flags[-i - 1]
         end
       else
-        actual = positional_args.size
+        actual = a_args.positionals.size
         required_formal = method_type.req_positionals.size + method_type.post_positionals.size
         if actual < required_formal
           # too few actual arguments
@@ -267,28 +267,28 @@ module TypeProf::Core
 
       method_type.req_positionals.each_with_index do |ty, i|
         f_arg = ty.contravariant_vertex(genv, changes, param_map)
-        return false unless positional_args[i].check_match(genv, changes, f_arg)
+        return false unless a_args.positionals[i].check_match(genv, changes, f_arg)
       end
       method_type.post_positionals.each_with_index do |ty, i|
         f_arg = ty.contravariant_vertex(genv, changes, param_map)
         i -= method_type.post_positionals.size
-        return false unless positional_args[i].check_match(genv, changes, f_arg)
+        return false unless a_args.positionals[i].check_match(genv, changes, f_arg)
       end
 
       start_rest = method_type.req_positionals.size
-      end_rest = positional_args.size - method_type.post_positionals.size
+      end_rest = a_args.positionals.size - method_type.post_positionals.size
 
       i = 0
       while i < method_type.opt_positionals.size && start_rest < end_rest
-        break if splat_flags[start_rest]
+        break if a_args.splat_flags[start_rest]
         f_arg = method_type.opt_positionals[i].contravariant_vertex(genv, changes, param_map)
-        return false unless positional_args[start_rest].check_match(genv, changes, f_arg)
+        return false unless a_args.positionals[start_rest].check_match(genv, changes, f_arg)
         i += 1
         start_rest += 1
       end
 
       if start_rest < end_rest
-        vtxs = ActualArguments.get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
+        vtxs = a_args.get_rest_args(genv, start_rest, end_rest)
         while i < method_type.opt_positionals.size
           f_arg = method_type.opt_positionals[i].contravariant_vertex(genv, changes, param_map)
           return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
@@ -303,7 +303,7 @@ module TypeProf::Core
       return true
     end
 
-    def resolve_overloads(changes, genv, node, param_map, positional_args, splat_flags, block, ret)
+    def resolve_overloads(changes, genv, node, param_map, a_args, ret)
       match_any_overload = false
       @method_types.each do |method_type|
         param_map0 = param_map.dup
@@ -314,14 +314,14 @@ module TypeProf::Core
           end
         end
 
-        next unless match_arguments?(genv, changes, param_map0, positional_args, splat_flags, method_type)
+        next unless match_arguments?(genv, changes, param_map0, a_args, method_type)
 
         rbs_blk = method_type.block
-        next if method_type.block_required && !block
-        next if !rbs_blk && block
-        if rbs_blk && block
+        next if method_type.block_required && !a_args.block
+        next if !rbs_blk && a_args.block
+        if rbs_blk && a_args.block
           # rbs_blk_func.optional_keywords, ...
-          block.types.each do |ty, _source|
+          a_args.block.types.each do |ty, _source|
             case ty
             when Type::Proc
               blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
@@ -475,23 +475,24 @@ module TypeProf::Core
         splat_flags << false
       end
 
-      if pass_positionals(changes, genv, nil, positional_args, splat_flags)
+      a_args = ActualArguments.new(positional_args, splat_flags, nil, nil) # TODO: keywords and block
+      if pass_positionals(changes, genv, nil, a_args)
         # TODO: block
         f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
         changes.add_check_return_site(genv, @node, @ret, f_ret)
       end
     end
 
-    def pass_positionals(changes, genv, call_node, positional_args, splat_flags)
-      if splat_flags.any?
+    def pass_positionals(changes, genv, call_node, a_args)
+      if a_args.splat_flags.any?
         # there is at least one splat actual argument
 
         lower = @f_args.req_positionals.size + @f_args.post_positionals.size
         upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
-        if upper && upper < positional_args.size
+        if upper && upper < a_args.positionals.size
           if call_node
             meth = call_node.mid_code_range ? :mid_code_range : :code_range
-            err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+            err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
             changes.add_diagnostic(
               TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
             )
@@ -499,13 +500,13 @@ module TypeProf::Core
           return false
         end
 
-        start_rest = [splat_flags.index(true), @f_args.req_positionals.size + @f_args.opt_positionals.size].min
-        end_rest = [splat_flags.rindex(true) + 1, positional_args.size - @f_args.post_positionals.size].max
-        rest_vtxs = ActualArguments.get_rest_args(genv, start_rest, end_rest, positional_args, splat_flags)
+        start_rest = [a_args.splat_flags.index(true), @f_args.req_positionals.size + @f_args.opt_positionals.size].min
+        end_rest = [a_args.splat_flags.rindex(true) + 1, a_args.positionals.size - @f_args.post_positionals.size].max
+        rest_vtxs = a_args.get_rest_args(genv, start_rest, end_rest)
 
         @f_args.req_positionals.each_with_index do |var, i|
           if i < start_rest
-            changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+            changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
           else
             rest_vtxs.each do |vtx|
               changes.add_edge(vtx, @f_arg_vtxs[var])
@@ -515,7 +516,7 @@ module TypeProf::Core
         @f_args.opt_positionals.each_with_index do |var, i|
           i += @f_args.opt_positionals.size
           if i < start_rest
-            changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+            changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
           else
             rest_vtxs.each do |vtx|
               changes.add_edge(vtx, @f_arg_vtxs[var])
@@ -523,9 +524,9 @@ module TypeProf::Core
           end
         end
         @f_args.post_positionals.each_with_index do |var, i|
-          i += positional_args.size - @f_args.post_positionals.size
+          i += a_args.positionals.size - @f_args.post_positionals.size
           if end_rest <= i
-            changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+            changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
           else
             rest_vtxs.each do |vtx|
               changes.add_edge(vtx, @f_arg_vtxs[var])
@@ -543,10 +544,10 @@ module TypeProf::Core
 
         lower = @f_args.req_positionals.size + @f_args.post_positionals.size
         upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
-        if positional_args.size < lower || (upper && upper < positional_args.size)
+        if a_args.positionals.size < lower || (upper && upper < a_args.positionals.size)
           if call_node
             meth = call_node.mid_code_range ? :mid_code_range : :code_range
-            err = "#{ positional_args.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+            err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
             changes.add_diagnostic(
               TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
             )
@@ -555,18 +556,18 @@ module TypeProf::Core
         end
 
         @f_args.req_positionals.each_with_index do |var, i|
-          changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+          changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
         end
         @f_args.post_positionals.each_with_index do |var, i|
           i -= @f_args.post_positionals.size
-          changes.add_edge(positional_args[i], @f_arg_vtxs[var])
+          changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
         end
         start_rest = @f_args.req_positionals.size
-        end_rest = positional_args.size - @f_args.post_positionals.size
+        end_rest = a_args.positionals.size - @f_args.post_positionals.size
         i = 0
         while i < @f_args.opt_positionals.size && start_rest < end_rest
           f_arg = @f_arg_vtxs[@f_args.opt_positionals[i]]
-          changes.add_edge(positional_args[start_rest], f_arg)
+          changes.add_edge(a_args.positionals[start_rest], f_arg)
           i += 1
           start_rest += 1
         end
@@ -575,7 +576,7 @@ module TypeProf::Core
           if @f_args.rest_positionals
             f_arg = @f_arg_vtxs[@f_args.rest_positionals]
             (start_rest..end_rest-1).each do |i|
-              changes.add_edge(positional_args[i], f_arg)
+              changes.add_edge(a_args.positionals[i], f_arg)
             end
           end
         end
@@ -583,9 +584,9 @@ module TypeProf::Core
       return true
     end
 
-    def call(changes, genv, call_node, positional_args, splat_flags, block, ret)
-      if pass_positionals(changes, genv, call_node, positional_args, splat_flags)
-        changes.add_edge(block, @block) if @block && block
+    def call(changes, genv, call_node, a_args, ret)
+      if pass_positionals(changes, genv, call_node, a_args)
+        changes.add_edge(a_args.block, @block) if @block && a_args.block
 
         changes.add_edge(@ret, ret)
       end
@@ -627,29 +628,20 @@ module TypeProf::Core
   end
 
   class CallSite < Site
-    def initialize(node, genv, recv, mid, positional_args, splat_flags, keyword_args, block, subclasses)
+    def initialize(node, genv, recv, mid, a_args, subclasses)
       raise mid.to_s unless mid
       super(node)
       @recv = recv.new_vertex(genv, "recv:#{ mid }", node)
       @recv.add_edge(genv, self)
       @mid = mid
-      @positional_args = positional_args.map do |arg|
-        arg = arg.new_vertex(genv, "arg:#{ mid }", node)
-        arg.add_edge(genv, self)
-        arg
-      end
-      @splat_flags = splat_flags
-      @keyword_args = keyword_args # TODO
-      raise unless splat_flags
-      if block
-        @block = block.new_vertex(genv, "block:#{ mid }", node)
-        @block.add_edge(genv, self) # needed?
-      end
+      @a_args = a_args.new_vertexes(genv, mid, node)
+      @a_args.positionals.each {|arg| arg.add_edge(genv, self) }
+      @a_args.block.add_edge(genv, self) if @a_args.block
       @ret = Vertex.new("ret:#{ mid }", node)
       @subclasses = subclasses
     end
 
-    attr_reader :recv, :mid, :positional_args, :block, :ret
+    attr_reader :recv, :mid, :ret
 
     def run0(genv, changes)
       edges = Set[]
@@ -667,19 +659,19 @@ module TypeProf::Core
           error_count += 1
         elsif me.builtin
           # TODO: block? diagnostics?
-          me.builtin[changes, @node, recv_ty, @positional_args, @splat_flags, @keyword_args, @ret]
+          me.builtin[changes, @node, recv_ty, @a_args, @ret]
         elsif !me.decls.empty?
           # TODO: support "| ..."
           me.decls.each do |mdecl|
             # TODO: union type is ok?
             # TODO: add_depended_method_entities for types used to resolve overloads
-            mdecl.resolve_overloads(changes, genv, @node, param_map, @positional_args, @splat_flags, @block, @ret)
+            mdecl.resolve_overloads(changes, genv, @node, param_map, @a_args, @ret)
           end
         elsif !me.defs.empty?
           me.defs.each do |mdef|
             next if called_mdefs.include?(mdef)
             called_mdefs << mdef
-            mdef.call(changes, genv, @node, @positional_args, @splat_flags, @block, @ret)
+            mdef.call(changes, genv, @node, @a_args, @ret)
           end
         else
           pp me
@@ -692,7 +684,7 @@ module TypeProf::Core
             me.defs.each do |mdef|
               next if called_mdefs.include?(mdef)
               called_mdefs << mdef
-              mdef.call(changes, genv, @node, @positional_args, @splat_flags, @block, @ret)
+              mdef.call(changes, genv, @node, @a_args, @ret)
             end
           end
         end

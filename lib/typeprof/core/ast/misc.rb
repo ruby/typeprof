@@ -62,7 +62,7 @@ module TypeProf::Core
     class BEGIN_ < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raise NotImplementedError if raw_node.children != [nil]
+        #raise NotImplementedError if raw_node.children != [nil]
       end
 
       def install0(genv)

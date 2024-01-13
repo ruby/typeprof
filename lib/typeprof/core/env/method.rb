@@ -68,6 +68,48 @@ module TypeProf::Core
 
       vtxs.uniq
     end
+
+    def initialize(positionals, splat_flags, keywords, block)
+      @positionals = positionals
+      @splat_flags = splat_flags
+      @keywords = keywords
+      @block = block
+    end
+
+    attr_reader :positionals, :splat_flags, :keywords, :block
+
+    def new_vertexes(genv, name, node)
+      positionals = @positionals.map {|arg| arg.new_vertex(genv, "arg:#{ name }", node) }
+      splat_flags = @splat_flags
+      keywords = @keywords # TODO
+      block = @block ? @block.new_vertex(genv, "block:#{ name }", node) : nil
+      ActualArguments.new(positionals, splat_flags, keywords, block)
+    end
+    
+    def get_rest_args(genv, start_rest, end_rest)
+      vtxs = []
+
+      start_rest.upto(end_rest - 1) do |i|
+        a_arg = @positionals[i]
+        if @splat_flags[i]
+          a_arg.types.each do |ty, _source|
+            ty = ty.base_type(genv)
+            if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
+              vtxs << ty.args[0]
+            else
+              "???"
+            end
+          end
+        else
+          vtxs << a_arg
+        end
+      end
+
+      vtxs.uniq
+    end
+  end
+
+  class FormalArguments
   end
 
   class Block
