@@ -109,9 +109,6 @@ module TypeProf::Core
     end
   end
 
-  class FormalArguments
-  end
-
   class Block
     def initialize(node, f_args, ret)
       @node = node
