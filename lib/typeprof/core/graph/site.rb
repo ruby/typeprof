@@ -404,7 +404,7 @@ module TypeProf::Core
   end
 
   class MethodDefSite < Site
-    def initialize(node, genv, cpath, singleton, mid, f_args, f_arg_vtxs, block, ret)
+    def initialize(node, genv, cpath, singleton, mid, f_args, block, ret)
       super(node)
       @cpath = cpath
       @singleton = singleton
@@ -412,8 +412,6 @@ module TypeProf::Core
       raise unless f_args
       @f_args = f_args
       raise unless f_args.is_a?(FormalArguments)
-      @f_arg_vtxs = f_arg_vtxs
-      raise unless f_arg_vtxs.is_a?(Hash)
       @block = block
       @ret = ret
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -427,7 +425,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :cpath, :singleton, :mid, :f_args, :f_arg_vtxs, :block, :ret
+    attr_reader :cpath, :singleton, :mid, :f_args, :block, :ret
 
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -504,39 +502,39 @@ module TypeProf::Core
         end_rest = [a_args.splat_flags.rindex(true) + 1, a_args.positionals.size - @f_args.post_positionals.size].max
         rest_vtxs = a_args.get_rest_args(genv, start_rest, end_rest)
 
-        @f_args.req_positionals.each_with_index do |var, i|
+        @f_args.req_positionals.each_with_index do |f_vtx, i|
           if i < start_rest
-            changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
+            changes.add_edge(a_args.positionals[i], f_vtx)
           else
             rest_vtxs.each do |vtx|
-              changes.add_edge(vtx, @f_arg_vtxs[var])
+              changes.add_edge(vtx, f_vtx)
             end
           end
         end
-        @f_args.opt_positionals.each_with_index do |var, i|
+        @f_args.opt_positionals.each_with_index do |f_vtx, i|
           i += @f_args.opt_positionals.size
           if i < start_rest
-            changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
+            changes.add_edge(a_args.positionals[i], f_vtx)
           else
             rest_vtxs.each do |vtx|
-              changes.add_edge(vtx, @f_arg_vtxs[var])
+              changes.add_edge(vtx, f_vtx)
             end
           end
         end
-        @f_args.post_positionals.each_with_index do |var, i|
+        @f_args.post_positionals.each_with_index do |f_vtx, i|
           i += a_args.positionals.size - @f_args.post_positionals.size
           if end_rest <= i
-            changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
+            changes.add_edge(a_args.positionals[i], f_vtx)
           else
             rest_vtxs.each do |vtx|
-              changes.add_edge(vtx, @f_arg_vtxs[var])
+              changes.add_edge(vtx, f_vtx)
             end
           end
         end
 
         if @f_args.rest_positionals
           rest_vtxs.each do |vtx|
-            changes.add_edge(vtx, @f_arg_vtxs[@f_args.rest_positionals])
+            changes.add_edge(vtx, @f_args.rest_positionals)
           end
         end
       else
@@ -555,18 +553,18 @@ module TypeProf::Core
           return false
         end
 
-        @f_args.req_positionals.each_with_index do |var, i|
-          changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
+        @f_args.req_positionals.each_with_index do |f_vtx, i|
+          changes.add_edge(a_args.positionals[i], f_vtx)
         end
-        @f_args.post_positionals.each_with_index do |var, i|
+        @f_args.post_positionals.each_with_index do |f_vtx, i|
           i -= @f_args.post_positionals.size
-          changes.add_edge(a_args.positionals[i], @f_arg_vtxs[var])
+          changes.add_edge(a_args.positionals[i], f_vtx)
         end
         start_rest = @f_args.req_positionals.size
         end_rest = a_args.positionals.size - @f_args.post_positionals.size
         i = 0
         while i < @f_args.opt_positionals.size && start_rest < end_rest
-          f_arg = @f_arg_vtxs[@f_args.opt_positionals[i]]
+          f_arg = @f_args.opt_positionals[i]
           changes.add_edge(a_args.positionals[start_rest], f_arg)
           i += 1
           start_rest += 1
@@ -574,7 +572,7 @@ module TypeProf::Core
 
         if start_rest < end_rest
           if @f_args.rest_positionals
-            f_arg = @f_arg_vtxs[@f_args.rest_positionals]
+            f_arg = @f_args.rest_positionals
             (start_rest..end_rest-1).each do |i|
               changes.add_edge(a_args.positionals[i], f_arg)
             end
@@ -606,17 +604,17 @@ module TypeProf::Core
         end
       end
       args = []
-      @f_args.req_positionals.each do |var|
-        args << Type.strip_parens(@f_arg_vtxs[var].show)
+      @f_args.req_positionals.each do |f_vtx|
+        args << Type.strip_parens(f_vtx.show)
       end
-      @f_args.opt_positionals.each do |var|
-        args << ("?" + Type.strip_parens(@f_arg_vtxs[var].show))
+      @f_args.opt_positionals.each do |f_vtx|
+        args << ("?" + Type.strip_parens(f_vtx.show))
       end
       if @f_args.rest_positionals
-        args << ("*" + Type.strip_parens(@f_arg_vtxs[@f_args.rest_positionals].show))
+        args << ("*" + Type.strip_parens(@f_args.rest_positionals.show))
       end
       @f_args.post_positionals.each do |var|
-        args << Type.strip_parens(@f_arg_vtxs[var].show)
+        args << Type.strip_parens(var.show)
       end
       # TODO: keywords
       args = args.join(", ")
