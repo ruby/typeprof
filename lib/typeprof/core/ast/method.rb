@@ -278,7 +278,7 @@ module TypeProf::Core
             block,
           )
 
-          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, block, ret)
+          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, ret)
           add_site(:mdef, mdef)
         end
         Source.new(Type::Symbol.new(genv, @mid))

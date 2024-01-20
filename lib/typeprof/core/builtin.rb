@@ -18,7 +18,7 @@ module TypeProf::Core
           changes.add_masgn_site(@genv, ty.block.node, a_args.positionals[0], ty.block.f_args)
         else
           a_args.positionals.zip(ty.block.f_args) do |a_arg, f_arg|
-            changes.add_edge(a_arg, f_arg)
+            changes.add_edge(a_arg, f_arg) if f_arg
           end
         end
         changes.add_edge(ty.block.ret, ret)

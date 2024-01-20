@@ -404,7 +404,7 @@ module TypeProf::Core
   end
 
   class MethodDefSite < Site
-    def initialize(node, genv, cpath, singleton, mid, f_args, block, ret)
+    def initialize(node, genv, cpath, singleton, mid, f_args, ret)
       super(node)
       @cpath = cpath
       @singleton = singleton
@@ -412,7 +412,6 @@ module TypeProf::Core
       raise unless f_args
       @f_args = f_args
       raise unless f_args.is_a?(FormalArguments)
-      @block = block
       @ret = ret
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
@@ -425,7 +424,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :cpath, :singleton, :mid, :f_args, :block, :ret
+    attr_reader :cpath, :singleton, :mid, :f_args, :ret
 
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
@@ -584,7 +583,7 @@ module TypeProf::Core
 
     def call(changes, genv, call_node, a_args, ret)
       if pass_positionals(changes, genv, call_node, a_args)
-        changes.add_edge(a_args.block, @block) if @block && a_args.block
+        changes.add_edge(a_args.block, @f_args.block) if @f_args.block && a_args.block
 
         changes.add_edge(@ret, ret)
       end
@@ -592,9 +591,9 @@ module TypeProf::Core
 
     def show
       block_show = []
-      if @block
+      if @f_args.block
         # TODO: record what are yielded, not what the blocks accepted
-        @block.types.each_key do |ty|
+        @f_args.block.types.each_key do |ty|
           case ty
           when Type::Proc
             block_show << "{ (#{ ty.block.f_args.map {|arg| arg.show }.join(", ") }) -> #{ ty.block.ret.show } }"
