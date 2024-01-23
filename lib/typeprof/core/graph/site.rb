@@ -325,21 +325,11 @@ module TypeProf::Core
             case ty
             when Type::Proc
               blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
-              changes.add_check_return_site(genv, ty.block.node, ty.block.ret, blk_f_ret)
-
               blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
                 blk_a_arg.covariant_vertex(genv, changes, param_map0)
               end
-              blk_f_args = ty.block.f_args
-              # TODO: lambda?
-              if blk_a_args.size == 1 && blk_f_args.size >= 2
-                changes.add_masgn_site(genv, ty.block.node, blk_a_args[0], blk_f_args)
-              else
-                blk_a_args.zip(blk_f_args) do |blk_a_arg, blk_f_arg|
-                  next unless blk_f_arg
-                  changes.add_edge(blk_a_arg, blk_f_arg)
-                end
-              end
+
+              ty.block.accept_args(genv, changes, blk_a_args, blk_f_ret, true)
             end
           end
         end
@@ -412,6 +402,13 @@ module TypeProf::Core
       raise unless f_args
       @f_args = f_args
       raise unless f_args.is_a?(FormalArguments)
+
+      @record_block = RecordBlock.new(@node)
+      if @f_args.block
+        record_blk_ty = Source.new(Type::Proc.new(genv, @record_block))
+        record_blk_ty.add_edge(genv, @f_args.block)
+      end
+
       @ret = ret
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
@@ -591,16 +588,10 @@ module TypeProf::Core
 
     def show
       block_show = []
-      if @f_args.block
-        # TODO: record what are yielded, not what the blocks accepted
-        @f_args.block.types.each_key do |ty|
-          case ty
-          when Type::Proc
-            block_show << "{ (#{ ty.block.f_args.map {|arg| arg.show }.join(", ") }) -> #{ ty.block.ret.show } }"
-          else
-            puts "???"
-          end
-        end
+      if @record_block.used
+        blk_f_args = @record_block.f_args.map {|arg| arg.show }.join(", ")
+        blk_ret = @record_block.ret.show
+        block_show << "{ (#{ blk_f_args }) -> #{ blk_ret } }"
       end
       args = []
       @f_args.req_positionals.each do |f_vtx|

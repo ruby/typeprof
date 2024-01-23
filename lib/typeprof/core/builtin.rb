@@ -14,14 +14,7 @@ module TypeProf::Core
     def proc_call(changes, node, ty, a_args, ret)
       case ty
       when Type::Proc
-        if a_args.positionals.size == 1 && ty.block.f_args.size >= 2
-          changes.add_masgn_site(@genv, ty.block.node, a_args.positionals[0], ty.block.f_args)
-        else
-          a_args.positionals.zip(ty.block.f_args) do |a_arg, f_arg|
-            changes.add_edge(a_arg, f_arg) if f_arg
-          end
-        end
-        changes.add_edge(ty.block.ret, ret)
+        ty.block.accept_args(@genv, changes, a_args.positionals, ret, false)
       else
         puts "??? proc_call"
       end

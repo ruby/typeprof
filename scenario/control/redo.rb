@@ -10,6 +10,6 @@ end
 
 ## assert
 class Object
-  def foo: { (untyped) -> untyped } -> nil
+  def foo: -> nil
   def bar: -> nil
 end

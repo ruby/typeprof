@@ -18,7 +18,7 @@ end
 
 ## assert_without_validation: test0.rb
 class Object
-  def foo: (Integer) { (Float) -> String } | { (Float) -> String } -> String
+  def foo: (Integer) { (Float) -> String } -> String
 end
 
 ## update: test1.rb
@@ -36,7 +36,7 @@ end
 
 ## assert_without_validation: test0.rb
 class Object
-  def foo: (Integer) { (Float) -> Integer } | { (Float) -> String } -> (Integer | String)
+  def foo: (Integer) { (Float) -> (Integer | String) } -> (Integer | String)
 end
 
 ## update: test1.rb
@@ -54,5 +54,5 @@ end
 
 ## assert_without_validation: test0.rb
 class Object
-  def foo: (Integer) { (Float) -> Integer } | { (Float) -> Integer } -> Integer
+  def foo: (Integer) { (Float) -> Integer } -> Integer
 end

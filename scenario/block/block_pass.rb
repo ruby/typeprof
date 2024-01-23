@@ -18,7 +18,7 @@ end
 ## assert
 class Object
   def foo: { (Integer) -> Integer } -> Integer
-  def proxy: -> Integer
+  def proxy: { (Integer) -> Integer } -> Integer
   def bar: -> Integer?
 end
 
@@ -42,6 +42,6 @@ end
 ## assert
 class Object
   def foo: (Integer) { (Integer) -> Integer } -> Integer
-  def proxy: -> Integer
+  def proxy: { (Integer) -> Integer } -> Integer
   def bar: -> Integer?
 end

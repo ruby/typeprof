@@ -94,5 +94,43 @@ module TypeProf::Core
     end
 
     attr_reader :node, :f_args, :ret
+
+    def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
+      if caller_positionals.size == 1 && @f_args.size >= 2
+        changes.add_masgn_site(genv, @node, caller_positionals[0], @f_args)
+      else
+        caller_positionals.zip(@f_args) do |a_arg, f_arg|
+          changes.add_edge(a_arg, f_arg) if f_arg
+        end
+      end
+      if ret_check
+        changes.add_check_return_site(genv, @node, @ret, caller_ret)
+      else
+        changes.add_edge(@ret, caller_ret)
+      end
+    end
+  end
+
+  class RecordBlock
+    def initialize(node)
+      @node = node
+      @used = false
+      @f_args = []
+      @ret = Vertex.new("record_block_ret", node)
+    end
+
+    def get_f_arg(i)
+      @f_args[i] ||= Vertex.new("record_block_arg", @node)
+    end
+
+    attr_reader :node, :f_args, :ret, :used
+
+    def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
+      @used = true
+      caller_positionals.each_with_index do |a_arg, i|
+        changes.add_edge(a_arg, get_f_arg(i))
+      end
+      changes.add_edge(caller_ret, @ret)
+    end
   end
 end
