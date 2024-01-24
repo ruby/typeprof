@@ -258,7 +258,7 @@ module TypeProf::Core
                 const_read = mdecl.static_ret.last
                 break
               end
-            when AST::SIG_MODULE
+            when AST::SIG_MODULE, AST::SIG_INTERFACE
               no_superclass = true
               break
             else

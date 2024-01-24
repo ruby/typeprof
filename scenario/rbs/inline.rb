@@ -2,7 +2,7 @@
 class C
   #: (Integer) -> Integer
   def foo(n)
-    raise NotImplementedError
+    raise NotImplementedError.new # TODO: support "raise NotImplementedError"
   end
 
   def bar

@@ -188,13 +188,14 @@ module TypeProf::Core
         SIG_CLASS.new(raw_decl, lenv)
       when RBS::AST::Declarations::Module
         SIG_MODULE.new(raw_decl, lenv)
+      when RBS::AST::Declarations::Interface
+        SIG_INTERFACE.new(raw_decl, lenv)
       when RBS::AST::Declarations::Constant
         SIG_CONST.new(raw_decl, lenv)
       when RBS::AST::Declarations::AliasDecl
       when RBS::AST::Declarations::TypeAlias
         SIG_TYPE_ALIAS.new(raw_decl, lenv)
         # TODO: check
-      when RBS::AST::Declarations::Interface
       when RBS::AST::Declarations::Global
         SIG_GVAR.new(raw_decl, lenv)
       else

@@ -62,6 +62,9 @@ module TypeProf::Core
     class SIG_MODULE < SigModuleNode
     end
 
+    class SIG_INTERFACE < SigModuleNode
+    end
+
     class SIG_CLASS < SigModuleNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)

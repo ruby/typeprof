@@ -576,32 +576,70 @@ module TypeProf::Core
     class SIG_TY_INTERFACE < TypeNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
-        # Very ad-hoc!!!
-        if raw_decl.name.name == :_ToAry
-          @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
-        else
-          @args = nil
+        name = raw_decl.name
+        @cpath = name.namespace.path + [name.name]
+
+        # ad-hoc!!
+        case @cpath.last
+        when :_ToAry
+          @cpath = [:Array]
+        when :_Exception
+          @cpath = [:Exception]
         end
+
+        @toplevel = name.namespace.absolute? # "::Foo" or "Foo"
+        @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
       end
 
-      attr_reader :args
+      attr_reader :cpath, :toplevel, :args
       def subnodes = { args: }
+      def attrs = { cpath:, toplevel: }
+
+      def define0(genv)
+        @args.each {|arg| arg.define(genv) }
+        const_reads = []
+        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
+        const_reads << const_read
+        unless @cpath.empty?
+          @cpath[1..].each do |cname|
+            const_read = ScopedConstRead.new(cname, const_read)
+            const_reads << const_read
+          end
+        end
+        const_reads
+      end
+
+      def undefine0(genv)
+        @static_ret.each do |const_read|
+          const_read.destroy(genv)
+        end
+        @args.each {|arg| arg.undefine(genv) }
+      end
 
       def covariant_vertex0(genv, changes, vtx, subst)
-        #raise NotImplementedError
+        changes.add_depended_static_read(@static_ret.last)
+        cpath = @static_ret.last.cpath
+        return unless cpath
+        mod = genv.resolve_cpath(cpath)
+        args = @args.map {|arg| arg.covariant_vertex(genv, changes, subst) }
+        changes.add_edge(Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        if @args
-          mod = genv.resolve_cpath([:Array])
-          args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
-          Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
-        end
-        #raise NotImplementedError
+        changes.add_depended_static_read(@static_ret.last)
+        cpath = @static_ret.last.cpath
+        return unless cpath
+        mod = genv.resolve_cpath(cpath)
+        args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
+        Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
       end
 
       def show
-        "(...interface...)"
+        s = "::#{ @cpath.join("::") }"
+        if !@args.empty?
+          s << "[...]"
+        end
+        s
       end
     end
   end
