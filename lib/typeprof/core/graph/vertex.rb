@@ -2,21 +2,35 @@ module TypeProf::Core
   class BasicVertex
     def initialize(types)
       @types = types
+      @types_to_be_added = {}
     end
 
     attr_reader :types
 
+    def each_type(&blk)
+      @types.each_key(&blk)
+
+      until @types_to_be_added.empty?
+        h = @types_to_be_added.dup
+        h.each do |ty, source|
+          @types[ty] = source
+        end
+        @types_to_be_added.clear
+        h.each_key(&blk)
+      end
+    end
+
     def check_match(genv, changes, vtx)
-      vtx.types.each do |ty, _source|
+      vtx.each_type do |ty|
         if ty.is_a?(Type::Var)
-          changes.add_edge(self, ty.vtx)
+          changes.add_edge(genv, self, ty.vtx)
           return true
         end
       end
 
       return true if vtx.types.empty?
 
-      @types.each do |ty, _source|
+      each_type do |ty|
         next if vtx.types.include?(ty) # fast path
         return false unless ty.check_match(genv, changes, vtx)
       end
@@ -33,7 +47,7 @@ module TypeProf::Core
           types = []
           bot = @types.keys.any? {|ty| ty.is_a?(Type::Bot) }
           optional = true_exist = false_exist = false
-          @types.each_key do |ty|
+          each_type do |ty|
             if ty.is_a?(Type::Instance)
               case ty.mod.cpath
               when [:NilClass] then optional = true
@@ -44,7 +58,7 @@ module TypeProf::Core
           end
           bool = true_exist && false_exist
           types << "bool" if bool
-          @types.each do |ty, _source|
+          each_type do |ty, _source|
             if ty.is_a?(Type::Instance)
               next if ty.mod.cpath == [:NilClass]
               next if bool && (ty.mod.cpath == [:TrueClass] || ty.mod.cpath == [:FalseClass])
@@ -113,8 +127,8 @@ module TypeProf::Core
     end
 
     def match?(genv, other)
-      @types.each do |ty1, _source|
-        other.types.each do |ty2, _source|
+      each_type do |ty1|
+        other.each_type do |ty2|
           return true if ty1.match?(genv, ty2)
         end
       end
@@ -149,12 +163,18 @@ module TypeProf::Core
     def on_type_added(genv, src_var, added_types)
       new_added_types = []
       added_types.each do |ty|
-        unless @types[ty]
-          @types[ty] ||= Set[]
+        if @types[ty]
+          @types[ty] << src_var
+        else
+          set = Set[]
+          begin
+            @types[ty] = set
+          rescue
+            @types_to_be_added[ty] = set
+          end
+          set << src_var
           new_added_types << ty
         end
-        raise "duplicated edge" if @types[ty].include?(src_var)
-        @types[ty] << src_var
       end
       unless new_added_types.empty?
         @next_vtxs.each do |nvtx|
@@ -166,6 +186,7 @@ module TypeProf::Core
     def on_type_removed(genv, src_var, removed_types)
       new_removed_types = []
       removed_types.each do |ty|
+        raise "!!! not implemented" if @types_to_be_added[ty]
         @types[ty].delete(src_var) || raise
         if @types[ty].empty?
           @types.delete(ty) || raise
@@ -196,8 +217,8 @@ module TypeProf::Core
     end
 
     def match?(genv, other)
-      @types.each do |ty1, _source|
-        other.types.each do |ty2, _source|
+      each_type do |ty1|
+        other.each_type do |ty2|
           # XXX
           return true if ty1.base_type(genv).match?(genv, ty2.base_type(genv))
         end

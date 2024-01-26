@@ -30,7 +30,7 @@ module TypeProf::Core
       start_rest.upto(end_rest - 1) do |i|
         a_arg = positional_args[i]
         if splat_flags[i]
-          a_arg.types.each do |ty, _source|
+          a_arg.each_type do |ty|
             ty = ty.base_type(genv)
             if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
               vtxs << ty.args[0]
@@ -69,7 +69,7 @@ module TypeProf::Core
       start_rest.upto(end_rest - 1) do |i|
         a_arg = @positionals[i]
         if @splat_flags[i]
-          a_arg.types.each do |ty, _source|
+          a_arg.each_type do |ty|
             ty = ty.base_type(genv)
             if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
               vtxs << ty.args[0]
@@ -100,13 +100,13 @@ module TypeProf::Core
         changes.add_masgn_site(genv, @node, caller_positionals[0], @f_args)
       else
         caller_positionals.zip(@f_args) do |a_arg, f_arg|
-          changes.add_edge(a_arg, f_arg) if f_arg
+          changes.add_edge(genv, a_arg, f_arg) if f_arg
         end
       end
       if ret_check
         changes.add_check_return_site(genv, @node, @ret, caller_ret)
       else
-        changes.add_edge(@ret, caller_ret)
+        changes.add_edge(genv, @ret, caller_ret)
       end
     end
   end
@@ -128,9 +128,9 @@ module TypeProf::Core
     def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
       @used = true
       caller_positionals.each_with_index do |a_arg, i|
-        changes.add_edge(a_arg, get_f_arg(i))
+        changes.add_edge(genv, a_arg, get_f_arg(i))
       end
-      changes.add_edge(caller_ret, @ret)
+      changes.add_edge(genv, caller_ret, @ret)
     end
   end
 end

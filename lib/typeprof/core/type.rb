@@ -37,7 +37,7 @@ module TypeProf::Core
       end
 
       def check_match(genv, changes, vtx)
-        vtx.types.each do |other_ty, _source|
+        vtx.each_type do |other_ty|
           case other_ty
           when Singleton
             other_mod = other_ty.mod
@@ -91,42 +91,38 @@ module TypeProf::Core
       end
 
       def check_match(genv, changes, vtx)
-        vtx.types.each do |other_ty, _source|
+        vtx.each_type do |other_ty|
           case other_ty
           when Instance
             other_mod = other_ty.mod
-            if other_mod.module?
-              # TODO: implement
-            else
-              mod = @mod
-              args = @args
-              while mod
-                if mod == other_mod
-                  args_all_match = true
-                  args.zip(other_ty.args) do |arg, other_arg|
-                    unless arg.check_match(genv, changes, other_arg)
-                      args_all_match = false
-                      break
-                    end
-                  end
-                  return true if args_all_match
-                end
-                changes.add_depended_superclass(mod)
-
-                super_mod = mod.superclass
-                args2 = []
-                if super_mod && super_mod.type_params
-                  subst2 = {}
-                  mod.type_params.zip(@args) do |param, vtx|
-                    subst2[param] = vtx
-                  end
-                  super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
-                    args2 << arg.covariant_vertex(genv, changes, subst2)
+            mod = @mod
+            args = @args
+            while mod
+              if mod == other_mod
+                args_all_match = true
+                args.zip(other_ty.args) do |arg, other_arg|
+                  unless arg.check_match(genv, changes, other_arg)
+                    args_all_match = false
+                    break
                   end
                 end
-                mod = super_mod
-                args = args2
+                return true if args_all_match
               end
+              changes.add_depended_superclass(mod)
+
+              super_mod = mod.superclass
+              args2 = []
+              if super_mod && super_mod.type_params
+                subst2 = {}
+                mod.type_params.zip(@args) do |param, vtx|
+                  subst2[param] = vtx
+                end
+                super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
+                  args2 << arg.covariant_vertex(genv, changes, subst2)
+                end
+              end
+              mod = super_mod
+              args = args2
             end
           end
         end
@@ -174,7 +170,7 @@ module TypeProf::Core
       end
 
       def check_match(genv, changes, vtx)
-        vtx.types.each do |other_ty, _source|
+        vtx.each_type do |other_ty|
           if other_ty.is_a?(Array)
             if @elems.size == other_ty.elems.size
               match = true
@@ -259,7 +255,7 @@ module TypeProf::Core
       end
 
       def check_match(genv, changes, vtx)
-        vtx.types.each do |other_ty, _source|
+        vtx.each_type do |other_ty|
           case other_ty
           when Symbol
             return true if @sym == other_ty.sym

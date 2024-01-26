@@ -8,7 +8,7 @@ module TypeProf::Core
       ty = ty.get_instance_type(@genv)
       recv = Source.new(ty)
       changes.add_callsite(@genv, node, recv, :initialize, a_args, false)
-      changes.add_edge(Source.new(ty), ret)
+      changes.add_edge(@genv, Source.new(ty), ret)
     end
 
     def proc_call(changes, node, ty, a_args, ret)
@@ -30,7 +30,8 @@ module TypeProf::Core
           else
             idx = nil
           end
-          changes.add_edge(ty.get_elem(@genv, idx), ret)
+          vtx = ty.get_elem(@genv, idx)
+          changes.add_edge(@genv, vtx, ret)
         else
           #puts "??? array_aref"
         end
@@ -46,9 +47,9 @@ module TypeProf::Core
           val = a_args.positionals[1]
           idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(@genv, idx.lit)
-            changes.add_edge(val, ty.get_elem(@genv, idx.lit))
+            changes.add_edge(@genv, val, ty.get_elem(@genv, idx.lit))
           else
-            changes.add_edge(val, ty.get_elem(@genv))
+            changes.add_edge(@genv, val, ty.get_elem(@genv))
           end
         else
           puts "??? array_aset #{ ty.class }"
@@ -63,7 +64,7 @@ module TypeProf::Core
         case ty
         when Type::Array
           val = a_args.positionals[0]
-          changes.add_edge(val, ty.get_elem(@genv))
+          changes.add_edge(@genv, val, ty.get_elem(@genv))
         else
           puts "??? array_aset #{ ty.class }"
         end
@@ -82,7 +83,7 @@ module TypeProf::Core
           else
             idx = nil
           end
-          changes.add_edge(ty.get_value(idx), ret)
+          changes.add_edge(@genv, ty.get_value(idx), ret)
         else
           #puts "??? hash_aref 1"
         end
@@ -99,13 +100,13 @@ module TypeProf::Core
           idx = node.positional_args[0]
           if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol) && ty.get_value(idx.lit)
             # TODO: how to handle new key?
-            changes.add_edge(val, ty.get_value(idx.lit))
+            changes.add_edge(@genv, val, ty.get_value(idx.lit))
           else
             # TODO: literal_pairs will not be updated
-            changes.add_edge(a_args.positionals[0], ty.get_key)
-            changes.add_edge(val, ty.get_value)
+            changes.add_edge(@genv, a_args.positionals[0], ty.get_key)
+            changes.add_edge(@genv, val, ty.get_value)
           end
-          changes.add_edge(val, ret)
+          changes.add_edge(@genv, val, ret)
         else
           #puts "??? hash_aset 1 #{ ty.object_id } #{ ty.inspect }"
         end

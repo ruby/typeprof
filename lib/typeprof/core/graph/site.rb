@@ -23,8 +23,9 @@ module TypeProf::Core
       @covariant_types[sig_type_node] ||= Vertex.new("rbs_type", sig_type_node)
     end
 
-    def add_edge(src, dst)
+    def add_edge(genv, src, dst)
       raise unless src.is_a?(BasicVertex)
+      src.add_edge(genv, dst) if !@edges.include?([src, dst]) && !@new_edges.include?([src, dst])
       @new_edges << [src, dst]
     end
 
@@ -66,9 +67,6 @@ module TypeProf::Core
 
     def reinstall(genv)
       @new_edges.uniq!
-      @new_edges.each do |src, dst|
-        src.add_edge(genv, dst) unless @edges.include?([src, dst])
-      end
       @edges.each do |src, dst|
         src.remove_edge(genv, dst) unless @new_edges.include?([src, dst])
       end
@@ -188,7 +186,7 @@ module TypeProf::Core
 
     def run0(genv, changes)
       cdef = @const_read.cdef
-      changes.add_edge(cdef.vtx, @ret) if cdef
+      changes.add_edge(genv, cdef.vtx, @ret) if cdef
     end
 
     def long_inspect
@@ -208,7 +206,7 @@ module TypeProf::Core
 
     def run0(genv, changes)
       vtx = @rbs_type.covariant_vertex(genv, changes, {})
-      changes.add_edge(vtx, @ret)
+      changes.add_edge(genv, vtx, @ret)
     end
 
     def long_inspect
@@ -321,7 +319,7 @@ module TypeProf::Core
         next if !rbs_blk && a_args.block
         if rbs_blk && a_args.block
           # rbs_blk_func.optional_keywords, ...
-          a_args.block.types.each do |ty, _source|
+          a_args.block.each_type do |ty|
             case ty
             when Type::Proc
               blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
@@ -334,7 +332,7 @@ module TypeProf::Core
           end
         end
         ret_vtx = method_type.return_type.covariant_vertex(genv, changes, param_map0)
-        changes.add_edge(ret_vtx, ret)
+        changes.add_edge(genv, ret_vtx, ret)
         match_any_overload = true
       end
       unless match_any_overload
@@ -500,37 +498,37 @@ module TypeProf::Core
 
         @f_args.req_positionals.each_with_index do |f_vtx, i|
           if i < start_rest
-            changes.add_edge(a_args.positionals[i], f_vtx)
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
           else
             rest_vtxs.each do |vtx|
-              changes.add_edge(vtx, f_vtx)
+              changes.add_edge(genv, vtx, f_vtx)
             end
           end
         end
         @f_args.opt_positionals.each_with_index do |f_vtx, i|
           i += @f_args.opt_positionals.size
           if i < start_rest
-            changes.add_edge(a_args.positionals[i], f_vtx)
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
           else
             rest_vtxs.each do |vtx|
-              changes.add_edge(vtx, f_vtx)
+              changes.add_edge(genv, vtx, f_vtx)
             end
           end
         end
         @f_args.post_positionals.each_with_index do |f_vtx, i|
           i += a_args.positionals.size - @f_args.post_positionals.size
           if end_rest <= i
-            changes.add_edge(a_args.positionals[i], f_vtx)
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
           else
             rest_vtxs.each do |vtx|
-              changes.add_edge(vtx, f_vtx)
+              changes.add_edge(genv, vtx, f_vtx)
             end
           end
         end
 
         if @f_args.rest_positionals
           rest_vtxs.each do |vtx|
-            changes.add_edge(vtx, @f_args.rest_positionals)
+            changes.add_edge(genv, vtx, @f_args.rest_positionals)
           end
         end
       else
@@ -550,18 +548,18 @@ module TypeProf::Core
         end
 
         @f_args.req_positionals.each_with_index do |f_vtx, i|
-          changes.add_edge(a_args.positionals[i], f_vtx)
+          changes.add_edge(genv, a_args.positionals[i], f_vtx)
         end
         @f_args.post_positionals.each_with_index do |f_vtx, i|
           i -= @f_args.post_positionals.size
-          changes.add_edge(a_args.positionals[i], f_vtx)
+          changes.add_edge(genv, a_args.positionals[i], f_vtx)
         end
         start_rest = @f_args.req_positionals.size
         end_rest = a_args.positionals.size - @f_args.post_positionals.size
         i = 0
         while i < @f_args.opt_positionals.size && start_rest < end_rest
           f_arg = @f_args.opt_positionals[i]
-          changes.add_edge(a_args.positionals[start_rest], f_arg)
+          changes.add_edge(genv, a_args.positionals[start_rest], f_arg)
           i += 1
           start_rest += 1
         end
@@ -570,7 +568,7 @@ module TypeProf::Core
           if @f_args.rest_positionals
             f_arg = @f_args.rest_positionals
             (start_rest..end_rest-1).each do |i|
-              changes.add_edge(a_args.positionals[i], f_arg)
+              changes.add_edge(genv, a_args.positionals[i], f_arg)
             end
           end
         end
@@ -580,9 +578,9 @@ module TypeProf::Core
 
     def call(changes, genv, call_node, a_args, ret)
       if pass_positionals(changes, genv, call_node, a_args)
-        changes.add_edge(a_args.block, @f_args.block) if @f_args.block && a_args.block
+        changes.add_edge(genv, a_args.block, @f_args.block) if @f_args.block && a_args.block
 
-        changes.add_edge(@ret, ret)
+        changes.add_edge(genv, @ret, ret)
       end
     end
 
@@ -678,7 +676,7 @@ module TypeProf::Core
         end
       end
       edges.each do |src, dst|
-        changes.add_edge(src, dst)
+        changes.add_edge(genv, src, dst)
       end
       if error_count > 3
         meth = @node.mid_code_range ? :mid_code_range : :code_range
@@ -689,7 +687,7 @@ module TypeProf::Core
     end
 
     def resolve(genv, changes, &blk)
-      @recv.types.each do |ty, _source|
+      @recv.each_type do |ty|
         next if ty == Type::Bot.new(genv)
         if @mid == :"*super"
           mid = @node.lenv.cref.mid
@@ -776,7 +774,7 @@ module TypeProf::Core
 
     def resolve_subclasses(genv, changes)
       # TODO: This does not follow new subclasses
-      @recv.types.each do |ty, _source|
+      @recv.each_type do |ty|
         next if ty == Type::Bot.new(genv)
         base_ty = ty.base_type(genv)
         singleton = base_ty.is_a?(Type::Singleton)
@@ -808,7 +806,7 @@ module TypeProf::Core
     attr_reader :node, :const_read, :ret
 
     def run0(genv, changes)
-      changes.add_edge(@vtx, @ret)
+      changes.add_edge(genv, @vtx, @ret)
     end
 
     def long_inspect
@@ -857,7 +855,7 @@ module TypeProf::Core
         # TODO: error?
       end
       edges.each do |src, dst|
-        changes.add_edge(src, dst)
+        changes.add_edge(genv, src, dst)
       end
     end
 
@@ -885,7 +883,7 @@ module TypeProf::Core
 
     def run0(genv, changes)
       edges = []
-      @rhs.types.each do |ty, _source|
+      @rhs.each_type do |ty|
         case ty
         when Type::Array
           @lhss.each_with_index do |lhs, i|
@@ -896,7 +894,7 @@ module TypeProf::Core
         end
       end
       edges.each do |src, dst|
-        changes.add_edge(src, dst)
+        changes.add_edge(genv, src, dst)
       end
     end
 
