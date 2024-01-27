@@ -110,21 +110,65 @@ module TypeProf::Core
               end
               changes.add_depended_superclass(mod)
 
+              if other_mod.module?
+                return true if check_match_included_modules(genv, changes, mod, args, other_mod, other_ty.args)
+              end
+
               super_mod = mod.superclass
               args2 = []
               if super_mod && super_mod.type_params
-                subst2 = {}
+                param_map = {}
                 mod.type_params.zip(@args) do |param, vtx|
-                  subst2[param] = vtx
+                  param_map[param] = vtx
                 end
                 super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
-                  args2 << arg.covariant_vertex(genv, changes, subst2)
+                  args2 << arg.covariant_vertex(genv, changes, param_map)
                 end
               end
               mod = super_mod
               args = args2
             end
           end
+        end
+        return false
+      end
+
+      def check_match_included_modules(genv, changes, mod, args, other_mod, other_args)
+        mod.included_modules.each do |inc_decl, inc_mod|
+          inc_args = []
+          if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
+            param_map = {}
+            mod.type_params.zip(args) do |param, vtx|
+              param_map[param] = vtx
+            end
+            inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
+            inc_args << arg.covariant_vertex(genv, changes, param_map)
+            end
+          end
+          if inc_mod == other_mod
+            args_all_match = true
+            inc_args.zip(other_args) do |arg, other_arg|
+              unless arg.check_match(genv, changes, other_arg)
+                args_all_match = false
+                break
+              end
+            end
+            return true if args_all_match
+          end
+          changes.add_depended_superclass(inc_mod)
+
+          super_mod = mod.superclass
+          super_args = []
+          if super_mod && super_mod.type_params
+            param_map = {}
+            mod.type_params.zip(args) do |param, vtx|
+              param_map[param] = vtx
+            end
+            super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
+              super_args << arg.covariant_vertex(genv, changes, param_map)
+            end
+          end
+          return true if check_match_included_modules(genv, changes, super_mod, super_args, other_mod, other_args)
         end
         return false
       end
