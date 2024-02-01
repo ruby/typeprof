@@ -20,6 +20,9 @@ module TypeProf::Core
           AST.create_rbs_member(member, nlenv)
         end.compact
         # TODO?: param.variance, param.unchecked, param.upper_bound
+        if raw_decl.is_a?(RBS::AST::Declarations::Module) && !raw_decl.self_types.empty?
+          # raw_decl.self_types
+        end
         @params = raw_decl.type_params.map {|param| param.name }
       end
 

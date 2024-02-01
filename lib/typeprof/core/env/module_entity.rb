@@ -1,34 +1,4 @@
 module TypeProf::Core
-  class VertexEntity
-    def initialize
-      @decls = Set[]
-      @defs = Set[]
-      @vtx = Vertex.new("gvar", self)
-    end
-
-    attr_reader :decls, :defs, :vtx
-
-    def add_decl(decl)
-      @decls << decl
-    end
-
-    def remove_decl(decl)
-      @decls.delete(decl) || raise
-    end
-
-    def add_def(def_)
-      @defs << def_
-    end
-
-    def remove_def(def_)
-      @defs.delete(def_) || raise
-    end
-
-    def exist?
-      !@decls.empty? || !@defs.empty?
-    end
-  end
-
   class ModuleEntity
     def initialize(cpath, outer_module = self)
       @cpath = cpath
@@ -88,6 +58,10 @@ module TypeProf::Core
 
     def module?
       !@superclass && !@basic_object
+    end
+
+    def interface?
+      @cpath.last && @cpath.last.start_with?("_")
     end
 
     def get_cname
@@ -357,7 +331,7 @@ module TypeProf::Core
     end
 
     def get_const(cname)
-      @consts[cname] ||= VertexEntity.new
+      @consts[cname] ||= ValueEntity.new
     end
 
     def get_method(singleton, mid)
@@ -365,7 +339,7 @@ module TypeProf::Core
     end
 
     def get_ivar(singleton, name)
-      @ivars[singleton][name] ||= VertexEntity.new
+      @ivars[singleton][name] ||= ValueEntity.new
     end
 
     def get_type_alias(name)
@@ -388,86 +362,6 @@ module TypeProf::Core
 
     def pretty_print(q)
       q.text "#<ModuleEntity[::#{ @cpath.empty? ? "Object" : @cpath.join("::") }]>"
-    end
-  end
-
-  class MethodEntity
-    def initialize
-      @builtin = nil
-      @decls = Set[]
-      @defs = Set[]
-      @aliases = {}
-      @callsites = Set[]
-    end
-
-    attr_reader :decls, :defs, :aliases, :callsites
-    attr_accessor :builtin
-
-    def add_decl(decl)
-      @decls << decl
-    end
-
-    def remove_decl(decl)
-      @decls.delete(decl) || raise
-    end
-
-    def add_def(mdef)
-      @defs << mdef
-      self
-    end
-
-    def remove_def(mdef)
-      @defs.delete(mdef) || raise
-    end
-
-    def add_alias(node, old_mid)
-      @aliases[node] = old_mid
-    end
-
-    def remove_alias(node)
-      @aliases.delete(node) || raise
-    end
-
-    def exist?
-      @builtin || !@decls.empty? || !@defs.empty? || !@aliases.empty?
-    end
-
-    def add_run_all_mdefs(genv)
-      @defs.each do |mdef|
-        genv.add_run(mdef)
-      end
-    end
-
-    def add_run_all_callsites(genv)
-      @callsites.each do |callsite|
-        genv.add_run(callsite)
-      end
-    end
-  end
-
-  class TypeAliasEntity
-    def initialize
-      @decls = Set[]
-      @type = nil
-    end
-
-    attr_reader :decls, :type
-
-    def exist?
-      !@decls.empty?
-    end
-
-    def add_decl(decl)
-      @decls << decl
-      @type = decl.type unless @type
-      # TODO: report error if there are multiple declarations
-    end
-
-    def remove_decl(decl)
-      @decls.delete(decl) || raise
-      if @type == decl.type
-        @type = @decls.empty? ? nil : @decls.to_a.first.type
-      end
     end
   end
 end

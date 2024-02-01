@@ -154,7 +154,7 @@ module TypeProf::Core
     end
 
     def resolve_gvar(name)
-      @gvars[name] ||= VertexEntity.new
+      @gvars[name] ||= ValueEntity.new
     end
 
     def resolve_ivar(cpath, singleton, name)

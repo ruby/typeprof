@@ -150,7 +150,7 @@ module TypeProf::Core
       case origin
       when AST::Node
       when RBS::AST::Declarations::Base
-      when VertexEntity
+      when ValueEntity
       else
         raise
       end
