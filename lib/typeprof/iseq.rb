@@ -276,7 +276,7 @@ module TypeProf
               misc[:def_node_id] = node_id
             end
           end
-          ninsns << Insn.new(insn, operands, lineno, code_range, nil)
+          ninsns << i = Insn.new(insn, operands, lineno, code_range, nil)
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -840,8 +840,13 @@ module TypeProf
         sp -= 1
         return nil if sp <= 0
         sp += num + (splat ? 1 : 0)
-      when :concatarray
+      when :concatarray, :concattoarray
         sp -= 2
+        return nil if sp <= 0
+        sp += 1
+      when :pushtoarray
+        num, = operands
+        sp -= num + 1
         return nil if sp <= 0
         sp += 1
       when :checktype

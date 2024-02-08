@@ -2137,7 +2137,7 @@ module TypeProf
           end
         end
         return
-      when :concatarray
+      when :concatarray, :concattoarray
         env, (ary1, ary2) = env.pop(2)
         if ary1.is_a?(Type::Local) && ary1.kind == Type::Array
           elems1 = get_container_elem_types(env, ep, ary1.id)
@@ -2155,6 +2155,20 @@ module TypeProf
           ty = Type::Array.new(Type::Array::Elements.new([], Type.any), Type::Instance.new(Type::Builtin[:ary]))
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
+        end
+      when :pushtoarray
+        num, = operands
+        env, (ary, ty, *tys) = env.pop(num + 1)
+        if ary.is_a?(Type::Local) && ary.kind == Type::Array
+          tys.each {|ty0| ty = ty.union(ty0) }
+          elems = get_container_elem_types(env, ep, ary.id)
+          elems = Type::Array::Elements.new([], elems.squash.union(ty))
+          env = update_container_elem_types(env, ep, ary.id, ary.base_type) { elems }
+          env = env.push(ary)
+        else
+          elems = Type::Array::Elements.new([], Type.any)
+          env = update_container_elem_types(env, ep, ary.id, ary.base_type) { elems }
+          env = env.push(ary)
         end
 
       when :checktype
