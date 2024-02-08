@@ -285,6 +285,10 @@ module TypeProf::Core
         genv.proc_type
       end
 
+      def check_match(genv, changes, vtx)
+        genv.proc_type.check_match(genv, changes, vtx)
+      end
+
       def show
         "<Proc>"
       end
