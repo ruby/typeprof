@@ -921,7 +921,7 @@ module TypeProf
 
       # Dirty Hack: Stop the iteration at most once!
       # I'll remove this hack if RBS removes the limitation of nesting blocks
-      return fargs_str, sig_help if caller_locations.any? {|frame| frame.label == "show_block_signature" }
+      return fargs_str, sig_help if caller_locations.any? {|frame| frame.label =~ /\bshow_block_signature\z/ }
 
       optional = false
       blks = []
