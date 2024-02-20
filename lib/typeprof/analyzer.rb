@@ -549,12 +549,27 @@ module TypeProf
       if klass == Type.any
         "???"
       else
-        path = @class_defs[klass.idx].name
+        class_def = @class_defs[klass.idx]
+        path = class_def.name
         if @namespace
+          # Find index where namespace and path don't match anymore
           i = 0
           i += 1 while @namespace[i] && @namespace[i] == path[i]
           if path[i]
-            path[i..].join("::")
+            parts = path[i..]
+
+            # Sometimes stripping off matching parts of the namespace can lead to matching the wrong
+            # class so we check here and fully qualify in a case of a mismatch
+            mismatched = (0..i).any? do |j|
+              search_path = @namespace[0..j] + parts
+              found = @class_defs.map { |(_, cd)| cd }.find { |cd| cd.name == search_path }
+              found && found != class_def
+            end
+
+            # Use the full path and add an empty field to cause leading ::
+            parts = [""] + path if mismatched
+
+            parts.join("::")
           else
             path.last.to_s
           end
