@@ -1374,7 +1374,7 @@ module TypeProf
         obj, = operands
         env, ty = localize_type(Type.guess_literal_type(obj), env, ep)
         env = env.push(ty)
-      when :putstring
+      when :putstring, :putchilledstring
         str, = operands
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
         env = env.push(ty)
