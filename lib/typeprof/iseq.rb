@@ -723,7 +723,7 @@ module TypeProf
 
       case insn.insn
       when :putspecialobject, :putnil, :putobject, :duparray, :putstring,
-           :putself
+           :putchilledstring, :putself
         sp += 1
       when :newarray, :newarraykwsplat, :newhash, :concatstrings
         len, = operands
