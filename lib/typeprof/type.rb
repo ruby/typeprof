@@ -861,7 +861,7 @@ module TypeProf
     include Utils::StructuralEquality
 
     def screen_name(iseq, scratch)
-      fargs_str = "("
+      fargs_str = +"("
       sig_help = {}
       add_farg = -> farg, name, help: false, key: sig_help.size do
         name = "`#{ name }`" if RBS::Parser::KEYWORDS.key?(name.to_s)
@@ -917,7 +917,7 @@ module TypeProf
 
       fargs_str << ")"
 
-      fargs_str = "" if fargs_str == "()"
+      fargs_str = +"" if fargs_str == "()"
 
       # Dirty Hack: Stop the iteration at most once!
       # I'll remove this hack if RBS removes the limitation of nesting blocks
