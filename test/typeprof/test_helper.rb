@@ -24,7 +24,7 @@ module TypeProf
 
       rb_files = [@name]
       rbs_files = [@rbs_path].compact
-      output = StringIO.new("")
+      output = StringIO.new(+"")
       options[:show_untyped] = true unless options.key?(:show_untyped)
       options[:show_errors] = true unless options.key?(:show_errors)
       options[:show_indicator] = false unless options.key?(:show_indicator)
