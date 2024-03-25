@@ -380,9 +380,8 @@ module TypeProf::Core
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
             base_ty = ty.base_type(genv)
-            mod = base_ty.mod
-            singleton = base_ty.is_a?(Type::Singleton)
-            while mod
+
+            @genv.each_superclass(base_ty.mod, base_ty.is_a?(Type::Singleton)) do |mod, singleton|
               mod.methods[singleton].each do |mid, me|
                 sig = nil
                 me.decls.each do |mdecl|
@@ -397,9 +396,6 @@ module TypeProf::Core
                 end
                 yield mid, "#{ mod.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }" if sig
               end
-              # TODO: support aliases
-              # TODO: support include module
-              mod, singleton = genv.get_superclass(mod, singleton)
             end
           end
           return
