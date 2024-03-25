@@ -49,11 +49,6 @@ module TypeProf::Core
 
     attr_reader :node, :next_vtx
 
-    def filter(genv, types)
-      # TODO: @const_read may change
-      types.select {|ty| genv.subclass?(ty.base_type(genv), @const_read.cpath) != @neg }
-    end
-
     def on_type_added(genv, src_var, added_types)
       added_types.each do |ty|
         @types << ty
@@ -72,9 +67,15 @@ module TypeProf::Core
       if @const_read.cpath
         passed_types = []
         @types.each do |ty|
-          if genv.subclass?(ty.base_type(genv).mod.cpath, @const_read.cpath) != @neg
-            passed_types << ty
+          base_ty = ty.base_type(genv)
+          subclass = false
+          genv.each_superclass(base_ty.mod, base_ty.is_a?(Type::Singleton)) do |mod, singleton|
+            if mod.cpath == @const_read.cpath
+              subclass = true
+              break
+            end
           end
+          passed_types << ty if subclass != @neg
         end
       else
         passed_types = @types.to_a

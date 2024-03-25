@@ -33,7 +33,7 @@ module TypeProf::Core
 
         vars = []
         vars << @cond.var if @cond.is_a?(LVAR)
-        var, filtered_class = AST.is_a_class(@cond)
+        var, filter_class = AST.is_a_class(@cond)
         vars << var if var
         @then.modified_vars(@lenv.locals.keys, vars) if @then
         @else.modified_vars(@lenv.locals.keys, vars) if @else
@@ -48,13 +48,13 @@ module TypeProf::Core
           nvtx_then, nvtx_else = modified_vtxs[@cond.var]
           nvtx_then = NilFilter.new(genv, self, nvtx_then, !self.is_a?(IF)).next_vtx
           nvtx_else = NilFilter.new(genv, self, nvtx_else, self.is_a?(IF)).next_vtx
-          modified_vtxs[@cond.var] = nvtx_then, nvtx_else
+          modified_vtxs[@cond.var] = [nvtx_then, nvtx_else]
         end
-        if filtered_class
+        if filter_class
           nvtx_then, nvtx_else = modified_vtxs[var]
-          nvtx_then = IsAFilter.new(genv, self, nvtx_then, !self.is_a?(IF), filtered_class).next_vtx
-          nvtx_else = IsAFilter.new(genv, self, nvtx_else, self.is_a?(IF), filtered_class).next_vtx
-          modified_vtxs[var] = nvtx_then, nvtx_else
+          nvtx_then = IsAFilter.new(genv, self, nvtx_then, !self.is_a?(IF), filter_class).next_vtx
+          nvtx_else = IsAFilter.new(genv, self, nvtx_else, self.is_a?(IF), filter_class).next_vtx
+          modified_vtxs[var] = [nvtx_then, nvtx_else]
         end
 
         if @then

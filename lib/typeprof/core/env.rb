@@ -58,6 +58,33 @@ module TypeProf::Core
 
     attr_accessor :run_count
 
+    def each_direct_superclass(mod, singleton)
+      while mod
+        yield mod, singleton
+        mod, singleton = get_superclass(mod, singleton)
+      end
+    end
+
+    def each_superclass(mod, singleton, &blk)
+      while mod
+        # TODO: prepended modules
+        yield mod, singleton
+        if singleton
+          # TODO: extended modules
+        else
+          each_included_module(mod, &blk)
+        end
+        mod, singleton = get_superclass(mod, singleton)
+      end
+    end
+
+    def each_included_module(mod, &blk)
+      mod.included_modules.each do |_inc_decl, inc_mod|
+        yield inc_mod, false
+        each_included_module(inc_mod, &blk)
+      end
+    end
+
     def get_superclass(mod, singleton)
       super_mod = mod.superclass
       if super_mod
@@ -167,16 +194,6 @@ module TypeProf::Core
       # TODO: include はあとで考える
       mod = resolve_cpath(cpath)
       mod.get_type_alias(name)
-    end
-
-    def subclass?(cpath1, cpath2)
-      mod = resolve_cpath(cpath1)
-      while true
-        return true if mod.cpath == cpath2
-        break if mod.cpath == [:BasicObject]
-        mod = mod.superclass
-      end
-      return false
     end
 
     def load_core_rbs(raw_decls)

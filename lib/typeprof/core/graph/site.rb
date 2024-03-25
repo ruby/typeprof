@@ -838,12 +838,11 @@ module TypeProf::Core
       singleton = @singleton
       cur_ive = mod.get_ivar(singleton, @name)
       target_vtx = nil
-      while mod
+      genv.each_direct_superclass(mod, singleton) do |mod, singleton|
         ive = mod.get_ivar(singleton, @name)
         if ive.exist?
           target_vtx = ive.vtx
         end
-        mod, singleton = genv.get_superclass(mod, singleton)
       end
       edges = []
       if target_vtx
