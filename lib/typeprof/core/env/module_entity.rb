@@ -193,7 +193,7 @@ module TypeProf::Core
         mod = new_parent
         while mod
           if mod == self
-            # TODO: report error
+            # TODO: report "circular inheritance" error
             new_parent = nil
             break
           end

@@ -96,6 +96,8 @@ module TypeProf::Core
           else
             return nil
           end
+        elsif mod == @mod_module && !singleton
+          return nil
         else
           return [@mod_module, false]
         end

@@ -37,7 +37,10 @@ module TypeProf::Core
       while cref
         scope = cref.cpath
         mod = genv.resolve_cpath(scope)
-        while true
+        genv.each_superclass(mod, false) do |mod, singleton|
+          break if singleton
+          break if mod == genv.mod_object && break_object
+
           unless @source_modules.include?(mod)
             @source_modules << mod
             (mod.static_reads[@name] ||= Set[]) << self
@@ -45,12 +48,7 @@ module TypeProf::Core
 
           return if check_module(genv, mod)
 
-          # TODO: included modules
-
           break unless first
-          break unless mod.superclass
-          mod = mod.superclass
-          break if mod == genv.mod_object && break_object
         end
         first = false
         cref = cref.outer
