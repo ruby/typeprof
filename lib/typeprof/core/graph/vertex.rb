@@ -126,15 +126,6 @@ module TypeProf::Core
       end
     end
 
-    def match?(genv, other)
-      each_type do |ty1|
-        other.each_type do |ty2|
-          return true if ty1.match?(genv, ty2)
-        end
-      end
-      return false
-    end
-
     def to_s
       "<src:#{ show }>"
     end
@@ -214,16 +205,6 @@ module TypeProf::Core
     def remove_edge(genv, nvtx)
       @next_vtxs.delete(nvtx) || raise
       nvtx.on_type_removed(genv, self, @types.keys) unless @types.empty?
-    end
-
-    def match?(genv, other)
-      each_type do |ty1|
-        other.each_type do |ty2|
-          # XXX
-          return true if ty1.base_type(genv).match?(genv, ty2.base_type(genv))
-        end
-      end
-      return false
     end
 
     $new_id = 0 # TODO: Use class variable

@@ -63,13 +63,6 @@ module TypeProf::Core
         "singleton(#{ @mod.show_cpath })"
       end
 
-      def match?(genv, other)
-        return true if self == other
-
-        # TODO: implement!
-        return false
-      end
-
       def get_instance_type(genv)
         params = @mod.type_params
         Instance.new(genv, @mod, params ? params.map { Source.new } : [])
@@ -185,13 +178,6 @@ module TypeProf::Core
         else
           "#{ @mod.show_cpath }#{ @args.empty? ? "" : "[#{ @args.map {|arg| Type.strip_parens(arg.show) }.join(", ") }]" }"
         end
-      end
-
-      def match?(genv, other)
-        return true if self == other
-
-        # TODO: base_type?
-        return Instance === other && genv.subclass?(@mod.cpath, other.mod.cpath)
       end
     end
 
