@@ -583,6 +583,12 @@ module TypeProf::Core
         case @cpath.last
         when :_ToAry
           @cpath = [:Array]
+        when :_Each
+          @cpath = [:Array]
+        when :_ToS
+          @cpath = [:String]
+        when :_ToStr
+          @cpath = [:String]
         when :_Exception
           @cpath = [:Exception]
         end

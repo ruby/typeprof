@@ -148,6 +148,7 @@ module TypeProf::Core
 
       def diff(prev_node)
         if prev_node.is_a?(self.class) && attrs.all? {|key, attr| attr == prev_node.send(key) }
+          raise unless prev_node # annotation
           s1 = subnodes
           s2 = prev_node.subnodes
           return if s1.keys != s2.keys
@@ -155,10 +156,8 @@ module TypeProf::Core
             next if key == :dummy_rhs
             prev_subnode = s2[key]
             if subnode && prev_subnode
-              if subnode.is_a?(AST::Node)
-                subnode = [subnode]
-                prev_subnode = [prev_subnode]
-              end
+              subnode = [subnode] if subnode.is_a?(AST::Node)
+              prev_subnode = [prev_subnode] if prev_subnode.is_a?(AST::Node)
               subnode.zip(prev_subnode) do |subnode0, prev_subnode0|
                 subnode0.diff(prev_subnode0)
                 return unless subnode0.prev_node
