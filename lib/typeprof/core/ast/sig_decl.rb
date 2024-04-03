@@ -20,9 +20,6 @@ module TypeProf::Core
           AST.create_rbs_member(member, nlenv)
         end.compact
         # TODO?: param.variance, param.unchecked, param.upper_bound
-        if raw_decl.is_a?(RBS::AST::Declarations::Module) && !raw_decl.self_types.empty?
-          # raw_decl.self_types
-        end
         @params = raw_decl.type_params.map {|param| param.name }
       end
 
@@ -63,6 +60,12 @@ module TypeProf::Core
     end
 
     class SIG_MODULE < SigModuleNode
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        unless raw_decl.self_types.empty?
+          #pp raw_decl.self_types
+        end
+      end
     end
 
     class SIG_INTERFACE < SigModuleNode
