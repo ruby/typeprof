@@ -61,7 +61,7 @@ module TypeProf::Core
     def each_direct_superclass(mod, singleton)
       while mod
         yield mod, singleton
-        mod, singleton = get_superclass(mod, singleton)
+        singleton, mod = get_superclass(singleton, mod)
       end
     end
 
@@ -74,7 +74,7 @@ module TypeProf::Core
         else
           each_included_module(mod, &blk)
         end
-        mod, singleton = get_superclass(mod, singleton)
+        singleton, mod = get_superclass(singleton, mod)
       end
     end
 
@@ -85,22 +85,46 @@ module TypeProf::Core
       end
     end
 
-    def get_superclass(mod, singleton)
+    def get_superclass(singleton, mod)
       super_mod = mod.superclass
       if super_mod
-        return [super_mod, singleton]
+        return [singleton, super_mod]
       else
         if mod == @mod_basic_object
           if singleton
-            return [@mod_class, false]
+            return [false, @mod_class]
           else
             return nil
           end
         elsif mod == @mod_module && !singleton
           return nil
         else
-          return [@mod_module, false]
+          return [false, @mod_module]
         end
+      end
+    end
+
+    def get_instance_type(mod, type_args, changes, base_ty_env, base_ty)
+      ty_env = base_ty_env.dup
+      if base_ty.is_a?(Type::Instance)
+        base_ty.mod.type_params.zip(base_ty.args) do |param, arg|
+          ty_env[param] = arg
+        end
+      end
+      args = mod.type_params.zip(type_args).map do |param, arg|
+        arg && changes ? arg.covariant_vertex(self, changes, ty_env) : Source.new
+      end
+      Type::Instance.new(self, mod, args)
+    end
+
+    def get_superclass_type(ty, changes, base_ty_env)
+      singleton, super_mod = get_superclass(ty.is_a?(Type::Singleton), ty.mod)
+      return unless super_mod
+
+      if singleton
+        Type::Singleton.new(self, super_mod)
+      else
+        get_instance_type(super_mod, ty.mod.superclass_type_args, changes, base_ty_env, ty)
       end
     end
 

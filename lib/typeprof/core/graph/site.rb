@@ -633,25 +633,31 @@ module TypeProf::Core
       edges = Set[]
       called_mdefs = Set[]
       error_count = 0
-      resolve(genv, changes) do |recv_ty, mid, me, param_map|
+      resolve(genv, changes) do |me, ty, mid, orig_ty|
         if !me
           # TODO: undefined method error
           if error_count < 3
             meth = @node.mid_code_range ? :mid_code_range : :code_range
             changes.add_diagnostic(
-              TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ recv_ty.show }##{ mid }")
+              TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ orig_ty.show }##{ mid }")
             )
           end
           error_count += 1
         elsif me.builtin
           # TODO: block? diagnostics?
-          me.builtin[changes, @node, recv_ty, @a_args, @ret]
+          me.builtin[changes, @node, orig_ty, @a_args, @ret]
         elsif !me.decls.empty?
           # TODO: support "| ..."
           me.decls.each do |mdecl|
             # TODO: union type is ok?
             # TODO: add_depended_method_entities for types used to resolve overloads
-            mdecl.resolve_overloads(changes, genv, @node, param_map, @a_args, @ret)
+            ty_env = Type.default_param_map(genv, orig_ty)
+            if ty.is_a?(Type::Instance)
+              ty.mod.type_params.zip(ty.args) do |param, arg|
+                ty_env[param] = arg
+              end
+            end
+            mdecl.resolve_overloads(changes, genv, @node, ty_env, @a_args, @ret)
           end
         elsif !me.defs.empty?
           me.defs.each do |mdef|
@@ -687,8 +693,8 @@ module TypeProf::Core
     end
 
     def resolve(genv, changes, &blk)
-      @recv.each_type do |ty|
-        next if ty == Type::Bot.new(genv)
+      @recv.each_type do |orig_ty|
+        next if orig_ty == Type::Bot.new(genv)
         if @mid == :"*super"
           mid = @node.lenv.cref.mid
           skip = true
@@ -696,66 +702,53 @@ module TypeProf::Core
           mid = @mid
           skip = false
         end
-        base_ty = ty.base_type(genv)
-        mod = base_ty.mod
-        param_map = Type.default_param_map(genv, ty)
-        if base_ty.is_a?(Type::Instance)
-          if mod.type_params
-            mod.type_params.zip(base_ty.args) do |k, v|
-              param_map[k] = v
-            end
-          end
-        end
-        singleton = base_ty.is_a?(Type::Singleton)
-        while mod
-          # pp [mod, singleton]
+
+        ty = orig_ty.base_type(genv)
+
+        base_ty_env = Type.default_param_map(genv, ty)
+
+        while ty
           unless skip
-            me = mod.get_method(singleton, mid)
+            me = ty.mod.get_method(ty.is_a?(Type::Singleton), mid)
             changes.add_depended_method_entities(me) if changes
             if !me.aliases.empty?
               mid = me.aliases.values.first
               redo
             end
-            if me && me.exist?
-              yield ty, mid, me, param_map
+            if me.exist?
+              yield me, ty, mid, orig_ty
               break
             end
           end
 
           skip = false
 
-          unless singleton
-            break if resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
+          if ty.is_a?(Type::Singleton)
+            # TODO: extended modules
+          else
+            break if resolve_included_modules(genv, changes, base_ty_env, ty, mid) do |me, ty, mid|
+              yield me, ty, mid, orig_ty
+            end
           end
 
-          type_args = mod.superclass_type_args
-          mod, singleton = genv.get_superclass(mod, singleton)
-          if mod && mod.type_params
-            param_map2 = Type.default_param_map(genv, ty)
-            # annotate                   vvvvvv
-            mod.type_params.zip(type_args || []) do |param, arg|
-              param_map2[param] = arg ? arg.covariant_vertex(genv, changes, param_map) : Source.new
-            end
-            param_map = param_map2
-          end
+          ty = genv.get_superclass_type(ty, changes, base_ty_env)
         end
 
-        yield ty, mid, nil, param_map unless mod
+        yield nil, nil, mid, orig_ty unless ty
       end
     end
 
-    def resolve_included_modules(genv, changes, ty, mod, singleton, mid, param_map, &blk)
+    def resolve_included_modules(genv, changes, base_ty_env, ty, mid, &blk)
       found = false
 
-      mod.included_modules.each do |inc_decl, inc_mod|
-        param_map2 = Type.default_param_map(genv, ty)
+      ty.mod.included_modules.each do |inc_decl, inc_mod|
         if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
-          inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
-            param_map2[param] = arg && changes ? arg.covariant_vertex(genv, changes, param_map) : Source.new
-          end
+          inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, base_ty_env, ty)
+        else
+          inc_ty = Type::Instance.new(genv, inc_mod, [])
         end
 
-        me = inc_mod.get_method(singleton, mid)
+        me = inc_ty.mod.get_method(false, mid)
         changes.add_depended_method_entities(me) if changes
         if !me.aliases.empty?
           mid = me.aliases.values.first
@@ -763,9 +756,9 @@ module TypeProf::Core
         end
         if me.exist?
           found = true
-          yield ty, mid, me, param_map2
+          yield me, inc_ty, mid
         else
-          found ||= resolve_included_modules(genv, changes, ty, inc_mod, singleton, mid, param_map2, &blk)
+          found ||= resolve_included_modules(genv, changes, base_ty_env, inc_ty, mid, &blk)
         end
       end
       found
