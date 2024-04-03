@@ -139,7 +139,7 @@ module TypeProf::Core
               param_map[param] = vtx
             end
             inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
-            inc_args << arg.covariant_vertex(genv, changes, param_map)
+              inc_args << arg.covariant_vertex(genv, changes, param_map)
             end
           end
           if inc_mod == other_mod
@@ -154,18 +154,7 @@ module TypeProf::Core
           end
           changes.add_depended_superclass(inc_mod)
 
-          super_mod = mod.superclass
-          super_args = []
-          if super_mod && super_mod.type_params
-            param_map = {}
-            mod.type_params.zip(args) do |param, vtx|
-              param_map[param] = vtx
-            end
-            super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
-              super_args << arg.covariant_vertex(genv, changes, param_map)
-            end
-          end
-          return true if check_match_included_modules(genv, changes, super_mod, super_args, other_mod, other_args)
+          return true if check_match_included_modules(genv, changes, inc_mod, inc_args, other_mod, other_args)
         end
         return false
       end
