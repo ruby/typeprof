@@ -149,7 +149,7 @@ module TypeProf::Core
         end
       end
       @type_params ||= []
-      # TODO: report error if there are multiple declarations
+      # TODO: report an error if there are multiple inconsistent declarations
     end
 
     def add_module_def(genv, node)
@@ -193,7 +193,7 @@ module TypeProf::Core
         mod = new_parent
         while mod
           if mod == self
-            # TODO: report "circular inheritance" error
+            # TODO: report an "circular inheritance" error
             new_parent = nil
             break
           end
@@ -223,7 +223,7 @@ module TypeProf::Core
       unless @basic_object
         const_read = nil
         no_superclass = false
-        # TODO: report multiple inconsistent superclass
+        # TODO: report an error if multiple inconsistent superclass
         if !@module_decls.empty?
           @module_decls.each do |mdecl|
             case mdecl

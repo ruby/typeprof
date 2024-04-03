@@ -707,7 +707,6 @@ module TypeProf::Core
           end
         end
         singleton = base_ty.is_a?(Type::Singleton)
-        # TODO: resolution for module
         while mod
           # pp [mod, singleton]
           unless skip

@@ -14,7 +14,7 @@ module TypeProf::Core
     def add_decl(decl)
       @decls << decl
       @type = decl.type unless @type
-      # TODO: report error if there are multiple declarations
+      # TODO: report an error if there are duplicated declarations
     end
 
     def remove_decl(decl)

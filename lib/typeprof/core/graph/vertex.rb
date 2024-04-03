@@ -210,7 +210,7 @@ module TypeProf::Core
     $new_id = 0 # TODO: Use class variable
 
     def to_s
-      "v#{ @id ||= $new_id += 1 }"
+      "v#{ @id ||= $new_id += 1 }:#{ @show_name }"
     end
 
     alias inspect to_s

@@ -256,7 +256,6 @@ module TypeProf::Core
           end
           tae.type.contravariant_vertex0(genv, changes, vtx, subst0)
         end
-        # TODO: report?
       end
 
       def show
