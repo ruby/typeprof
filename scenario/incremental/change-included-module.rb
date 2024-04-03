@@ -36,7 +36,6 @@ end
 
 ## assert: test1.rb
 class C
-  include C::M
   module C::M
     def foo: (Integer) -> nil
   end

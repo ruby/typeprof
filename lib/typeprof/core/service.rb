@@ -431,8 +431,10 @@ module TypeProf::Core
               end
               out << "  " * depth + s
               depth += 1
-              mod.included_modules.each_value do |inc_mod|
-                out << "  " * depth + "include #{ inc_mod.show_cpath }"
+              mod.included_modules.each do |inc_def, inc_mod|
+                if inc_def.is_a?(AST::CONST) && inc_def.lenv.path == path
+                  out << "  " * depth + "include #{ inc_mod.show_cpath }"
+                end
               end
             else
               depth -= 1
