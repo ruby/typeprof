@@ -87,64 +87,41 @@ module TypeProf::Core
         vtx.each_type do |other_ty|
           case other_ty
           when Instance
-            other_mod = other_ty.mod
-            if other_mod.interface?
-              return false
-            else
-              mod = @mod
-              args = @args
-              while mod
-                if mod == other_mod
-                  args_all_match = true
-                  args.zip(other_ty.args) do |arg, other_arg|
-                    unless arg.check_match(genv, changes, other_arg)
-                      args_all_match = false
-                      break
-                    end
-                  end
-                  return true if args_all_match
-                end
-                changes.add_depended_superclass(mod)
-
-                if other_mod.module?
-                  return true if check_match_included_modules(genv, changes, mod, args, other_mod, other_ty.args)
-                end
-
-                super_mod = mod.superclass
-                args2 = []
-                if super_mod && super_mod.type_params
-                  param_map = {}
-                  mod.type_params.zip(@args) do |param, vtx|
-                    param_map[param] = vtx
-                  end
-                  super_mod.type_params.zip(mod.superclass_type_args || []) do |param, arg|
-                    args2 << arg.covariant_vertex(genv, changes, param_map)
+            ty = self
+            while ty
+              if ty.mod == other_ty.mod
+                args_all_match = true
+                ty.args.zip(other_ty.args) do |arg, other_arg|
+                  unless arg.check_match(genv, changes, other_arg)
+                    args_all_match = false
+                    break
                   end
                 end
-                mod = super_mod
-                args = args2
+                return true if args_all_match
               end
+              changes.add_depended_superclass(ty.mod)
+
+              if other_ty.mod.module?
+                return true if check_match_included_modules(genv, changes, ty, other_ty)
+              end
+
+              ty = genv.get_superclass_type(ty, changes, {})
             end
           end
         end
         return false
       end
 
-      def check_match_included_modules(genv, changes, mod, args, other_mod, other_args)
-        mod.included_modules.each do |inc_decl, inc_mod|
-          inc_args = []
+      def check_match_included_modules(genv, changes, ty, other_ty)
+        ty.mod.included_modules.each do |inc_decl, inc_mod|
           if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
-            param_map = {}
-            mod.type_params.zip(args) do |param, vtx|
-              param_map[param] = vtx
-            end
-            inc_mod.type_params.zip(inc_decl.args || []) do |param, arg|
-              inc_args << arg.covariant_vertex(genv, changes, param_map)
-            end
+            inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, {}, ty)
+          else
+            inc_ty = Type::Instance.new(genv, inc_mod, [])
           end
-          if inc_mod == other_mod
+          if inc_ty.mod == other_ty.mod
             args_all_match = true
-            inc_args.zip(other_args) do |arg, other_arg|
+            inc_ty.args.zip(other_ty.args) do |arg, other_arg|
               unless arg.check_match(genv, changes, other_arg)
                 args_all_match = false
                 break
@@ -152,9 +129,9 @@ module TypeProf::Core
             end
             return true if args_all_match
           end
-          changes.add_depended_superclass(inc_mod)
+          changes.add_depended_superclass(inc_ty.mod)
 
-          return true if check_match_included_modules(genv, changes, inc_mod, inc_args, other_mod, other_args)
+          return true if check_match_included_modules(genv, changes, inc_ty, other_ty)
         end
         return false
       end
