@@ -33,7 +33,7 @@ module TypeProf::Core
           member.define(genv)
         end
         mod = genv.resolve_cpath(@cpath)
-        [mod.add_module_decl(genv, self)]
+        { module: mod.add_module_decl(genv, self) }
       end
 
       def undefine0(genv)
@@ -46,7 +46,7 @@ module TypeProf::Core
 
       def install0(genv)
         @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@cpath)))
-        @mod_val.add_edge(genv, @static_ret.first.vtx)
+        @mod_val.add_edge(genv, @static_ret[:module].vtx)
         @members.each do |member|
           member.install(genv)
         end
@@ -54,7 +54,7 @@ module TypeProf::Core
       end
 
       def uninstall0(genv)
-        @mod_val.remove_edge(genv, @static_ret.first.vtx)
+        @mod_val.remove_edge(genv, @static_ret[:module].vtx)
         super(genv)
       end
     end
@@ -62,8 +62,55 @@ module TypeProf::Core
     class SIG_MODULE < SigModuleNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
-        unless raw_decl.self_types.empty?
-          #pp raw_decl.self_types
+        @self_types = []
+        @self_type_args = []
+        raw_decl.self_types.each do |self_type|
+          name = self_type.name
+          cpath = name.namespace.path + [self_type.name.name]
+          toplevel = name.namespace.absolute?
+          @self_types << [cpath, toplevel]
+          @self_type_args << self_type.args.map {|arg| AST.create_rbs_type(arg, lenv) }
+        end
+      end
+
+      attr_reader :self_types, :self_type_args
+
+      def subnodes
+        super.merge!({ self_type_args: })
+      end
+      def attrs
+        super.merge!({ self_types: })
+      end
+
+      def define0(genv)
+        static_ret = super(genv)
+        static_ret[:self_types] = self_types = []
+        @self_types.zip(@self_type_args) do |(cpath, toplevel), args|
+          args.each {|arg| arg.define(genv) }
+          const_read = BaseConstRead.new(genv, cpath.first, toplevel ? CRef::Toplevel : @lenv.cref)
+          const_reads = [const_read]
+          cpath[1..].each do |cname|
+            const_read = ScopedConstRead.new(cname, const_read)
+            const_reads << const_read
+          end
+          mod = genv.resolve_cpath(@cpath)
+          const_read.followers << mod
+          self_types << const_reads
+        end
+        static_ret
+      end
+
+      def undefine0(genv)
+        super(genv)
+        if @static_ret
+          @static_ret[:self_types].each do |const_reads|
+            const_reads.each do |const_read|
+              const_read.destroy(genv)
+            end
+          end
+        end
+        @self_type_args.each do |args|
+          args.each {|arg| arg.undefine(genv) }
         end
       end
     end
@@ -97,7 +144,8 @@ module TypeProf::Core
       end
 
       def define0(genv)
-        const_reads = super(genv)
+        static_ret = super(genv)
+        const_reads = []
         if @superclass_cpath
           @superclass_args.each {|arg| arg.define(genv) }
           const_read = BaseConstRead.new(genv, @superclass_cpath.first, @superclass_toplevel ? CRef::Toplevel : @lenv.cref)
@@ -109,13 +157,14 @@ module TypeProf::Core
           mod = genv.resolve_cpath(@cpath)
           const_read.followers << mod
         end
-        const_reads
+        static_ret[:superclass_cpath] = const_reads
+        static_ret
       end
 
       def undefine0(genv)
         super(genv)
         if @static_ret
-          @static_ret[1..].each do |const_read|
+          @static_ret[:superclass_cpath].each do |const_read|
             const_read.destroy(genv)
           end
         end

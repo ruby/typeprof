@@ -13,6 +13,7 @@ module TypeProf::Core
 
       # parent modules (superclass and all modules that I include)
       @superclass = nil
+      @self_types = {}
       @included_modules = {}
       @basic_object = @cpath == [:BasicObject]
 
@@ -41,6 +42,7 @@ module TypeProf::Core
     attr_reader :outer_module
 
     attr_reader :superclass
+    attr_reader :self_types
     attr_reader :included_modules
     attr_reader :child_modules
 
@@ -216,50 +218,78 @@ module TypeProf::Core
       return [new_parent, false]
     end
 
-    def on_parent_modules_changed(genv)
-      any_updated = false
-      new_superclass_cpath = nil
+    def find_superclass_const_read
+      return nil if @basic_object
 
-      unless @basic_object
-        const_read = nil
-        no_superclass = false
-        # TODO: report an error if multiple inconsistent superclass
-        if !@module_decls.empty?
-          @module_decls.each do |mdecl|
-            case mdecl
-            when AST::SIG_CLASS
-              if mdecl.superclass_cpath
-                const_read = mdecl.static_ret.last
-                break
-              end
-            when AST::SIG_MODULE, AST::SIG_INTERFACE
-              no_superclass = true
-              break
-            else
-              raise
+      if @module_decls.empty?
+        @module_defs.each do |mdef|
+          case mdef
+          when AST::CLASS
+            if mdef.superclass_cpath
+              const_read = mdef.superclass_cpath.static_ret
+              return const_read ? const_read.cpath : []
             end
-          end
-        else
-          @module_defs.each do |mdef|
-            case mdef
-            when AST::CLASS
-              if mdef.superclass_cpath
-                const_read = mdef.superclass_cpath.static_ret
-                break
-              end
-            when AST::MODULE
-              no_superclass = true
-            else
-              raise
-            end
+          when AST::MODULE
+            return nil
+          else
+            raise
           end
         end
-        new_superclass_cpath = no_superclass ? nil : const_read ? const_read.cpath : []
+      else
+        @module_decls.each do |mdecl|
+          case mdecl
+          when AST::SIG_CLASS
+            if mdecl.superclass_cpath
+              const_read = mdecl.static_ret[:superclass_cpath].last
+              return const_read ? const_read.cpath : []
+            end
+          when AST::SIG_MODULE, AST::SIG_INTERFACE
+            return nil
+          end
+        end
+      end
+
+      return []
+    end
+
+    def on_parent_modules_changed(genv)
+      any_updated = false
+
+      unless @basic_object
+        new_superclass_cpath = find_superclass_const_read
 
         new_superclass, updated = update_parent(genv, :superclass, @superclass, new_superclass_cpath)
         if updated
           @superclass = new_superclass
           any_updated = true
+        end
+      end
+
+      @module_decls.each do |mdecl|
+        case mdecl
+        when AST::SIG_MODULE
+          mdecl.static_ret[:self_types].each_with_index do |const_reads, i|
+            key = [mdecl, i]
+            new_parent_cpath = const_reads.last.cpath
+            new_self_type, updated = update_parent(genv, key, @self_types[key], new_parent_cpath)
+            if updated
+              if new_self_type
+                @self_types[key] = new_self_type
+              else
+                @self_types.delete(key) || raise
+              end
+              any_updated = true
+            end
+          end
+        end
+      end
+      @self_types.delete_if do |(origin_mdecl, origin_idx), old_mod|
+        if @module_decls.include?(origin_mdecl)
+          false
+        else
+          _new_self_type, updated = update_parent(genv, [origin_mdecl, origin_idx], old_mod, nil)
+          any_updated ||= updated
+          true
         end
       end
 

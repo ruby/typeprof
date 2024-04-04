@@ -741,6 +741,28 @@ module TypeProf::Core
     def resolve_included_modules(genv, changes, base_ty_env, ty, mid, &blk)
       found = false
 
+      ty.mod.self_types.each do |(mdecl, idx), self_ty_mod|
+        raise unless mdecl.is_a?(AST::SIG_MODULE)
+        if self_ty_mod.type_params
+          self_ty = genv.get_instance_type(self_ty_mod, mdecl.self_type_args[idx], changes, base_ty_env, ty)
+        else
+          self_ty = Type::Instance.new(genv, self_ty_mod, [])
+        end
+
+        me = self_ty.mod.get_method(false, mid)
+        changes.add_depended_method_entities(me) if changes
+        if !me.aliases.empty?
+          mid = me.aliases.values.first
+          redo
+        end
+        if me.exist?
+          found = true
+          yield me, self_ty, mid
+        else
+          found ||= resolve_included_modules(genv, changes, base_ty_env, self_ty, mid, &blk)
+        end
+      end
+
       ty.mod.included_modules.each do |inc_decl, inc_mod|
         if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
           inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, base_ty_env, ty)

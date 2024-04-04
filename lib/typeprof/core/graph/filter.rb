@@ -40,11 +40,11 @@ module TypeProf::Core
     def initialize(genv, node, prev_vtx, neg, const_read)
       @node = node
       @types = Set[]
+      @const_read = const_read
+      @const_read.followers << self
       @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
       prev_vtx.add_edge(genv, self)
       @neg = neg
-      @const_read = const_read
-      @const_read.followers << self
     end
 
     attr_reader :node, :next_vtx
@@ -64,7 +64,7 @@ module TypeProf::Core
     end
 
     def run(genv)
-      if @const_read.cpath
+      if @const_read && @const_read.cpath
         passed_types = []
         @types.each do |ty|
           base_ty = ty.base_type(genv)
