@@ -578,20 +578,6 @@ module TypeProf::Core
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
 
-        # ad-hoc!!
-        case @cpath.last
-        when :_ToAry
-          @cpath = [:Array]
-        when :_Each
-          @cpath = [:Array]
-        when :_ToS
-          @cpath = [:String]
-        when :_ToStr
-          @cpath = [:String]
-        when :_Exception
-          @cpath = [:Exception]
-        end
-
         @toplevel = name.namespace.absolute? # "::Foo" or "Foo"
         @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
       end

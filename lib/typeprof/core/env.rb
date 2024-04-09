@@ -228,6 +228,23 @@ module TypeProf::Core
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
 
+      decls += AST.parse_rbs("typeprof-rbs-shim.rbs", <<-RBS)
+        class Exception
+          include _Exception
+        end
+        class String
+          include _ToS
+          include _ToStr
+        end
+        class Array[Elem]
+          include _ToAry[Elem]
+          include _Each[Elem]
+        end
+        class Hash[K, V]
+          include _Each[[K, V]]
+        end
+      RBS
+
       # Loading frequently used modules first will reduces constant resolution
       # which makes loading faster :-)
       critical_modules = [
