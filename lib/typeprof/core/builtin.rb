@@ -25,7 +25,7 @@ module TypeProf::Core
         case ty
         when Type::Array
           idx = node.positional_args[0]
-          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer)
+          if idx.is_a?(AST::IntegerNode)
             idx = idx.lit
           else
             idx = nil
@@ -46,7 +46,7 @@ module TypeProf::Core
         when Type::Array
           val = a_args.positionals[1]
           idx = node.positional_args[0]
-          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Integer) && ty.get_elem(@genv, idx.lit)
+          if idx.is_a?(AST::IntegerNode) && ty.get_elem(@genv, idx.lit)
             changes.add_edge(@genv, val, ty.get_elem(@genv, idx.lit))
           else
             changes.add_edge(@genv, val, ty.get_elem(@genv))
@@ -78,11 +78,7 @@ module TypeProf::Core
         case ty
         when Type::Hash
           idx = node.positional_args[0]
-          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol)
-            idx = idx.lit
-          else
-            idx = nil
-          end
+          idx = idx.is_a?(AST::SymbolNode) ? idx.lit : nil
           changes.add_edge(@genv, ty.get_value(idx), ret)
         else
           #puts "??? hash_aref 1"
@@ -98,7 +94,7 @@ module TypeProf::Core
         when Type::Hash
           val = a_args.positionals[1]
           idx = node.positional_args[0]
-          if idx.is_a?(AST::LIT) && idx.lit.is_a?(Symbol) && ty.get_value(idx.lit)
+          if idx.is_a?(AST::SymbolNode) && ty.get_value(idx.lit)
             # TODO: how to handle new key?
             changes.add_edge(@genv, val, ty.get_value(idx.lit))
           else

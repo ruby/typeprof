@@ -224,12 +224,12 @@ module TypeProf::Core
       if @module_decls.empty?
         @module_defs.each do |mdef|
           case mdef
-          when AST::CLASS
+          when AST::ClassNode
             if mdef.superclass_cpath
               const_read = mdef.superclass_cpath.static_ret
               return const_read ? const_read.cpath : []
             end
-          when AST::MODULE
+          when AST::ModuleNode
             return nil
           else
             raise

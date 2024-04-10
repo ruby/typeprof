@@ -1,12 +1,12 @@
 module TypeProf::Core
   class AST
-    class SELF < Node
+    class SelfNode < Node
       def install0(genv)
         @lenv.get_var(:"*self")
       end
     end
 
-    class LIT < Node
+    class LiteralNode < Node
       def initialize(raw_node, lenv, lit)
         super(raw_node, lenv)
         @lit = lit
@@ -17,23 +17,12 @@ module TypeProf::Core
       def attrs = { lit: }
 
       def install0(genv)
-        case @lit
-        when NilClass then Source.new(genv.nil_type)
-        when TrueClass then Source.new(genv.true_type)
-        when FalseClass then Source.new(genv.false_type)
-        when Integer then Source.new(genv.int_type)
-        when Float then Source.new(genv.float_type)
-        when Regexp then Source.new(genv.regexp_type)
-        when Symbol
-          Source.new(Type::Symbol.new(genv, @lit))
-        else
-          raise "not supported yet: #{ @lit.inspect }"
-        end
+        raise "not supported yet: #{ @lit.inspect }"
       end
 
       def diff(prev_node)
         # Need to compare their classes to distinguish between 1 and 1.0 (or use equal?)
-        if prev_node.is_a?(LIT) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
+        if prev_node.is_a?(LiteralNode) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
           @prev_node = prev_node
         end
       end
@@ -43,26 +32,75 @@ module TypeProf::Core
       end
     end
 
-    class STR < Node
+    class NilNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, nil)
+      end
+
+      def install0(genv) = Source.new(genv.nil_type)
+    end
+
+    class TrueNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, true)
+      end
+
+      def install0(genv) = Source.new(genv.true_type)
+    end
+
+    class FalseNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, false)
+      end
+
+      def install0(genv) = Source.new(genv.false_type)
+    end
+
+    class IntegerNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, Integer(raw_node.slice))
+      end
+
+      def install0(genv) = Source.new(genv.int_type)
+    end
+
+    class FloatNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, Float(raw_node.slice))
+      end
+
+      def install0(genv) = Source.new(genv.float_type)
+    end
+
+    class SymbolNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, raw_node.value.to_sym)
+      end
+
+      def install0(genv) = Source.new(Type::Symbol.new(genv, @lit))
+    end
+
+    class StringNode < LiteralNode
+      def initialize(raw_node, lenv, content)
+        super(raw_node, lenv, content)
+      end
+
+      def install0(genv) = Source.new(genv.str_type)
+    end
+
+    class InterpolatedStringNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        str, raw_evstr, raw_list = raw_node.children
-        raise if raw_evstr && raw_evstr.type != :EVSTR
-        @strs = [str]
+        @strs = []
         @interpolations = []
-        if raw_evstr
-          @interpolations << AST.create_node(raw_evstr.children.first, lenv)
-          if raw_list
-            raw_list.children.compact.each do |node|
-              case node.type
-              when :EVSTR
-                @interpolations << AST.create_node(node.children.first, lenv)
-              when :STR
-                @strs << node.children.first
-              else
-                raise "#{ node.type } in DSTR??"
-              end
-            end
+        raw_node.parts.each do |raw_part|
+          case raw_part.type
+          when :string_node
+            @strs << AST.create_node(raw_part, lenv)
+          when :embedded_statements_node
+            @interpolations << AST.create_node(raw_part.statements, lenv)
+          else
+            raise "unknown string part: #{ raw_part.type }"
           end
         end
       end
@@ -80,7 +118,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(STR) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations.size
+        if prev_node.is_a?(InterpolatedStringNode) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations.size
           @interpolations.zip(prev_node.interpolations) do |n, prev_n|
             n.diff(prev_n)
             return unless n.prev_node
@@ -94,10 +132,85 @@ module TypeProf::Core
       end
     end
 
-    class LIST < Node
+    class RegexpNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @elems = raw_node.children.compact.map {|n| AST.create_node(n, lenv) }
+      end
+
+      def install0(genv) = Source.new(genv.regexp_type)
+    end
+
+    class InterpolatedRegexpNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @strs = []
+        @interpolations = []
+        raw_node.parts.each do |raw_part|
+          case raw_part.type
+          when :string_node
+            @strs << AST.create_node(raw_part, lenv)
+          when :embedded_statements_node
+            @interpolations << AST.create_node(raw_part.statements, lenv)
+          else
+            raise "unknown regexp part: #{ raw_part.type }"
+          end
+        end
+      end
+
+      attr_reader :interpolations, :strs
+
+      def subnodes = { interpolations: }
+      def attrs = { strs: }
+
+      def install0(genv)
+        @interpolations.each do |subnode|
+          subnode.install(genv)
+        end
+        Source.new(genv.regexp_type)
+      end
+
+      def diff(prev_node)
+        if prev_node.is_a?(InterpolatedRegexpNode) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations.size
+          @interpolations.zip(prev_node.interpolations) do |n, prev_n|
+            n.diff(prev_n)
+            return unless n.prev_node
+          end
+          @prev_node = prev_node
+        end
+      end
+
+      def dump0(dumper)
+        @lit.inspect
+      end
+    end
+
+    class RangeNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @begin = raw_node.left ? AST.create_node(raw_node.left, lenv) : DummyNilNode.new(raw_node, lenv)
+        @end = raw_node.right ? AST.create_node(raw_node.right, lenv) : DummyNilNode.new(raw_node, lenv)
+      end
+
+      attr_reader :begin, :end
+
+      def subnodes = { begin:, end: }
+
+      def install0(genv)
+        elem = Vertex.new("range-elem", self)
+        @begin.install(genv).add_edge(genv, elem)
+        @end.install(genv).add_edge(genv, elem)
+        Source.new(genv.gen_range_type(elem))
+      end
+
+      def dump0(dumper)
+        "(#{ @begin.dump(dumper) } .. #{ @end.dump(dumper) })"
+      end
+    end
+
+    class ArrayNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @elems = raw_node.elements.map {|n| AST.create_node(n, lenv) }
       end
 
       attr_reader :elems
@@ -112,7 +225,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(LIST) && @elems.size == prev_node.elems.size
+        if prev_node.is_a?(ArrayNode) && @elems.size == prev_node.elems.size
           @elems.zip(prev_node.elems) do |elem, prev_elem|
             elem.diff(prev_elem)
             return unless elem.prev_node
@@ -126,31 +239,22 @@ module TypeProf::Core
       end
     end
 
-    class HASH < Node
+    class HashNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        cs = raw_node.children
-        raise "HASH???" if cs.size != 1
-        contents = cs.first
         @keys = []
         @vals = []
-        @keywords = false
-        if contents
-          if raw_node.first_lineno == contents.first_lineno && raw_node.first_column == contents.first_column
-            # Looks like there is no open brace
-            @keywords = true
-          end
-
-          case contents.type
-          when :LIST
-            list = cs.first.children
-            list.pop if list.last.nil?
-            list.each_slice(2) do |key, val|
-              @keys << (key ? AST.create_node(key, lenv) : nil)
-              @vals << AST.create_node(val, lenv)
-            end
+        #if raw_node.first_lineno == contents.first_lineno && raw_node.first_column == contents.first_column
+        #  # Looks like there is no open brace
+        #  @keywords = true
+        #end
+        raw_node.elements.each do |raw_elem|
+          case raw_elem.type
+          when :assoc_node
+            @keys << AST.create_node(raw_elem.key, lenv)
+            @vals << AST.create_node(raw_elem.value, lenv)
           else
-             raise "not supported hash: #{ contents.type }"
+            raise "unknown hash elem"
           end
         end
       end
@@ -170,7 +274,7 @@ module TypeProf::Core
             v = val.install(genv).new_vertex(genv, "hash-val", self)
             k.add_edge(genv, unified_key)
             v.add_edge(genv, unified_val)
-            literal_pairs[key.lit] = v if key.is_a?(LIT) && key.lit.is_a?(Symbol)
+            literal_pairs[key.lit] = v if key.is_a?(SymbolNode)
           else
             _h = val.install(genv)
             # TODO: if h is a hash, we need to connect its elements to the new hash
@@ -180,7 +284,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(HASH) && @keys.size == prev_node.keys.size
+        if prev_node.is_a?(HashNode) && @keys.size == prev_node.keys.size
           @keys.zip(@vals, prev_node.keys, prev_node.vals) do |key, val, prev_key, prev_val|
             key.diff(prev_key)
             return unless key.prev_node
@@ -193,30 +297,6 @@ module TypeProf::Core
 
       def dump0(dumper)
         "{ #{ @keys.zip(@vals).map {|key, val| key.dump(dumper) + " => " + val.dump(dumper) }.join(", ") } }"
-      end
-    end
-
-    class DOT2 < Node
-      def initialize(raw_node, lenv)
-        super(raw_node, lenv)
-        raw_begin, raw_end = raw_node.children
-        @begin = AST.create_node(raw_begin, lenv)
-        @end = AST.create_node(raw_end, lenv)
-      end
-
-      attr_reader :begin, :end
-
-      def subnodes = { begin:, end: }
-
-      def install0(genv)
-        elem = Vertex.new("range-elem", self)
-        @begin.install(genv).add_edge(genv, elem)
-        @end.install(genv).add_edge(genv, elem)
-        Source.new(genv.gen_range_type(elem))
-      end
-
-      def dump0(dumper)
-        "(#{ @begin.dump(dumper) } .. #{ @end.dump(dumper) })"
       end
     end
   end

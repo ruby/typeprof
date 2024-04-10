@@ -1,15 +1,14 @@
 module TypeProf::Core
   class AST
-    class BLOCK < Node
+    class StatementsNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_stmts = raw_node.children
-        @stmts = raw_stmts.map do |n|
+        @stmts = raw_node.body.map do |n|
           if n
             AST.create_node(n, lenv)
           else
             last = code_range.last
-            NilNode.new(TypeProf::CodeRange.new(last, last), lenv)
+            DummyNilNode.new(TypeProf::CodeRange.new(last, last), lenv)
           end
         end
       end
@@ -27,7 +26,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(BLOCK)
+        if prev_node.is_a?(StatementsNode)
           i = 0
           while i < @stmts.size
             @stmts[i].diff(prev_node.stmts[i])
@@ -59,36 +58,43 @@ module TypeProf::Core
       end
     end
 
-    class BEGIN_ < Node
+    class MultiWriteNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        #raise NotImplementedError if raw_node.children != [nil]
+        @rhs = AST.create_node(raw_node.value, lenv)
+        @lhss = []
+        raw_node.lefts.each do |raw_lhs|
+          lhs = AST.create_target_node(raw_lhs, lenv)
+          @lhss << lhs
+        end
       end
+
+      attr_reader :rhs, :lhss
+
+      def subnodes = { rhs:, lhss: }
 
       def install0(genv)
-        # TODO
-        Vertex.new("begin", self)
+        @lhss.each {|lhs| lhs.install(genv) }
+        rhs = @rhs.install(genv)
+        site = MAsgnSite.new(self, genv, rhs, @lhss.map {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) })
+        add_site(:main, site)
+        site.ret
       end
 
-      def uninstall0(genv)
-        # TODO
-      end
-
-      def diff(prev_node)
-        # TODO
-        @prev_node = prev_node
+      def hover(pos, &blk)
+        yield self if @var_code_range && @var_code_range.include?(pos)
+        super(pos, &blk)
       end
 
       def dump0(dumper)
-        "begin; end"
+        "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
       end
     end
 
-    class DEFINED < Node
+    class DefinedNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_arg, = raw_node.children
-        @arg = AST.create_node(raw_arg, lenv)
+        @arg = AST.create_node(raw_node.value, lenv)
       end
 
       attr_reader :arg

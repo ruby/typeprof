@@ -4,4 +4,4 @@ def foo(&blk)
 end
 
 ## diagnostics
-(2,2)-(2,9): failed to resolve overloads
+(2,4)-(2,5): failed to resolve overloads

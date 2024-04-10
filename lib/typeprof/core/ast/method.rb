@@ -1,31 +1,27 @@
 module TypeProf::Core
   class AST
-    def self.get_rbs_comment_before(pos, lenv)
-      tokens = Fiber[:tokens]
-      i = tokens.bsearch_index {|_type, _str, code_range| pos <= code_range.first }
-      if i
-        comments = []
-        while i > 0
-          i -= 1
-          type, str, cr = tokens[i]
-          case type
-          when :tSP
-            # ignore
-          when :tCOMMENT
-            break unless str.start_with?("#:")
-            comments[cr.first.lineno - 1] = " " * (cr.first.column + 2) + str[2..]
-          else
-            break
-          end
-        end
-        return nil if comments.empty?
-        comments = comments.map {|line| line || "" }.join("\n")
-        method_type = RBS::Parser.parse_method_type(comments)
-        if method_type
-          AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
+    def self.get_rbs_comment_before(raw_node, lenv)
+      comments = Fiber[:comments]
+      i = comments.bsearch_index {|comment| comment.location.start_line >= raw_node.location.start_line } || comments.size
+      lineno = raw_node.location.start_line
+      rbs_comments = []
+      while i > 0
+        i -= 1
+        lineno -= 1
+        comment = comments[i]
+        comment_loc = comment.location
+        comment_text = comment_loc.slice
+        if comment_loc.start_line == lineno && comment_text.start_with?("#:")
+          rbs_comments[comment_loc.start_line] = " " * (comment_loc.start_column + 2) + comment_text[2..]
         else
-          nil
+          break
         end
+      end
+      return nil if rbs_comments.empty?
+      rbs_comments = rbs_comments.map {|line| line || "" }.join("\n")
+      method_type = RBS::Parser.parse_method_type(rbs_comments)
+      if method_type
+        AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
       else
         nil
       end
@@ -50,34 +46,32 @@ module TypeProf::Core
         }
       end
 
-      args = raw_args.children
-
-      req_positionals = tbl[0, args[0]]
+      args_code_ranges = []
+      req_positionals = []
+      raw_args.requireds.each do |n|
+        args_code_ranges << TypeProf::CodeRange.from_node(n.location)
+        req_positionals << (n.is_a?(Prism::MultiTargetNode) ? nil : n.name)
+      end
 
       # pre_init = args[1]
 
       opt_positionals = []
       opt_positional_defaults = []
-      opt = args[2]
-      while opt
-        raise unless opt.type == :OPT_ARG
-        lasgn, opt = opt.children
-        var, expr = lasgn.children
-        opt_positionals << var
-        opt_positional_defaults << AST.create_node(expr, lenv)
+      raw_args.optionals.each do |n|
+        opt_positionals << n.name
+        opt_positional_defaults << AST.create_node(n.value, lenv)
       end
 
-      post_positionals = args[3] ? tbl[tbl.index(args[3]), args[4]] : []
+      post_positionals = raw_args.posts.map {|n| (n.is_a?(Prism::MultiTargetNode) ? nil : n.name) }
 
-      # post_init = args[5]
-
-      rest_positionals = args[6]
+      rest_positionals = raw_args.rest&.name
 
       req_keywords = []
       opt_keywords = []
       opt_keyword_defaults = []
 
-      kw = args[7]
+      kw = raw_args.keywords
+      if false
       while kw
         raise unless kw.type == :KW_ARG
         lasgn, kw = kw.children
@@ -97,6 +91,8 @@ module TypeProf::Core
       end
 
       block = args[9]
+      end
+      block = raw_args.block.name if raw_args.block
 
       {
         req_positionals:,
@@ -109,21 +105,25 @@ module TypeProf::Core
         opt_keyword_defaults:,
         rest_keywords:,
         block:,
+        args_code_ranges:
       }
     end
 
     class DefNode < Node
-      def initialize(raw_node, lenv, singleton, mid, mid_code_range, raw_scope)
+      def initialize(raw_node, lenv)
         super(raw_node, lenv)
+        singleton = !!raw_node.receiver
+        mid = raw_node.name
+        mid_code_range = TypeProf::CodeRange.from_node(raw_node.name_loc)
+        @tbl = raw_node.locals
+        raw_args = raw_node.parameters
+        raw_body = raw_node.body
 
-        @rbs_method_type = AST.get_rbs_comment_before(code_range.first, lenv)
+        @rbs_method_type = AST.get_rbs_comment_before(raw_node, lenv)
 
         @singleton = singleton
         @mid = mid
         @mid_code_range = mid_code_range
-
-        raise unless raw_scope.type == :SCOPE
-        @tbl, raw_args, raw_body = raw_scope.children
 
         ncref = CRef.new(lenv.cref.cpath, @singleton, @mid, lenv.cref)
         nlenv = LocalEnv.new(@lenv.path, ncref, {})
@@ -132,7 +132,7 @@ module TypeProf::Core
         else
           pos = code_range.last.left.left.left # before "end"
           cr = TypeProf::CodeRange.new(pos, pos)
-          @body = NilNode.new(cr, nlenv)
+          @body = DummyNilNode.new(cr, nlenv)
         end
 
         h = AST.parse_params(@tbl, raw_args, nlenv)
@@ -147,12 +147,8 @@ module TypeProf::Core
         @rest_keywords = h[:rest_keywords]
         @block = h[:block]
 
-        @args_code_ranges = []
-        @req_positionals.size.times do |i|
-          pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
-          @args_code_ranges << AST.find_sym_code_range(pos, @tbl[i])
-          # TODO: support opts, keywords, etc.
-        end
+        # TODO: support opts, keywords, etc.
+        @args_code_ranges = h[:args_code_ranges] || []
 
         @reused = false
       end
@@ -287,7 +283,7 @@ module TypeProf::Core
       def each_return_node
         yield @body
         traverse_children do |node|
-          yield node.arg if node.is_a?(RETURN)
+          yield node.arg if node.is_a?(ReturnNode)
           true
         end
       end
@@ -320,47 +316,21 @@ module TypeProf::Core
       end
     end
 
-    class DEFN < DefNode
-      def initialize(raw_node, lenv)
-        mid, raw_scope = raw_node.children
-
-        pos = TypeProf::CodePosition.new(raw_node.first_lineno, raw_node.first_column)
-        mid_range = AST.find_sym_code_range(pos, mid)
-
-        super(raw_node, lenv, false, mid, mid_range, raw_scope)
-      end
-    end
-
-    class DEFS < DefNode
-      def initialize(raw_node, lenv)
-        raw_recv, mid, raw_scope = raw_node.children
-        @recv = AST.create_node(raw_recv, lenv)
-        unless @recv.is_a?(SELF)
-          puts "???"
-        end
-
-        mid_range = AST.find_sym_code_range(@recv.code_range.last, mid)
-
-        super(raw_node, lenv, true, mid, mid_range, raw_scope)
-      end
-    end
-
-    class ALIAS < Node
+    class AliasNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_new_mid, raw_old_mid = raw_node.children
-        @new_mid = AST.create_node(raw_new_mid, lenv)
-        @old_mid = AST.create_node(raw_old_mid, lenv)
+        @new_mid = AST.create_node(raw_node.new_name, lenv)
+        @old_mid = AST.create_node(raw_node.old_name, lenv)
       end
 
-      attr_reader :new_name, :old_name
+      attr_reader :new_mid, :old_mid
 
-      def subnodes = { new_name:, old_name: }
+      def subnodes = { new_mid:, old_mid: }
 
       def install0(genv)
         @new_mid.install(genv)
         @old_mid.install(genv)
-        if @new_mid.is_a?(LIT) && @old_mid.is_a?(LIT)
+        if @new_mid.is_a?(SymbolNode) && @old_mid.is_a?(SymbolNode)
           new_mid = @new_mid.lit
           old_mid = @old_mid.lit
           me = genv.resolve_method(@lenv.cref.cpath, false, new_mid)
@@ -371,7 +341,7 @@ module TypeProf::Core
       end
 
       def uninstall0(genv)
-        if @new_mid.is_a?(LIT) && @old_mid.is_a?(LIT)
+        if @new_mid.is_a?(SymbolNode) && @old_mid.is_a?(SymbolNode)
           new_mid = @new_mid.lit
           me = genv.resolve_method(@lenv.cref.cpath, false, new_mid)
           me.remove_alias(self)

@@ -41,4 +41,4 @@ class Object
 end
 
 ## diagnostics
-(29,8)-(29,12): undefined method: nil#[]
+(29,9)-(29,12): undefined method: nil#[]

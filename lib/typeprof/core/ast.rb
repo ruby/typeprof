@@ -1,20 +1,16 @@
 module TypeProf::Core
   class AST
     def self.parse_rb(path, src)
-      begin
-        verbose_back, $VERBOSE = $VERBOSE, nil
-        raw_scope = RubyVM::AbstractSyntaxTree.parse(src, keep_tokens: true)
-      rescue
-        $VERBOSE = verbose_back
-      end
+      result = Prism.parse(src)
 
-      raise unless raw_scope.type == :SCOPE
+      return nil unless result.errors.empty?
 
-      Fiber[:tokens] = raw_scope.all_tokens.map do |_idx, type, str, cr|
-        row1, col1, row2, col2 = cr
-        code_range = TypeProf::CodeRange[row1, col1, row2, col2]
-        [type, str, code_range]
-      end.compact.sort_by {|_type, _str, code_range| code_range.first }
+      # comments, errors, magic_comments
+      raw_scope = result.value
+
+      raise unless raw_scope.type == :program_node
+
+      Fiber[:comments] = result.comments
 
       cref = CRef::Toplevel
       lenv = LocalEnv.new(path, cref, {})
@@ -24,111 +20,212 @@ module TypeProf::Core
 
     #: (untyped, TypeProf::Core::LocalEnv) -> TypeProf::Core::AST::Node
     def self.create_node(raw_node, lenv)
+      while true
+        case raw_node.type
+        when :parentheses_node
+          raw_node = raw_node.body
+        when :implicit_node
+          raw_node = raw_node.value
+        else
+          break
+        end
+      end
+
       case raw_node.type
 
       # definition
-      when :BLOCK then BLOCK.new(raw_node, lenv)
-      when :MODULE then MODULE.new(raw_node, lenv)
-      when :CLASS then CLASS.new(raw_node, lenv)
-      when :DEFN then DEFN.new(raw_node, lenv)
-      when :DEFS then DEFS.new(raw_node, lenv)
-      when :ALIAS then ALIAS.new(raw_node, lenv)
-      when :BEGIN then BEGIN_.new(raw_node, lenv)
+      when :statements_node then StatementsNode.new(raw_node, lenv)
+      when :module_node then ModuleNode.new(raw_node, lenv)
+      when :class_node then ClassNode.new(raw_node, lenv)
+      when :def_node then DefNode.new(raw_node, lenv)
+      when :alias_method_node then AliasNode.new(raw_node, lenv)
 
       # control
-      when :IF then IF.new(raw_node, lenv)
-      when :UNLESS then UNLESS.new(raw_node, lenv)
-      when :WHILE then WHILE.new(raw_node, lenv)
-      when :UNTIL then UNTIL.new(raw_node, lenv)
-      when :BREAK then BREAK.new(raw_node, lenv)
-      when :NEXT then NEXT.new(raw_node, lenv)
-      when :REDO then REDO.new(raw_node, lenv)
-      when :CASE then CASE.new(raw_node, lenv)
-      when :AND then AND.new(raw_node, lenv)
-      when :OR then OR.new(raw_node, lenv)
-      when :RETURN then RETURN.new(raw_node, lenv)
+      when :and_node then AndNode.new(raw_node, lenv)
+      when :or_node then OrNode.new(raw_node, lenv)
+      when :if_node then IfNode.new(raw_node, lenv)
+      when :unless_node then UnlessNode.new(raw_node, lenv)
+      when :case_node then CaseNode.new(raw_node, lenv)
+      when :while_node then WhileNode.new(raw_node, lenv)
+      when :until_node then UntilNode.new(raw_node, lenv)
+      when :break_node then BreakNode.new(raw_node, lenv)
+      when :next_node then NextNode.new(raw_node, lenv)
+      when :redo_node then RedoNode.new(raw_node, lenv)
+      when :return_node then ReturnNode.new(raw_node, lenv)
+      when :begin_node then BeginNode.new(raw_node, lenv)
+
       when :RESCUE then RESCUE.new(raw_node, lenv)
       when :ENSURE then ENSURE.new(raw_node, lenv)
 
-      # variable
-      when :CONST, :COLON2, :COLON3
-        create_const_node(raw_node, lenv)
-      when :CDECL then CDECL.new(raw_node, lenv)
-      when :GVAR then GVAR.new(raw_node, lenv)
-      when :GASGN then GASGN.new(raw_node, lenv)
-      when :IVAR then IVAR.new(raw_node, lenv)
-      when :IASGN then IASGN.new(raw_node, lenv)
-      when :LVAR, :DVAR then LVAR.new(raw_node, lenv)
-      when :LASGN, :DASGN then LASGN.new(raw_node, lenv)
-      when :MASGN then MASGN.new(raw_node, lenv)
-      when :OP_ASGN_OR then OP_ASGN_OR.new(raw_node, lenv)
+      # constants
+      when :constant_read_node, :constant_path_node
+        ConstantReadNode.new(raw_node, lenv)
+      when :constant_write_node, :constant_path_write_node
+        ConstantWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+      when :constant_operator_write_node
+        read = ConstantReadNode.new(raw_node, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
+        ConstantWriteNode.new(raw_node, rhs, lenv)
+      when :constant_or_write_node
+        read = ConstantReadNode.new(raw_node, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        ConstantWriteNode.new(raw_node, rhs, lenv)
+      when :constant_and_write_node
+        read = ConstantReadNode.new(raw_node, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
+        ConstantWriteNode.new(raw_node, rhs, lenv)
+      when :constant_path_operator_write_node
+        read = ConstantReadNode.new(raw_node.target, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
+        ConstantWriteNode.new(raw_node, rhs, lenv)
+      when :constant_path_or_write_node
+        read = ConstantReadNode.new(raw_node.target, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        ConstantWriteNode.new(raw_node, rhs, lenv)
+      when :constant_path_and_write_node
+        read = ConstantReadNode.new(raw_node.target, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
+        ConstantWriteNode.new(raw_node, rhs, lenv)
+
+      # variables
+      when :local_variable_read_node
+        LocalVariableReadNode.new(raw_node, lenv)
+      when :local_variable_write_node
+        LocalVariableWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+      when :local_variable_operator_write_node
+        read = LocalVariableReadNode.new(raw_node, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
+        LocalVariableWriteNode.new(raw_node, rhs, lenv)
+      when :local_variable_or_write_node
+        read = LocalVariableReadNode.new(raw_node, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        LocalVariableWriteNode.new(raw_node, rhs, lenv)
+      when :local_variable_and_write_node
+        read = LocalVariableReadNode.new(raw_node, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
+        LocalVariableWriteNode.new(raw_node, rhs, lenv)
+      when :instance_variable_read_node
+        InstanceVariableReadNode.new(raw_node, lenv)
+      when :instance_variable_write_node
+        InstanceVariableWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+      when :instance_variable_operator_write_node
+        read = InstanceVariableReadNode.new(raw_node, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
+        InstanceVariableWriteNode.new(raw_node, rhs, lenv)
+      when :instance_variable_or_write_node
+        read = InstanceVariableReadNode.new(raw_node, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        InstanceVariableWriteNode.new(raw_node, rhs, lenv)
+      when :instance_variable_and_write_node
+        read = InstanceVariableReadNode.new(raw_node, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
+        InstanceVariableWriteNode.new(raw_node, rhs, lenv)
+      #TODO: when :class_variable_read_node...
+      when :global_variable_read_node
+        GlobalVariableReadNode.new(raw_node, lenv)
+      when :global_variable_write_node
+        GlobalVariableWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+      when :global_variable_operator_write_node
+        read = GlobalVariableReadNode.new(raw_node, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
+        GlobalVariableWriteNode.new(raw_node, rhs, lenv)
+      when :global_variable_or_write_node
+        read = GlobalVariableReadNode.new(raw_node, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        GlobalVariableWriteNode.new(raw_node, rhs, lenv)
+      when :global_variable_and_write_node
+        read = GlobalVariableReadNode.new(raw_node, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
+        GlobalVariableWriteNode.new(raw_node, rhs, lenv)
+
+      # assignment targets
+      when :index_operator_write_node
+        read = IndexReadNode.new(raw_node, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
+        IndexWriteNode.new(raw_node, rhs, lenv)
+      when :index_or_write_node
+        read = IndexReadNode.new(raw_node, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        IndexWriteNode.new(raw_node, rhs, lenv)
+      when :index_and_write_node
+        read = IndexReadNode.new(raw_node, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
+        IndexWriteNode.new(raw_node, rhs, lenv)
+      when :call_operator_write_node
+        read = CallReadNode.new(raw_node, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
+        CallWriteNode.new(raw_node, rhs, lenv)
+      when :call_or_write_node
+        read = CallReadNode.new(raw_node, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        CallWriteNode.new(raw_node, rhs, lenv)
+      when :call_and_write_node
+        read = CallReadNode.new(raw_node, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
+        CallWriteNode.new(raw_node, rhs, lenv)
+      when :multi_write_node then MultiWriteNode.new(raw_node, lenv)
 
       # value
-      when :SELF then SELF.new(raw_node, lenv)
-      when :LIT then LIT.new(raw_node, lenv, raw_node.children.first)
-      when :NIL then LIT.new(raw_node, lenv, nil)
-      when :TRUE then LIT.new(raw_node, lenv, true) # Using LIT is OK?
-      when :FALSE then LIT.new(raw_node, lenv, false) # Using LIT is OK?
-      when :STR, :DSTR then STR.new(raw_node, lenv)
-      when :ZLIST, :LIST then LIST.new(raw_node, lenv)
-      when :HASH then HASH.new(raw_node, lenv)
-      when :DOT2 then DOT2.new(raw_node, lenv)
+      when :self_node then SelfNode.new(raw_node, lenv)
+      when :nil_node then NilNode.new(raw_node, lenv)
+      when :true_node then TrueNode.new(raw_node, lenv)
+      when :false_node then FalseNode.new(raw_node, lenv)
+      when :integer_node then IntegerNode.new(raw_node, lenv)
+      when :float_node then FloatNode.new(raw_node, lenv)
+      when :symbol_node then SymbolNode.new(raw_node, lenv)
+      when :string_node then StringNode.new(raw_node, lenv, raw_node.content)
+      when :source_file_node then StringNode.new(raw_node, lenv, "")
+      when :interpolated_string_node then InterpolatedStringNode.new(raw_node, lenv)
+      when :regular_expression_node then RegexpNode.new(raw_node, lenv)
+      when :interpolated_regular_expression_node then InterpolatedRegexpNode.new(raw_node, lenv)
+      when :range_node then RangeNode.new(raw_node, lenv)
+      when :array_node then ArrayNode.new(raw_node, lenv)
+      when :hash_node then HashNode.new(raw_node, lenv)
 
       # misc
-      when :DEFINED then DEFINED.new(raw_node, lenv)
+      when :defined_node then DefinedNode.new(raw_node, lenv)
 
       # call
-      when :YIELD then YIELD.new(raw_node, lenv)
-      when :OP_ASGN1 then OP_ASGN_AREF.new(raw_node, lenv)
-      when :ITER
-        raw_call, raw_block = raw_node.children
-        AST.create_call_node(raw_node, raw_call, raw_block, lenv)
+      when :super_node then SuperNode.new(raw_node, lenv)
+      when :forwarding_super_node then ForwardingSuperNode.new(raw_node, lenv)
+      when :yield_node then YieldNode.new(raw_node, lenv)
+      when :call_node
+        if !raw_node.receiver
+          # TODO: handle them only when it is directly under class or module
+          case raw_node.name
+          when :include
+            return IncludeMetaNode.new(raw_node, lenv)
+          when :attr_reader
+            return AttrReaderMetaNode.new(raw_node, lenv)
+          when :attr_accessor
+            return AttrAccessorMetaNode.new(raw_node, lenv)
+          end
+        end
+        CallNode.new(raw_node, lenv)
       else
-        create_call_node(raw_node, raw_node, nil, lenv)
+        pp raw_node
+        raise "not supported yet: #{ raw_node.type }"
       end
     end
 
-    def self.create_const_node(raw_node, lenv)
+    def self.create_target_node(raw_node, lenv)
+      dummy_node = DummyRHSNode.new(TypeProf::CodeRange.from_node(raw_node.location), lenv)
       case raw_node.type
-      when :CONST
-        cname, = raw_node.children
-        CONST.new(raw_node, lenv, cname, false)
-      when :COLON2
-        cbase_raw, cname = raw_node.children
-        if cbase_raw
-          COLON2.new(raw_node, lenv)
-        else
-          # "C" of "class C" is not CONST but COLON2, but cbase is null.
-          # This could be handled as CONST.
-          CONST.new(raw_node, lenv, cname, false)
-        end
-      when :COLON3
-        cname, = raw_node.children
-        CONST.new(raw_node, lenv, cname, true)
-      else
-        raise "should not reach" # annotation
-      end
-    end
-
-    def self.create_call_node(raw_node, raw_call, raw_block, lenv)
-      if raw_call.type == :FCALL
-        case raw_call.children[0]
-        when :include
-          return META_INCLUDE.new(raw_call, lenv)
-        when :attr_reader
-          return META_ATTR_READER.new(raw_call, lenv)
-        when :attr_accessor
-          return META_ATTR_ACCESSOR.new(raw_call, lenv)
-        end
-      end
-
-      case raw_call.type
-      when :CALL then CALL.new(raw_node, raw_call, raw_block, lenv)
-      when :VCALL then VCALL.new(raw_node, raw_call, raw_block, lenv)
-      when :FCALL then FCALL.new(raw_node, raw_call, raw_block, lenv)
-      when :OPCALL then OPCALL.new(raw_node, raw_call, raw_block, lenv)
-      when :ATTRASGN then ATTRASGN.new(raw_node, raw_call, raw_block, lenv)
-      when :SUPER, :ZSUPER then SUPER.new(raw_node, raw_call, raw_block, lenv)
+      when :local_variable_target_node
+        LocalVariableWriteNode.new(raw_node, dummy_node, lenv)
+      when :instance_variable_target_node
+        InstanceVariableWriteNode.new(raw_node, dummy_node, lenv)
+      #when :class_variable_target_node
+      when :global_variable_target_node
+        GlobalVariableWriteNode.new(raw_node, dummy_node, lenv)
+      when :constant_target_node
+        ConstantWriteNode.new(raw_node, dummy_node, lenv)
+      when :constant_path_target_node
+        ConstantWriteNode.new(raw_node, dummy_node, lenv)
+      when :index_target_node
+        IndexWriteNode.new(raw_node, dummy_node, lenv)
+      when :call_target_node
+        CallWriteNode.new(raw_node, dummy_node, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"
@@ -139,36 +236,21 @@ module TypeProf::Core
       names = []
       while raw_node
         case raw_node.type
-        when :CONST
-          name, = raw_node.children
-          names << name
+        when :constant_read_node
+          names << raw_node.name
           break
-        when :COLON2
-          raw_node, name = raw_node.children
-          names << name
-        when :COLON3
-          name, = raw_node.children
-          names << name
-          return names.reverse
+        when :constant_path_node, :constant_path_target_node
+          if raw_node.parent
+            names << raw_node.child.name
+            raw_node = raw_node.parent
+          else
+            return names.reverse
+          end
         else
           return nil
         end
       end
       return base_cpath + names.reverse
-    end
-
-    def self.find_sym_code_range(start_pos, sym)
-      return nil if sym == :[] || sym == :[]=
-      tokens = Fiber[:tokens]
-      i = tokens.bsearch_index {|_type, _str, code_range| start_pos <= code_range.first }
-      if i
-        while tokens[i]
-          type, str, code_range = tokens[i]
-          return code_range if (type == :tIDENTIFIER || type == :tFID) && str == sym.to_s
-          i += 1
-        end
-      end
-      return nil
     end
 
     def self.parse_rbs(path, src)

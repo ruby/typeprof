@@ -1,41 +1,10 @@
 module TypeProf::Core
   class AST
-    def self.parse_positional_args(raw_args, args, splat_flags)
-      return unless raw_args
-      case raw_args.type
-      when :LIST
-        raw_args.children.compact.each do |raw_arg|
-          args << raw_arg
-          splat_flags << false
-        end
-      when :SPLAT
-        raw_arg, = raw_args.children
-        args << raw_arg
-        splat_flags << true
-      when :ARGSPUSH
-        raw_args, raw_arg = raw_args.children
-        parse_positional_args(raw_args, args, splat_flags)
-        args << raw_arg
-        splat_flags << false
-      when :ARGSCAT
-        raw_args1, raw_args2 = raw_args.children
-        parse_positional_args(raw_args1, args, splat_flags)
-        if raw_args2.type == :LIST
-          parse_positional_args(raw_args2, args, splat_flags)
-        else
-          args << raw_args2
-          splat_flags << true
-        end
-      else
-        raise "not supported argument type: #{ raw_args.type }"
-      end
-    end
-
-    class CallNode < Node
-      def initialize(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args, raw_last_arg = nil)
+    class CallBaseNode < Node
+      def initialize(raw_node, recv, mid, mid_code_range, raw_args, last_arg, raw_block, lenv)
         super(raw_node, lenv)
 
-        @recv = AST.create_node(raw_recv, lenv) if raw_recv
+        @recv = recv
         @mid = mid
         @mid_code_range = mid_code_range
 
@@ -50,37 +19,42 @@ module TypeProf::Core
         @block_body = nil
 
         if raw_args
-          if raw_args.type == :BLOCK_PASS
-            raw_args, raw_block_pass = raw_args.children
-            @block_pass = AST.create_node(raw_block_pass, lenv)
-          end
-
           args = []
           @splat_flags = []
-          AST.parse_positional_args(raw_args, args, @splat_flags)
-          args << raw_last_arg if raw_last_arg
+          raw_args.arguments.each do |raw_arg|
+            if raw_arg.is_a?(Prism::SplatNode)
+              args << raw_arg.expression
+              @splat_flags << true
+            else
+              args << raw_arg
+              @splat_flags << false
+            end
+          end
           @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
 
-          last_arg = @positional_args.last
-          if last_arg.is_a?(HASH) && last_arg.keywords
-            @positional_args.pop
-            @keyword_args = last_arg
-          end
+          #last_hash_arg = @positional_args.last
+          #if last_hash_arg.is_a?(HashNode) && last_hash_arg.keywords
+          #  @positional_args.pop
+          #  @keyword_args = last_hash_arg
+          #end
         end
+        @positional_args << last_arg if last_arg
 
         if raw_block
-          raise "should not occur" if @block_pass
-          @block_tbl, raw_block_args, raw_block_body = raw_block.children
-          @block_f_args = raw_block_args ? raw_block_args.children : nil
-          if @block_f_args
-            @block_f_args[1] = nil # temporarily delete RubyVM::AST
+          if raw_block.type == :block_argument_node
+            @block_pass = AST.create_node(raw_block.expression, lenv)
+          else
+            @block_pass = nil
+            @block_tbl = raw_block.locals
+            # TODO: optional args, etc.
+            @block_f_args = raw_block.parameters ? raw_block.parameters.parameters.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name } : []
+            ncref = CRef.new(lenv.cref.cpath, false, @mid, lenv.cref)
+            nlenv = LocalEnv.new(@lenv.path, ncref, {})
+            @block_body = raw_block.body ? AST.create_node(raw_block.body, nlenv) : DummyNilNode.new(code_range, lenv)
           end
-          ncref = CRef.new(lenv.cref.cpath, false, @mid, lenv.cref)
-          nlenv = LocalEnv.new(@lenv.path, ncref, {})
-          @block_body = AST.create_node(raw_block_body, nlenv)
         end
 
-        @yield = raw_recv == false
+        @yield = raw_node.type == :yield_node
       end
 
       attr_reader :recv, :mid, :mid_code_range, :yield
@@ -107,8 +81,8 @@ module TypeProf::Core
 
           blk_f_args = []
           if @block_f_args
-            @block_f_args[0].times do |i|
-              blk_f_args << @block_body.lenv.new_var(@block_tbl[i], self)
+            @block_f_args.each do |arg|
+              blk_f_args << @block_body.lenv.new_var(arg, self)
             end
           end
 
@@ -142,7 +116,7 @@ module TypeProf::Core
         end
 
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
-        site = CallSite.new(self, genv, recv, @mid, a_args, self.is_a?(FCALL))
+        site = CallSite.new(self, genv, recv, @mid, a_args, !@recv)
         add_site(:main, site)
         site.ret
       end
@@ -150,7 +124,7 @@ module TypeProf::Core
       def each_return_node
         yield @block_body
         traverse_children do |node|
-          yield node.arg if node.is_a?(NEXT)
+          yield node.arg if node.is_a?(NextNode)
           !node.is_a?(CallSite) # do not entering nested blocks
         end
       end
@@ -164,7 +138,6 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        return unless prev_node.is_a?(CallNode)
         return if self.class != prev_node.class
         return unless attrs.all? {|key, attr| attr == prev_node.send(key) }
 
@@ -230,95 +203,22 @@ module TypeProf::Core
       end
     end
 
-    class CALL < CallNode
-      def initialize(raw_node, raw_call, raw_block, lenv)
-        raw_recv, mid, raw_args = raw_call.children
-        pos = TypeProf::CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
-        mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
-      end
-
-      def dump0(dumper)
-        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
-        dump_call(@recv.dump(dumper) + ".#{ @mid }", "(#{ args })")
-      end
-    end
-
-    class VCALL < CallNode
-      def initialize(raw_node, raw_call, raw_block, lenv)
-        mid, = raw_node.children
-        pos = TypeProf::CodePosition.new(raw_call.first_lineno, raw_call.first_column)
-        mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_call, raw_block, lenv, nil, mid, mid_code_range, nil)
-      end
-
-      def dump0(dumper)
-        dump_call(@mid.to_s, "")
-      end
-    end
-
-    class FCALL < CallNode
-      def initialize(raw_node, raw_call, raw_block, lenv)
-        mid, raw_args = raw_call.children
-        pos = TypeProf::CodePosition.new(raw_call.first_lineno, raw_call.first_column)
-        mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_call, raw_block, lenv, nil, mid, mid_code_range, raw_args)
-      end
-
-      def dump0(dumper)
-        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
-        dump_call("#{ @mid }", "(#{ args })")
-      end
-    end
-
-    class OPCALL < CallNode
-      def initialize(raw_node, raw_call, raw_block, lenv)
-        raw_recv, mid, raw_args = raw_call.children
-        pos = TypeProf::CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
-        mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
-      end
-
-      def dump0(dumper)
-        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
-        dump_call("(#{ @recv.dump(dumper) } #{ @mid }", "#{ args })")
-      end
-    end
-
-    class ATTRASGN < CallNode
-      def initialize(raw_node, raw_call, raw_block, lenv)
-        raw_recv, mid, raw_args = raw_call.children
-        # TODO
-        pos = TypeProf::CodePosition.new(raw_recv.last_lineno, raw_recv.last_column)
-        mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_call, raw_block, lenv, raw_recv, mid, mid_code_range, raw_args)
-      end
-
-      def dump0(dumper)
-        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
-        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ args })")
-      end
-    end
-
-    class OP_ASGN_AREF < CallNode
+    class CallNode < CallBaseNode
       def initialize(raw_node, lenv)
-        raw_recv, _raw_op, raw_args, raw_rhs = raw_node.children
-        # Consider `ary[idx] ||= rhs` as `ary[idx] = rhs`
-        super(raw_node, nil, nil, lenv, raw_recv, :[]=, nil, raw_args, raw_rhs)
-      end
-
-      def dump0(dumper)
-        args = @positional_args.map {|n| n.dump(dumper) }.join(", ")
-        dump_call("#{ @recv.dump(dumper) }.#{ @mid }", "(#{ args })")
+        recv = raw_node.receiver ? AST.create_node(raw_node.receiver, lenv) : nil
+        mid = raw_node.name
+        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc)
+        raw_args = raw_node.arguments
+        raw_block = raw_node.block
+        super(raw_node, recv, mid, mid_code_range, raw_args, nil, raw_block, lenv)
       end
     end
 
-    class SUPER < CallNode
-      def initialize(raw_node, raw_call, raw_block, lenv)
-        raw_args, = raw_call.children
-        pos = TypeProf::CodePosition.new(raw_call.first_lineno, raw_call.first_column)
-        mid_code_range = AST.find_sym_code_range(pos, mid)
-        super(raw_node, raw_call, raw_block, lenv, nil, :"*super", mid_code_range, raw_args)
+    class SuperNode < CallBaseNode
+      def initialize(raw_node,  lenv)
+        raw_args = raw_node.arguments
+        raw_block = raw_node.block
+        super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv)
       end
 
       def dump0(dumper)
@@ -326,16 +226,76 @@ module TypeProf::Core
       end
     end
 
-    class YIELD < CallNode
-      def initialize(raw_node, lenv)
-        raw_args, = raw_node.children
-        super(raw_node, raw_node, nil, lenv, false, :call, nil, raw_args)
+    class ForwardingSuperNode < CallBaseNode
+      def initialize(raw_node,  lenv)
+        raw_args = nil # TODO: forward args properly
+        raw_block = raw_node.block
+        super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv)
       end
 
       def dump0(dumper)
-        args = @positional_args ? @positional_args.map {|n| n.dump(dumper) }.join(", ") : ""
-        dump_call("yield", "(#{ args })")
+        "super(...)"
       end
+    end
+
+    class YieldNode < CallBaseNode
+      def initialize(raw_node, lenv)
+        raw_args = raw_node.arguments
+        super(raw_node, nil, :call, nil, raw_args, nil, nil, lenv)
+      end
+    end
+
+    class OperatorNode < CallBaseNode
+      def initialize(raw_node, recv, lenv)
+        mid = raw_node.operator
+        mid_code_range = TypeProf::CodeRange.from_node(raw_node.operator_loc)
+        last_arg = AST.create_node(raw_node.value, lenv)
+        super(raw_node, recv, mid, mid_code_range, nil, last_arg, nil, lenv)
+      end
+    end
+
+    class IndexReadNode < CallBaseNode
+      def initialize(raw_node, lenv)
+        recv = AST.create_node(raw_node.receiver, lenv)
+        mid = :[]
+        mid_code_range = nil
+        raw_args = raw_node.arguments
+        super(raw_node, recv, mid, mid_code_range, raw_args, nil, nil, lenv)
+      end
+    end
+
+    class IndexWriteNode < CallBaseNode
+      def initialize(raw_node, rhs, lenv)
+        recv = AST.create_node(raw_node.receiver, lenv)
+        mid = :[]=
+        mid_code_range = nil
+        raw_args = raw_node.arguments
+        @rhs = rhs
+        super(raw_node, recv, mid, mid_code_range, raw_args, rhs, nil, lenv)
+      end
+
+      attr_reader :rhs
+    end
+
+    class CallReadNode < CallBaseNode
+      def initialize(raw_node, lenv)
+        recv = AST.create_node(raw_node.receiver, lenv)
+        mid = raw_node.read_name
+        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc)
+        super(raw_node, recv, mid, mid_code_range, nil, nil, nil, lenv)
+      end
+    end
+
+    class CallWriteNode < CallBaseNode
+      def initialize(raw_node, rhs, lenv)
+        recv = AST.create_node(raw_node.receiver, lenv)
+        mid = raw_node.is_a?(Prism::CallTargetNode) ? raw_node.name : raw_node.write_name
+        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc)
+        @rhs = rhs
+        super(raw_node, recv, mid, mid_code_range, nil, rhs, nil, lenv)
+      end
+
+      attr_reader :rhs
     end
   end
 end

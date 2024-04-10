@@ -56,9 +56,10 @@ module TypeProf
     end
 
     def self.from_node(node)
-      if node.is_a?(RubyVM::AbstractSyntaxTree::Node)
-        pos1 = CodePosition.new(node.first_lineno, node.first_column)
-        pos2 = CodePosition.new(node.last_lineno, node.last_column)
+      node = node.location if node.is_a?(Prism::Node)
+      if node.is_a?(Prism::Location)
+        pos1 = CodePosition.new(node.start_line, node.start_column)
+        pos2 = CodePosition.new(node.end_line, node.end_column)
       elsif node.respond_to?(:location)
         loc = node.location
         row, col = loc.start_loc

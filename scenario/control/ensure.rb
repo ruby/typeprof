@@ -15,5 +15,5 @@ foo(1)
 ## assert
 class Object
   def bar: (String) -> nil
-  def foo: (Integer) -> Float
+  def foo: (Integer) -> Float?
 end

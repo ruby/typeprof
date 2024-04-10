@@ -382,7 +382,7 @@ module TypeProf::Core
         @node.each_return_node do |node|
           next if node.ret.check_match(genv, changes, @f_ret)
 
-          node = node.stmts.last if node.is_a?(AST::BLOCK)
+          node = node.stmts.last if node.is_a?(AST::StatementsNode)
           changes.add_diagnostic(
             TypeProf::Diagnostic.new(node, :code_range, "expected: #{ @f_ret.show }; actual: #{ node.ret.show }")
           )

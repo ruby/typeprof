@@ -30,9 +30,18 @@ def baz(n)
   end
 end
 
+def qux(n)
+  case n
+  when 1
+  when 2
+  else
+  end
+end
+
 ## assert
 class Object
   def foo: (untyped) -> (Float | Integer | String)
   def bar: (untyped) -> (Integer | String)?
   def baz: (untyped) -> (Integer | String)
+  def qux: (untyped) -> nil
 end

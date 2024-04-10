@@ -1,9 +1,9 @@
 module TypeProf::Core
   class AST
     def self.is_a_class(node)
-      if node.is_a?(CALL)
+      if node.is_a?(CallNode)
         recv = node.recv
-        if recv.is_a?(LVAR)
+        if recv.is_a?(LocalVariableReadNode)
           if node.positional_args && node.positional_args.size == 1 && node.positional_args[0].static_ret
             # TODO: need static resolusion of a constant
             return [recv.var, node.positional_args[0].static_ret]
@@ -16,10 +16,9 @@ module TypeProf::Core
     class BranchNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_cond, raw_then, raw_else = raw_node.children
-        @cond = AST.create_node(raw_cond, lenv)
-        @then = raw_then ? AST.create_node(raw_then, lenv) : nil
-        @else = raw_else ? AST.create_node(raw_else, lenv) : nil
+        @cond = AST.create_node(raw_node.predicate, lenv)
+        @then = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : nil
+        @else = raw_node.consequent && raw_node.consequent.statements ? AST.create_node(raw_node.consequent.statements, lenv) : nil
       end
 
       attr_reader :cond, :then, :else
@@ -32,7 +31,7 @@ module TypeProf::Core
         @cond.install(genv)
 
         vars = []
-        vars << @cond.var if @cond.is_a?(LVAR)
+        vars << @cond.var if @cond.is_a?(LocalVariableReadNode)
         var, filter_class = AST.is_a_class(@cond)
         vars << var if var
         @then.modified_vars(@lenv.locals.keys, vars) if @then
@@ -44,16 +43,16 @@ module TypeProf::Core
           nvtx_else = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
           modified_vtxs[var] = [nvtx_then, nvtx_else]
         end
-        if @cond.is_a?(LVAR)
+        if @cond.is_a?(LocalVariableReadNode)
           nvtx_then, nvtx_else = modified_vtxs[@cond.var]
-          nvtx_then = NilFilter.new(genv, self, nvtx_then, !self.is_a?(IF)).next_vtx
-          nvtx_else = NilFilter.new(genv, self, nvtx_else, self.is_a?(IF)).next_vtx
+          nvtx_then = NilFilter.new(genv, self, nvtx_then, !self.is_a?(IfNode)).next_vtx
+          nvtx_else = NilFilter.new(genv, self, nvtx_else, self.is_a?(IfNode)).next_vtx
           modified_vtxs[@cond.var] = [nvtx_then, nvtx_else]
         end
         if filter_class
           nvtx_then, nvtx_else = modified_vtxs[var]
-          nvtx_then = IsAFilter.new(genv, self, nvtx_then, !self.is_a?(IF), filter_class).next_vtx
-          nvtx_else = IsAFilter.new(genv, self, nvtx_else, self.is_a?(IF), filter_class).next_vtx
+          nvtx_then = IsAFilter.new(genv, self, nvtx_then, !self.is_a?(IfNode), filter_class).next_vtx
+          nvtx_else = IsAFilter.new(genv, self, nvtx_else, self.is_a?(IfNode), filter_class).next_vtx
           modified_vtxs[var] = [nvtx_then, nvtx_else]
         end
 
@@ -61,11 +60,11 @@ module TypeProf::Core
           modified_vtxs.each do |var, (nvtx_then, _)|
             @lenv.set_var(var, nvtx_then)
           end
-          if @cond.is_a?(IVAR)
+          if @cond.is_a?(InstanceVariableReadNode)
             @lenv.push_read_filter(@cond.var, :non_nil)
           end
           then_val = @then.install(genv)
-          if @cond.is_a?(IVAR)
+          if @cond.is_a?(InstanceVariableReadNode)
             @lenv.pop_read_filter(@cond.var)
           end
           modified_vtxs.each do |var, ary|
@@ -101,7 +100,7 @@ module TypeProf::Core
       end
 
       def dump0(dumper)
-        s = "#{ self.is_a?(IF) ? "if" : "unless" } #{ @cond.dump(dumper) }\n"
+        s = "#{ self.is_a?(IfNode) ? "if" : "unless" } #{ @cond.dump(dumper) }\n"
         if @then
           s << @then.dump(dumper).gsub(/^/, "  ")
         end
@@ -113,18 +112,17 @@ module TypeProf::Core
       end
     end
 
-    class IF < BranchNode
+    class IfNode < BranchNode
     end
 
-    class UNLESS < BranchNode
+    class UnlessNode < BranchNode
     end
 
     class LoopNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_cond, raw_body, _do_while_flag = raw_node.children
-        @cond = AST.create_node(raw_cond, lenv)
-        @body = AST.create_node(raw_body, lenv)
+        @cond = AST.create_node(raw_node.predicate, lenv)
+        @body = AST.create_node(raw_node.statements, lenv)
       end
 
       attr_reader :cond, :body
@@ -133,7 +131,7 @@ module TypeProf::Core
 
       def install0(genv)
         vars = []
-        vars << @cond.var if @cond.is_a?(LVAR)
+        vars << @cond.var if @cond.is_a?(LocalVariableReadNode)
         @cond.modified_vars(@lenv.locals.keys, vars)
         @body.modified_vars(@lenv.locals.keys, vars)
         vars.uniq!
@@ -146,8 +144,8 @@ module TypeProf::Core
         end
 
         @cond.install(genv)
-        if @cond.is_a?(LVAR)
-          nvtx_then = NilFilter.new(genv, self, old_vtxs[@cond.var], self.is_a?(UNTIL)).next_vtx
+        if @cond.is_a?(LocalVariableReadNode)
+          nvtx_then = NilFilter.new(genv, self, old_vtxs[@cond.var], self.is_a?(UntilNode)).next_vtx
           @lenv.set_var(@cond.var, nvtx_then)
         end
         @body.install(genv)
@@ -156,8 +154,8 @@ module TypeProf::Core
           @lenv.get_var(var).add_edge(genv, old_vtxs[var])
           @lenv.set_var(var, old_vtxs[var])
         end
-        if @cond.is_a?(LVAR)
-          nvtx_then = NilFilter.new(genv, self, old_vtxs[@cond.var], !self.is_a?(UNTIL)).next_vtx
+        if @cond.is_a?(LocalVariableReadNode)
+          nvtx_then = NilFilter.new(genv, self, old_vtxs[@cond.var], !self.is_a?(UntilNode)).next_vtx
           @lenv.set_var(@cond.var, nvtx_then)
         end
 
@@ -171,17 +169,16 @@ module TypeProf::Core
       end
     end
 
-    class WHILE < LoopNode
+    class WhileNode < LoopNode
     end
 
-    class UNTIL < LoopNode
+    class UntilNode < LoopNode
     end
 
-    class BREAK < Node
+    class BreakNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_arg, = raw_node.children
-        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : nil
+        @arg = raw_node.arguments ? AST.create_node(raw_node.arguments.arguments.first, lenv) : nil
       end
 
       attr_reader :arg
@@ -198,11 +195,11 @@ module TypeProf::Core
       end
     end
 
-    class NEXT < Node
+    class NextNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_arg, = raw_node.children
-        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : NilNode.new(code_range, lenv)
+        # TODO: next 1, 2
+        @arg = raw_node.arguments ? AST.create_node(raw_node.arguments.arguments.first, lenv) : DummyNilNode.new(code_range, lenv)
       end
 
       attr_reader :arg
@@ -219,7 +216,7 @@ module TypeProf::Core
       end
     end
 
-    class REDO < Node
+    class RedoNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
       end
@@ -234,19 +231,17 @@ module TypeProf::Core
       end
     end
 
-    class CASE < Node
+    class CaseNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_pivot, raw_when = raw_node.children
-        @pivot = AST.create_node(raw_pivot, lenv)
+        @pivot = AST.create_node(raw_node.predicate, lenv)
         @whens = []
         @clauses = []
-        while raw_when && raw_when.type == :WHEN
-          raw_vals, raw_clause, raw_when = raw_when.children
-          @whens << AST.create_node(raw_vals, lenv)
-          @clauses << (raw_clause ? AST.create_node(raw_clause, lenv) : NilNode.new(code_range, lenv)) # TODO: code_range for NilNode
+        raw_node.conditions.each do |raw_cond|
+          @whens << AST.create_node(raw_cond.conditions.first, lenv) # XXX: multiple conditions
+          @clauses << (raw_cond.statements ? AST.create_node(raw_cond.statements, lenv) : DummyNilNode.new(code_range, lenv)) # TODO: code_range for NilNode
         end
-        @else_clause = raw_when ? AST.create_node(raw_when, lenv) : NilNode.new(code_range, lenv) # TODO: code_range for NilNode
+        @else_clause = raw_node.consequent && raw_node.consequent.statements ? AST.create_node(raw_node.consequent.statements, lenv) : DummyNilNode.new(code_range, lenv) # TODO: code_range for NilNode
       end
 
       attr_reader :pivot, :whens, :clauses, :else_clause
@@ -265,7 +260,7 @@ module TypeProf::Core
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(CASE) && @clauses.size == prev_node.clauses.size
+        if prev_node.is_a?(CaseNode) && @clauses.size == prev_node.clauses.size
           @pivot.diff(prev_node.pivot)
           return unless @pivot.prev_node
 
@@ -301,12 +296,11 @@ module TypeProf::Core
       end
     end
 
-    class AND < Node
-      def initialize(raw_node, lenv)
+    class AndNode < Node
+      def initialize(raw_node, e1 = nil, raw_e2 = nil, lenv)
         super(raw_node, lenv)
-        raw_e1, raw_e2 = raw_node.children
-        @e1 = AST.create_node(raw_e1, lenv)
-        @e2 = AST.create_node(raw_e2, lenv)
+        @e1 = e1 || AST.create_node(raw_node.left, lenv)
+        @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
       end
 
       attr_reader :e1, :e2
@@ -325,12 +319,11 @@ module TypeProf::Core
       end
     end
 
-    class OR < Node
-      def initialize(raw_node, lenv)
+    class OrNode < Node
+      def initialize(raw_node, e1 = nil, raw_e2 = nil, lenv)
         super(raw_node, lenv)
-        raw_e1, raw_e2 = raw_node.children
-        @e1 = AST.create_node(raw_e1, lenv)
-        @e2 = AST.create_node(raw_e2, lenv)
+        @e1 = e1 || AST.create_node(raw_node.left, lenv)
+        @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
       end
 
       attr_reader :e1, :e2
@@ -351,11 +344,11 @@ module TypeProf::Core
       end
     end
 
-    class RETURN < Node
+    class ReturnNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_arg, = raw_node.children
-        @arg = raw_arg ? AST.create_node(raw_arg, lenv) : NilNode.new(code_range, lenv)
+        # TODO: return x, y
+        @arg = raw_node.arguments ? AST.create_node(raw_node.arguments.arguments.first, lenv) : DummyNilNode.new(code_range, lenv)
       end
 
       attr_reader :arg
@@ -372,92 +365,87 @@ module TypeProf::Core
       end
     end
 
-    class RESCUE < Node
+    class BeginNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        raw_body, raw_rescue = raw_node.children
-        @body = AST.create_node(raw_body, lenv)
-        @cond_lists = []
-        @clauses = []
-        while raw_rescue
-          raise unless raw_rescue.type == :RESBODY
-          raw_cond_list, raw_clause, raw_rescue = raw_rescue.children
-          @cond_lists << (raw_cond_list ? AST.create_node(raw_cond_list, lenv) : nil)
-          @clauses << AST.create_node(raw_clause, lenv)
+        @body = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : DummyNilNode.new(code_range, lenv)
+        @rescue_conds = []
+        @rescue_clauses = []
+        raw_res = raw_node.rescue_clause
+        while raw_res
+          raw_res.exceptions.each do |raw_cond|
+            @rescue_conds << AST.create_node(raw_cond, lenv)
+          end
+          if raw_res.statements
+            @rescue_clauses << AST.create_node(raw_res.statements, lenv)
+          end
+          raw_res = raw_res.consequent
         end
+        @else_clause = raw_node.else_clause ? AST.create_node(raw_node.else_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
+        @ensure_clause = raw_node.ensure_clause ? AST.create_node(raw_node.ensure_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
       end
 
-      attr_reader :body, :cond_lists, :clauses
+      attr_reader :body, :rescue_conds, :rescue_clauses, :else_clause, :ensure_clause
 
-      def subnodes = { body:, cond_lists:, clauses: }
+      def subnodes = { body:, rescue_conds:, rescue_clauses:, else_clause:, ensure_clause: }
 
       def define0(genv)
         @body.define(genv)
-        @cond_lists.zip(@clauses) do |cond_list, clause|
-          cond_list.define(genv) if cond_list
-          clause.define(genv)
-        end
+        @rescue_conds.each {|cond| cond.define(genv) }
+        @rescue_clauses.each {|clause| clause.define(genv) }
+        @else_clause.define(genv) if @else_clause
+        @ensure_clause.define(genv) if @ensure_clause
       end
 
       def undefine0(genv)
         @body.undefine(genv)
-        @cond_lists.zip(@clauses) do |cond_list, clause|
-          cond_list.undefine(genv) if cond_list
-          clause.undefine(genv)
-        end
+        @rescue_conds.each {|cond| cond.undefine(genv) }
+        @rescue_clauses.each {|clause| clause.undefine(genv) }
+        @else_clause.undefine(genv) if @else_clause
+        @ensure_clause.undefine(genv) if @ensure_clause
       end
 
       def install0(genv)
         ret = Vertex.new("rescue-ret", self)
         @body.install(genv).add_edge(genv, ret)
-        @cond_lists.zip(@clauses) do |cond_list, clause|
-          cond_list.install(genv) if cond_list
-          clause.install(genv).add_edge(genv, ret)
-        end
+        @rescue_conds.each {|cond| cond.install(genv) }
+        @rescue_clauses.each {|clause| clause.install(genv).add_edge(genv, ret) }
+        @else_clause.install(genv).add_edge(genv, ret) if @else_clause
+        @ensure_clause.install(genv) if @ensure_clause
         ret
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(RESCUE) && @cond_lists.size == prev_node.cond_lists.size && @clauses.size == prev_node.clauses.size
+        if prev_node.is_a?(BeginNode)
           @body.diff(prev_node.body)
           return unless @body.prev_node
 
-          @cond_lists.zip(prev_node.cond_lists) do |cond_list, prev_cond_list|
-            if cond_list && prev_cond_list
-              cond_list.diff(prev_cond_list)
-              return unless cond_list.prev_node
-            else
-              return if cond_list != prev_cond_list
+          if @rescue_conds.size == prev_node.rescue_conds.size && @rescue_clauses.size == prev_node.rescue_clauses.size
+            @rescue_conds.zip(prev_node.rescue_conds) do |cond, prev_cond|
+              cond.diff(prev_cond)
+              return unless cond.prev_node
+            end
+
+            @rescue_clauses.zip(prev_node.rescue_clauses) do |clause, prev_clause|
+              clause.diff(prev_clause)
+              return unless clause.prev_node
             end
           end
 
-          @clauses.zip(prev_node.clauses) do |clause, prev_clause|
-            clause.diff(prev_clause)
-            return unless clause.prev_node
+          if @else_clause && prev_node.else_clause
+            @else_clause.diff(prev_node.else_clause)
+            return unless @else_clause.prev_node
+          else
+            return if @else_clause != prev_node.else_clause
           end
 
-          @prev_node = prev_node
+          if @ensure_clause && prev_node.ensure_clause
+            @ensure_clause.diff(prev_node.ensure_clause)
+            return unless @ensure_clause.prev_node
+          else
+            return if @ensure_clause != prev_node.ensure_clause
+          end
         end
-      end
-    end
-
-    class ENSURE < Node
-      def initialize(raw_node, lenv)
-        super(raw_node, lenv)
-        raw_body, raw_ensure = raw_node.children
-        @body = AST.create_node(raw_body, lenv)
-        @ensure = AST.create_node(raw_ensure, lenv)
-      end
-
-      attr_reader :body, :ensure
-
-      def subnodes = { body:, ensure: }
-
-      def install0(genv)
-        # TODO: take a union type of each local var of the begninng and the end of the body
-        ret = @body.install(genv)
-        @ensure.install(genv)
-        ret
       end
     end
   end

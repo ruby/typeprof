@@ -1,10 +1,10 @@
 module TypeProf::Core
   class AST
-    class META_INCLUDE < Node
+    class IncludeMetaNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        _mid, raw_args = raw_node.children
-        @args = raw_args.children.compact.map do |raw_arg|
+        # TODO: error for splat
+        @args = raw_node.arguments.arguments.map do |raw_arg|
           AST.create_node(raw_arg, lenv)
         end
         # TODO: error for non-LIT
@@ -47,18 +47,12 @@ module TypeProf::Core
       end
     end
 
-    class META_ATTR_READER < Node
+    class AttrReaderMetaNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        _mid, raw_args = raw_node.children
         @args = []
-        raw_args.children.compact.each do |raw_arg|
-          if raw_arg.type == :LIT
-            lit, = raw_arg.children
-            if lit.is_a?(::Symbol)
-              @args << lit
-            end
-          end
+        raw_node.arguments.arguments.each do |raw_arg|
+          @args << raw_arg.value.to_sym if raw_arg.type == :symbol_node
         end
         # TODO: error for non-LIT
         # TODO: fine-grained hover
@@ -92,18 +86,12 @@ module TypeProf::Core
       end
     end
 
-    class META_ATTR_ACCESSOR < Node
+    class AttrAccessorMetaNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        _mid, raw_args = raw_node.children
         @args = []
-        raw_args.children.compact.each do |raw_arg|
-          if raw_arg.type == :LIT
-            lit, = raw_arg.children
-            if lit.is_a?(::Symbol)
-              @args << lit
-            end
-          end
+        raw_node.arguments.arguments.each do |raw_arg|
+          @args << raw_arg.value.to_sym if raw_arg.type == :symbol_node
         end
         # TODO: error for non-LIT
         # TODO: fine-grained hover

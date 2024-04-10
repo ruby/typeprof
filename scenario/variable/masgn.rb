@@ -24,4 +24,4 @@ class Object
 end
 
 ## update
-C, @x, $v = 1, 2, 3
+x, C, C::D::E, @iv, $gv, ary[0], foo.bar = 1, 2, 3, 4, 5, 6, 7

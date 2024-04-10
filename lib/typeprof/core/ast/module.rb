@@ -1,22 +1,19 @@
 module TypeProf::Core
   class AST
-    class ModuleNode < Node
+    class ModuleBaseNode < Node
       def initialize(raw_node, lenv, raw_cpath, raw_scope)
         super(raw_node, lenv)
 
         @cpath = AST.create_node(raw_cpath, lenv)
         @static_cpath = AST.parse_cpath(raw_cpath, lenv.cref.cpath)
+        @tbl = raw_node.locals
 
         # TODO: class Foo < Struct.new(:foo, :bar)
 
         if @static_cpath
-          raise unless raw_scope.type == :SCOPE
-          @tbl, args, raw_body = raw_scope.children
-          raise unless args == nil
-
           ncref = CRef.new(@static_cpath, true, nil, lenv.cref)
           nlenv = LocalEnv.new(@lenv.path, ncref, {})
-          @body = AST.create_node(raw_body, nlenv)
+          @body = raw_scope ? AST.create_node(raw_scope, nlenv) : DummyNilNode.new(code_range, lenv)
         else
           @body = nil
         end
@@ -34,7 +31,7 @@ module TypeProf::Core
           @mod = genv.resolve_cpath(@static_cpath)
           @mod_cdef = @mod.add_module_def(genv, self)
         else
-          kind = self.is_a?(MODULE) ? "module" : "class"
+          kind = self.is_a?(ModuleNode) ? "module" : "class"
           add_diagnostic("TypeProf cannot analyze a non-static #{ kind }") # warning
           nil
         end
@@ -88,10 +85,9 @@ module TypeProf::Core
       end
     end
 
-    class MODULE < ModuleNode
+    class ModuleNode < ModuleBaseNode
       def initialize(raw_node, lenv)
-        raw_cpath, raw_scope = raw_node.children
-        super(raw_node, lenv, raw_cpath, raw_scope)
+        super(raw_node, lenv, raw_node.constant_path, raw_node.body)
       end
 
       def dump0(dumper)
@@ -99,10 +95,10 @@ module TypeProf::Core
       end
     end
 
-    class CLASS < ModuleNode
+    class ClassNode < ModuleBaseNode
       def initialize(raw_node, lenv)
-        raw_cpath, raw_superclass, raw_scope = raw_node.children
-        super(raw_node, lenv, raw_cpath, raw_scope)
+        super(raw_node, lenv, raw_node.constant_path, raw_node.body)
+        raw_superclass = raw_node.superclass
         @superclass_cpath = raw_superclass ? AST.create_node(raw_superclass, lenv) : nil
       end
 

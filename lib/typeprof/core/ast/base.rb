@@ -161,7 +161,6 @@ module TypeProf::Core
           s2 = prev_node.subnodes
           return if s1.keys != s2.keys
           s1.each do |key, subnode|
-            next if key == :dummy_rhs
             prev_subnode = s2[key]
             if subnode && prev_subnode
               subnode = [subnode] if subnode.is_a?(AST::Node)
@@ -258,7 +257,7 @@ module TypeProf::Core
       end
 
       def pretty_print_instance_variables
-        super - [:@raw_node, :@lenv, :@prev_node, :@static_ret]
+        super() - [:@raw_node, :@lenv, :@prev_node, :@static_ret]
       end
     end
 
@@ -266,8 +265,8 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
 
-        @tbl, args, raw_body = raw_node.children
-        raise unless args == nil
+        @tbl = raw_node.locals
+        raw_body = raw_node.statements
 
         @body = AST.create_node(raw_body, lenv)
       end
@@ -290,7 +289,7 @@ module TypeProf::Core
       end
     end
 
-    class NilNode < Node
+    class DummyNilNode < Node
       def initialize(code_range, lenv)
         @code_range = code_range
         super(nil, lenv)
@@ -310,10 +309,9 @@ module TypeProf::Core
     end
 
     class DummyRHSNode < Node
-      def initialize(code_range, lenv, vtx)
+      def initialize(code_range, lenv)
         @code_range = code_range
         super(nil, lenv)
-        @vtx = vtx
       end
 
       def code_range
@@ -321,7 +319,7 @@ module TypeProf::Core
       end
 
       def install0(_)
-        @vtx
+        Vertex.new("dummy_rhs", self)
       end
 
       def dump(dumper)

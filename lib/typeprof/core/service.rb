@@ -73,11 +73,8 @@ module TypeProf::Core
       prev_node = @text_nodes[path]
 
       code = File.read(path) unless code
-      begin
-        node = AST.parse_rb(path, code)
-      rescue SyntaxError
-        return
-      end
+      node = AST.parse_rb(path, code)
+      return unless node
 
       node.diff(@text_nodes[path]) if prev_node
       @text_nodes[path] = node
@@ -253,7 +250,7 @@ module TypeProf::Core
     def references(path, pos)
       refs = []
       @text_nodes[path].hover(pos) do |node|
-        if node.is_a?(AST::DEFN) && node.sites[:mdef]
+        if node.is_a?(AST::DefNode) && node.sites[:mdef]
           mdefs = node.sites[:mdef]
           mdefs.each do |mdef|
             me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
@@ -285,7 +282,7 @@ module TypeProf::Core
               end
             end
           end
-        elsif node.is_a?(AST::DEFN) && node.sites[:mdef]
+        elsif node.is_a?(AST::DefNode) && node.sites[:mdef]
           node.sites[:mdef].each do |mdef|
             mdefs << mdef
           end
@@ -352,8 +349,7 @@ module TypeProf::Core
     def code_lens(path)
       cpaths = []
       @text_nodes[path].traverse do |event, node|
-        case node
-        when AST::MODULE, AST::CLASS
+        if node.is_a?(AST::ModuleBaseNode)
           if node.static_cpath
             if event == :enter
               cpaths << node.static_cpath
@@ -408,7 +404,7 @@ module TypeProf::Core
       out = []
       @text_nodes[path].traverse do |event, node|
         case node
-        when AST::MODULE
+        when AST::ModuleNode
           if node.static_cpath
             if event == :enter
               out << "  " * depth + "module #{ node.static_cpath.join("::") }"
@@ -418,7 +414,7 @@ module TypeProf::Core
               out << "  " * depth + "end"
             end
           end
-        when AST::CLASS
+        when AST::ClassNode
           if node.static_cpath
             if event == :enter
               s = "class #{ node.static_cpath.join("::") }"
@@ -432,7 +428,7 @@ module TypeProf::Core
               out << "  " * depth + s
               depth += 1
               mod.included_modules.each do |inc_def, inc_mod|
-                if inc_def.is_a?(AST::CONST) && inc_def.lenv.path == path
+                if (inc_def.is_a?(AST::ConstantReadNode) || inc_def.is_a?(AST::ConstantPathNode)) && inc_def.lenv.path == path
                   out << "  " * depth + "include #{ inc_mod.show_cpath }"
                 end
               end
@@ -441,7 +437,7 @@ module TypeProf::Core
               out << "  " * depth + "end"
             end
           end
-        when AST::CDECL
+        when AST::ConstantWriteNode
           if node.static_cpath
             if event == :enter
               out << "  " * depth + "#{ node.static_cpath.join("::") }: #{ node.ret.show }"

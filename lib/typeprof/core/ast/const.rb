@@ -1,7 +1,46 @@
 module TypeProf::Core
   class AST
-    class ConstNode < Node
+    class ConstantReadNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        case raw_node.type
+        when :constant_read_node, :constant_operator_write_node, :constant_or_write_node, :constant_and_write_node
+          @cbase = nil
+          @toplevel = false
+          @cname = raw_node.name
+        when :constant_path_node, :constant_path_target_node
+          if raw_node.parent
+            @cbase = AST.create_node(raw_node.parent, lenv)
+            @toplevel = false
+          else
+            @cbase = nil
+            @toplevel = true
+          end
+          @cname = raw_node.child.name
+        else
+          raise raw_node.type.to_s
+        end
+      end
+
+      attr_reader :cname, :cbase, :toplevel
+
+      def attrs = { cname:, toplevel: }
+      def subnodes = { cbase: }
+
+      def define0(genv)
+        if @cbase
+          ScopedConstRead.new(@cname, @cbase.define(genv))
+        else
+          BaseConstRead.new(genv, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)
+        end
+      end
+
+      def undefine0(genv)
+        @static_ret.destroy(genv)
+      end
+
       def install0(genv)
+        @cbase.install(genv) if @cbase
         site = ConstReadSite.new(self, genv, @static_ret)
         add_site(:main, site)
         site.ret
@@ -10,83 +49,32 @@ module TypeProf::Core
       def hover(pos)
         yield self if code_range.include?(pos)
       end
-    end
-
-    class CONST < ConstNode
-      def initialize(raw_node, lenv, cname, toplevel)
-        super(raw_node, lenv)
-        @cname = cname
-        @toplevel = toplevel
-        @cdef = nil
-      end
-
-      attr_reader :cname, :toplevel, :cdef
-
-      def attrs = { cname:, toplevel:, cdef: }
-
-      def define0(genv)
-        BaseConstRead.new(genv, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)
-      end
-
-      def undefine0(genv)
-        @static_ret.destroy(genv)
-      end
 
       def dump0(dumper)
-        "#{ @toplevel ? "::" : "" }#{ @cname }"
+        @cname.to_s
       end
     end
 
-    class COLON2 < ConstNode
-      def initialize(raw_node, lenv)
+    class ConstantWriteNode < Node
+      def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)
-        cbase_raw, @cname = raw_node.children
-        @cbase = AST.create_node(cbase_raw, lenv)
-      end
-
-      attr_reader :cbase, :cname
-
-      def define0(genv)
-        ScopedConstRead.new(@cname, @cbase.define(genv))
-      end
-
-      def undefine0(genv)
-        @static_ret.destroy(genv)
-      end
-
-      def subnodes = { cbase: }
-      def attrs = { cname: }
-
-      def install0(genv)
-        @cbase.install(genv)
-        super(genv)
-      end
-
-      def dump0(dumper)
-        "#{ @cbase.dump(dumper) }::#{ @cname }"
-      end
-    end
-
-    class CDECL < Node
-      def initialize(raw_node, lenv)
-        super(raw_node, lenv)
-        children = raw_node.children
-        if children.size == 2
+        case raw_node.type
+        when :constant_write_node, :constant_target_node, :constant_operator_write_node, :constant_or_write_node, :constant_and_write_node
           # C = expr
           @cpath = nil
-          @static_cpath = lenv.cref.cpath + [children[0]]
-          raw_rhs = children[1]
-        else # children.size == 3
+          @static_cpath = lenv.cref.cpath + [raw_node.name]
+        when :constant_path_write_node, :constant_path_operator_write_node, :constant_path_or_write_node, :constant_path_and_write_node
           # expr::C = expr
-          @cpath = AST.create_node(children[0], lenv)
-          @static_cpath = AST.parse_cpath(children[0], lenv.cref.cpath)
-          raw_rhs = children[2]
+          @cpath = AST.create_node(raw_node.target, lenv)
+          @static_cpath = AST.parse_cpath(raw_node.target, lenv.cref.cpath)
+        when :constant_path_target_node
+          # expr::C = expr
+          @cpath = ConstantReadNode.new(raw_node, lenv)
+          @static_cpath = AST.parse_cpath(raw_node, lenv.cref.cpath)
+        else
+          raise
         end
-        @rhs = raw_rhs ? AST.create_node(raw_rhs, lenv) : nil
-      end
-
-      def set_dummy_rhs(dummy_rhs)
-        @dummy_rhs = dummy_rhs
+        @rhs = rhs
       end
 
       attr_reader :cpath, :rhs, :static_cpath
@@ -95,6 +83,7 @@ module TypeProf::Core
       def attrs = { static_cpath: }
 
       def define0(genv)
+        @cpath.define(genv) if @cpath
         @rhs.define(genv) if @rhs
         mod = genv.resolve_const(@static_cpath)
         mod.add_def(self)
@@ -104,11 +93,12 @@ module TypeProf::Core
       def undefine0(genv)
         genv.resolve_const(@static_cpath).remove_def(self)
         @rhs.undefine(genv) if @rhs
+        @cpath.undefine(genv) if @cpath
       end
 
       def install0(genv)
         @cpath.install(genv) if @cpath
-        val = (@rhs || @dummy_rhs).install(genv)
+        val = @rhs.install(genv)
         val.add_edge(genv, @static_ret.vtx)
         val
       end

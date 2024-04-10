@@ -6,6 +6,7 @@ class Foo
     ::C
   end
 end
+Foo::Bar = :bar
 
 ## assert
 C: Integer
@@ -13,3 +14,4 @@ class Foo
   Foo::C: Float
   def foo: -> Integer
 end
+Foo::Bar: :bar

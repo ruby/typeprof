@@ -1,4 +1,5 @@
 require "rbs"
+require "prism"
 require_relative "core/util"
 require_relative "core/ast"
 require_relative "core/ast/base"
