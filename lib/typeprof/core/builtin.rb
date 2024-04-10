@@ -61,13 +61,12 @@ module TypeProf::Core
 
     def array_push(changes, node, ty, a_args, ret)
       if a_args.positionals.size == 1
-        case ty
-        when Type::Array
+        if ty.is_a?(Type::Array)
           val = a_args.positionals[0]
           changes.add_edge(@genv, val, ty.get_elem(@genv))
-        else
-          puts "??? array_aset #{ ty.class }"
         end
+        recv = Source.new(ty)
+        changes.add_edge(@genv, recv, ret)
       else
         puts "??? array_aset #{ a_args.positionals.size }"
       end
