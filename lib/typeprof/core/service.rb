@@ -268,8 +268,10 @@ module TypeProf::Core
                 end
               end
             when ConstReadSite
-              site.const_read.cdef.defs.each do |cdef|
-                cdefs << cdef
+              if site.node.cname_code_range.include?(pos)
+                site.const_read.cdef.defs.each do |cdef|
+                  cdefs << cdef
+                end
               end
             end
           end

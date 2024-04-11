@@ -48,10 +48,6 @@ module TypeProf::Core
         add_site(:main, site)
         site.ret
       end
-
-      def hover(pos)
-        yield self if code_range.include?(pos)
-      end
     end
 
     class ConstantWriteNode < Node
