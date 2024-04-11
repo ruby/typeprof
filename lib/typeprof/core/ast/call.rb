@@ -179,16 +179,6 @@ module TypeProf::Core
         @prev_node = prev_node
       end
 
-      def dump_call(prefix, suffix)
-        s = prefix + "\e[33m[#{ @sites.values.join(",") }]\e[m" + suffix
-        if @block_body
-          s << " do |<TODO>|\n"
-          s << @block_body.dump(nil).gsub(/^/, "  ")
-          s << "\nend"
-        end
-        s
-      end
-
       def modified_vars(tbl, vars)
         subnodes.each do |key, subnode|
           next unless subnode
@@ -220,10 +210,6 @@ module TypeProf::Core
         raw_block = raw_node.block
         super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv)
       end
-
-      def dump0(dumper)
-        "super(...)"
-      end
     end
 
     class ForwardingSuperNode < CallBaseNode
@@ -231,10 +217,6 @@ module TypeProf::Core
         raw_args = nil # TODO: forward args properly
         raw_block = raw_node.block
         super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv)
-      end
-
-      def dump0(dumper)
-        "super(...)"
       end
     end
 

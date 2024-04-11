@@ -41,10 +41,6 @@ module TypeProf::Core
         @args.each {|arg| arg.install(genv) }
         Source.new
       end
-
-      def dump0(dumper)
-        "attr_reader #{ @args.map {|arg| ":#{ arg }" }.join(", ") }"
-      end
     end
 
     class AttrReaderMetaNode < Node
@@ -79,10 +75,6 @@ module TypeProf::Core
           add_site(:mdef, mdef)
         end
         Source.new
-      end
-
-      def dump0(dumper)
-        "attr_reader #{ @args.map {|arg| ":#{ arg }" }.join(", ") }"
       end
     end
 
@@ -132,10 +124,6 @@ module TypeProf::Core
           add_site(:mdef, mdef)
         end
         Source.new
-      end
-
-      def dump0(dumper)
-        "attr_reader #{ @args.map {|arg| ":#{ arg }" }.join(", ") }"
       end
     end
   end

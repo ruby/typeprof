@@ -49,10 +49,6 @@ module TypeProf::Core
       def hover(pos)
         yield self if code_range.include?(pos)
       end
-
-      def dump0(dumper)
-        @cname.to_s
-      end
     end
 
     class ConstantWriteNode < Node
@@ -106,14 +102,6 @@ module TypeProf::Core
       def uninstall0(genv)
         @ret.remove_edge(genv, @static_ret.vtx)
         super(genv)
-      end
-
-      def dump0(dumper)
-        if @cpath
-          "#{ @cpath.dump(dumper) } = #{ @rhs.dump(dumper) }"
-        else
-          "#{ @static_cpath[0] } = #{ @rhs.dump(dumper) }"
-        end
       end
     end
   end

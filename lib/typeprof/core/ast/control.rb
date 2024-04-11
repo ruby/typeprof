@@ -98,18 +98,6 @@ module TypeProf::Core
 
         ret
       end
-
-      def dump0(dumper)
-        s = "#{ self.is_a?(IfNode) ? "if" : "unless" } #{ @cond.dump(dumper) }\n"
-        if @then
-          s << @then.dump(dumper).gsub(/^/, "  ")
-        end
-        if @else
-          s << "\nelse\n"
-          s << @else.dump(dumper).gsub(/^/, "  ")
-        end
-        s << "\nend"
-      end
     end
 
     class IfNode < BranchNode
@@ -161,12 +149,6 @@ module TypeProf::Core
 
         Source.new(genv.nil_type)
       end
-
-      def dump0(dumper)
-        s = "while #{ @cond.dump(dumper) }\n"
-        s << @body.dump(dumper).gsub(/^/, "  ")
-        s << "\nend"
-      end
     end
 
     class WhileNode < LoopNode
@@ -189,10 +171,6 @@ module TypeProf::Core
         _arg = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
         # TODO: implement!
       end
-
-      def dump0(dumper)
-        "break #{ @cond.dump(dumper) }"
-      end
     end
 
     class NextNode < Node
@@ -210,10 +188,6 @@ module TypeProf::Core
         @arg.install(genv)
         Source.new(Type::Bot.new(genv))
       end
-
-      def dump0(dumper)
-        "next #{ @cond.dump(dumper) }"
-      end
     end
 
     class RedoNode < Node
@@ -224,10 +198,6 @@ module TypeProf::Core
       def install0(genv)
         # TODO: This should return a bot type
         Source.new()
-      end
-
-      def dump0(dumper)
-        "redo"
       end
     end
 
@@ -281,19 +251,6 @@ module TypeProf::Core
           @prev_node = prev_node
         end
       end
-
-      def dump0(dumper)
-        s = "case #{ @pivot.dump(dumper) }"
-        @whens.zip(@clauses) do |vals, clause|
-          s << "\nwhen #{ vals.dump(dumper) }\n"
-          s << clause.dump(dumper).gsub(/^/, "  ")
-        end
-        if @else_clause
-          s << "\nelse\n"
-          s << @else_clause.dump(dumper).gsub(/^/, "  ")
-        end
-        s << "\nend"
-      end
     end
 
     class AndNode < Node
@@ -312,10 +269,6 @@ module TypeProf::Core
         @e1.install(genv).add_edge(genv, ret)
         @e2.install(genv).add_edge(genv, ret)
         ret
-      end
-
-      def dump0(dumper)
-        "(#{ @e1.dump(dumper) } && #{ @e2.dump(dumper) })"
       end
     end
 
@@ -338,10 +291,6 @@ module TypeProf::Core
         @e2.install(genv).add_edge(genv, ret)
         ret
       end
-
-      def dump0(dumper)
-        "(#{ @e1.dump(dumper) } && #{ @e2.dump(dumper) })"
-      end
     end
 
     class ReturnNode < Node
@@ -358,10 +307,6 @@ module TypeProf::Core
       def install0(genv)
         @arg.install(genv)
         Source.new(Type::Bot.new(genv))
-      end
-
-      def dump0(dumper)
-        "return#{ " " + @arg.dump(dumper) }"
       end
     end
 

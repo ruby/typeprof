@@ -17,10 +17,6 @@ module TypeProf::Core
       def hover(pos)
         yield self if code_range.include?(pos)
       end
-
-      def dump0(dumper)
-        "#{ @var }"
-      end
     end
 
     class LocalVariableWriteNode < Node
@@ -50,10 +46,6 @@ module TypeProf::Core
         super(pos, &blk)
       end
 
-      def dump0(dumper)
-        "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
-      end
-
       def modified_vars(tbl, vars)
         vars << self.var if tbl.include?(self.var)
       end
@@ -77,10 +69,6 @@ module TypeProf::Core
 
       def hover(pos)
         yield self if code_range.include?(pos)
-      end
-
-      def dump0(dumper)
-        "#{ @var }"
       end
     end
 
@@ -128,10 +116,6 @@ module TypeProf::Core
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)
       end
-
-      def dump0(dumper)
-        "#{ @var } = #{ @rhs.dump(dumper) }"
-      end
     end
 
     class GlobalVariableReadNode < Node
@@ -152,10 +136,6 @@ module TypeProf::Core
 
       def hover(pos)
         yield self if code_range.include?(pos)
-      end
-
-      def dump0(dumper)
-        "#{ @var }"
       end
     end
 
@@ -199,10 +179,6 @@ module TypeProf::Core
       def hover(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)
-      end
-
-      def dump0(dumper)
-        "#{ @var } = #{ @rhs.dump(dumper) }"
       end
     end
   end

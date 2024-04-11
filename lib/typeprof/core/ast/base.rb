@@ -206,21 +206,6 @@ module TypeProf::Core
         return nil
       end
 
-      def dump(dumper)
-        s = dump0(dumper)
-        if @sites
-          if !@sites.empty? # want to avoid this nesting
-            s += "\e[32m:#{ @sites.to_a.join(",") }\e[m"
-          end
-        end
-        s += "\e[34m:#{ @ret.inspect }\e[m"
-        s
-      end
-
-      def dump0(dumper)
-        raise "should override"
-      end
-
       def add_diagnostic(msg)
         @diagnostics << TypeProf::Diagnostic.new(self, :code_range, msg)
       end
@@ -283,10 +268,6 @@ module TypeProf::Core
 
         @body.install(genv)
       end
-
-      def dump(dumper)
-        @body.dump(dumper)
-      end
     end
 
     class DummyNilNode < Node
@@ -302,10 +283,6 @@ module TypeProf::Core
       def install0(genv)
         Source.new(genv.nil_type)
       end
-
-      def dump(dumper)
-        ""
-      end
     end
 
     class DummyRHSNode < Node
@@ -320,10 +297,6 @@ module TypeProf::Core
 
       def install0(_)
         Vertex.new("dummy_rhs", self)
-      end
-
-      def dump(dumper)
-        "<DummyRHSNode>"
       end
     end
 

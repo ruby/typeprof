@@ -150,42 +150,6 @@ module TypeProf::Core
       @genv.run_all
     end
 
-    def dump_graph(path)
-      node = @text_nodes[path]
-
-      vtxs = Set[]
-      puts node.dump(vtxs)
-      vtxs = Set[]
-      boxes = Set[]
-      node.get_vertexes_and_boxes(vtxs, boxes)
-      puts "---"
-      vtxs.each do |vtx|
-        case vtx
-        when Vertex
-          puts "\e[34m#{ vtx.long_inspect }\e[m: #{ vtx.show }"
-          vtx.next_vtxs.each do |nvtx|
-            puts "  #{ vtx } -> #{ nvtx }"
-          end
-        end
-      end
-      boxes.each do |box|
-        case box
-        when CallSite
-          puts "\e[33m#{ box.long_inspect }\e[m"
-          puts "  recv: #{ box.recv }"
-          puts "  args: (#{ box.a_args.join(", ") })"
-          puts "  ret: #{ box.ret }"
-        end
-      end
-      boxes.each do |box|
-        case box
-        when IVarReadSite
-          puts "\e[32m#{ box.long_inspect }\e[m"
-          puts "  ret: #{ box.ret }"
-        end
-      end
-    end
-
     def diagnostics(path, &blk)
       node = @text_nodes[path]
       node.diagnostics(@genv, &blk) if node

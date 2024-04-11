@@ -26,10 +26,6 @@ module TypeProf::Core
           @prev_node = prev_node
         end
       end
-
-      def dump0(dumper)
-        @lit.inspect
-      end
     end
 
     class NilNode < LiteralNode
@@ -126,10 +122,6 @@ module TypeProf::Core
           @prev_node = prev_node
         end
       end
-
-      def dump0(dumper)
-        @lit.inspect
-      end
     end
 
     class RegexpNode < Node
@@ -178,10 +170,6 @@ module TypeProf::Core
           @prev_node = prev_node
         end
       end
-
-      def dump0(dumper)
-        @lit.inspect
-      end
     end
 
     class RangeNode < Node
@@ -200,10 +188,6 @@ module TypeProf::Core
         @begin.install(genv).add_edge(genv, elem)
         @end.install(genv).add_edge(genv, elem)
         Source.new(genv.gen_range_type(elem))
-      end
-
-      def dump0(dumper)
-        "(#{ @begin.dump(dumper) } .. #{ @end.dump(dumper) })"
       end
     end
 
@@ -232,10 +216,6 @@ module TypeProf::Core
           end
           @prev_node = prev_node
         end
-      end
-
-      def dump0(dumper)
-        "[#{ @elems.map {|elem| elem.dump(dumper) }.join(", ") }]"
       end
     end
 
@@ -293,10 +273,6 @@ module TypeProf::Core
           end
           @prev_node = prev_node
         end
-      end
-
-      def dump0(dumper)
-        "{ #{ @keys.zip(@vals).map {|key, val| key.dump(dumper) + " => " + val.dump(dumper) }.join(", ") } }"
       end
     end
   end

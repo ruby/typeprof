@@ -303,14 +303,6 @@ module TypeProf::Core
         super(pos, &blk)
       end
 
-      def dump0(dumper)
-        s = "def #{ @mid }(#{
-          (0..@args[0]-1).map {|i| "#{ @tbl[i] }:\e[34m:#{ @body.lenv.get_var(@tbl[i]) }\e[m" }.join(", ")
-        })\n"
-        s << @body.dump(dumper).gsub(/^/, "  ") + "\n" if @body
-        s << "end"
-      end
-
       def modified_vars(tbl, vars)
         # skip
       end
@@ -348,10 +340,6 @@ module TypeProf::Core
           me.add_run_all_callsites(genv)
         end
         super(genv)
-      end
-
-      def dump0(dumper)
-        "alias #{ @new_mid.dump(dumper) } #{ @old_mid.dump(dumper) }"
       end
     end
   end

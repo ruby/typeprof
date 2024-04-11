@@ -70,16 +70,6 @@ module TypeProf::Core
         end
       end
 
-      def dump_module(dumper, kind, superclass)
-        s = "#{ kind } #{ @cpath.dump(dumper) }#{ superclass }\n"
-        if @static_cpath
-          s << @body.dump(dumper).gsub(/^/, "  ") + "\n"
-        else
-          s << "<analysis ommitted>\n"
-        end
-        s << "end"
-      end
-
       def modified_vars(tbl, vars)
         # skip
       end
@@ -88,10 +78,6 @@ module TypeProf::Core
     class ModuleNode < ModuleBaseNode
       def initialize(raw_node, lenv)
         super(raw_node, lenv, raw_node.constant_path, raw_node.body)
-      end
-
-      def dump0(dumper)
-        dump_module(dumper, "module", "")
       end
     end
 
@@ -124,10 +110,6 @@ module TypeProf::Core
       def install0(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
         super(genv)
-      end
-
-      def dump0(dumper)
-        dump_module(dumper, "class", @superclass_cpath ? " < #{ @superclass_cpath.dump(dumper) }" : "")
       end
     end
   end

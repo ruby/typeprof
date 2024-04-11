@@ -50,12 +50,6 @@ module TypeProf::Core
           end
         end
       end
-
-      def dump0(dumper)
-        @stmts.map do |stmt|
-          stmt.dump(dumper)
-        end.join("\n")
-      end
     end
 
     class MultiWriteNode < Node
@@ -85,10 +79,6 @@ module TypeProf::Core
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)
       end
-
-      def dump0(dumper)
-        "#{ @var }\e[34m:#{ @lenv.get_var(@var).inspect }\e[m = #{ @rhs.dump(dumper) }"
-      end
     end
 
     class DefinedNode < Node
@@ -103,10 +93,6 @@ module TypeProf::Core
 
       def install0(genv)
         Source.new(genv.true_type, genv.false_type)
-      end
-
-      def dump0(dumper)
-        "defined?(#{ @arg.dump(dumper) })"
       end
     end
   end
