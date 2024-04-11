@@ -1,12 +1,7 @@
 require_relative "../lib/typeprof"
-require "stackprof"
-#require "pf2"
 include TypeProf::Core
 
-core = Service.new
-#Pf2.start([Thread.current], false)
-
-StackProf.run(out: "stackprof/stackprof.dump", raw: true) do
+def main(core)
   t = Time.now
   core.genv.run_count = 0
   Dir.glob("lib/typeprof/**/*.rb", sort: true) do |path|
@@ -24,4 +19,15 @@ StackProf.run(out: "stackprof/stackprof.dump", raw: true) do
   pp h
 end
 
-#File.write("typeprof2.pf2profile", Pf2.stop)
+core = Service.new
+if ARGV[0] == "pf2"
+  require "pf2"
+  Pf2.start(interval_ms: 1, time_mode: :wall, threads: [Thread.current])
+  main(core)
+  File.write("dog_bench.pf2profile", Pf2.stop)
+else
+  require "stackprof"
+  StackProf.run(mode: :cpu, out: "dog_bench.stackprof.dump", raw: true) do
+    main(core)
+  end
+end
