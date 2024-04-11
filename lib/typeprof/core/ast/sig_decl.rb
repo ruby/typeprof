@@ -8,7 +8,7 @@ module TypeProf::Core
       end
     end
 
-    class SigModuleNode < Node
+    class SigModuleBaseNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
@@ -59,7 +59,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_MODULE < SigModuleNode
+    class SigModuleNode < SigModuleBaseNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @self_types = []
@@ -115,10 +115,10 @@ module TypeProf::Core
       end
     end
 
-    class SIG_INTERFACE < SigModuleNode
+    class SigInterfaceNode < SigModuleBaseNode
     end
 
-    class SIG_CLASS < SigModuleNode
+    class SigClassNode < SigModuleBaseNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         superclass = raw_decl.super_class
@@ -174,7 +174,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_DEF < Node
+    class SigDefNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @mid = raw_decl.name
@@ -202,7 +202,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_INCLUDE < Node
+    class SigIncludeNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         name = raw_decl.name
@@ -244,7 +244,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_ALIAS < Node
+    class SigAliasNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @new_mid = raw_decl.new_name
@@ -276,7 +276,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_CONST < Node
+    class SigConstNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
@@ -312,7 +312,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TYPE_ALIAS < Node
+    class SigTypeAliasNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
@@ -341,7 +341,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_GVAR < Node
+    class SigGlobalVariableNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @var = raw_decl.name

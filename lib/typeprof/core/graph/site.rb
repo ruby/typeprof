@@ -760,7 +760,7 @@ module TypeProf::Core
       found = false
 
       ty.mod.self_types.each do |(mdecl, idx), self_ty_mod|
-        raise unless mdecl.is_a?(AST::SIG_MODULE)
+        raise unless mdecl.is_a?(AST::SigModuleNode)
         if self_ty_mod.type_params
           self_ty = genv.get_instance_type(self_ty_mod, mdecl.self_type_args[idx], changes, base_ty_env, ty)
         else
@@ -782,7 +782,7 @@ module TypeProf::Core
       end
 
       ty.mod.included_modules.each do |inc_decl, inc_mod|
-        if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
+        if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
           inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, base_ty_env, ty)
         else
           inc_ty = Type::Instance.new(genv, inc_mod, [])

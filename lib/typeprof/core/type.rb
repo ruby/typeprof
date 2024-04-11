@@ -114,7 +114,7 @@ module TypeProf::Core
 
       def check_match_included_modules(genv, changes, ty, other_ty)
         ty.mod.included_modules.each do |inc_decl, inc_mod|
-          if inc_decl.is_a?(AST::SIG_INCLUDE) && inc_mod.type_params
+          if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
             inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, {}, ty)
           else
             inc_ty = Type::Instance.new(genv, inc_mod, [])

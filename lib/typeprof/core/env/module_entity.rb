@@ -112,7 +112,7 @@ module TypeProf::Core
         @type_params = decl.params
       end
 
-      if decl.is_a?(AST::SIG_CLASS) && !@superclass_type_args
+      if decl.is_a?(AST::SigClassNode) && !@superclass_type_args
         @superclass_type_args = decl.superclass_args
       end
 
@@ -126,7 +126,7 @@ module TypeProf::Core
       @module_decls.delete(decl) || raise
 
       update_type_params if @type_params == decl.params
-      if decl.is_a?(AST::SIG_CLASS) && @superclass_type_args == decl.superclass_args
+      if decl.is_a?(AST::SigClassNode) && @superclass_type_args == decl.superclass_args
         @superclass_type_args = nil
         @module_decls.each do |decl|
           if decl.superclass_args
@@ -238,12 +238,12 @@ module TypeProf::Core
       else
         @module_decls.each do |mdecl|
           case mdecl
-          when AST::SIG_CLASS
+          when AST::SigClassNode
             if mdecl.superclass_cpath
               const_read = mdecl.static_ret[:superclass_cpath].last
               return const_read ? const_read.cpath : []
             end
-          when AST::SIG_MODULE, AST::SIG_INTERFACE
+          when AST::SigModuleNode, AST::SigInterfaceNode
             return nil
           end
         end
@@ -267,7 +267,7 @@ module TypeProf::Core
 
       @module_decls.each do |mdecl|
         case mdecl
-        when AST::SIG_MODULE
+        when AST::SigModuleNode
           mdecl.static_ret[:self_types].each_with_index do |const_reads, i|
             key = [mdecl, i]
             new_parent_cpath = const_reads.last.cpath

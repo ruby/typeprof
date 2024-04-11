@@ -52,7 +52,7 @@ module TypeProf::Core
       def attrs = { type_params:, block_required: }
     end
 
-    class TypeNode < Node
+    class SigTyNode < Node
       def covariant_vertex(genv, changes, subst)
         vtx = changes.new_vertex(genv, self, subst)
         covariant_vertex0(genv, changes, vtx, subst)
@@ -66,7 +66,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_BOOL < TypeNode
+    class SigTyBaseBoolNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, Source.new(genv.true_type, genv.false_type), vtx)
       end
@@ -80,7 +80,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_NIL < TypeNode
+    class SigTyBaseNilNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, Source.new(genv.nil_type), vtx)
       end
@@ -94,7 +94,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_SELF < TypeNode
+    class SigTyBaseSelfNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, subst[:"*self"], vtx)
       end
@@ -108,7 +108,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_VOID < TypeNode
+    class SigTyBaseVoidNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, Source.new(genv.obj_type), vtx)
       end
@@ -122,7 +122,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_ANY < TypeNode
+    class SigTyBaseAnyNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
       end
 
@@ -135,7 +135,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_TOP < TypeNode
+    class SigTyBaseTopNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         # TODO
       end
@@ -149,7 +149,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_BOTTOM < TypeNode
+    class SigTyBaseBottomNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, Source.new(Type::Bot.new(genv)), vtx)
       end
@@ -163,7 +163,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_INSTANCE < TypeNode
+    class SigTyBaseInstanceNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, subst[:"*instance"], vtx)
       end
@@ -177,7 +177,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_BASE_CLASS < TypeNode
+    class SigTyBaseClassNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, subst[:"*class"], vtx)
       end
@@ -191,7 +191,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_ALIAS < TypeNode
+    class SigTyAliasNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         name = raw_decl.name
@@ -263,7 +263,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_UNION < TypeNode
+    class SigTyUnionNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @types = (raw_decl.types || []).map {|type| AST.create_rbs_type(type, lenv) }
@@ -290,7 +290,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_INTERSECTION < TypeNode
+    class SigTyIntersectionNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
       end
@@ -304,7 +304,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_SINGLETON < TypeNode
+    class SigTySingletonNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         name = raw_decl.name
@@ -361,7 +361,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_INSTANCE < TypeNode
+    class SigTyInstanceNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         name = raw_decl.name
@@ -422,7 +422,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_TUPLE < TypeNode
+    class SigTyTupleNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @types = raw_decl.types.map {|type| AST.create_rbs_type(type, lenv) }
@@ -456,7 +456,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_RECORD < TypeNode
+    class SigTyRecordNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         raise NotImplementedError
       end
@@ -470,7 +470,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_VAR < TypeNode
+    class SigTyVarNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @var = raw_decl.name
@@ -495,7 +495,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_OPTIONAL < TypeNode
+    class SigTyOptionalNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @type = AST.create_rbs_type(raw_decl.type, lenv)
@@ -516,14 +516,14 @@ module TypeProf::Core
 
       def show
         s = @type.show
-        if @type.is_a?(SIG_TY_INTERSECTION) || @type.is_a?(SIG_TY_UNION)
+        if @type.is_a?(SigTyIntersectionNode) || @type.is_a?(SigTyUnionNode)
           s = "(#{ s })"
         end
         s + "?"
       end
     end
 
-    class SIG_TY_LITERAL < TypeNode
+    class SigTyLiteralNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @lit = raw_decl.literal
@@ -558,7 +558,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_PROC < TypeNode
+    class SigTyProcNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
         raise NotImplementedError
       end
@@ -572,7 +572,7 @@ module TypeProf::Core
       end
     end
 
-    class SIG_TY_INTERFACE < TypeNode
+    class SigTyInterfaceNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         name = raw_decl.name
