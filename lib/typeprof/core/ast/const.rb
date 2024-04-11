@@ -8,6 +8,7 @@ module TypeProf::Core
           @cbase = nil
           @toplevel = false
           @cname = raw_node.name
+          @cname_code_range = TypeProf::CodeRange.from_node(raw_node.location)
         when :constant_path_node, :constant_path_target_node
           if raw_node.parent
             @cbase = AST.create_node(raw_node.parent, lenv)
@@ -17,15 +18,17 @@ module TypeProf::Core
             @toplevel = true
           end
           @cname = raw_node.child.name
+          @cname_code_range = TypeProf::CodeRange.from_node(raw_node.child.location)
         else
           raise raw_node.type.to_s
         end
       end
 
-      attr_reader :cname, :cbase, :toplevel
+      attr_reader :cname, :cbase, :toplevel, :cname_code_range
 
       def attrs = { cname:, toplevel: }
       def subnodes = { cbase: }
+      def code_ranges = { cname_code_range: }
 
       def define0(genv)
         if @cbase
@@ -59,24 +62,28 @@ module TypeProf::Core
           # C = expr
           @cpath = nil
           @static_cpath = lenv.cref.cpath + [raw_node.name]
+          @cname_code_range = TypeProf::CodeRange.from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
         when :constant_path_write_node, :constant_path_operator_write_node, :constant_path_or_write_node, :constant_path_and_write_node
           # expr::C = expr
           @cpath = AST.create_node(raw_node.target, lenv)
           @static_cpath = AST.parse_cpath(raw_node.target, lenv.cref.cpath)
+          @cname_code_range = nil
         when :constant_path_target_node
-          # expr::C = expr
+          # expr::C, * = ary
           @cpath = ConstantReadNode.new(raw_node, lenv)
           @static_cpath = AST.parse_cpath(raw_node, lenv.cref.cpath)
+          @cname_code_range = nil
         else
           raise
         end
         @rhs = rhs
       end
 
-      attr_reader :cpath, :rhs, :static_cpath
+      attr_reader :cpath, :rhs, :static_cpath, :cname_code_range
 
       def subnodes = { cpath:, rhs: }
       def attrs = { static_cpath: }
+      def code_ranges = { cname_code_range: }
 
       def define0(genv)
         @cpath.define(genv) if @cpath

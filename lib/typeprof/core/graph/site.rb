@@ -9,6 +9,8 @@ module TypeProf::Core
       @new_sites = {}
       @diagnostics = []
       @new_diagnostics = []
+      @depended_value_entities = []
+      @new_depended_value_entities = []
       @depended_method_entities = []
       @new_depended_method_entities = []
       @depended_static_reads = []
@@ -53,7 +55,11 @@ module TypeProf::Core
       @new_diagnostics << diag
     end
 
-    def add_depended_method_entities(me)
+    def add_depended_value_entity(ve)
+      @new_depended_value_entities << ve
+    end
+
+    def add_depended_method_entity(me)
       @new_depended_method_entities << me
     end
 
@@ -82,6 +88,16 @@ module TypeProf::Core
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
 
+      @depended_value_entities.each do |ve|
+        ve.readsites.delete(@target) || raise
+      end
+      @new_depended_value_entities.uniq!
+      @new_depended_value_entities.each do |ve|
+        ve.readsites << @target
+      end
+      @depended_value_entities, @new_depended_value_entities = @new_depended_value_entities, @depended_value_entities
+      @new_depended_value_entities.clear
+
       @depended_method_entities.each do |me|
         me.callsites.delete(@target) || raise
       end
@@ -89,7 +105,6 @@ module TypeProf::Core
       @new_depended_method_entities.each do |me|
         me.callsites << @target
       end
-
       @depended_method_entities, @new_depended_method_entities = @new_depended_method_entities, @depended_method_entities
       @new_depended_method_entities.clear
 
@@ -186,7 +201,10 @@ module TypeProf::Core
 
     def run0(genv, changes)
       cdef = @const_read.cdef
-      changes.add_edge(genv, cdef.vtx, @ret) if cdef
+      if cdef
+        changes.add_depended_value_entity(cdef)
+        changes.add_edge(genv, cdef.vtx, @ret)
+      end
     end
 
     def long_inspect
@@ -650,7 +668,7 @@ module TypeProf::Core
           # TODO: support "| ..."
           me.decls.each do |mdecl|
             # TODO: union type is ok?
-            # TODO: add_depended_method_entities for types used to resolve overloads
+            # TODO: add_depended_method_entity for types used to resolve overloads
             ty_env = Type.default_param_map(genv, orig_ty)
             if ty.is_a?(Type::Instance)
               ty.mod.type_params.zip(ty.args) do |param, arg|
@@ -710,7 +728,7 @@ module TypeProf::Core
         while ty
           unless skip
             me = ty.mod.get_method(ty.is_a?(Type::Singleton), mid)
-            changes.add_depended_method_entities(me) if changes
+            changes.add_depended_method_entity(me) if changes
             if !me.aliases.empty?
               mid = me.aliases.values.first
               redo
@@ -750,7 +768,7 @@ module TypeProf::Core
         end
 
         me = self_ty.mod.get_method(false, mid)
-        changes.add_depended_method_entities(me) if changes
+        changes.add_depended_method_entity(me) if changes
         if !me.aliases.empty?
           mid = me.aliases.values.first
           redo
@@ -771,7 +789,7 @@ module TypeProf::Core
         end
 
         me = inc_ty.mod.get_method(false, mid)
-        changes.add_depended_method_entities(me) if changes
+        changes.add_depended_method_entity(me) if changes
         if !me.aliases.empty?
           mid = me.aliases.values.first
           redo
@@ -796,7 +814,7 @@ module TypeProf::Core
         mod.each_descendant do |desc_mod|
           next if mod == desc_mod
           me = desc_mod.get_method(singleton, @mid)
-          changes.add_depended_method_entities(me)
+          changes.add_depended_method_entity(me)
           if me && me.exist?
             yield ty, me
           end

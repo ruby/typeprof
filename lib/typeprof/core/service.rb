@@ -211,18 +211,39 @@ module TypeProf::Core
       []
     end
 
+    #: (String, TypeProf::CodePosition) -> Array[[String?, TypeProf::CodeRange]]?
     def references(path, pos)
       refs = []
       @text_nodes[path].hover(pos) do |node|
-        if node.is_a?(AST::DefNode) && node.sites[:mdef]
-          mdefs = node.sites[:mdef]
-          mdefs.each do |mdef|
-            me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
-            if me
-              me.callsites.each do |callsite|
-                node = callsite.node
+        case node
+        when AST::DefNode
+          if node.mid_code_range.include?(pos) && node.sites[:mdef]
+            mdefs = node.sites[:mdef]
+            mdefs.each do |mdef|
+              me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
+              if me
+                me.callsites.each do |callsite|
+                  node = callsite.node
+                  refs << [node.lenv.path, node.code_range]
+                end
+              end
+            end
+          end
+        # TODO: Callsite
+        when AST::ConstantReadNode
+          if node.cname_code_range.include?(pos) && node.sites[:main]
+            node.sites[:main].each do |site|
+              @genv.resolve_const(site.const_read.cpath).readsites.each do |readsite|
+                node = readsite.node
                 refs << [node.lenv.path, node.code_range]
               end
+            end
+          end
+        when AST::ConstantWriteNode
+          if node.cname_code_range && node.cname_code_range.include?(pos) && node.static_cpath
+            @genv.resolve_const(node.static_cpath).readsites.each do |readsite|
+              node = readsite.node
+              refs << [node.lenv.path, node.code_range]
             end
           end
         end
@@ -233,20 +254,26 @@ module TypeProf::Core
 
     def rename(path, pos)
       mdefs = []
+      cdefs = []
       @text_nodes[path].hover(pos) do |node|
         sites = node.sites[:main]
         if sites
           sites.each do |site|
-            if site.is_a?(CallSite)
+            case site
+            when CallSite
               site.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
                 next unless me
                 me.defs.each do |mdef|
                   mdefs << mdef
                 end
               end
+            when ConstReadSite
+              site.const_read.cdef.defs.each do |cdef|
+                cdefs << cdef
+              end
             end
           end
-        elsif node.is_a?(AST::DefNode) && node.sites[:mdef]
+        elsif node.is_a?(AST::DefNode) && node.mid_code_range.include?(pos) && node.sites[:mdef]
           node.sites[:mdef].each do |mdef|
             mdefs << mdef
           end
@@ -264,8 +291,17 @@ module TypeProf::Core
           end
         end
       end
+      cdefs.each do |cdef|
+        if cdef.is_a?(AST::ConstantWriteNode)
+          targets << [cdef.lenv.path, cdef.cname_code_range] if cdef.cname_code_range
+        end
+        ve = @genv.resolve_const(cdef.static_cpath)
+        ve.readsites.each do |readsite|
+          targets << [readsite.node.lenv.path, readsite.node.cname_code_range]
+        end
+      end
       if targets.all? {|_path, cr| cr }
-        targets
+        targets.uniq
       else
         # TODO: report an error
         nil
