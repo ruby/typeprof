@@ -1,0 +1,19 @@
+// Experimental TypeProf configuration
+
+// The format is completely tentative and subject to change
+// (including whether to use JSON with Comments or TOML or Ruby DSL or something else)
+{
+    // The version of TypeProf; you need to specify "experimental"
+    "typeprof_version": "experimental",
+
+    // The directory containing RBS files that defines the interface between the analysis units
+    "rbs_dir": "sig/",
+
+    // The directories containing Ruby files to be analyzed by TypeProf
+    // Each directory will be independently analyzed
+    // (but currently, multiple analysis units are not supported yet)
+    "analysis_unit_dirs": [
+        ".",
+        // "lib/typeprof/lsp",
+    ]
+}
