@@ -304,7 +304,7 @@ module TypeProf::Core
     end
 
     def self.create_rbs_func_type(raw_decl, raw_type_params, raw_block, lenv)
-      SIG_FUNC_TYPE.new(raw_decl, raw_type_params, raw_block, lenv)
+      SigFuncType.new(raw_decl, raw_type_params, raw_block, lenv)
     end
 
     def self.create_rbs_type(raw_decl, lenv)

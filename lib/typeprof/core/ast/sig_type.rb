@@ -1,6 +1,6 @@
 module TypeProf::Core
   class AST
-    class SIG_FUNC_TYPE < Node
+    class SigFuncType < Node
       def initialize(raw_decl, raw_type_params, raw_block, lenv)
         super(raw_decl, lenv)
         if raw_block
