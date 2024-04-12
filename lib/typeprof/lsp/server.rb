@@ -46,6 +46,7 @@ module TypeProf::LSP
 
     def initialize(core, reader, writer)
       @core = core
+      @workspaces = {}
       @reader = reader
       @writer = writer
       @request_id = 0
@@ -59,12 +60,36 @@ module TypeProf::LSP
     attr_reader :core, :open_texts
     attr_accessor :signature_enabled
 
+    def add_workspaces(folders)
+      folders.each do |path|
+        conf_path = File.join(path, "typeprof.conf.json")
+        if File.readable?(conf_path)
+          conf = TypeProf::LSP.load_json_with_comments(conf_path, symbolize_names: true)
+          if conf
+            if conf[:typeprof_version] == "experimental"
+              if conf[:analysis_unit_dirs].size >= 2
+                 puts "currently analysis_unit_dirs can have only one directory"
+              end
+              conf[:analysis_unit_dirs].each do |dir|
+                dir = File.expand_path(dir, path)
+                @workspaces[dir] = true
+                @core.add_workspace(dir, conf[:rbs_dir])
+              end
+            else
+              puts "Unknown typeprof_version: #{ conf[:typeprof_version] }"
+            end
+          end
+        else
+          puts "typeprof.conf.json is not found"
+        end
+      end
+    end
+
     def target_path?(path)
-      # XXX: hard-coded for dog-fooding
-      return true if path.start_with?(File.join(File.dirname(File.dirname(File.dirname(__dir__))), "sig"))
-      return false if !path.start_with?(File.dirname(__dir__))
-      return false if path.start_with?(File.join(File.dirname(__dir__), "lsp"))
-      return true
+      @workspaces.each do |folder, _|
+        return true if path.start_with?(folder)
+      end
+      return false
     end
 
     def run

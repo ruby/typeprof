@@ -75,26 +75,7 @@ module TypeProf::LSP
         URI(uri).path
       end
 
-      folders.each do |path|
-        conf_path = File.join(path, "typeprof.conf.json")
-        if File.readable?(conf_path)
-          conf = TypeProf::LSP.load_json_with_comments(conf_path, symbolize_names: true)
-          if conf
-            if conf[:typeprof_version] == "experimental"
-              if conf[:analysis_unit_dirs].size >= 2
-                 log "currently analysis_unit_dirs can have only one directory"
-              end
-              conf[:analysis_unit_dirs].each do |dir|
-                @server.core.add_workspace(dir, conf[:rbs_dir])
-              end
-            else
-              log "Unknown typeprof_version: #{ conf[:typeprof_version] }"
-            end
-          end
-        else
-          log "typeprof.conf.json is not found"
-        end
-      end
+      @server.add_workspaces(folders)
 
       respond(
         capabilities: {

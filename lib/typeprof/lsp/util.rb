@@ -6,7 +6,6 @@ module TypeProf::LSP
     last_comma_index = nil
     trailing_commas = []
     json = json.gsub(%r(\\.|//|/\*|\*/|[",\n/}\]*]|(\s+)|[^\s\\"*/,]+)) do
-      fragment = $&
       case $&
       when "//"
         state = :single_line_comment if state == :normal
