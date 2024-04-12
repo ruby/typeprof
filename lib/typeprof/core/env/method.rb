@@ -62,7 +62,7 @@ module TypeProf::Core
       block = @block ? @block.new_vertex(genv, "block:#{ name }", node) : nil
       ActualArguments.new(positionals, splat_flags, keywords, block)
     end
-    
+
     def get_rest_args(genv, start_rest, end_rest)
       vtxs = []
 
