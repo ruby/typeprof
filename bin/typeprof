@@ -6,9 +6,18 @@ case ARGV[0]
 when "--version"
   puts "typeprof 0.30.0"
 when "--lsp"
+  mode = ARGV[1]&.to_sym || :socket
+
   core = TypeProf::Core::Service.new
   begin
-    TypeProf::LSP::Server.start_socket(core)
+    case mode
+    when :socket
+      TypeProf::LSP::Server.start_socket(core)
+    when :stdio
+      TypeProf::LSP::Server.start_stdio(core)
+    else
+      puts "lsp mode '#{mode}' is not supported. expected mode: socket, stdio"
+    end
   rescue Exception
     puts $!.detailed_message(highlight: false)
     raise
