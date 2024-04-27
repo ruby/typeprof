@@ -1,0 +1,42 @@
+GIT
+  remote: https://github.com/ruby/rbs.git
+  revision: eb432930287d2c71ea7805be8c345d5679df9e1e
+  specs:
+    rbs (3.5.0.pre.2)
+      abbrev
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    abbrev (0.1.2)
+    coverage-helpers (1.0.0)
+    docile (1.4.0)
+    power_assert (2.0.3)
+    prism (0.27.0)
+    rake (13.2.1)
+    simplecov (0.22.0)
+      docile (~> 1.1)
+      simplecov-html (~> 0.11)
+      simplecov_json_formatter (~> 0.1)
+    simplecov-html (0.12.3)
+    simplecov_json_formatter (0.1.4)
+    stackprof (0.2.26)
+    test-unit (3.6.2)
+      power_assert
+
+PLATFORMS
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  coverage-helpers
+  prism
+  rake
+  rbs!
+  simplecov
+  simplecov-html
+  stackprof
+  test-unit
+
+BUNDLED WITH
+   2.6.0.dev
