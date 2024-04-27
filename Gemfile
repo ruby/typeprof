@@ -12,6 +12,7 @@ gem "prism"
 group :development do
   gem "rake"
   gem "stackprof", platforms: :mri
+  gem "pf2", platforms: :mri
   gem "test-unit"
   gem "simplecov"
   gem "simplecov-html"
