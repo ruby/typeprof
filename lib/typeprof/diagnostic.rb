@@ -15,7 +15,7 @@ module TypeProf
     end
 
     SEVERITY = { error: 1, warning: 2, info: 3, hint: 4 }
-    TAG = { unnecesary: 1, deprecated: 2 }
+    TAG = { unnecessary: 1, deprecated: 2 }
 
     def to_lsp
       json = {
