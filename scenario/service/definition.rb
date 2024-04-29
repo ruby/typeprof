@@ -13,7 +13,7 @@ Foo.new(1).foo(1.0)
 test.rb:(1,0)-(7,3)
 
 ## definition: test.rb:9:5
-test.rb:(2,2)-(3,5)
+test.rb:(2,6)-(2,16)
 
 ## definition: test.rb:9:12
-test.rb:(5,2)-(6,5)
+test.rb:(5,6)-(5,9)
