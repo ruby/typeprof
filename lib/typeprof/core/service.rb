@@ -176,7 +176,13 @@ module TypeProf::Core
               site.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
                 next unless me
                 me.defs.each do |mdef|
-                  defs << [mdef.node.lenv.path, mdef.node.mid_code_range]
+                  code_range =
+                    case mdef.node
+                    when AST::DefNode then mdef.node.mid_code_range
+                    else mdef.node.code_range
+                    end
+
+                  defs << [mdef.node.lenv.path, code_range]
                 end
               end
             end
