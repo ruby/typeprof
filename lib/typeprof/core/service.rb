@@ -176,7 +176,7 @@ module TypeProf::Core
               site.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
                 next unless me
                 me.defs.each do |mdef|
-                  defs << [mdef.node.lenv.path, mdef.node.code_range]
+                  defs << [mdef.node.lenv.path, mdef.node.mid_code_range]
                 end
               end
             end
