@@ -7,8 +7,9 @@ module TypeProf::Core
         @prev_node = nil
         @static_ret = nil
         @ret = nil
-        @sites = {}
-        @diagnostics = []
+
+        @changes = Changes.new(self)
+
         @reused = false
       end
 
@@ -16,7 +17,7 @@ module TypeProf::Core
       attr_reader :prev_node
       attr_reader :static_ret
       attr_reader :ret
-      attr_reader :sites
+      attr_reader :changes
 
       def subnodes = {}
       def attrs = {}
@@ -68,14 +69,6 @@ module TypeProf::Core
         end
       end
 
-      def add_site(key, site)
-        (@sites[key] ||= Set[]) << site
-      end
-
-      def remove_site(key, site)
-        @sites[key].delete(site) || raise
-      end
-
       def define(genv)
         debug = ENV["TYPEPROF_DEBUG"]
         if debug
@@ -123,6 +116,7 @@ module TypeProf::Core
         if debug
           puts "install leave: #{ self.class }@#{ code_range.inspect }"
         end
+        @changes.reinstall(genv)
         @ret
       end
 
@@ -136,11 +130,7 @@ module TypeProf::Core
           puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
         end
         unless @reused
-          @sites.each_value do |sites|
-            sites.each do |site|
-              site.destroy(genv)
-            end
-          end
+          @changes.reinstall(genv)
           uninstall0(genv)
         end
         if debug
@@ -206,16 +196,20 @@ module TypeProf::Core
         return nil
       end
 
+      def sites(key)
+        sites = []
+        @changes.sites.each {|(k, *), site| sites << site if k == key }
+        sites
+      end
+
       def add_diagnostic(msg)
-        @diagnostics << TypeProf::Diagnostic.new(self, :code_range, msg)
+        @changes.add_diagnostic(TypeProf::Diagnostic.new(self, :code_range, msg))
       end
 
       def diagnostics(genv, &blk)
-        @diagnostics.each(&blk)
-        @sites.each_value do |sites|
-          sites.each do |site|
-            site.diagnostics(genv, &blk)
-          end
+        @changes.diagnostics.each(&blk)
+        @changes.sites.each_value do |site|
+          site.diagnostics(genv, &blk)
         end
         each_subnode do |subnode|
           subnode.diagnostics(genv, &blk)
@@ -224,10 +218,8 @@ module TypeProf::Core
 
       def get_vertexes(vtxs)
         return if @reused
-        @sites.each_value do |sites|
-          sites.each do |site|
-            vtxs << site.ret
-          end
+        @changes.sites.each_value do |site|
+          vtxs << site.ret
         end
         vtxs << @ret
         each_subnode do |subnode|
@@ -309,8 +301,8 @@ module TypeProf::Core
 
       attr_reader :lenv, :prev_node, :ret
 
-      def sites
-        {}
+      def sites(_)
+        []
       end
     end
   end

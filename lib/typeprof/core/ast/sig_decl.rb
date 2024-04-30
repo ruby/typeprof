@@ -46,16 +46,11 @@ module TypeProf::Core
 
       def install0(genv)
         @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@cpath)))
-        @mod_val.add_edge(genv, @static_ret[:module].vtx)
+        @changes.add_edge(genv, @mod_val, @static_ret[:module].vtx)
         @members.each do |member|
           member.install(genv)
         end
         Source.new
-      end
-
-      def uninstall0(genv)
-        @mod_val.remove_edge(genv, @static_ret[:module].vtx)
-        super(genv)
       end
     end
 
@@ -195,8 +190,7 @@ module TypeProf::Core
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, singleton, @mid, @method_types, @overloading)
-          add_site(:mdecl, mdecl)
+          @changes.add_method_decl_site(genv, self, @lenv.cref.cpath, singleton, @mid, @method_types, @overloading)
         end
         Source.new
       end
@@ -300,15 +294,9 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        site = TypeReadSite.new(self, genv, @type)
-        add_site(:main, site)
-        site.ret.add_edge(genv, @static_ret.vtx)
+        site = @changes.add_type_read_site(genv, self, @type)
+        @changes.add_edge(genv, site.ret, @static_ret.vtx)
         site.ret
-      end
-
-      def uninstall0(genv)
-        @ret.remove_edge(genv, @static_ret.vtx)
-        super(genv)
       end
     end
 
@@ -365,15 +353,9 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        site = TypeReadSite.new(self, genv, @type)
-        add_site(:main, site)
-        site.ret.add_edge(genv, @static_ret.vtx)
+        site = @changes.add_type_read_site(genv, self, @type)
+        @changes.add_edge(genv, site.ret, @static_ret.vtx)
         site.ret
-      end
-
-      def uninstall0(genv)
-        @ret.remove_edge(genv, @static_ret.vtx)
-        super(genv)
       end
     end
   end

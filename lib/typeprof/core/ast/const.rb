@@ -44,8 +44,7 @@ module TypeProf::Core
 
       def install0(genv)
         @cbase.install(genv) if @cbase
-        site = ConstReadSite.new(self, genv, @static_ret)
-        add_site(:main, site)
+        site = @changes.add_const_read_site(genv, self, @static_ret)
         site.ret
       end
     end
@@ -98,13 +97,8 @@ module TypeProf::Core
       def install0(genv)
         @cpath.install(genv) if @cpath
         val = @rhs.install(genv)
-        val.add_edge(genv, @static_ret.vtx)
+        @changes.add_edge(genv, val, @static_ret.vtx)
         val
-      end
-
-      def uninstall0(genv)
-        @ret.remove_edge(genv, @static_ret.vtx)
-        super(genv)
       end
     end
   end

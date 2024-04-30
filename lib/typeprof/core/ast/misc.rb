@@ -70,8 +70,7 @@ module TypeProf::Core
       def install0(genv)
         @lhss.each {|lhs| lhs.install(genv) }
         rhs = @rhs.install(genv)
-        site = MAsgnSite.new(self, genv, rhs, @lhss.map {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) })
-        add_site(:main, site)
+        site = @changes.add_masgn_site(genv, self, rhs, @lhss.map {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) })
         site.ret
       end
 

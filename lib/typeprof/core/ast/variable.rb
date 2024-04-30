@@ -37,7 +37,7 @@ module TypeProf::Core
         val = @rhs.install(genv)
 
         vtx = @lenv.new_var(@var, self)
-        val.add_edge(genv, vtx)
+        @changes.add_edge(genv, val, vtx)
         val
       end
 
@@ -62,8 +62,7 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
-        add_site(:main, site)
+        site = @changes.add_ivar_read_site(genv, self, lenv.cref.cpath, lenv.cref.singleton, @var)
         @lenv.apply_read_filter(genv, self, @var, site.ret)
       end
 
@@ -99,17 +98,11 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        site = IVarReadSite.new(self, genv, lenv.cref.cpath, lenv.cref.singleton, @var)
-        add_site(:main, site)
+        @changes.add_ivar_read_site(genv, self, lenv.cref.cpath, lenv.cref.singleton, @var)
         val = @rhs.install(genv)
         val = val.new_vertex(genv, "iasgn", self) # avoid multi-edge from val to static_ret.vtx
-        val.add_edge(genv, @static_ret.vtx)
+        @changes.add_edge(genv, val, @static_ret.vtx)
         val
-      end
-
-      def uninstall0(genv)
-        @ret.remove_edge(genv, @static_ret.vtx)
-        super(genv)
       end
 
       def hover(pos, &blk)
@@ -129,8 +122,7 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        site = GVarReadSite.new(self, genv, @var)
-        add_site(:main, site)
+        site = @changes.add_gvar_read_site(genv, self, @var)
         site.ret
       end
 
@@ -167,13 +159,8 @@ module TypeProf::Core
 
       def install0(genv)
         val = @rhs.install(genv)
-        val.add_edge(genv, @static_ret.vtx)
+        @changes.add_edge(genv, val, @static_ret.vtx)
         val
-      end
-
-      def uninstall0(genv)
-        @ret.remove_edge(genv, @static_ret.vtx)
-        super(genv)
       end
 
       def hover(pos, &blk)
