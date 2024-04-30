@@ -202,10 +202,6 @@ module TypeProf::Core
         sites
       end
 
-      def add_diagnostic(msg)
-        @changes.add_diagnostic(TypeProf::Diagnostic.new(self, :code_range, msg))
-      end
-
       def diagnostics(genv, &blk)
         @changes.diagnostics.each(&blk)
         @changes.sites.each_value do |site|
@@ -234,7 +230,7 @@ module TypeProf::Core
       end
 
       def pretty_print_instance_variables
-        super() - [:@raw_node, :@lenv, :@prev_node, :@static_ret]
+        super() - [:@raw_node, :@lenv, :@prev_node, :@static_ret, :@changes]
       end
     end
 

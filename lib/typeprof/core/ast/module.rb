@@ -34,7 +34,7 @@ module TypeProf::Core
           @mod_cdef = @mod.add_module_def(genv, self)
         else
           kind = self.is_a?(ModuleNode) ? "module" : "class"
-          add_diagnostic("TypeProf cannot analyze a non-static #{ kind }") # warning
+          @changes.add_diagnostic(self, :code_range, "TypeProf cannot analyze a non-static #{ kind }") # warning
           nil
         end
       end
