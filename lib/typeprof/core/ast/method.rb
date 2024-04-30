@@ -284,10 +284,10 @@ module TypeProf::Core
         end
       end
 
-      def hover(pos, &blk)
+      def retrieve_at(pos, &blk)
         if @rbs_method_type
           if @rbs_method_type.code_range.include?(pos) # annotation
-            @rbs_method_type.hover(pos, &blk)
+            @rbs_method_type.retrieve_at(pos, &blk)
           end
         end
         @args_code_ranges.each_with_index do |cr, i|
