@@ -17,9 +17,11 @@ module TypeProf::Core
         else
           @body = nil
         end
+
+        @cname_code_range = TypeProf::CodeRange.from_node(raw_node.constant_path)
       end
 
-      attr_reader :tbl, :cpath, :static_cpath, :body
+      attr_reader :tbl, :cpath, :static_cpath, :cname_code_range, :body
 
       def subnodes = { cpath:, body: }
       def attrs = { static_cpath:, tbl: }
