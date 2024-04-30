@@ -131,16 +131,12 @@ module TypeProf::Core
         end
         unless @reused
           @changes.reinstall(genv)
-          uninstall0(genv)
+          each_subnode do |subnode|
+            subnode.uninstall(genv)
+          end
         end
         if debug
           puts "uninstall leave: #{ self.class }@#{ code_range.inspect }"
-        end
-      end
-
-      def uninstall0(genv)
-        each_subnode do |subnode|
-          subnode.uninstall(genv)
         end
       end
 

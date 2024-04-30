@@ -63,6 +63,12 @@ module TypeProf::Core
       @new_sites[key] = MethodDeclSite.new(node, genv, cpath, singleton, mid, method_types, overloading)
     end
 
+    def add_method_alias_site(genv, node, cpath, singleton, new_mid, old_mid)
+      key = [:mdecl, node, cpath, singleton, new_mid, old_mid]
+      return if @new_sites[key]
+      @new_sites[key] = MethodAliasSite.new(node, genv, cpath, singleton, new_mid, old_mid)
+    end
+
     def add_const_read_site(genv, node, static_ret)
       key = [:cread, node, static_ret]
       return if @new_sites[key]
@@ -673,6 +679,44 @@ module TypeProf::Core
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
       s << "-> #{ @ret.show }"
       s.join(" ")
+    end
+  end
+
+  class MethodAliasSite < Site
+    def initialize(node, genv, cpath, singleton, new_mid, old_mid)
+      super(node)
+      @cpath = cpath
+      @singleton = singleton
+      @new_mid = new_mid
+      @old_mid = old_mid
+      @ret = Source.new(genv.nil_type)
+
+      me = genv.resolve_method(@cpath, @singleton, @new_mid)
+      me.add_alias(self, @old_mid)
+      if me.decls.empty?
+        me.add_run_all_callsites(genv)
+      else
+        genv.add_run(self)
+      end
+    end
+
+    attr_accessor :node
+
+    attr_reader :cpath, :singleton, :new_mid, :old_mid, :ret
+
+    def destroy(genv)
+      me = genv.resolve_method(@cpath, @singleton, @new_mid)
+      me.remove_alias(self)
+      if me.decls.empty?
+        me.add_run_all_callsites(genv)
+      else
+        genv.add_run(self)
+      end
+      super(genv)
+    end
+
+    def run0(genv, changes)
+      # TODO: what to do?
     end
   end
 
