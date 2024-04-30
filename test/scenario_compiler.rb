@@ -78,8 +78,13 @@ class ScenarioCompiler
   def handle_update
     ext = File.extname(@file)[1..]
     <<-END
-#{ @interactive ? 1 : 2 }.times {
+#{ @interactive ? 1 : 2 }.times {|i|
   core.update_#{ ext }_file(#{ @file.dump }, %q\0DATA\0)
+  if i != 0 && "#{ ext }" == "rb"
+    if !core.instance_variable_get(:@text_nodes)[#{ @file.dump }].prev_node
+      raise "AST diff does not work well; the completely same code generates a different AST"
+    end
+  end
 };
     END
   end

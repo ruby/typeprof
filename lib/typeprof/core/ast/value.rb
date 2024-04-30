@@ -87,35 +87,33 @@ module TypeProf::Core
     class InterpolatedStringNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @strs = []
-        @interpolations = []
+        @parts = []
         raw_node.parts.each do |raw_part|
           case raw_part.type
           when :string_node
-            @strs << AST.create_node(raw_part, lenv)
+            @parts << AST.create_node(raw_part, lenv)
           when :embedded_statements_node
-            @interpolations << AST.create_node(raw_part.statements, lenv)
+            @parts << AST.create_node(raw_part.statements, lenv)
           else
             raise "unknown string part: #{ raw_part.type }"
           end
         end
       end
 
-      attr_reader :interpolations, :strs
+      attr_reader :parts
 
-      def subnodes = { interpolations: }
-      def attrs = { strs: }
+      def subnodes = { parts: }
 
       def install0(genv)
-        @interpolations.each do |subnode|
+        @parts.each do |subnode|
           subnode.install(genv)
         end
         Source.new(genv.str_type)
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(InterpolatedStringNode) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations.size
-          @interpolations.zip(prev_node.interpolations) do |n, prev_n|
+        if prev_node.is_a?(InterpolatedStringNode) && @parts.size == prev_node.parts.size
+          @parts.zip(prev_node.parts) do |n, prev_n|
             n.diff(prev_n)
             return unless n.prev_node
           end
@@ -135,35 +133,33 @@ module TypeProf::Core
     class InterpolatedRegexpNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @strs = []
-        @interpolations = []
+        @parts = []
         raw_node.parts.each do |raw_part|
           case raw_part.type
           when :string_node
-            @strs << AST.create_node(raw_part, lenv)
+            @parts << AST.create_node(raw_part, lenv)
           when :embedded_statements_node
-            @interpolations << AST.create_node(raw_part.statements, lenv)
+            @parts << AST.create_node(raw_part.statements, lenv)
           else
             raise "unknown regexp part: #{ raw_part.type }"
           end
         end
       end
 
-      attr_reader :interpolations, :strs
+      attr_reader :parts
 
-      def subnodes = { interpolations: }
-      def attrs = { strs: }
+      def subnodes = { parts: }
 
       def install0(genv)
-        @interpolations.each do |subnode|
+        @parts.each do |subnode|
           subnode.install(genv)
         end
         Source.new(genv.regexp_type)
       end
 
       def diff(prev_node)
-        if prev_node.is_a?(InterpolatedRegexpNode) && @strs == prev_node.strs && @interpolations.size == prev_node.interpolations.size
-          @interpolations.zip(prev_node.interpolations) do |n, prev_n|
+        if prev_node.is_a?(InterpolatedRegexpNode) && @parts.size == prev_node.parts.size
+          @parts.zip(prev_node.parts) do |n, prev_n|
             n.diff(prev_n)
             return unless n.prev_node
           end

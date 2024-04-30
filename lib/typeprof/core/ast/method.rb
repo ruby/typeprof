@@ -181,7 +181,6 @@ module TypeProf::Core
         tbl:,
         req_positionals:,
         opt_positionals:,
-        opt_positional_defaults:,
         rest_positionals:,
         post_positionals:,
         req_keywords:,
