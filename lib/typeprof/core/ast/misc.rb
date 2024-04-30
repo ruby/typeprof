@@ -74,7 +74,7 @@ module TypeProf::Core
         site.ret
       end
 
-      def hover(pos, &blk)
+      def retrieve_at(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)
       end

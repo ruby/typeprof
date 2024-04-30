@@ -152,7 +152,7 @@ module TypeProf::Core
 
     def definitions(path, pos)
       defs = []
-      @text_nodes[path].hover(pos) do |node|
+      @text_nodes[path].retrieve_at(pos) do |node|
         node.sites(:cread).each do |site|
           if site.const_read && site.const_read.cdef
             site.const_read.cdef.defs.each do |cdef_node|
@@ -189,7 +189,7 @@ module TypeProf::Core
     end
 
     def type_definitions(path, pos)
-      @text_nodes[path].hover(pos) do |node|
+      @text_nodes[path].retrieve_at(pos) do |node|
         if node.ret
           ty_defs = []
           node.ret.types.map do |ty, _source|
@@ -211,7 +211,7 @@ module TypeProf::Core
     #: (String, TypeProf::CodePosition) -> Array[[String?, TypeProf::CodeRange]]?
     def references(path, pos)
       refs = []
-      @text_nodes[path].hover(pos) do |node|
+      @text_nodes[path].retrieve_at(pos) do |node|
         case node
         when AST::DefNode
           if node.mid_code_range.include?(pos)
@@ -251,7 +251,7 @@ module TypeProf::Core
     def rename(path, pos)
       mdefs = []
       cdefs = []
-      @text_nodes[path].hover(pos) do |node|
+      @text_nodes[path].retrieve_at(pos) do |node|
         node.sites(:callsite).each do |site|
           site.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
             next unless me
@@ -303,7 +303,7 @@ module TypeProf::Core
     end
 
     def hover(path, pos)
-      @text_nodes[path].hover(pos) do |node|
+      @text_nodes[path].retrieve_at(pos) do |node|
         node.sites(:callsite).each do |site|
           sites = []
           site.changes.sites.each do |key, site|

@@ -14,7 +14,7 @@ module TypeProf::Core
         @lenv.get_var(@var)
       end
 
-      def hover(pos)
+      def retrieve_at(pos)
         yield self if code_range.include?(pos)
       end
     end
@@ -41,7 +41,7 @@ module TypeProf::Core
         val
       end
 
-      def hover(pos, &blk)
+      def retrieve_at(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)
       end
@@ -66,7 +66,7 @@ module TypeProf::Core
         @lenv.apply_read_filter(genv, self, @var, site.ret)
       end
 
-      def hover(pos)
+      def retrieve_at(pos)
         yield self if code_range.include?(pos)
       end
     end
@@ -105,7 +105,7 @@ module TypeProf::Core
         val
       end
 
-      def hover(pos, &blk)
+      def retrieve_at(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)
       end
@@ -126,7 +126,7 @@ module TypeProf::Core
         site.ret
       end
 
-      def hover(pos)
+      def retrieve_at(pos)
         yield self if code_range.include?(pos)
       end
     end
@@ -163,7 +163,7 @@ module TypeProf::Core
         val
       end
 
-      def hover(pos, &blk)
+      def retrieve_at(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)
       end

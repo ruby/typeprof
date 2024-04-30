@@ -128,11 +128,11 @@ module TypeProf::Core
         end
       end
 
-      def hover(pos, &blk)
+      def retrieve_at(pos, &blk)
         yield self if @mid_code_range && @mid_code_range.include?(pos)
         each_subnode do |subnode|
           next unless subnode
-          subnode.hover(pos, &blk)
+          subnode.retrieve_at(pos, &blk)
         end
       end
 

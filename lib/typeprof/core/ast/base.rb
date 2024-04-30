@@ -182,16 +182,6 @@ module TypeProf::Core
         end
       end
 
-      def hover(pos, &blk)
-        if code_range.include?(pos)
-          each_subnode do |subnode|
-            subnode.hover(pos, &blk)
-          end
-          yield self
-        end
-        return nil
-      end
-
       def sites(key)
         sites = []
         @changes.sites.each {|(k, *), site| sites << site if k == key }
