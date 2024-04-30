@@ -136,48 +136,6 @@ module TypeProf::Core
         end
       end
 
-      def diff(prev_node)
-        return if self.class != prev_node.class
-        return unless attrs.all? {|key, attr| attr == prev_node.send(key) }
-
-        if @recv
-          @recv.diff(prev_node.recv)
-          return unless @recv.prev_node
-        else
-          return if @recv != prev_node.recv
-        end
-
-        return unless @splat_flags == prev_node.splat_flags
-
-        @positional_args.zip(prev_node.positional_args) do |node, prev_node|
-          node.diff(prev_node)
-          return unless node.prev_node
-        end
-
-        if @keyword_args
-          @keyword_args.diff(prev_node.keyword_args)
-          return unless @keyword_args.prev_node
-        else
-          return unless @keyword_args == prev_node.keyword_args
-        end
-
-        if @block_pass
-          @block_pass.diff(prev_node.block_pass)
-          return unless @block_pass.prev_node
-        else
-          return unless @block_pass == prev_node.block_pass
-        end
-
-        if @block_body
-          @block_body.diff(prev_node.block_body)
-          return unless @block_body.prev_node
-        else
-          return if @block_body != prev_node.block_body
-        end
-
-        @prev_node = prev_node
-      end
-
       def modified_vars(tbl, vars)
         subnodes.each do |key, subnode|
           next unless subnode

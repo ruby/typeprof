@@ -19,13 +19,6 @@ module TypeProf::Core
       def install0(genv)
         raise "not supported yet: #{ @lit.inspect }"
       end
-
-      def diff(prev_node)
-        # Need to compare their classes to distinguish between 1 and 1.0 (or use equal?)
-        if prev_node.is_a?(LiteralNode) && @lit.class == prev_node.lit.class && @lit == prev_node.lit
-          @prev_node = prev_node
-        end
-      end
     end
 
     class NilNode < LiteralNode
@@ -110,16 +103,6 @@ module TypeProf::Core
         end
         Source.new(genv.str_type)
       end
-
-      def diff(prev_node)
-        if prev_node.is_a?(InterpolatedStringNode) && @parts.size == prev_node.parts.size
-          @parts.zip(prev_node.parts) do |n, prev_n|
-            n.diff(prev_n)
-            return unless n.prev_node
-          end
-          @prev_node = prev_node
-        end
-      end
     end
 
     class RegexpNode < Node
@@ -155,16 +138,6 @@ module TypeProf::Core
           subnode.install(genv)
         end
         Source.new(genv.regexp_type)
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(InterpolatedRegexpNode) && @parts.size == prev_node.parts.size
-          @parts.zip(prev_node.parts) do |n, prev_n|
-            n.diff(prev_n)
-            return unless n.prev_node
-          end
-          @prev_node = prev_node
-        end
       end
     end
 
@@ -202,16 +175,6 @@ module TypeProf::Core
         unified_elem = Vertex.new("ary-elems-unified", self)
         elems.each {|vtx| @changes.add_edge(genv, vtx, unified_elem) }
         Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem)))
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(ArrayNode) && @elems.size == prev_node.elems.size
-          @elems.zip(prev_node.elems) do |elem, prev_elem|
-            elem.diff(prev_elem)
-            return unless elem.prev_node
-          end
-          @prev_node = prev_node
-        end
       end
     end
 
@@ -257,18 +220,6 @@ module TypeProf::Core
           end
         end
         Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(HashNode) && @keys.size == prev_node.keys.size
-          @keys.zip(@vals, prev_node.keys, prev_node.vals) do |key, val, prev_key, prev_val|
-            key.diff(prev_key)
-            return unless key.prev_node
-            val.diff(prev_val)
-            return unless val.prev_node
-          end
-          @prev_node = prev_node
-        end
       end
     end
   end
