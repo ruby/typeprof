@@ -253,20 +253,9 @@ module TypeProf::Core
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          me = genv.resolve_method(@lenv.cref.cpath, singleton, @new_mid)
-          me.add_alias(self, @old_mid)
-          me.add_run_all_callsites(genv)
+          @changes.add_method_alias_site(genv, self, @lenv.cref.cpath, singleton, @new_mid, @old_mid)
         end
         Source.new
-      end
-
-      def uninstall0(genv)
-        [[@singleton, true], [@instance, false]].each do |enabled, singleton|
-          next unless enabled
-          me = genv.resolve_method(@lenv.cref.cpath, singleton, @new_mid)
-          me.remove_alias(self, @old_mid)
-          me.add_run_all_callsites(genv)
-        end
       end
     end
 

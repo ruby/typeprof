@@ -322,21 +322,11 @@ module TypeProf::Core
         if @new_mid.is_a?(SymbolNode) && @old_mid.is_a?(SymbolNode)
           new_mid = @new_mid.lit
           old_mid = @old_mid.lit
-          me = genv.resolve_method(@lenv.cref.cpath, false, new_mid)
-          me.add_alias(self, old_mid)
-          me.add_run_all_callsites(genv)
+          site = @changes.add_method_alias_site(genv, self, @lenv.cref.cpath, false, new_mid, old_mid)
+          site.ret
+        else
+          Source.new(genv.nil_type)
         end
-        Source.new(genv.nil_type)
-      end
-
-      def uninstall0(genv)
-        if @new_mid.is_a?(SymbolNode) && @old_mid.is_a?(SymbolNode)
-          new_mid = @new_mid.lit
-          me = genv.resolve_method(@lenv.cref.cpath, false, new_mid)
-          me.remove_alias(self)
-          me.add_run_all_callsites(genv)
-        end
-        super(genv)
       end
     end
   end
