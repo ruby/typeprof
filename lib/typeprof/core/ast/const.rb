@@ -63,12 +63,12 @@ module TypeProf::Core
           # expr::C = expr
           @cpath = AST.create_node(raw_node.target, lenv)
           @static_cpath = AST.parse_cpath(raw_node.target, lenv.cref.cpath)
-          @cname_code_range = nil
+          @cname_code_range = TypeProf::CodeRange.from_node(raw_node.target)
         when :constant_path_target_node
           # expr::C, * = ary
           @cpath = ConstantReadNode.new(raw_node, lenv)
           @static_cpath = AST.parse_cpath(raw_node, lenv.cref.cpath)
-          @cname_code_range = nil
+          @cname_code_range = TypeProf::CodeRange.from_node(raw_node)
         else
           raise
         end
