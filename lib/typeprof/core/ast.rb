@@ -54,9 +54,6 @@ module TypeProf::Core
       when :return_node then ReturnNode.new(raw_node, lenv)
       when :begin_node then BeginNode.new(raw_node, lenv)
 
-      when :RESCUE then RESCUE.new(raw_node, lenv)
-      when :ENSURE then ENSURE.new(raw_node, lenv)
-
       # constants
       when :constant_read_node, :constant_path_node
         ConstantReadNode.new(raw_node, lenv)

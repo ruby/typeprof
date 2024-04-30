@@ -390,6 +390,7 @@ module TypeProf::Core
           else
             return if @ensure_clause != prev_node.ensure_clause
           end
+          @prev_node = prev_node
         end
       end
     end
