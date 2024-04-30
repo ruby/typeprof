@@ -51,6 +51,42 @@ module TypeProf::Core
       @new_sites[key] = MAsgnSite.new(node, genv, rhs, lhss)
     end
 
+    def add_method_def_site(genv, node, cpath, singleton, mid, f_args, ret)
+      key = [:mdef, node, cpath, singleton, mid, f_args, ret]
+      return if @new_sites[key]
+      @new_sites[key] = MethodDefSite.new(node, genv, cpath, singleton, mid, f_args, ret)
+    end
+
+    def add_method_decl_site(genv, node, cpath, singleton, mid, method_types, overloading)
+      key = [:mdecl, node, cpath, singleton, mid, method_types, overloading]
+      return if @new_sites[key]
+      @new_sites[key] = MethodDeclSite.new(node, genv, cpath, singleton, mid, method_types, overloading)
+    end
+
+    def add_const_read_site(genv, node, static_ret)
+      key = [:cread, node, static_ret]
+      return if @new_sites[key]
+      @new_sites[key] = ConstReadSite.new(node, genv, static_ret)
+    end
+
+    def add_gvar_read_site(genv, node, var)
+      key = [:gvar_read, node, var]
+      return if @new_sites[key]
+      @new_sites[key] = GVarReadSite.new(node, genv, var)
+    end
+
+    def add_ivar_read_site(genv, node, cpath, singleton, name)
+      key = [:ivar_read, node, cpath, singleton, name]
+      return if @new_sites[key]
+      @new_sites[key] = IVarReadSite.new(node, genv, cpath, singleton, name)
+    end
+
+    def add_type_read_site(genv, node, type)
+      key = [:type_read, node, type]
+      return if @new_sites[key]
+      @new_sites[key] = TypeReadSite.new(node, genv, type)
+    end
+
     def add_diagnostic(diag)
       @new_diagnostics << diag
     end

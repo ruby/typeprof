@@ -55,20 +55,13 @@ module TypeProf::Core
           @body.lenv.locals[:"*ret"] = Vertex.new("module_ret", self)
 
           @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
-          @mod_val.add_edge(genv, @mod_cdef.vtx)
+          @changes.add_edge(genv, @mod_val, @mod_cdef.vtx)
           ret = Vertex.new("module_return", self)
-          @body.install(genv).add_edge(genv, ret)
-          @body.lenv.get_var(:"*ret").add_edge(genv, ret)
+          @changes.add_edge(genv, @body.install(genv), ret)
+          @changes.add_edge(genv, @body.lenv.get_var(:"*ret"), ret)
           ret
         else
           Source.new
-        end
-      end
-
-      def uninstall0(genv)
-        super(genv)
-        if @static_cpath
-          @mod_val.remove_edge(genv, @mod_cdef.vtx)
         end
       end
 

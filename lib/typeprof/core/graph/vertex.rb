@@ -143,7 +143,7 @@ module TypeProf::Core
       when RBS::AST::Declarations::Base
       when ValueEntity
       else
-        raise
+        raise "unknown class: #{ origin.class }"
       end
       @next_vtxs = Set[]
       super({})

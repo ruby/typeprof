@@ -102,12 +102,12 @@ module TypeProf::Core
           @block_body.install(genv)
 
           vars.each do |var|
-            @block_body.lenv.get_var(var).add_edge(genv, @lenv.get_var(var))
+            @changes.add_edge(genv, @block_body.lenv.get_var(var), @lenv.get_var(var))
           end
 
           blk_ret = Vertex.new("block_ret", self)
           each_return_node do |node|
-            node.ret.add_edge(genv, blk_ret)
+            @changes.add_edge(genv, node.ret, blk_ret)
           end
           block = Block.new(self, blk_f_args, blk_ret)
           blk_ty = Source.new(Type::Proc.new(genv, block))
@@ -116,8 +116,7 @@ module TypeProf::Core
         end
 
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
-        site = CallSite.new(self, genv, recv, @mid, a_args, !@recv)
-        add_site(:main, site)
+        site = @changes.add_callsite(genv, self, recv, @mid, a_args, !@recv)
         site.ret
       end
 

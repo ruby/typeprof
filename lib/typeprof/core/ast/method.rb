@@ -204,15 +204,13 @@ module TypeProf::Core
           @lenv = @prev_node.lenv
           @static_ret = @prev_node.static_ret
           @ret = @prev_node.ret
-          @sites = @prev_node.sites
-          @sites.each_value do |sites|
-            sites.each do |site|
-              if site.node != @prev_node
-                pp site.node, self, @prev_node
-                raise site.class.to_s
-              end
-              site.reuse(self)
+          @changes = @prev_node.changes
+          @changes.sites.each_value do |site|
+            if site.node != @prev_node
+              pp site.node, self, @prev_node
+              raise site.class.to_s
             end
+            site.reuse(self)
           end
           @body.copy_code_ranges
           @body = @prev_node.body
@@ -223,11 +221,10 @@ module TypeProf::Core
         end
       end
 
-      def install0(genv)
+      def install(genv) # NOT install0
         unless @prev_node
           if @rbs_method_type
-            mdecl = MethodDeclSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
-            add_site(:mdecl, mdecl)
+            @changes.add_method_decl_site(genv, self, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
           end
 
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
@@ -244,10 +241,10 @@ module TypeProf::Core
           block = @block ? @body.lenv.new_var(@block, self) : nil
 
           @opt_positional_defaults.zip(opt_positionals) do |expr, vtx|
-            expr.install(genv).add_edge(genv, vtx)
+            @changes.add_edge(genv, expr.install(genv), vtx)
           end
           @opt_keyword_defaults.zip(opt_keywords) do |expr, vtx|
-            expr.install(genv).add_edge(genv, vtx)
+            @changes.add_edge(genv, expr.install(genv), vtx)
           end
 
           if block
@@ -260,7 +257,7 @@ module TypeProf::Core
 
           ret = Vertex.new("ret", self)
           each_return_node do |node|
-            node.ret.add_edge(genv, ret)
+            @changes.add_edge(genv, node.ret, ret)
           end
 
           f_args = FormalArguments.new(
@@ -274,8 +271,8 @@ module TypeProf::Core
             block,
           )
 
-          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, @singleton, @mid, f_args, ret)
-          add_site(:mdef, mdef)
+          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, @singleton, @mid, f_args, ret)
+          @changes.reinstall(genv)
         end
         Source.new(Type::Symbol.new(genv, @mid))
       end

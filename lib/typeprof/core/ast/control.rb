@@ -73,7 +73,7 @@ module TypeProf::Core
         else
           then_val = Source.new(genv.nil_type)
         end
-        then_val.add_edge(genv, ret)
+        @changes.add_edge(genv, then_val, ret)
 
         if @else
           modified_vtxs.each do |var, (_, nvtx_else)|
@@ -86,13 +86,13 @@ module TypeProf::Core
         else
           else_val = Source.new(genv.nil_type)
         end
-        else_val.add_edge(genv, ret)
+        @changes.add_edge(genv, else_val, ret)
 
         modified_vtxs.each do |var, (nvtx_then, nvtx_else)|
           nvtx_then = BotFilter.new(genv, self, nvtx_then, then_val).next_vtx
           nvtx_else = BotFilter.new(genv, self, nvtx_else, else_val).next_vtx
           nvtx_join = nvtx_then.new_vertex(genv, "xxx", self)
-          nvtx_else.add_edge(genv, nvtx_join)
+          @changes.add_edge(genv, nvtx_else, nvtx_join)
           @lenv.set_var(var, nvtx_join)
         end
 
@@ -139,7 +139,7 @@ module TypeProf::Core
         @body.install(genv)
 
         vars.each do |var|
-          @lenv.get_var(var).add_edge(genv, old_vtxs[var])
+          @changes.add_edge(genv, @lenv.get_var(var), old_vtxs[var])
           @lenv.set_var(var, old_vtxs[var])
         end
         if @cond.is_a?(LocalVariableReadNode)
@@ -223,9 +223,9 @@ module TypeProf::Core
         @pivot.install(genv)
         @whens.zip(@clauses) do |vals, clause|
           vals.install(genv)
-          clause.install(genv).add_edge(genv, ret)
+          @changes.add_edge(genv, clause.install(genv), ret)
         end
-        @else_clause.install(genv).add_edge(genv, ret)
+        @changes.add_edge(genv, @else_clause.install(genv), ret)
         ret
       end
 
@@ -266,8 +266,8 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new("and", self)
-        @e1.install(genv).add_edge(genv, ret)
-        @e2.install(genv).add_edge(genv, ret)
+        @changes.add_edge(genv, @e1.install(genv), ret)
+        @changes.add_edge(genv, @e2.install(genv), ret)
         ret
       end
     end
@@ -287,8 +287,8 @@ module TypeProf::Core
         ret = Vertex.new("or", self)
         v1 = @e1.install(genv)
         v1 = NilFilter.new(genv, self, v1, false).next_vtx
-        v1.add_edge(genv, ret)
-        @e2.install(genv).add_edge(genv, ret)
+        @changes.add_edge(genv, v1, ret)
+        @changes.add_edge(genv, @e2.install(genv), ret)
         ret
       end
     end
@@ -352,10 +352,10 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new("rescue-ret", self)
-        @body.install(genv).add_edge(genv, ret)
+        @changes.add_edge(genv, @body.install(genv), ret)
         @rescue_conds.each {|cond| cond.install(genv) }
-        @rescue_clauses.each {|clause| clause.install(genv).add_edge(genv, ret) }
-        @else_clause.install(genv).add_edge(genv, ret) if @else_clause
+        @rescue_clauses.each {|clause| @changes.add_edge(genv, clause.install(genv), ret) }
+        @changes.add_edge(genv, @else_clause.install(genv), ret) if @else_clause
         @ensure_clause.install(genv) if @ensure_clause
         ret
       end

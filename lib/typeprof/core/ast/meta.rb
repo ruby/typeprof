@@ -69,10 +69,8 @@ module TypeProf::Core
       def install0(genv)
         @args.each do |arg|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
-          site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
-          add_site(:attr_reader, site)
-          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, site.ret)
-          add_site(:mdef, mdef)
+          site = @changes.add_ivar_read_site(genv, self, @lenv.cref.cpath, false, ivar_name)
+          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, site.ret)
         end
         Source.new
       end
@@ -109,19 +107,15 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        i = 0
         @args.zip(@static_ret) do |arg, ive|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
-          site = IVarReadSite.new(self, genv, @lenv.cref.cpath, false, ivar_name)
-          add_site(i += 1, site)
-          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, site.ret)
-          add_site(:mdef, mdef)
+          site = @changes.add_ivar_read_site(genv, self, @lenv.cref.cpath, false, ivar_name)
+          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, site.ret)
 
           vtx = Vertex.new("attr_writer-arg", self)
-          vtx.add_edge(genv, ive.vtx)
+          @changes.add_edge(genv, vtx, ive.vtx)
           f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
-          mdef = MethodDefSite.new(self, genv, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, vtx)
-          add_site(:mdef, mdef)
+          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, vtx)
         end
         Source.new
       end
