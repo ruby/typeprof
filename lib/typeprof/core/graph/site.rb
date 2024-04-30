@@ -87,8 +87,8 @@ module TypeProf::Core
       @new_sites[key] = TypeReadSite.new(node, genv, type)
     end
 
-    def add_diagnostic(diag)
-      @new_diagnostics << diag
+    def add_diagnostic(node, meth, msg)
+      @new_diagnostics << TypeProf::Diagnostic.new(node, meth, msg)
     end
 
     def add_depended_value_entity(ve)
@@ -165,6 +165,23 @@ module TypeProf::Core
 
       @depended_superclasses, @new_depended_superclasses = @new_depended_superclasses, @depended_superclasses
       @new_depended_superclasses.clear
+    end
+
+    def reuse(new_node, old_node)
+      @sites.each_value do |site|
+        if site.node != old_node
+          pp site.node, old_node
+          raise site.class.to_s
+        end
+        site.reuse(new_node)
+      end
+      @diagnostics.each do |diag|
+        if diag.node != old_node
+          pp diag.node, old_node
+          raise diag.class.to_s
+        end
+        diag.reuse(new_node)
+      end
     end
   end
 
@@ -391,9 +408,7 @@ module TypeProf::Core
       end
       unless match_any_overload
         meth = node.mid_code_range ? :mid_code_range : :code_range
-        changes.add_diagnostic(
-          TypeProf::Diagnostic.new(node, meth, "failed to resolve overloads")
-        )
+        changes.add_diagnostic(node, meth, "failed to resolve overloads")
       end
     end
 
@@ -437,9 +452,7 @@ module TypeProf::Core
           next if node.ret.check_match(genv, changes, @f_ret)
 
           node = node.stmts.last if node.is_a?(AST::StatementsNode)
-          changes.add_diagnostic(
-            TypeProf::Diagnostic.new(node, :code_range, "expected: #{ @f_ret.show }; actual: #{ node.ret.show }")
-          )
+          changes.add_diagnostic(node, :code_range, "expected: #{ @f_ret.show }; actual: #{ node.ret.show }")
         end
       end
     end
@@ -539,9 +552,7 @@ module TypeProf::Core
           if call_node
             meth = call_node.mid_code_range ? :mid_code_range : :code_range
             err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-            changes.add_diagnostic(
-              TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
-            )
+            changes.add_diagnostic(call_node, meth, "wrong number of arguments (#{ err })")
           end
           return false
         end
@@ -594,9 +605,7 @@ module TypeProf::Core
           if call_node
             meth = call_node.mid_code_range ? :mid_code_range : :code_range
             err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-            changes.add_diagnostic(
-              TypeProf::Diagnostic.new(call_node, meth, "wrong number of arguments (#{ err })")
-            )
+            changes.add_diagnostic(call_node, meth, "wrong number of arguments (#{ err })")
           end
           return false
         end
@@ -692,9 +701,7 @@ module TypeProf::Core
           # TODO: undefined method error
           if error_count < 3
             meth = @node.mid_code_range ? :mid_code_range : :code_range
-            changes.add_diagnostic(
-              TypeProf::Diagnostic.new(@node, meth, "undefined method: #{ orig_ty.show }##{ mid }")
-            )
+            changes.add_diagnostic(@node, meth, "undefined method: #{ orig_ty.show }##{ mid }")
           end
           error_count += 1
         elsif me.builtin
@@ -740,9 +747,7 @@ module TypeProf::Core
       end
       if error_count > 3
         meth = @node.mid_code_range ? :mid_code_range : :code_range
-        changes.add_diagnostic(
-          TypeProf::Diagnostic.new(@node, meth, "... and other #{ error_count - 3 } errors")
-        )
+        changes.add_diagnostic(@node, meth, "... and other #{ error_count - 3 } errors")
       end
     end
 

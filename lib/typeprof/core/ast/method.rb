@@ -274,7 +274,7 @@ module TypeProf::Core
           @changes.add_method_def_site(genv, self, @lenv.cref.cpath, @singleton, @mid, f_args, ret)
           @changes.reinstall(genv)
         end
-        Source.new(Type::Symbol.new(genv, @mid))
+        @ret = Source.new(Type::Symbol.new(genv, @mid))
       end
 
       def each_return_node
