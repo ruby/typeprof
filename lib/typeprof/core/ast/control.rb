@@ -228,29 +228,6 @@ module TypeProf::Core
         @changes.add_edge(genv, @else_clause.install(genv), ret)
         ret
       end
-
-      def diff(prev_node)
-        if prev_node.is_a?(CaseNode) && @clauses.size == prev_node.clauses.size
-          @pivot.diff(prev_node.pivot)
-          return unless @pivot.prev_node
-
-          @whens.zip(@clauses, prev_node.whens, prev_node.clauses) do |vals, clause, prev_vals, prev_clause|
-            vals.diff(prev_vals)
-            return unless vals.prev_node
-            clause.diff(prev_clause)
-            return unless clause.prev_node
-          end
-
-          if @else_clause
-            @else_clause.diff(prev_node.else_clause)
-            return unless @else_clause.prev_node
-          else
-            return if @else_clause != prev_node.else_clause
-          end
-
-          @prev_node = prev_node
-        end
-      end
     end
 
     class AndNode < Node
@@ -358,40 +335,6 @@ module TypeProf::Core
         @changes.add_edge(genv, @else_clause.install(genv), ret) if @else_clause
         @ensure_clause.install(genv) if @ensure_clause
         ret
-      end
-
-      def diff(prev_node)
-        if prev_node.is_a?(BeginNode)
-          @body.diff(prev_node.body)
-          return unless @body.prev_node
-
-          if @rescue_conds.size == prev_node.rescue_conds.size && @rescue_clauses.size == prev_node.rescue_clauses.size
-            @rescue_conds.zip(prev_node.rescue_conds) do |cond, prev_cond|
-              cond.diff(prev_cond)
-              return unless cond.prev_node
-            end
-
-            @rescue_clauses.zip(prev_node.rescue_clauses) do |clause, prev_clause|
-              clause.diff(prev_clause)
-              return unless clause.prev_node
-            end
-          end
-
-          if @else_clause && prev_node.else_clause
-            @else_clause.diff(prev_node.else_clause)
-            return unless @else_clause.prev_node
-          else
-            return if @else_clause != prev_node.else_clause
-          end
-
-          if @ensure_clause && prev_node.ensure_clause
-            @ensure_clause.diff(prev_node.ensure_clause)
-            return unless @ensure_clause.prev_node
-          else
-            return if @ensure_clause != prev_node.ensure_clause
-          end
-          @prev_node = prev_node
-        end
       end
     end
   end
