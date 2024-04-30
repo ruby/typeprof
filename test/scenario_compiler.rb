@@ -1,7 +1,8 @@
 class ScenarioCompiler
-  def initialize(scenarios, interactive: true, fast: true)
+  def initialize(scenarios, output_declarations: false, check_diff: true, fast: true)
     @scenarios = scenarios
-    @interactive = interactive
+    @output_declarations = output_declarations
+    @check_diff = check_diff
     @fast = fast
   end
 
@@ -60,7 +61,7 @@ class ScenarioCompiler
       end
     end
     out << close_str
-    if @interactive
+    if @output_declarations
       out << <<-END
         at_exit do
           puts "---"
@@ -78,7 +79,7 @@ class ScenarioCompiler
   def handle_update
     ext = File.extname(@file)[1..]
     <<-END
-#{ @interactive ? 1 : 2 }.times {|i|
+#{ @check_diff ? 2 : 1 }.times {|i|
   core.update_#{ ext }_file(#{ @file.dump }, %q\0DATA\0)
   if i != 0 && "#{ ext }" == "rb"
     if !core.instance_variable_get(:@text_nodes)[#{ @file.dump }].prev_node
