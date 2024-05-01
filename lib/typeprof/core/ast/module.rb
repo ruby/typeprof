@@ -39,6 +39,14 @@ module TypeProf::Core
         end
       end
 
+      def define_copy(genv)
+        if @static_cpath
+          @mod_cdef.add_def(self)
+          @mod_cdef.remove_def(@prev_node)
+        end
+        super(genv)
+      end
+
       def undefine0(genv)
         if @static_cpath
           @mod.remove_module_def(genv, self)

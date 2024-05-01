@@ -8,9 +8,7 @@ module TypeProf::Core
         @static_ret = nil
         @ret = nil
 
-        @changes = ChangeSet.new(self)
-
-        @reused = false
+        @changes = ChangeSet.new(self, nil)
       end
 
       attr_reader :lenv
@@ -63,15 +61,16 @@ module TypeProf::Core
       end
 
       def define(genv)
-        debug = ENV["TYPEPROF_DEBUG"]
-        if debug
-          puts "define enter: #{ self.class }@#{ code_range.inspect }"
-        end
         @static_ret = define0(genv)
-        if debug
-          puts "define leave: #{ self.class }@#{ code_range.inspect }"
+      end
+
+      def define_copy(genv)
+        @lenv = @prev_node.lenv
+        each_subnode do |subnode|
+          subnode.define_copy(genv)
         end
-        @static_ret
+        @prev_node.instance_variable_set(:@reused, true)
+        @static_ret = @prev_node.static_ret
       end
 
       def define0(genv)
@@ -82,35 +81,30 @@ module TypeProf::Core
       end
 
       def undefine(genv)
-        debug = ENV["TYPEPROF_DEBUG"]
-        if debug
-          puts "undefine enter: #{ self.class }@#{ code_range.inspect }"
-        end
-        undefine0(genv)
-        if debug
-          puts "undefine leave: #{ self.class }@#{ code_range.inspect }"
+        unless @reused
+          undefine0(genv)
         end
       end
 
       def undefine0(genv)
-        unless @reused
-          each_subnode do |subnode|
-            subnode.undefine(genv)
-          end
+        each_subnode do |subnode|
+          subnode.undefine(genv)
         end
       end
 
       def install(genv)
-        debug = ENV["TYPEPROF_DEBUG"]
-        if debug
-          puts "install enter: #{ self.class }@#{ code_range.inspect }"
-        end
         @ret = install0(genv)
-        if debug
-          puts "install leave: #{ self.class }@#{ code_range.inspect }"
-        end
         @changes.reinstall(genv)
         @ret
+      end
+
+      def install_copy(genv)
+        @changes.copy_from(@prev_node.changes)
+        @changes.reuse(self)
+        each_subnode do |subnode|
+          subnode.install_copy(genv)
+        end
+        @ret = @prev_node.ret
       end
 
       def install0(_)
@@ -118,18 +112,9 @@ module TypeProf::Core
       end
 
       def uninstall(genv)
-        debug = ENV["TYPEPROF_DEBUG"]
-        if debug
-          puts "uninstall enter: #{ self.class }@#{ code_range.inspect }"
-        end
-        unless @reused
-          @changes.reinstall(genv)
-          each_subnode do |subnode|
-            subnode.uninstall(genv)
-          end
-        end
-        if debug
-          puts "uninstall leave: #{ self.class }@#{ code_range.inspect }"
+        @changes.reinstall(genv)
+        each_subnode do |subnode|
+          subnode.uninstall(genv)
         end
       end
 
@@ -177,7 +162,13 @@ module TypeProf::Core
 
       def boxes(key)
         boxes = []
-        @changes.boxes.each {|(k, *), box| boxes << box if k == key }
+        @changes.boxes.each do |(k, *), box|
+          # TODO: make it recursive
+          box.changes.boxes.each do |(k, *), box|
+            boxes << box if k == key
+          end
+          boxes << box if k == key
+        end
         boxes
       end
 

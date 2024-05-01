@@ -8,6 +8,10 @@ module TypeProf
       @tags = nil # TODO: keyword argument
     end
 
+    def reuse(new_node)
+      @node = new_node
+    end
+
     attr_reader :msg, :severity
 
     def code_range

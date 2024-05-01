@@ -101,7 +101,7 @@ module TypeProf::Core
 
           e_ret = @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new("expected_method_ret", self)
           @block_body.install(genv)
-          @block_body.lenv.add_next_box(@changes.add_escape_box(genv, self, @block_body.ret, e_ret))
+          @block_body.lenv.add_next_box(@changes.add_escape_box(genv, @block_body.ret, e_ret))
 
           vars.each do |var|
             @changes.add_edge(genv, @block_body.lenv.get_var(var), @lenv.get_var(var))
@@ -114,7 +114,7 @@ module TypeProf::Core
         end
 
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
-        box = @changes.add_method_call_box(genv, self, recv, @mid, a_args, !@recv)
+        box = @changes.add_method_call_box(genv, recv, @mid, a_args, !@recv)
         box.ret
       end
 
