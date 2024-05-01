@@ -228,7 +228,6 @@ module TypeProf::Core
 
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
-          @body.lenv.locals[:"*ret"] = Vertex.new("method_ret", self)
 
           req_positionals = @req_positionals.map {|var| @body.lenv.new_var(var, self) }
           opt_positionals = @opt_positionals.map {|var| @body.lenv.new_var(var, self) }
