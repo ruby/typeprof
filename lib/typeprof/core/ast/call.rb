@@ -130,14 +130,6 @@ module TypeProf::Core
         end
       end
 
-      def each_return_node
-        yield @block_body
-        traverse_children do |node|
-          yield node.arg if node.is_a?(NextNode)
-          !node.is_a?(MethodCallBox) # do not entering nested blocks
-        end
-      end
-
       def retrieve_at(pos, &blk)
         yield self if @mid_code_range && @mid_code_range.include?(pos)
         each_subnode do |subnode|

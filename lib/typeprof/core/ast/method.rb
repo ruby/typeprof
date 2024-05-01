@@ -287,14 +287,6 @@ module TypeProf::Core
         end
       end
 
-      def each_return_node
-        yield @body
-        traverse_children do |node|
-          yield node.arg if node.is_a?(ReturnNode)
-          true
-        end
-      end
-
       def retrieve_at(pos, &blk)
         if @rbs_method_type
           if @rbs_method_type.code_range.include?(pos) # annotation
