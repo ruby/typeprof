@@ -150,15 +150,13 @@ module TypeProf::Core
       end
 
       def boxes(key)
-        boxes = []
         @changes.boxes.each do |(k, *), box|
           # TODO: make it recursive
           box.changes.boxes.each do |(k, *), box|
-            boxes << box if k == key
+            yield box if k == key
           end
-          boxes << box if k == key
+          yield box if k == key
         end
-        boxes
       end
 
       def diagnostics(genv, &blk)
