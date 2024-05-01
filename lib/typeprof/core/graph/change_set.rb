@@ -40,6 +40,12 @@ module TypeProf::Core
       @new_boxes[key] = MethodCallBox.new(node, genv, recv, mid, a_args, subclasses)
     end
 
+    def add_escape_box(genv, node, a_ret, f_ret)
+      key = [:return, node, a_ret]
+      return if @new_boxes[key]
+      @new_boxes[key] = EscapeBox.new(node, genv, a_ret, f_ret)
+    end
+
     def add_check_return_box(genv, node, a_ret, f_ret)
       key = [:check_return, node, a_ret, f_ret]
       return if @new_boxes[key]
@@ -52,10 +58,10 @@ module TypeProf::Core
       @new_boxes[key] = MAsgnBox.new(node, genv, rhs, lhss)
     end
 
-    def add_method_def_box(genv, node, cpath, singleton, mid, f_args, ret)
-      key = [:mdef, node, cpath, singleton, mid, f_args, ret]
+    def add_method_def_box(genv, node, cpath, singleton, mid, f_args, ret_boxes)
+      key = [:mdef, node, cpath, singleton, mid, f_args, ret_boxes]
       return if @new_boxes[key]
-      @new_boxes[key] = MethodDefBox.new(node, genv, cpath, singleton, mid, f_args, ret)
+      @new_boxes[key] = MethodDefBox.new(node, genv, cpath, singleton, mid, f_args, ret_boxes)
     end
 
     def add_method_decl_box(genv, node, cpath, singleton, mid, method_types, overloading)

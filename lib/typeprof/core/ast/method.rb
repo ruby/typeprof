@@ -126,7 +126,7 @@ module TypeProf::Core
         @mid_code_range = mid_code_range
 
         ncref = CRef.new(lenv.cref.cpath, @singleton, @mid, lenv.cref)
-        nlenv = LocalEnv.new(@lenv.path, ncref, {})
+        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
         if raw_body
           @body = AST.create_node(raw_body, nlenv)
         else
@@ -252,11 +252,10 @@ module TypeProf::Core
             block = @body.lenv.new_var(:"*given_block", self)
           end
 
-          @body.install(genv) if @body
-
-          ret = Vertex.new("ret", self)
-          each_return_node do |node|
-            @changes.add_edge(genv, node.ret, ret)
+          if @body
+            e_ret = @body.lenv.locals[:"*expected_method_ret"] = Vertex.new("expected_method_ret", self)
+            @body.install(genv)
+            @body.lenv.add_return_box(@changes.add_escape_box(genv, self, @body.ret, e_ret))
           end
 
           f_args = FormalArguments.new(
@@ -270,10 +269,22 @@ module TypeProf::Core
             block,
           )
 
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, @singleton, @mid, f_args, ret)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, @singleton, @mid, f_args, @body.lenv.return_boxes)
           @changes.reinstall(genv)
         end
         @ret = Source.new(Type::Symbol.new(genv, @mid))
+      end
+
+      def last_stmt_code_range
+        if @body
+          if @body.is_a?(AST::StatementsNode)
+            @body.stmts.last.code_range
+          else
+            @body.code_range
+          end
+        else
+          nil
+        end
       end
 
       def each_return_node

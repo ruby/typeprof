@@ -12,7 +12,7 @@ module TypeProf::Core
 
         if @static_cpath
           ncref = CRef.new(@static_cpath, true, nil, lenv.cref)
-          nlenv = LocalEnv.new(@lenv.path, ncref, {})
+          nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
           @body = raw_scope ? AST.create_node(raw_scope, nlenv) : DummyNilNode.new(code_range, lenv)
         else
           @body = nil

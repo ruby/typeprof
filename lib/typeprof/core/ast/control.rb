@@ -283,6 +283,7 @@ module TypeProf::Core
 
       def install0(genv)
         @arg.install(genv)
+        @lenv.add_return_box(@changes.add_escape_box(genv, self, @arg.ret, @lenv.get_var(:"*expected_method_ret")))
         Source.new(Type::Bot.new(genv))
       end
     end

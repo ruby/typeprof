@@ -49,7 +49,7 @@ module TypeProf::Core
             # TODO: optional args, etc.
             @block_f_args = raw_block.parameters ? raw_block.parameters.parameters.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name } : []
             ncref = CRef.new(lenv.cref.cpath, false, @mid, lenv.cref)
-            nlenv = LocalEnv.new(@lenv.path, ncref, {})
+            nlenv = LocalEnv.new(@lenv.path, ncref, {}, @lenv.return_boxes)
             @block_body = raw_block.body ? AST.create_node(raw_block.body, nlenv) : DummyNilNode.new(code_range, lenv)
           end
         end
