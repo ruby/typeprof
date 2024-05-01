@@ -99,8 +99,8 @@ module TypeProf::Core
     def on_type_removed(genv, src_var, removed_types)
     end
 
-    def new_vertex(genv, show_name, node)
-      nvtx = Vertex.new(show_name, node)
+    def new_vertex(genv, show_name, origin)
+      nvtx = Vertex.new(show_name, origin)
       add_edge(genv, nvtx)
       nvtx
     end
@@ -191,8 +191,8 @@ module TypeProf::Core
       end
     end
 
-    def new_vertex(genv, show_name, node)
-      nvtx = Vertex.new(show_name, node)
+    def new_vertex(genv, show_name, origin)
+      nvtx = Vertex.new(show_name, origin)
       add_edge(genv, nvtx)
       nvtx
     end
