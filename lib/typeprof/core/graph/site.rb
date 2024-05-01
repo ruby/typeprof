@@ -19,9 +19,10 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :sites, :diagnostics, :covariant_types
+    attr_reader :sites, :diagnostics
 
-    def new_vertex(genv, sig_type_node, subst)
+    def new_vertex(genv, sig_type_node)
+      # This is used to avoid duplicated vertex generation for the same sig node
       @covariant_types[sig_type_node] ||= Vertex.new("rbs_type", sig_type_node)
     end
 

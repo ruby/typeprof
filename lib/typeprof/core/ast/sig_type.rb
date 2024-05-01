@@ -54,7 +54,7 @@ module TypeProf::Core
 
     class SigTyNode < Node
       def covariant_vertex(genv, changes, subst)
-        vtx = changes.new_vertex(genv, self, subst)
+        vtx = changes.new_vertex(genv, self)
         covariant_vertex0(genv, changes, vtx, subst)
         vtx
       end
