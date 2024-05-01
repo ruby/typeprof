@@ -20,7 +20,7 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :covariant_types, :edges, :boxes, :diagnostics
+    attr_reader :node, :covariant_types, :edges, :boxes, :diagnostics
 
     def reuse(new_node)
       @node = new_node
@@ -117,9 +117,8 @@ module TypeProf::Core
       @new_boxes[key] = TypeReadBox.new(@node, genv, type)
     end
 
-    def add_diagnostic(node, meth, msg)
-      raise if @node != node
-      @new_diagnostics << TypeProf::Diagnostic.new(node, meth, msg)
+    def add_diagnostic(meth, msg)
+      @new_diagnostics << TypeProf::Diagnostic.new(@node, meth, msg)
     end
 
     def add_depended_value_entity(ve)
