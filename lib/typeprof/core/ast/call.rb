@@ -116,15 +116,15 @@ module TypeProf::Core
         end
 
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
-        site = @changes.add_callsite(genv, self, recv, @mid, a_args, !@recv)
-        site.ret
+        box = @changes.add_method_call_box(genv, self, recv, @mid, a_args, !@recv)
+        box.ret
       end
 
       def each_return_node
         yield @block_body
         traverse_children do |node|
           yield node.arg if node.is_a?(NextNode)
-          !node.is_a?(CallSite) # do not entering nested blocks
+          !node.is_a?(MethodCallBox) # do not entering nested blocks
         end
       end
 

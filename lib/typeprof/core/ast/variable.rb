@@ -62,8 +62,8 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        site = @changes.add_ivar_read_site(genv, self, lenv.cref.cpath, lenv.cref.singleton, @var)
-        @lenv.apply_read_filter(genv, self, @var, site.ret)
+        box = @changes.add_ivar_read_box(genv, self, lenv.cref.cpath, lenv.cref.singleton, @var)
+        @lenv.apply_read_filter(genv, self, @var, box.ret)
       end
 
       def retrieve_at(pos)
@@ -98,7 +98,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        @changes.add_ivar_read_site(genv, self, lenv.cref.cpath, lenv.cref.singleton, @var)
+        @changes.add_ivar_read_box(genv, self, lenv.cref.cpath, lenv.cref.singleton, @var)
         val = @rhs.install(genv)
         val = val.new_vertex(genv, "iasgn", self) # avoid multi-edge from val to static_ret.vtx
         @changes.add_edge(genv, val, @static_ret.vtx)
@@ -122,8 +122,8 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        site = @changes.add_gvar_read_site(genv, self, @var)
-        site.ret
+        box = @changes.add_gvar_read_box(genv, self, @var)
+        box.ret
       end
 
       def retrieve_at(pos)

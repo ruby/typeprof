@@ -69,8 +69,8 @@ module TypeProf::Core
       def install0(genv)
         @args.each do |arg|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
-          site = @changes.add_ivar_read_site(genv, self, @lenv.cref.cpath, false, ivar_name)
-          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, site.ret)
+          box = @changes.add_ivar_read_box(genv, self, @lenv.cref.cpath, false, ivar_name)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, box.ret)
         end
         Source.new
       end
@@ -109,13 +109,13 @@ module TypeProf::Core
       def install0(genv)
         @args.zip(@static_ret) do |arg, ive|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
-          site = @changes.add_ivar_read_site(genv, self, @lenv.cref.cpath, false, ivar_name)
-          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, site.ret)
+          box = @changes.add_ivar_read_box(genv, self, @lenv.cref.cpath, false, ivar_name)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, box.ret)
 
           vtx = Vertex.new("attr_writer-arg", self)
           @changes.add_edge(genv, vtx, ive.vtx)
           f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
-          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, vtx)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, vtx)
         end
         Source.new
       end

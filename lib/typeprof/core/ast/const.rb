@@ -44,8 +44,8 @@ module TypeProf::Core
 
       def install0(genv)
         @cbase.install(genv) if @cbase
-        site = @changes.add_const_read_site(genv, self, @static_ret)
-        site.ret
+        box = @changes.add_const_read_box(genv, self, @static_ret)
+        box.ret
       end
     end
 

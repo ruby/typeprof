@@ -204,12 +204,12 @@ module TypeProf::Core
           @static_ret = @prev_node.static_ret
           @ret = @prev_node.ret
           @changes = @prev_node.changes
-          @changes.sites.each_value do |site|
-            if site.node != @prev_node
-              pp site.node, self, @prev_node
-              raise site.class.to_s
+          @changes.boxes.each_value do |box|
+            if box.node != @prev_node
+              pp box.node, self, @prev_node
+              raise box.class.to_s
             end
-            site.reuse(self)
+            box.reuse(self)
           end
           @body.copy_code_ranges
           @body = @prev_node.body
@@ -223,7 +223,7 @@ module TypeProf::Core
       def install(genv) # NOT install0
         unless @prev_node
           if @rbs_method_type
-            @changes.add_method_decl_site(genv, self, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
+            @changes.add_method_decl_box(genv, self, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
           end
 
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
@@ -270,7 +270,7 @@ module TypeProf::Core
             block,
           )
 
-          @changes.add_method_def_site(genv, self, @lenv.cref.cpath, @singleton, @mid, f_args, ret)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, @singleton, @mid, f_args, ret)
           @changes.reinstall(genv)
         end
         @ret = Source.new(Type::Symbol.new(genv, @mid))
@@ -321,8 +321,8 @@ module TypeProf::Core
         if @new_mid.is_a?(SymbolNode) && @old_mid.is_a?(SymbolNode)
           new_mid = @new_mid.lit
           old_mid = @old_mid.lit
-          site = @changes.add_method_alias_site(genv, self, @lenv.cref.cpath, false, new_mid, old_mid)
-          site.ret
+          box = @changes.add_method_alias_box(genv, self, @lenv.cref.cpath, false, new_mid, old_mid)
+          box.ret
         else
           Source.new(genv.nil_type)
         end

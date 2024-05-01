@@ -7,7 +7,7 @@ module TypeProf::Core
     def class_new(changes, node, ty, a_args, ret)
       ty = ty.get_instance_type(@genv)
       recv = Source.new(ty)
-      changes.add_callsite(@genv, node, recv, :initialize, a_args, false)
+      changes.add_method_call_box(@genv, node, recv, :initialize, a_args, false)
       changes.add_edge(@genv, Source.new(ty), ret)
     end
 

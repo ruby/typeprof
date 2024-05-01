@@ -5,10 +5,10 @@ module TypeProf::Core
       @decls = Set[]
       @defs = Set[]
       @aliases = {}
-      @callsites = Set[]
+      @method_call_boxes = Set[]
     end
 
-    attr_reader :decls, :defs, :aliases, :callsites
+    attr_reader :decls, :defs, :aliases, :method_call_boxes
     attr_accessor :builtin
 
     def add_decl(decl)
@@ -46,9 +46,9 @@ module TypeProf::Core
       end
     end
 
-    def add_run_all_callsites(genv)
-      @callsites.each do |callsite|
-        genv.add_run(callsite)
+    def add_run_all_method_call_boxes(genv)
+      @method_call_boxes.each do |box|
+        genv.add_run(box)
       end
     end
   end
