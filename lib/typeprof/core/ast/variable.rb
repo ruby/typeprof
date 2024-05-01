@@ -31,7 +31,6 @@ module TypeProf::Core
 
       def subnodes = { rhs: }
       def attrs = { var: }
-      def code_ranges = { var_code_range: }
 
       def install0(genv)
         val = @rhs.install(genv)
@@ -83,7 +82,6 @@ module TypeProf::Core
 
       def subnodes = { rhs: }
       def attrs = { var: }
-      def code_ranges = { var_code_range: }
 
       def define0(genv)
         @rhs.define(genv) if @rhs
@@ -151,7 +149,6 @@ module TypeProf::Core
 
       def subnodes = { rhs: }
       def attrs = { var: }
-      def code_ranges = { var_code_range: }
 
       def define0(genv)
         @rhs.define(genv) if @rhs
