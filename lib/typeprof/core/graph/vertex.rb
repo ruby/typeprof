@@ -214,9 +214,5 @@ module TypeProf::Core
     end
 
     alias inspect to_s
-
-    def long_inspect
-      "#{ to_s } (#{ @show_name } @ #{ @node.code_range })"
-    end
   end
 end
