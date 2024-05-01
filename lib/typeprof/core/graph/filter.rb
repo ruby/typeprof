@@ -13,7 +13,7 @@ module TypeProf::Core
       prev_vtx.add_edge(genv, self)
     end
 
-    attr_reader :show_name, :node, :next_vtx, :allow_nil
+    attr_reader :show_name, :next_vtx, :allow_nil
 
     def filter(types, nil_type)
       types.select {|ty| (ty == nil_type) == @allow_nil }
@@ -47,7 +47,7 @@ module TypeProf::Core
       @neg = neg
     end
 
-    attr_reader :node, :next_vtx
+    attr_reader :next_vtx
 
     def on_type_added(genv, src_var, added_types)
       added_types.each do |ty|
@@ -104,7 +104,7 @@ module TypeProf::Core
       prev_vtx.add_edge(genv, self) if prev_vtx != base_vtx
     end
 
-    attr_reader :node, :types, :prev_vtx, :next_vtx, :base_vtx
+    attr_reader :types, :prev_vtx, :next_vtx, :base_vtx
 
     def filter(types)
       types.select {|ty| (ty == genv.nil_type) == @allow_nil }
