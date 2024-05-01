@@ -149,8 +149,6 @@ module TypeProf::Core
 
         # TODO: support opts, keywords, etc.
         @args_code_ranges = h[:args_code_ranges] || []
-
-        @reused = false
       end
 
       attr_reader :singleton, :mid, :mid_code_range
@@ -190,40 +188,20 @@ module TypeProf::Core
         block:,
       }
 
-      def define0(genv)
-        @opt_positional_defaults.each do |expr|
-          expr.define(genv)
-        end
-        @opt_keyword_defaults.each do |expr|
-          expr.define(genv)
-        end
-        @rbs_method_type.define(genv) if @rbs_method_type
+      def define(genv) # NOT define0
         if @prev_node
-          # TODO: if possible, replace this node itself with @prev_node
-          @lenv = @prev_node.lenv
-          @static_ret = @prev_node.static_ret
-          @ret = @prev_node.ret
-          @changes = @prev_node.changes
-          @changes.boxes.each_value do |box|
-            if box.node != @prev_node
-              pp box.node, self, @prev_node
-              raise box.class.to_s
-            end
-            box.reuse(self)
-          end
-          @body.copy_code_ranges
-          @body = @prev_node.body
-          @prev_node.instance_variable_set(:@reused, true)
-          @static_ret
+          define_copy(genv)
         else
           super(genv)
         end
       end
 
       def install(genv) # NOT install0
-        unless @prev_node
+        if @prev_node
+          install_copy(genv)
+        else
           if @rbs_method_type
-            @changes.add_method_decl_box(genv, self, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
+            @changes.add_method_decl_box(genv, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
           end
 
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
@@ -254,7 +232,7 @@ module TypeProf::Core
           if @body
             e_ret = @body.lenv.locals[:"*expected_method_ret"] = Vertex.new("expected_method_ret", self)
             @body.install(genv)
-            @body.lenv.add_return_box(@changes.add_escape_box(genv, self, @body.ret, e_ret))
+            @body.lenv.add_return_box(@changes.add_escape_box(genv, @body.ret, e_ret))
           end
 
           f_args = FormalArguments.new(
@@ -268,7 +246,7 @@ module TypeProf::Core
             block,
           )
 
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, @singleton, @mid, f_args, @body.lenv.return_boxes)
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, @singleton, @mid, f_args, @body.lenv.return_boxes)
           @changes.reinstall(genv)
         end
         @ret = Source.new(Type::Symbol.new(genv, @mid))
@@ -323,7 +301,7 @@ module TypeProf::Core
         if @new_mid.is_a?(SymbolNode) && @old_mid.is_a?(SymbolNode)
           new_mid = @new_mid.lit
           old_mid = @old_mid.lit
-          box = @changes.add_method_alias_box(genv, self, @lenv.cref.cpath, false, new_mid, old_mid)
+          box = @changes.add_method_alias_box(genv, @lenv.cref.cpath, false, new_mid, old_mid)
           box.ret
         else
           Source.new(genv.nil_type)

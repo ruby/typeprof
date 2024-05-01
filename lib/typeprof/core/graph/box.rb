@@ -3,7 +3,7 @@ module TypeProf::Core
   class Box
     def initialize(node)
       @node = node
-      @changes = ChangeSet.new(self)
+      @changes = ChangeSet.new(node, self)
       @destroyed = false
       $box_counts[Box] += 1
       $box_counts[self.class] += 1
@@ -20,8 +20,9 @@ module TypeProf::Core
       @changes.reinstall(genv) # rollback all changes
     end
 
-    def reuse(node)
-      @node = node
+    def reuse(new_node)
+      @node = new_node
+      @changes.reuse(new_node)
     end
 
     def on_type_added(genv, src_tyvar, added_types)

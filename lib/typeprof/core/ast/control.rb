@@ -186,7 +186,7 @@ module TypeProf::Core
 
       def install0(genv)
         @arg.install(genv)
-        @lenv.add_next_box(@changes.add_escape_box(genv, self, @arg.ret, @lenv.get_var(:"*expected_block_ret")))
+        @lenv.add_next_box(@changes.add_escape_box(genv, @arg.ret, @lenv.get_var(:"*expected_block_ret")))
         Source.new(Type::Bot.new(genv))
       end
     end
@@ -284,7 +284,7 @@ module TypeProf::Core
 
       def install0(genv)
         @arg.install(genv)
-        @lenv.add_return_box(@changes.add_escape_box(genv, self, @arg.ret, @lenv.get_var(:"*expected_method_ret")))
+        @lenv.add_return_box(@changes.add_escape_box(genv, @arg.ret, @lenv.get_var(:"*expected_method_ret")))
         Source.new(Type::Bot.new(genv))
       end
     end

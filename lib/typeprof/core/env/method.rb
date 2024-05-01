@@ -75,7 +75,7 @@ module TypeProf::Core
 
     def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
       if caller_positionals.size == 1 && @f_args.size >= 2
-        changes.add_masgn_box(genv, @node, caller_positionals[0], @f_args)
+        changes.add_masgn_box(genv, caller_positionals[0], @f_args)
       else
         caller_positionals.zip(@f_args) do |a_arg, f_arg|
           changes.add_edge(genv, a_arg, f_arg) if f_arg

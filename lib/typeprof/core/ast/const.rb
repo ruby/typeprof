@@ -44,7 +44,7 @@ module TypeProf::Core
 
       def install0(genv)
         @cbase.install(genv) if @cbase
-        box = @changes.add_const_read_box(genv, self, @static_ret)
+        box = @changes.add_const_read_box(genv, @static_ret)
         box.ret
       end
     end
@@ -86,6 +86,13 @@ module TypeProf::Core
         mod = genv.resolve_const(@static_cpath)
         mod.add_def(self)
         mod
+      end
+
+      def define_copy(genv)
+        mod = genv.resolve_const(@static_cpath)
+        mod.add_def(self)
+        mod.remove_def(@prev_node)
+        super(genv)
       end
 
       def undefine0(genv)

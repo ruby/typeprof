@@ -1,6 +1,7 @@
 module TypeProf::Core
   class ChangeSet
-    def initialize(target)
+    def initialize(node, target)
+      @node = node
       @target = target
       @covariant_types = {}
       @edges = []
@@ -19,7 +20,29 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :boxes, :diagnostics
+    attr_reader :covariant_types, :edges, :boxes, :diagnostics
+
+    def reuse(new_node)
+      @node = new_node
+      @boxes.each_value do |box|
+        box.reuse(new_node)
+      end
+      @diagnostics.each do |diag|
+        diag.reuse(new_node)
+      end
+    end
+
+    def copy_from(other)
+      @covariant_types = other.covariant_types.dup
+      @edges = other.edges.dup
+      @boxes = other.boxes.dup
+      @diagnostics = other.diagnostics.dup
+
+      other.covariant_types.clear
+      other.edges.clear
+      other.boxes.clear
+      other.diagnostics.clear
+    end
 
     def new_vertex(genv, sig_type_node)
       # This is used to avoid duplicated vertex generation for the same sig node
@@ -34,67 +57,68 @@ module TypeProf::Core
 
     # TODO: if an edge is removed during one analysis, we may need to remove sub-boxes?
 
-    def add_method_call_box(genv, node, recv, mid, a_args, subclasses)
-      key = [:mcall, node, recv, mid, a_args, subclasses]
+    def add_method_call_box(genv, recv, mid, a_args, subclasses)
+      key = [:mcall, recv, mid, a_args, subclasses]
       return if @new_boxes[key]
-      @new_boxes[key] = MethodCallBox.new(node, genv, recv, mid, a_args, subclasses)
+      @new_boxes[key] = MethodCallBox.new(@node, genv, recv, mid, a_args, subclasses)
     end
 
-    def add_escape_box(genv, node, a_ret, f_ret)
-      key = [:return, node, a_ret]
+    def add_escape_box(genv, a_ret, f_ret)
+      key = [:return, a_ret]
       return if @new_boxes[key]
-      @new_boxes[key] = EscapeBox.new(node, genv, a_ret, f_ret)
+      @new_boxes[key] = EscapeBox.new(@node, genv, a_ret, f_ret)
     end
 
-    def add_masgn_box(genv, node, rhs, lhss)
-      key = [:masgn, node, rhs, lhss]
+    def add_masgn_box(genv, rhs, lhss)
+      key = [:masgn, rhs, lhss]
       return if @new_boxes[key]
-      @new_boxes[key] = MAsgnBox.new(node, genv, rhs, lhss)
+      @new_boxes[key] = MAsgnBox.new(@node, genv, rhs, lhss)
     end
 
-    def add_method_def_box(genv, node, cpath, singleton, mid, f_args, ret_boxes)
-      key = [:mdef, node, cpath, singleton, mid, f_args, ret_boxes]
+    def add_method_def_box(genv, cpath, singleton, mid, f_args, ret_boxes)
+      key = [:mdef, cpath, singleton, mid, f_args, ret_boxes]
       return if @new_boxes[key]
-      @new_boxes[key] = MethodDefBox.new(node, genv, cpath, singleton, mid, f_args, ret_boxes)
+      @new_boxes[key] = MethodDefBox.new(@node, genv, cpath, singleton, mid, f_args, ret_boxes)
     end
 
-    def add_method_decl_box(genv, node, cpath, singleton, mid, method_types, overloading)
-      key = [:mdecl, node, cpath, singleton, mid, method_types, overloading]
+    def add_method_decl_box(genv, cpath, singleton, mid, method_types, overloading)
+      key = [:mdecl, cpath, singleton, mid, method_types, overloading]
       return if @new_boxes[key]
-      @new_boxes[key] = MethodDeclBox.new(node, genv, cpath, singleton, mid, method_types, overloading)
+      @new_boxes[key] = MethodDeclBox.new(@node, genv, cpath, singleton, mid, method_types, overloading)
     end
 
-    def add_method_alias_box(genv, node, cpath, singleton, new_mid, old_mid)
-      key = [:mdecl, node, cpath, singleton, new_mid, old_mid]
+    def add_method_alias_box(genv, cpath, singleton, new_mid, old_mid)
+      key = [:mdecl, cpath, singleton, new_mid, old_mid]
       return if @new_boxes[key]
-      @new_boxes[key] = MethodAliasBox.new(node, genv, cpath, singleton, new_mid, old_mid)
+      @new_boxes[key] = MethodAliasBox.new(@node, genv, cpath, singleton, new_mid, old_mid)
     end
 
-    def add_const_read_box(genv, node, static_ret)
-      key = [:cread, node, static_ret]
+    def add_const_read_box(genv, static_ret)
+      key = [:cread, static_ret]
       return if @new_boxes[key]
-      @new_boxes[key] = ConstReadBox.new(node, genv, static_ret)
+      @new_boxes[key] = ConstReadBox.new(@node, genv, static_ret)
     end
 
-    def add_gvar_read_box(genv, node, var)
-      key = [:gvar_read, node, var]
+    def add_gvar_read_box(genv, var)
+      key = [:gvar_read, var]
       return if @new_boxes[key]
-      @new_boxes[key] = GVarReadBox.new(node, genv, var)
+      @new_boxes[key] = GVarReadBox.new(@node, genv, var)
     end
 
-    def add_ivar_read_box(genv, node, cpath, singleton, name)
-      key = [:ivar_read, node, cpath, singleton, name]
+    def add_ivar_read_box(genv, cpath, singleton, name)
+      key = [:ivar_read, cpath, singleton, name]
       return if @new_boxes[key]
-      @new_boxes[key] = IVarReadBox.new(node, genv, cpath, singleton, name)
+      @new_boxes[key] = IVarReadBox.new(@node, genv, cpath, singleton, name)
     end
 
-    def add_type_read_box(genv, node, type)
-      key = [:type_read, node, type]
+    def add_type_read_box(genv, type)
+      key = [:type_read, type]
       return if @new_boxes[key]
-      @new_boxes[key] = TypeReadBox.new(node, genv, type)
+      @new_boxes[key] = TypeReadBox.new(@node, genv, type)
     end
 
     def add_diagnostic(node, meth, msg)
+      raise if @node != node
       @new_diagnostics << TypeProf::Diagnostic.new(node, meth, msg)
     end
 
@@ -172,23 +196,6 @@ module TypeProf::Core
 
       @depended_superclasses, @new_depended_superclasses = @new_depended_superclasses, @depended_superclasses
       @new_depended_superclasses.clear
-    end
-
-    def reuse(new_node, old_node)
-      @boxes.each_value do |box|
-        if box.node != old_node
-          pp box.node, old_node
-          raise box.class.to_s
-        end
-        box.reuse(new_node)
-      end
-      @diagnostics.each do |diag|
-        if diag.node != old_node
-          pp diag.node, old_node
-          raise diag.class.to_s
-        end
-        diag.reuse(new_node)
-      end
     end
   end
 end

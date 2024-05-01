@@ -45,9 +45,7 @@ module TypeProf::Core
             end
             i += 1
           end
-          if i == prev_node.stmts.size
-            @prev_node = prev_node
-          end
+          @prev_node = prev_node if i == prev_node.stmts.size
         end
       end
     end
@@ -70,7 +68,7 @@ module TypeProf::Core
       def install0(genv)
         @lhss.each {|lhs| lhs.install(genv) }
         rhs = @rhs.install(genv)
-        box = @changes.add_masgn_box(genv, self, rhs, @lhss.map {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) })
+        box = @changes.add_masgn_box(genv, rhs, @lhss.map {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) })
         box.ret
       end
 

@@ -69,8 +69,8 @@ module TypeProf::Core
       def install0(genv)
         @args.each do |arg|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
-          box = @changes.add_ivar_read_box(genv, self, @lenv.cref.cpath, false, ivar_name)
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
+          box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, ivar_name)
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
         end
         Source.new
       end
@@ -99,6 +99,16 @@ module TypeProf::Core
         end
       end
 
+      def define_copy(genv)
+        @args.map do |arg|
+          mod = genv.resolve_ivar(lenv.cref.cpath, false, "@#{ arg }".to_sym)
+          mod.add_def(self)
+          mod.remove_def(@prev_node)
+          mod
+        end
+        super(genv)
+      end
+
       def undefine0(genv)
         @args.each do |arg|
           mod = genv.resolve_ivar(lenv.cref.cpath, false, "@#{ arg }".to_sym)
@@ -109,13 +119,13 @@ module TypeProf::Core
       def install0(genv)
         @args.zip(@static_ret) do |arg, ive|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
-          box = @changes.add_ivar_read_box(genv, self, @lenv.cref.cpath, false, ivar_name)
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
+          box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, ivar_name)
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
 
           vtx = Vertex.new("attr_writer-arg", self)
           @changes.add_edge(genv, vtx, ive.vtx)
           f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, [box])
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, [box])
         end
         Source.new
       end

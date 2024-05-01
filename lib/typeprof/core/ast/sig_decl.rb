@@ -36,6 +36,13 @@ module TypeProf::Core
         { module: mod.add_module_decl(genv, self) }
       end
 
+      def define_copy(genv)
+        mod = genv.resolve_cpath(@cpath)
+        mod.add_module_decl(genv, self)
+        mod.remove_module_decl(genv, @prev_node)
+        super(genv)
+      end
+
       def undefine0(genv)
         mod = genv.resolve_cpath(@cpath)
         mod.remove_module_decl(genv, self)
@@ -190,7 +197,7 @@ module TypeProf::Core
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          @changes.add_method_decl_box(genv, self, @lenv.cref.cpath, singleton, @mid, @method_types, @overloading)
+          @changes.add_method_decl_box(genv, @lenv.cref.cpath, singleton, @mid, @method_types, @overloading)
         end
         Source.new
       end
@@ -224,6 +231,13 @@ module TypeProf::Core
         const_reads
       end
 
+      def define_copy(genv)
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
+        mod.add_include_decl(genv, self)
+        mod.remove_include_decl(genv, @prev_node)
+        super(genv)
+      end
+
       def undefine0(genv)
         mod = genv.resolve_cpath(@lenv.cref.cpath)
         mod.remove_include_decl(genv, self)
@@ -253,7 +267,7 @@ module TypeProf::Core
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          @changes.add_method_alias_box(genv, self, @lenv.cref.cpath, singleton, @new_mid, @old_mid)
+          @changes.add_method_alias_box(genv, @lenv.cref.cpath, singleton, @new_mid, @old_mid)
         end
         Source.new
       end
@@ -277,13 +291,20 @@ module TypeProf::Core
         mod
       end
 
+      def define_copy(genv)
+        mod = genv.resolve_const(@cpath)
+        mod.add_decl(self)
+        mod.remove_decl(@prev_node)
+        super(genv)
+      end
+
       def undefine0(genv)
         genv.resolve_const(@cpath).remove_decl(self)
         @type.undefine(genv)
       end
 
       def install0(genv)
-        box = @changes.add_type_read_box(genv, self, @type)
+        box = @changes.add_type_read_box(genv, @type)
         @changes.add_edge(genv, box.ret, @static_ret.vtx)
         box.ret
       end
@@ -305,6 +326,13 @@ module TypeProf::Core
         tae = genv.resolve_type_alias(@cpath, @name)
         tae.add_decl(self)
         tae
+      end
+
+      def define_copy(genv)
+        tae = genv.resolve_type_alias(@cpath, @name)
+        tae.add_decl(self)
+        tae.remove_decl(@prev_node)
+        super(genv)
       end
 
       def undefine0(genv)
@@ -336,13 +364,20 @@ module TypeProf::Core
         mod
       end
 
+      def define_copy(genv)
+        mod = genv.resolve_gvar(@var)
+        mod.add_decl(self)
+        mod.remove_decl(@prev_node)
+        super(genv)
+      end
+
       def undefine0(genv)
         genv.resolve_gvar(@var).remove_decl(self)
         @type.undefine(genv)
       end
 
       def install0(genv)
-        box = @changes.add_type_read_box(genv, self, @type)
+        box = @changes.add_type_read_box(genv, @type)
         @changes.add_edge(genv, box.ret, @static_ret.vtx)
         box.ret
       end
