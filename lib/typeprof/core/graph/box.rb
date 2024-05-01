@@ -266,34 +266,6 @@ module TypeProf::Core
     end
   end
 
-  class CheckReturnBox < Box
-    def initialize(node, genv, a_ret, f_ret)
-      super(node)
-      @a_ret = a_ret
-      @f_ret = f_ret
-      @a_ret.add_edge(genv, self)
-      genv.add_run(self)
-    end
-
-    def destroy(genv)
-      @a_ret.remove_edge(genv, self) # TODO: Is this really needed?
-      super(genv)
-    end
-
-    def ret = @a_ret
-
-    def run0(genv, changes)
-      unless @a_ret.check_match(genv, changes, @f_ret)
-        @node.each_return_node do |node|
-          next if node.ret.check_match(genv, changes, @f_ret)
-
-          node = node.stmts.last if node.is_a?(AST::StatementsNode)
-          changes.add_diagnostic(node, :code_range, "expected: #{ @f_ret.show }; actual: #{ node.ret.show }")
-        end
-      end
-    end
-  end
-
   class MethodDefBox < Box
     def initialize(node, genv, cpath, singleton, mid, f_args, ret_boxes)
       super(node)
@@ -381,7 +353,6 @@ module TypeProf::Core
         @ret_boxes.each do |ret_box|
           changes.add_edge(genv, f_ret, ret_box.f_ret)
         end
-        #changes.add_check_return_box(genv, @node, @ret, f_ret)
       end
     end
 

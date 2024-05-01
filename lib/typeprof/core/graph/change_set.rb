@@ -46,12 +46,6 @@ module TypeProf::Core
       @new_boxes[key] = EscapeBox.new(node, genv, a_ret, f_ret)
     end
 
-    def add_check_return_box(genv, node, a_ret, f_ret)
-      key = [:check_return, node, a_ret, f_ret]
-      return if @new_boxes[key]
-      @new_boxes[key] = CheckReturnBox.new(node, genv, a_ret, f_ret)
-    end
-
     def add_masgn_box(genv, node, rhs, lhss)
       key = [:masgn, node, rhs, lhss]
       return if @new_boxes[key]
