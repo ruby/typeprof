@@ -22,7 +22,13 @@ module TypeProf::Core
         @stmts.each do |stmt|
           ret = stmt ? stmt.install(genv) : nil
         end
-        ret || Source.new(genv.nil_type)
+        if ret
+          ret2 = Vertex.new("stmts_result", self)
+          @changes.add_edge(genv, ret, ret2)
+          ret2
+        else
+          Source.new(genv.nil_type)
+        end
       end
 
       def diff(prev_node)
