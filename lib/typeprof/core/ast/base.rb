@@ -8,7 +8,7 @@ module TypeProf::Core
         @static_ret = nil
         @ret = nil
 
-        @changes = Changes.new(self)
+        @changes = ChangeSet.new(self)
 
         @reused = false
       end
