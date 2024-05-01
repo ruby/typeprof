@@ -182,16 +182,16 @@ module TypeProf::Core
         end
       end
 
-      def sites(key)
-        sites = []
-        @changes.sites.each {|(k, *), site| sites << site if k == key }
-        sites
+      def boxes(key)
+        boxes = []
+        @changes.boxes.each {|(k, *), box| boxes << box if k == key }
+        boxes
       end
 
       def diagnostics(genv, &blk)
         @changes.diagnostics.each(&blk)
-        @changes.sites.each_value do |site|
-          site.diagnostics(genv, &blk)
+        @changes.boxes.each_value do |box|
+          box.diagnostics(genv, &blk)
         end
         each_subnode do |subnode|
           subnode.diagnostics(genv, &blk)
@@ -200,8 +200,8 @@ module TypeProf::Core
 
       def get_vertexes(vtxs)
         return if @reused
-        @changes.sites.each_value do |site|
-          vtxs << site.ret
+        @changes.boxes.each_value do |box|
+          vtxs << box.ret
         end
         vtxs << @ret
         each_subnode do |subnode|
@@ -283,7 +283,7 @@ module TypeProf::Core
 
       attr_reader :lenv, :prev_node, :ret
 
-      def sites(_)
+      def boxes(_)
         []
       end
     end

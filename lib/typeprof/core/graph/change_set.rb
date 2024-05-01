@@ -5,8 +5,8 @@ module TypeProf::Core
       @covariant_types = {}
       @edges = []
       @new_edges = []
-      @sites = {}
-      @new_sites = {}
+      @boxes = {}
+      @new_boxes = {}
       @diagnostics = []
       @new_diagnostics = []
       @depended_value_entities = []
@@ -19,7 +19,7 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :sites, :diagnostics
+    attr_reader :boxes, :diagnostics
 
     def new_vertex(genv, sig_type_node)
       # This is used to avoid duplicated vertex generation for the same sig node
@@ -32,66 +32,66 @@ module TypeProf::Core
       @new_edges << [src, dst]
     end
 
-    # TODO: if an edge is removed during one analysis, we may need to remove sub-sites?
+    # TODO: if an edge is removed during one analysis, we may need to remove sub-boxes?
 
-    def add_callsite(genv, node, recv, mid, a_args, subclasses)
-      key = [:callsite, node, recv, mid, a_args, subclasses]
-      return if @new_sites[key]
-      @new_sites[key] = CallSite.new(node, genv, recv, mid, a_args, subclasses)
+    def add_method_call_box(genv, node, recv, mid, a_args, subclasses)
+      key = [:mcall, node, recv, mid, a_args, subclasses]
+      return if @new_boxes[key]
+      @new_boxes[key] = MethodCallBox.new(node, genv, recv, mid, a_args, subclasses)
     end
 
-    def add_check_return_site(genv, node, a_ret, f_ret)
+    def add_check_return_box(genv, node, a_ret, f_ret)
       key = [:check_return, node, a_ret, f_ret]
-      return if @new_sites[key]
-      @new_sites[key] = CheckReturnSite.new(node, genv, a_ret, f_ret)
+      return if @new_boxes[key]
+      @new_boxes[key] = CheckReturnBox.new(node, genv, a_ret, f_ret)
     end
 
-    def add_masgn_site(genv, node, rhs, lhss)
+    def add_masgn_box(genv, node, rhs, lhss)
       key = [:masgn, node, rhs, lhss]
-      return if @new_sites[key]
-      @new_sites[key] = MAsgnSite.new(node, genv, rhs, lhss)
+      return if @new_boxes[key]
+      @new_boxes[key] = MAsgnBox.new(node, genv, rhs, lhss)
     end
 
-    def add_method_def_site(genv, node, cpath, singleton, mid, f_args, ret)
+    def add_method_def_box(genv, node, cpath, singleton, mid, f_args, ret)
       key = [:mdef, node, cpath, singleton, mid, f_args, ret]
-      return if @new_sites[key]
-      @new_sites[key] = MethodDefSite.new(node, genv, cpath, singleton, mid, f_args, ret)
+      return if @new_boxes[key]
+      @new_boxes[key] = MethodDefBox.new(node, genv, cpath, singleton, mid, f_args, ret)
     end
 
-    def add_method_decl_site(genv, node, cpath, singleton, mid, method_types, overloading)
+    def add_method_decl_box(genv, node, cpath, singleton, mid, method_types, overloading)
       key = [:mdecl, node, cpath, singleton, mid, method_types, overloading]
-      return if @new_sites[key]
-      @new_sites[key] = MethodDeclSite.new(node, genv, cpath, singleton, mid, method_types, overloading)
+      return if @new_boxes[key]
+      @new_boxes[key] = MethodDeclBox.new(node, genv, cpath, singleton, mid, method_types, overloading)
     end
 
-    def add_method_alias_site(genv, node, cpath, singleton, new_mid, old_mid)
+    def add_method_alias_box(genv, node, cpath, singleton, new_mid, old_mid)
       key = [:mdecl, node, cpath, singleton, new_mid, old_mid]
-      return if @new_sites[key]
-      @new_sites[key] = MethodAliasSite.new(node, genv, cpath, singleton, new_mid, old_mid)
+      return if @new_boxes[key]
+      @new_boxes[key] = MethodAliasBox.new(node, genv, cpath, singleton, new_mid, old_mid)
     end
 
-    def add_const_read_site(genv, node, static_ret)
+    def add_const_read_box(genv, node, static_ret)
       key = [:cread, node, static_ret]
-      return if @new_sites[key]
-      @new_sites[key] = ConstReadSite.new(node, genv, static_ret)
+      return if @new_boxes[key]
+      @new_boxes[key] = ConstReadBox.new(node, genv, static_ret)
     end
 
-    def add_gvar_read_site(genv, node, var)
+    def add_gvar_read_box(genv, node, var)
       key = [:gvar_read, node, var]
-      return if @new_sites[key]
-      @new_sites[key] = GVarReadSite.new(node, genv, var)
+      return if @new_boxes[key]
+      @new_boxes[key] = GVarReadBox.new(node, genv, var)
     end
 
-    def add_ivar_read_site(genv, node, cpath, singleton, name)
+    def add_ivar_read_box(genv, node, cpath, singleton, name)
       key = [:ivar_read, node, cpath, singleton, name]
-      return if @new_sites[key]
-      @new_sites[key] = IVarReadSite.new(node, genv, cpath, singleton, name)
+      return if @new_boxes[key]
+      @new_boxes[key] = IVarReadBox.new(node, genv, cpath, singleton, name)
     end
 
-    def add_type_read_site(genv, node, type)
+    def add_type_read_box(genv, node, type)
       key = [:type_read, node, type]
-      return if @new_sites[key]
-      @new_sites[key] = TypeReadSite.new(node, genv, type)
+      return if @new_boxes[key]
+      @new_boxes[key] = TypeReadBox.new(node, genv, type)
     end
 
     def add_diagnostic(node, meth, msg)
@@ -122,31 +122,31 @@ module TypeProf::Core
       @edges, @new_edges = @new_edges, @edges
       @new_edges.clear
 
-      @sites.each do |key, site|
-        site.destroy(genv)
+      @boxes.each do |key, box|
+        box.destroy(genv)
       end
-      @sites, @new_sites = @new_sites, @sites
-      @new_sites.clear
+      @boxes, @new_boxes = @new_boxes, @boxes
+      @new_boxes.clear
 
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
 
       @depended_value_entities.each do |ve|
-        ve.readsites.delete(@target) || raise
+        ve.read_boxes.delete(@target) || raise
       end
       @new_depended_value_entities.uniq!
       @new_depended_value_entities.each do |ve|
-        ve.readsites << @target
+        ve.read_boxes << @target
       end
       @depended_value_entities, @new_depended_value_entities = @new_depended_value_entities, @depended_value_entities
       @new_depended_value_entities.clear
 
       @depended_method_entities.each do |me|
-        me.callsites.delete(@target) || raise
+        me.method_call_boxes.delete(@target) || raise
       end
       @new_depended_method_entities.uniq!
       @new_depended_method_entities.each do |me|
-        me.callsites << @target
+        me.method_call_boxes << @target
       end
       @depended_method_entities, @new_depended_method_entities = @new_depended_method_entities, @depended_method_entities
       @new_depended_method_entities.clear
@@ -175,12 +175,12 @@ module TypeProf::Core
     end
 
     def reuse(new_node, old_node)
-      @sites.each_value do |site|
-        if site.node != old_node
-          pp site.node, old_node
-          raise site.class.to_s
+      @boxes.each_value do |box|
+        if box.node != old_node
+          pp box.node, old_node
+          raise box.class.to_s
         end
-        site.reuse(new_node)
+        box.reuse(new_node)
       end
       @diagnostics.each do |diag|
         if diag.node != old_node

@@ -153,24 +153,24 @@ module TypeProf::Core
     def definitions(path, pos)
       defs = []
       @text_nodes[path].retrieve_at(pos) do |node|
-        node.sites(:cread).each do |site|
-          if site.const_read && site.const_read.cdef
-            site.const_read.cdef.defs.each do |cdef_node|
+        node.boxes(:cread).each do |box|
+          if box.const_read && box.const_read.cdef
+            box.const_read.cdef.defs.each do |cdef_node|
               defs << [cdef_node.lenv.path, cdef_node.cname_code_range]
             end
           end
         end
-        node.sites(:callsite).each do |site|
-          sites = []
-          site.changes.sites.each do |key, site|
+        node.boxes(:mcall).each do |box|
+          boxes = []
+          box.changes.boxes.each do |key, box|
             # ad-hocly handle Class#new calls
-            if key[0] == :callsite && key[3] == :initialize # XXX: better condition?
-              sites << site
+            if key[0] == :mcall && key[3] == :initialize # XXX: better condition?
+              boxes << box
             end
           end
-          sites << site if sites.empty?
-          sites.each do |site|
-            site.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
+          boxes << box if boxes.empty?
+          boxes.each do |box|
+            box.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
               next unless me
               me.defs.each do |mdef|
                 code_range =
@@ -215,11 +215,11 @@ module TypeProf::Core
         case node
         when AST::DefNode
           if node.mid_code_range.include?(pos)
-            node.sites(:mdef).each do |mdef|
+            node.boxes(:mdef).each do |mdef|
               me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
               if me
-                me.callsites.each do |callsite|
-                  node = callsite.node
+                me.method_call_boxes.each do |box|
+                  node = box.node
                   refs << [node.lenv.path, node.code_range]
                 end
               end
@@ -228,17 +228,17 @@ module TypeProf::Core
         # TODO: Callsite
         when AST::ConstantReadNode
           if node.cname_code_range.include?(pos)
-            node.sites(:cread).each do |site|
-              @genv.resolve_const(site.const_read.cpath).readsites.each do |readsite|
-                node = readsite.node
+            node.boxes(:cread).each do |cread_box|
+              @genv.resolve_const(cread_box.const_read.cpath).read_boxes.each do |box|
+                node = box.node
                 refs << [node.lenv.path, node.code_range]
               end
             end
           end
         when AST::ConstantWriteNode
           if node.cname_code_range && node.cname_code_range.include?(pos) && node.static_cpath
-            @genv.resolve_const(node.static_cpath).readsites.each do |readsite|
-              node = readsite.node
+            @genv.resolve_const(node.static_cpath).read_boxes.each do |box|
+              node = box.node
               refs << [node.lenv.path, node.code_range]
             end
           end
@@ -252,23 +252,23 @@ module TypeProf::Core
       mdefs = []
       cdefs = []
       @text_nodes[path].retrieve_at(pos) do |node|
-        node.sites(:callsite).each do |site|
-          site.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
+        node.boxes(:mcall).each do |box|
+          box.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
             next unless me
             me.defs.each do |mdef|
               mdefs << mdef
             end
           end
         end
-        node.sites(:cread).each do |site|
-          if site.node.cname_code_range.include?(pos)
-            site.const_read.cdef.defs.each do |cdef|
+        node.boxes(:cread).each do |box|
+          if box.node.cname_code_range.include?(pos)
+            box.const_read.cdef.defs.each do |cdef|
               cdefs << cdef
             end
           end
         end
         if node.is_a?(AST::DefNode) && node.mid_code_range.include?(pos)
-          node.sites(:mdef).each do |mdef|
+          node.boxes(:mdef).each do |mdef|
             mdefs << mdef
           end
         end
@@ -279,9 +279,9 @@ module TypeProf::Core
         targets << [mdef.node.lenv.path, mdef.node.mid_code_range]
         me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
         if me
-          me.callsites.each do |callsite|
+          me.method_call_boxes.each do |box|
             # TODO: if it is a super node, we need to change its method name too
-            targets << [callsite.node.lenv.path, callsite.node.mid_code_range]
+            targets << [box.node.lenv.path, box.node.mid_code_range]
           end
         end
       end
@@ -290,8 +290,8 @@ module TypeProf::Core
           targets << [cdef.lenv.path, cdef.cname_code_range] if cdef.cname_code_range
         end
         ve = @genv.resolve_const(cdef.static_cpath)
-        ve.readsites.each do |readsite|
-          targets << [readsite.node.lenv.path, readsite.node.cname_code_range]
+        ve.read_boxes.each do |box|
+          targets << [box.node.lenv.path, box.node.cname_code_range]
         end
       end
       if targets.all? {|_path, cr| cr }
@@ -304,17 +304,17 @@ module TypeProf::Core
 
     def hover(path, pos)
       @text_nodes[path].retrieve_at(pos) do |node|
-        node.sites(:callsite).each do |site|
-          sites = []
-          site.changes.sites.each do |key, site|
+        node.boxes(:mcall).each do |box|
+          boxes = []
+          box.changes.boxes.each do |key, box|
             # ad-hocly handle Class#new calls
-            if key[0] == :callsite && key[3] == :initialize # XXX: better condition?
-              sites << site
+            if key[0] == :mcall && key[3] == :initialize # XXX: better condition?
+              boxes << box
             end
           end
-          sites << site if sites.empty?
-          sites.each do |site|
-            site.resolve(genv, nil) do |me, ty, mid, orig_ty|
+          boxes << box if boxes.empty?
+          boxes.each do |box|
+            box.resolve(genv, nil) do |me, ty, mid, orig_ty|
               if me
                 if !me.decls.empty?
                   me.decls.each do |mdecl|
@@ -349,7 +349,7 @@ module TypeProf::Core
         else
           if event == :enter
             next if node.is_a?(AST::DefNode) && node.rbs_method_type
-            node.sites(:mdef).each do |mdef|
+            node.boxes(:mdef).each do |mdef|
               hint = mdef.show
               if hint
                 yield mdef.node.code_range, hint
@@ -434,7 +434,7 @@ module TypeProf::Core
           end
         else
           if event == :enter
-            node.sites(:mdef).each do |mdef|
+            node.boxes(:mdef).each do |mdef|
               out << "  " * depth + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show
             end
           end

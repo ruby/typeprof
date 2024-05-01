@@ -328,8 +328,8 @@ module TypeProf::Core
       end
 
       if any_updated
-        @subclass_checks.each do |callsite|
-          genv.add_run(callsite)
+        @subclass_checks.each do |mcall_box|
+          genv.add_run(mcall_box)
         end
         on_ancestors_updated(genv, nil)
       end
@@ -344,8 +344,8 @@ module TypeProf::Core
       end
       @methods.each do |_, methods|
         methods.each_value do |me|
-          me.callsites.each do |callsite|
-            genv.add_run(callsite)
+          me.method_call_boxes.each do |box|
+            genv.add_run(box)
           end
         end
       end

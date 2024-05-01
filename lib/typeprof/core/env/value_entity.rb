@@ -3,11 +3,11 @@ module TypeProf::Core
     def initialize
       @decls = Set[]
       @defs = Set[]
-      @readsites = Set[]
+      @read_boxes = Set[]
       @vtx = Vertex.new("gvar", self)
     end
 
-    attr_reader :decls, :defs, :readsites, :vtx
+    attr_reader :decls, :defs, :read_boxes, :vtx
 
     def add_decl(decl)
       @decls << decl

@@ -12,7 +12,7 @@ def main(core)
   puts "Elapsed: #{ Time.now - t }"
   #GC.start
   #p ObjectSpace.each_object(TypeProf::Core::BasicVertex).to_a.size
-  #p ObjectSpace.each_object(TypeProf::Core::Site).to_a.size
+  #p ObjectSpace.each_object(TypeProf::Core::Box).to_a.size
 
   h = Hash.new(0)
   core.genv.type_table.each {|(t,*),| h[t] += 1 }

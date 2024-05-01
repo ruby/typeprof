@@ -190,7 +190,7 @@ module TypeProf::Core
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          @changes.add_method_decl_site(genv, self, @lenv.cref.cpath, singleton, @mid, @method_types, @overloading)
+          @changes.add_method_decl_box(genv, self, @lenv.cref.cpath, singleton, @mid, @method_types, @overloading)
         end
         Source.new
       end
@@ -253,7 +253,7 @@ module TypeProf::Core
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
           next unless enabled
-          @changes.add_method_alias_site(genv, self, @lenv.cref.cpath, singleton, @new_mid, @old_mid)
+          @changes.add_method_alias_box(genv, self, @lenv.cref.cpath, singleton, @new_mid, @old_mid)
         end
         Source.new
       end
@@ -283,9 +283,9 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        site = @changes.add_type_read_site(genv, self, @type)
-        @changes.add_edge(genv, site.ret, @static_ret.vtx)
-        site.ret
+        box = @changes.add_type_read_box(genv, self, @type)
+        @changes.add_edge(genv, box.ret, @static_ret.vtx)
+        box.ret
       end
     end
 
@@ -342,9 +342,9 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        site = @changes.add_type_read_site(genv, self, @type)
-        @changes.add_edge(genv, site.ret, @static_ret.vtx)
-        site.ret
+        box = @changes.add_type_read_box(genv, self, @type)
+        @changes.add_edge(genv, box.ret, @static_ret.vtx)
+        box.ret
       end
     end
   end
