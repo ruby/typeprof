@@ -265,10 +265,6 @@ module TypeProf::Core
         changes.add_edge(genv, cdef.vtx, @ret)
       end
     end
-
-    def long_inspect
-      "#{ to_s } (cname:#{ @cname } @ #{ @node.code_range })"
-    end
   end
 
   class TypeReadSite < Site
@@ -284,10 +280,6 @@ module TypeProf::Core
     def run0(genv, changes)
       vtx = @rbs_type.covariant_vertex(genv, changes, {})
       changes.add_edge(genv, vtx, @ret)
-    end
-
-    def long_inspect
-      "#{ to_s } (type-read:#{ @cname } @ #{ @node.code_range })"
     end
   end
 
@@ -906,10 +898,6 @@ module TypeProf::Core
         end
       end
     end
-
-    def long_inspect
-      "#{ to_s } (mid:#{ @mid } @ #{ @node.code_range })"
-    end
   end
 
   class GVarReadSite < Site
@@ -924,10 +912,6 @@ module TypeProf::Core
 
     def run0(genv, changes)
       changes.add_edge(genv, @vtx, @ret)
-    end
-
-    def long_inspect
-      "TODO"
     end
   end
 
@@ -974,10 +958,6 @@ module TypeProf::Core
         changes.add_edge(genv, src, dst)
       end
     end
-
-    def long_inspect
-      "IVarTODO"
-    end
   end
 
   class MAsgnSite < Site
@@ -1012,10 +992,6 @@ module TypeProf::Core
       edges.each do |src, dst|
         changes.add_edge(genv, src, dst)
       end
-    end
-
-    def long_inspect
-      "#{ to_s } (masgn)"
     end
   end
 end
