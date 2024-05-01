@@ -19,7 +19,6 @@ module TypeProf::Core
 
       def subnodes = {}
       def attrs = {}
-      def code_ranges = {}
 
       def each_subnode
         subnodes.each_value do |subnode|
@@ -138,16 +137,6 @@ module TypeProf::Core
             end
           end
           @prev_node = prev_node
-        end
-      end
-
-      def copy_code_ranges
-        @prev_node.instance_variable_set(:@raw_node, @raw_node)
-        code_ranges.each do |key, cr|
-          @prev_node.instance_variable_set("@#{ key }".to_sym, cr)
-        end
-        each_subnode do |subnode|
-          subnode.copy_code_ranges
         end
       end
 

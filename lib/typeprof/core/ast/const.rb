@@ -28,7 +28,6 @@ module TypeProf::Core
 
       def attrs = { cname:, toplevel: }
       def subnodes = { cbase: }
-      def code_ranges = { cname_code_range: }
 
       def define0(genv)
         if @cbase
@@ -78,7 +77,6 @@ module TypeProf::Core
 
       def subnodes = { cpath:, rhs: }
       def attrs = { static_cpath: }
-      def code_ranges = { cname_code_range: }
 
       def define0(genv)
         @cpath.define(genv) if @cpath

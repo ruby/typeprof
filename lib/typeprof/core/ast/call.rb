@@ -63,7 +63,6 @@ module TypeProf::Core
 
       def subnodes = { recv:, positional_args:, keyword_args:, block_body:, block_pass: }
       def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield: }
-      def code_ranges = { mid_code_range: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")
