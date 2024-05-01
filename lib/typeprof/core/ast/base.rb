@@ -53,13 +53,6 @@ module TypeProf::Core
         yield :leave, self
       end
 
-      def traverse_children(&blk)
-        return unless yield self
-        each_subnode do |subnode|
-          subnode.traverse_children(&blk)
-        end
-      end
-
       def code_range
         if @raw_node
           TypeProf::CodeRange.from_node(@raw_node)
