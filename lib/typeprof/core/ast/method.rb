@@ -189,67 +189,65 @@ module TypeProf::Core
       }
 
       def define(genv) # NOT define0
-        if @prev_node
-          define_copy(genv)
-        else
-          super(genv)
-        end
+        return define_copy(genv) if @prev_node
+        super(genv)
       end
 
       def install(genv) # NOT install0
-        if @prev_node
-          install_copy(genv)
-        else
-          if @rbs_method_type
-            @changes.add_method_decl_box(genv, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
-          end
+        return install_copy(genv) if @prev_node
+        super(genv)
+      end
 
-          @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
-
-          req_positionals = @req_positionals.map {|var| @body.lenv.new_var(var, self) }
-          opt_positionals = @opt_positionals.map {|var| @body.lenv.new_var(var, self) }
-          rest_positionals = @rest_positionals ? @body.lenv.new_var(@rest_positionals, self) : nil
-          post_positionals = @post_positionals.map {|var| @body.lenv.new_var(var, self) }
-          req_keywords = @req_keywords.map {|var| @body.lenv.new_var(var, self) }
-          opt_keywords = @opt_keywords.map {|var| @body.lenv.new_var(var, self) }
-          rest_keywords = @rest_keywords ? @body.lenv.new_var(@rest_keywords, self) : nil
-          block = @block ? @body.lenv.new_var(@block, self) : nil
-
-          @opt_positional_defaults.zip(opt_positionals) do |expr, vtx|
-            @changes.add_edge(genv, expr.install(genv), vtx)
-          end
-          @opt_keyword_defaults.zip(opt_keywords) do |expr, vtx|
-            @changes.add_edge(genv, expr.install(genv), vtx)
-          end
-
-          if block
-            block = @body.lenv.set_var(:"*given_block", block)
-          else
-            block = @body.lenv.new_var(:"*given_block", self)
-          end
-
-          if @body
-            e_ret = @body.lenv.locals[:"*expected_method_ret"] = Vertex.new("expected_method_ret", self)
-            @body.install(genv)
-            @body.lenv.add_return_box(@changes.add_escape_box(genv, @body.ret, e_ret))
-          end
-
-          f_args = FormalArguments.new(
-            req_positionals,
-            opt_positionals,
-            rest_positionals,
-            post_positionals,
-            req_keywords,
-            opt_keywords,
-            rest_keywords,
-            block,
-          )
-
-          @changes.add_method_def_box(genv, @lenv.cref.cpath, @singleton, @mid, f_args, @body.lenv.return_boxes)
-          @changes.reinstall(genv)
+      def install0(genv)
+        if @rbs_method_type
+          @changes.add_method_decl_box(genv, @lenv.cref.cpath, @singleton, @mid, [@rbs_method_type], false)
         end
-        @ret = Source.new(Type::Symbol.new(genv, @mid))
+
+        @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
+        @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
+
+        req_positionals = @req_positionals.map {|var| @body.lenv.new_var(var, self) }
+        opt_positionals = @opt_positionals.map {|var| @body.lenv.new_var(var, self) }
+        rest_positionals = @rest_positionals ? @body.lenv.new_var(@rest_positionals, self) : nil
+        post_positionals = @post_positionals.map {|var| @body.lenv.new_var(var, self) }
+        req_keywords = @req_keywords.map {|var| @body.lenv.new_var(var, self) }
+        opt_keywords = @opt_keywords.map {|var| @body.lenv.new_var(var, self) }
+        rest_keywords = @rest_keywords ? @body.lenv.new_var(@rest_keywords, self) : nil
+        block = @block ? @body.lenv.new_var(@block, self) : nil
+
+        @opt_positional_defaults.zip(opt_positionals) do |expr, vtx|
+          @changes.add_edge(genv, expr.install(genv), vtx)
+        end
+        @opt_keyword_defaults.zip(opt_keywords) do |expr, vtx|
+          @changes.add_edge(genv, expr.install(genv), vtx)
+        end
+
+        if block
+          block = @body.lenv.set_var(:"*given_block", block)
+        else
+          block = @body.lenv.new_var(:"*given_block", self)
+        end
+
+        if @body
+          e_ret = @body.lenv.locals[:"*expected_method_ret"] = Vertex.new("expected_method_ret", self)
+          @body.install(genv)
+          @body.lenv.add_return_box(@changes.add_escape_box(genv, @body.ret, e_ret))
+        end
+
+        f_args = FormalArguments.new(
+          req_positionals,
+          opt_positionals,
+          rest_positionals,
+          post_positionals,
+          req_keywords,
+          opt_keywords,
+          rest_keywords,
+          block,
+        )
+
+        @changes.add_method_def_box(genv, @lenv.cref.cpath, @singleton, @mid, f_args, @body.lenv.return_boxes)
+
+        Source.new(Type::Symbol.new(genv, @mid))
       end
 
       def last_stmt_code_range
