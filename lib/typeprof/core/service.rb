@@ -152,14 +152,14 @@ module TypeProf::Core
     def definitions(path, pos)
       defs = []
       @text_nodes[path].retrieve_at(pos) do |node|
-        node.boxes(:cread).each do |box|
+        node.boxes(:cread) do |box|
           if box.const_read && box.const_read.cdef
             box.const_read.cdef.defs.each do |cdef_node|
               defs << [cdef_node.lenv.path, cdef_node.cname_code_range]
             end
           end
         end
-        node.boxes(:mcall).each do |box|
+        node.boxes(:mcall) do |box|
           boxes = []
           box.changes.boxes.each do |key, box|
             # ad-hocly handle Class#new calls
@@ -214,7 +214,7 @@ module TypeProf::Core
         case node
         when AST::DefNode
           if node.mid_code_range.include?(pos)
-            node.boxes(:mdef).each do |mdef|
+            node.boxes(:mdef) do |mdef|
               me = @genv.resolve_method(mdef.cpath, mdef.singleton, mdef.mid)
               if me
                 me.method_call_boxes.each do |box|
@@ -227,7 +227,7 @@ module TypeProf::Core
         # TODO: Callsite
         when AST::ConstantReadNode
           if node.cname_code_range.include?(pos)
-            node.boxes(:cread).each do |cread_box|
+            node.boxes(:cread) do |cread_box|
               @genv.resolve_const(cread_box.const_read.cpath).read_boxes.each do |box|
                 node = box.node
                 refs << [node.lenv.path, node.code_range]
@@ -251,7 +251,7 @@ module TypeProf::Core
       mdefs = []
       cdefs = []
       @text_nodes[path].retrieve_at(pos) do |node|
-        node.boxes(:mcall).each do |box|
+        node.boxes(:mcall) do |box|
           box.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
             next unless me
             me.defs.each do |mdef|
@@ -259,7 +259,7 @@ module TypeProf::Core
             end
           end
         end
-        node.boxes(:cread).each do |box|
+        node.boxes(:cread) do |box|
           if box.node.cname_code_range.include?(pos)
             box.const_read.cdef.defs.each do |cdef|
               cdefs << cdef
@@ -267,7 +267,7 @@ module TypeProf::Core
           end
         end
         if node.is_a?(AST::DefNode) && node.mid_code_range.include?(pos)
-          node.boxes(:mdef).each do |mdef|
+          node.boxes(:mdef) do |mdef|
             mdefs << mdef
           end
         end
@@ -303,7 +303,7 @@ module TypeProf::Core
 
     def hover(path, pos)
       @text_nodes[path].retrieve_at(pos) do |node|
-        node.boxes(:mcall).each do |box|
+        node.boxes(:mcall) do |box|
           boxes = []
           box.changes.boxes.each do |key, box|
             # ad-hocly handle Class#new calls
@@ -348,7 +348,7 @@ module TypeProf::Core
         else
           if event == :enter
             next if node.is_a?(AST::DefNode) && node.rbs_method_type
-            node.boxes(:mdef).each do |mdef|
+            node.boxes(:mdef) do |mdef|
               hint = mdef.show
               if hint
                 yield mdef.node.code_range, hint
@@ -433,7 +433,7 @@ module TypeProf::Core
           end
         else
           if event == :enter
-            node.boxes(:mdef).each do |mdef|
+            node.boxes(:mdef) do |mdef|
               out << "  " * depth + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show
             end
           end
