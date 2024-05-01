@@ -52,13 +52,11 @@ module TypeProf::Core
         if @static_cpath
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
           @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
-          @body.lenv.locals[:"*ret"] = Vertex.new("module_ret", self)
 
           @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
           @changes.add_edge(genv, @mod_val, @mod_cdef.vtx)
           ret = Vertex.new("module_return", self)
           @changes.add_edge(genv, @body.install(genv), ret)
-          @changes.add_edge(genv, @body.lenv.get_var(:"*ret"), ret)
           ret
         else
           Source.new

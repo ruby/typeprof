@@ -238,7 +238,6 @@ module TypeProf::Core
       def install0(genv)
         @tbl.each {|var| @lenv.locals[var] = Source.new(genv.nil_type) }
         @lenv.locals[:"*self"] = Source.new(lenv.cref.get_self(genv))
-        @lenv.locals[:"*ret"] = Source.new() # dummy sink for toplevel return value
 
         @body.install(genv)
       end
