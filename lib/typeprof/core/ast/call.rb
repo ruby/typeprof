@@ -99,17 +99,15 @@ module TypeProf::Core
             @block_body.lenv.set_var(var, nvtx)
           end
 
+          e_ret = @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new("expected_method_ret", self)
           @block_body.install(genv)
+          @block_body.lenv.add_next_box(@changes.add_escape_box(genv, self, @block_body.ret, e_ret))
 
           vars.each do |var|
             @changes.add_edge(genv, @block_body.lenv.get_var(var), @lenv.get_var(var))
           end
 
-          blk_ret = Vertex.new("block_ret", self)
-          each_return_node do |node|
-            @changes.add_edge(genv, node.ret, blk_ret)
-          end
-          block = Block.new(self, blk_f_args, blk_ret)
+          block = Block.new(self, blk_f_args, @block_body.lenv.next_boxes)
           blk_ty = Source.new(Type::Proc.new(genv, block))
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
@@ -118,6 +116,18 @@ module TypeProf::Core
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
         box = @changes.add_method_call_box(genv, self, recv, @mid, a_args, !@recv)
         box.ret
+      end
+
+      def block_last_stmt_code_range
+        if @block_body
+          if @block_body.is_a?(AST::StatementsNode)
+            @block_body.stmts.last.code_range
+          else
+            @block_body.code_range
+          end
+        else
+          nil
+        end
       end
 
       def each_return_node
