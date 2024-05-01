@@ -65,10 +65,10 @@ module TypeProf::Core
   end
 
   class Block
-    def initialize(node, f_args, ret)
+    def initialize(node, f_args, next_boxes)
       @node = node
       @f_args = f_args
-      @ret = ret
+      @next_boxes = next_boxes
     end
 
     attr_reader :node, :f_args, :ret
@@ -82,9 +82,13 @@ module TypeProf::Core
         end
       end
       if ret_check
-        changes.add_check_return_box(genv, @node, @ret, caller_ret)
+        @next_boxes.each do |box|
+          changes.add_edge(genv, caller_ret, box.f_ret)
+        end
       else
-        changes.add_edge(genv, @ret, caller_ret)
+        @next_boxes.each do |box|
+          changes.add_edge(genv, box.a_ret, caller_ret)
+        end
       end
     end
   end

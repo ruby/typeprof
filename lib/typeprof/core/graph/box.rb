@@ -244,7 +244,7 @@ module TypeProf::Core
       @f_ret.add_edge(genv, self)
     end
 
-    attr_reader :f_ret
+    attr_reader :a_ret, :f_ret
 
     def ret = @a_ret
 
@@ -255,6 +255,10 @@ module TypeProf::Core
           changes.add_diagnostic(@node, :code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
         when AST::DefNode
           changes.add_diagnostic(@node, :last_stmt_code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+        when AST::NextNode
+          changes.add_diagnostic(@node, :code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+        when AST::CallNode
+          changes.add_diagnostic(@node, :block_last_stmt_code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
         else
           pp @node.class
         end
