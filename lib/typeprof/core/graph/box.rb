@@ -215,7 +215,7 @@ module TypeProf::Core
       end
       unless match_any_overload
         meth = node.mid_code_range ? :mid_code_range : :code_range
-        changes.add_diagnostic(node, meth, "failed to resolve overloads")
+        changes.add_diagnostic(meth, "failed to resolve overloads")
       end
     end
 
@@ -251,15 +251,16 @@ module TypeProf::Core
 
     def run0(genv, changes)
       unless @a_ret.check_match(genv, changes, @f_ret)
+        msg = "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }"
         case @node
         when AST::ReturnNode
-          changes.add_diagnostic(@node, :code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+          changes.add_diagnostic(:code_range, msg)
         when AST::DefNode
-          changes.add_diagnostic(@node, :last_stmt_code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+          changes.add_diagnostic(:last_stmt_code_range, msg)
         when AST::NextNode
-          changes.add_diagnostic(@node, :code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+          changes.add_diagnostic(:code_range, msg)
         when AST::CallNode
-          changes.add_diagnostic(@node, :block_last_stmt_code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+          changes.add_diagnostic(:block_last_stmt_code_range, msg)
         else
           pp @node.class
         end
@@ -348,7 +349,7 @@ module TypeProf::Core
       end
 
       a_args = ActualArguments.new(positional_args, splat_flags, nil, nil) # TODO: keywords and block
-      if pass_positionals(changes, genv, nil, a_args)
+      if pass_positionals(changes, genv, a_args)
         # TODO: block
         f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
         @ret_boxes.each do |ret_box|
@@ -357,18 +358,16 @@ module TypeProf::Core
       end
     end
 
-    def pass_positionals(changes, genv, call_node, a_args)
+    def pass_positionals(changes, genv, a_args)
       if a_args.splat_flags.any?
         # there is at least one splat actual argument
 
         lower = @f_args.req_positionals.size + @f_args.post_positionals.size
         upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
         if upper && upper < a_args.positionals.size
-          if call_node
-            meth = call_node.mid_code_range ? :mid_code_range : :code_range
-            err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-            changes.add_diagnostic(call_node, meth, "wrong number of arguments (#{ err })")
-          end
+          meth = changes.node.mid_code_range ? :mid_code_range : :code_range
+          err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+          changes.add_diagnostic(meth, "wrong number of arguments (#{ err })")
           return false
         end
 
@@ -417,11 +416,9 @@ module TypeProf::Core
         lower = @f_args.req_positionals.size + @f_args.post_positionals.size
         upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
         if a_args.positionals.size < lower || (upper && upper < a_args.positionals.size)
-          if call_node
-            meth = call_node.mid_code_range ? :mid_code_range : :code_range
-            err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-            changes.add_diagnostic(call_node, meth, "wrong number of arguments (#{ err })")
-          end
+          meth = changes.node.mid_code_range ? :mid_code_range : :code_range
+          err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+          changes.add_diagnostic(meth, "wrong number of arguments (#{ err })")
           return false
         end
 
@@ -454,8 +451,8 @@ module TypeProf::Core
       return true
     end
 
-    def call(changes, genv, call_node, a_args, ret)
-      if pass_positionals(changes, genv, call_node, a_args)
+    def call(changes, genv, a_args, ret)
+      if pass_positionals(changes, genv, a_args)
         changes.add_edge(genv, a_args.block, @f_args.block) if @f_args.block && a_args.block
 
         changes.add_edge(genv, @ret, ret)
@@ -554,7 +551,7 @@ module TypeProf::Core
           # TODO: undefined method error
           if error_count < 3
             meth = @node.mid_code_range ? :mid_code_range : :code_range
-            changes.add_diagnostic(@node, meth, "undefined method: #{ orig_ty.show }##{ mid }")
+            changes.add_diagnostic(meth, "undefined method: #{ orig_ty.show }##{ mid }")
           end
           error_count += 1
         elsif me.builtin
@@ -577,7 +574,7 @@ module TypeProf::Core
           me.defs.each do |mdef|
             next if called_mdefs.include?(mdef)
             called_mdefs << mdef
-            mdef.call(changes, genv, @node, @a_args, @ret)
+            mdef.call(changes, genv, @a_args, @ret)
           end
         else
           pp me
@@ -590,7 +587,7 @@ module TypeProf::Core
             me.defs.each do |mdef|
               next if called_mdefs.include?(mdef)
               called_mdefs << mdef
-              mdef.call(changes, genv, @node, @a_args, @ret)
+              mdef.call(changes, genv, @a_args, @ret)
             end
           end
         end
@@ -600,7 +597,7 @@ module TypeProf::Core
       end
       if error_count > 3
         meth = @node.mid_code_range ? :mid_code_range : :code_range
-        changes.add_diagnostic(@node, meth, "... and other #{ error_count - 3 } errors")
+        changes.add_diagnostic(meth, "... and other #{ error_count - 3 } errors")
       end
     end
 
