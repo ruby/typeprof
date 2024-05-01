@@ -1,205 +1,12 @@
 module TypeProf::Core
-  class Changes
-    def initialize(target)
-      @target = target
-      @covariant_types = {}
-      @edges = []
-      @new_edges = []
-      @sites = {}
-      @new_sites = {}
-      @diagnostics = []
-      @new_diagnostics = []
-      @depended_value_entities = []
-      @new_depended_value_entities = []
-      @depended_method_entities = []
-      @new_depended_method_entities = []
-      @depended_static_reads = []
-      @new_depended_static_reads = []
-      @depended_superclasses = []
-      @new_depended_superclasses = []
-    end
-
-    attr_reader :sites, :diagnostics
-
-    def new_vertex(genv, sig_type_node)
-      # This is used to avoid duplicated vertex generation for the same sig node
-      @covariant_types[sig_type_node] ||= Vertex.new("rbs_type", sig_type_node)
-    end
-
-    def add_edge(genv, src, dst)
-      raise unless src.is_a?(BasicVertex)
-      src.add_edge(genv, dst) if !@edges.include?([src, dst]) && !@new_edges.include?([src, dst])
-      @new_edges << [src, dst]
-    end
-
-    # TODO: if an edge is removed during one analysis, we may need to remove sub-sites?
-
-    def add_callsite(genv, node, recv, mid, a_args, subclasses)
-      key = [:callsite, node, recv, mid, a_args, subclasses]
-      return if @new_sites[key]
-      @new_sites[key] = CallSite.new(node, genv, recv, mid, a_args, subclasses)
-    end
-
-    def add_check_return_site(genv, node, a_ret, f_ret)
-      key = [:check_return, node, a_ret, f_ret]
-      return if @new_sites[key]
-      @new_sites[key] = CheckReturnSite.new(node, genv, a_ret, f_ret)
-    end
-
-    def add_masgn_site(genv, node, rhs, lhss)
-      key = [:masgn, node, rhs, lhss]
-      return if @new_sites[key]
-      @new_sites[key] = MAsgnSite.new(node, genv, rhs, lhss)
-    end
-
-    def add_method_def_site(genv, node, cpath, singleton, mid, f_args, ret)
-      key = [:mdef, node, cpath, singleton, mid, f_args, ret]
-      return if @new_sites[key]
-      @new_sites[key] = MethodDefSite.new(node, genv, cpath, singleton, mid, f_args, ret)
-    end
-
-    def add_method_decl_site(genv, node, cpath, singleton, mid, method_types, overloading)
-      key = [:mdecl, node, cpath, singleton, mid, method_types, overloading]
-      return if @new_sites[key]
-      @new_sites[key] = MethodDeclSite.new(node, genv, cpath, singleton, mid, method_types, overloading)
-    end
-
-    def add_method_alias_site(genv, node, cpath, singleton, new_mid, old_mid)
-      key = [:mdecl, node, cpath, singleton, new_mid, old_mid]
-      return if @new_sites[key]
-      @new_sites[key] = MethodAliasSite.new(node, genv, cpath, singleton, new_mid, old_mid)
-    end
-
-    def add_const_read_site(genv, node, static_ret)
-      key = [:cread, node, static_ret]
-      return if @new_sites[key]
-      @new_sites[key] = ConstReadSite.new(node, genv, static_ret)
-    end
-
-    def add_gvar_read_site(genv, node, var)
-      key = [:gvar_read, node, var]
-      return if @new_sites[key]
-      @new_sites[key] = GVarReadSite.new(node, genv, var)
-    end
-
-    def add_ivar_read_site(genv, node, cpath, singleton, name)
-      key = [:ivar_read, node, cpath, singleton, name]
-      return if @new_sites[key]
-      @new_sites[key] = IVarReadSite.new(node, genv, cpath, singleton, name)
-    end
-
-    def add_type_read_site(genv, node, type)
-      key = [:type_read, node, type]
-      return if @new_sites[key]
-      @new_sites[key] = TypeReadSite.new(node, genv, type)
-    end
-
-    def add_diagnostic(node, meth, msg)
-      @new_diagnostics << TypeProf::Diagnostic.new(node, meth, msg)
-    end
-
-    def add_depended_value_entity(ve)
-      @new_depended_value_entities << ve
-    end
-
-    def add_depended_method_entity(me)
-      @new_depended_method_entities << me
-    end
-
-    def add_depended_static_read(static_read)
-      @new_depended_static_reads << static_read
-    end
-
-    def add_depended_superclass(mod)
-      @new_depended_superclasses << mod
-    end
-
-    def reinstall(genv)
-      @new_edges.uniq!
-      @edges.each do |src, dst|
-        src.remove_edge(genv, dst) unless @new_edges.include?([src, dst])
-      end
-      @edges, @new_edges = @new_edges, @edges
-      @new_edges.clear
-
-      @sites.each do |key, site|
-        site.destroy(genv)
-      end
-      @sites, @new_sites = @new_sites, @sites
-      @new_sites.clear
-
-      @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
-      @new_diagnostics.clear
-
-      @depended_value_entities.each do |ve|
-        ve.readsites.delete(@target) || raise
-      end
-      @new_depended_value_entities.uniq!
-      @new_depended_value_entities.each do |ve|
-        ve.readsites << @target
-      end
-      @depended_value_entities, @new_depended_value_entities = @new_depended_value_entities, @depended_value_entities
-      @new_depended_value_entities.clear
-
-      @depended_method_entities.each do |me|
-        me.callsites.delete(@target) || raise
-      end
-      @new_depended_method_entities.uniq!
-      @new_depended_method_entities.each do |me|
-        me.callsites << @target
-      end
-      @depended_method_entities, @new_depended_method_entities = @new_depended_method_entities, @depended_method_entities
-      @new_depended_method_entities.clear
-
-      @depended_static_reads.each do |static_read|
-        static_read.followers.delete(@target)
-      end
-      @new_depended_static_reads.uniq!
-      @new_depended_static_reads.each do |static_read|
-        static_read.followers << @target
-      end
-
-      @depended_static_reads, @new_depended_static_reads = @new_depended_static_reads, @depended_static_reads
-      @new_depended_static_reads.clear
-
-      @depended_superclasses.each do |mod|
-        mod.subclass_checks.delete(@target)
-      end
-      @new_depended_superclasses.uniq!
-      @new_depended_superclasses.each do |mod|
-        mod.subclass_checks << @target
-      end
-
-      @depended_superclasses, @new_depended_superclasses = @new_depended_superclasses, @depended_superclasses
-      @new_depended_superclasses.clear
-    end
-
-    def reuse(new_node, old_node)
-      @sites.each_value do |site|
-        if site.node != old_node
-          pp site.node, old_node
-          raise site.class.to_s
-        end
-        site.reuse(new_node)
-      end
-      @diagnostics.each do |diag|
-        if diag.node != old_node
-          pp diag.node, old_node
-          raise diag.class.to_s
-        end
-        diag.reuse(new_node)
-      end
-    end
-  end
-
-  $site_counts = Hash.new(0)
-  class Site
+  $box_counts = Hash.new(0)
+  class Box
     def initialize(node)
       @node = node
-      @changes = Changes.new(self)
+      @changes = ChangeSet.new(self)
       @destroyed = false
-      $site_counts[Site] += 1
-      $site_counts[self.class] += 1
+      $box_counts[Box] += 1
+      $box_counts[self.class] += 1
     end
 
     attr_reader :changes
@@ -207,8 +14,8 @@ module TypeProf::Core
     attr_reader :node, :destroyed
 
     def destroy(genv)
-      $site_counts[self.class] -= 1
-      $site_counts[Site] -= 1
+      $box_counts[self.class] -= 1
+      $box_counts[Box] -= 1
       @destroyed = true
       @changes.reinstall(genv) # rollback all changes
     end
@@ -234,8 +41,8 @@ module TypeProf::Core
     def diagnostics(genv, &blk)
       raise self.to_s if !@changes
       @changes.diagnostics.each(&blk)
-      @changes.sites.each_value do |site|
-        site.diagnostics(genv, &blk)
+      @changes.boxes.each_value do |box|
+        box.diagnostics(genv, &blk)
       end
     end
 
@@ -248,7 +55,7 @@ module TypeProf::Core
     alias inspect to_s
   end
 
-  class ConstReadSite < Site
+  class ConstReadBox < Box
     def initialize(node, genv, const_read)
       super(node)
       @const_read = const_read
@@ -268,7 +75,7 @@ module TypeProf::Core
     end
   end
 
-  class TypeReadSite < Site
+  class TypeReadBox < Box
     def initialize(node, genv, rbs_type)
       super(node)
       @rbs_type = rbs_type
@@ -284,7 +91,7 @@ module TypeProf::Core
     end
   end
 
-  class MethodDeclSite < Site
+  class MethodDeclBox < Box
     def initialize(node, genv, cpath, singleton, mid, method_types, overloading)
       super(node)
       @cpath = cpath
@@ -296,7 +103,7 @@ module TypeProf::Core
 
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_decl(self)
-      me.add_run_all_callsites(genv)
+      me.add_run_all_method_call_boxes(genv)
       me.add_run_all_mdefs(genv)
     end
 
@@ -307,7 +114,7 @@ module TypeProf::Core
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.remove_decl(self)
-      me.add_run_all_callsites(genv)
+      me.add_run_all_method_call_boxes(genv)
     end
 
     def match_arguments?(genv, changes, param_map, a_args, method_type)
@@ -429,7 +236,7 @@ module TypeProf::Core
     end
   end
 
-  class CheckReturnSite < Site
+  class CheckReturnBox < Box
     def initialize(node, genv, a_ret, f_ret)
       super(node)
       @a_ret = a_ret
@@ -457,7 +264,7 @@ module TypeProf::Core
     end
   end
 
-  class MethodDefSite < Site
+  class MethodDefBox < Box
     def initialize(node, genv, cpath, singleton, mid, f_args, ret)
       super(node)
       @cpath = cpath
@@ -477,7 +284,7 @@ module TypeProf::Core
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
       if me.decls.empty?
-        me.add_run_all_callsites(genv)
+        me.add_run_all_method_call_boxes(genv)
       else
         genv.add_run(self)
       end
@@ -491,7 +298,7 @@ module TypeProf::Core
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.remove_def(self)
       if me.decls.empty?
-        me.add_run_all_callsites(genv)
+        me.add_run_all_method_call_boxes(genv)
       else
         genv.add_run(self)
       end
@@ -537,7 +344,7 @@ module TypeProf::Core
       if pass_positionals(changes, genv, nil, a_args)
         # TODO: block
         f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
-        changes.add_check_return_site(genv, @node, @ret, f_ret)
+        changes.add_check_return_box(genv, @node, @ret, f_ret)
       end
     end
 
@@ -675,7 +482,7 @@ module TypeProf::Core
     end
   end
 
-  class MethodAliasSite < Site
+  class MethodAliasBox < Box
     def initialize(node, genv, cpath, singleton, new_mid, old_mid)
       super(node)
       @cpath = cpath
@@ -687,7 +494,7 @@ module TypeProf::Core
       me = genv.resolve_method(@cpath, @singleton, @new_mid)
       me.add_alias(self, @old_mid)
       if me.decls.empty?
-        me.add_run_all_callsites(genv)
+        me.add_run_all_method_call_boxes(genv)
       else
         genv.add_run(self)
       end
@@ -701,7 +508,7 @@ module TypeProf::Core
       me = genv.resolve_method(@cpath, @singleton, @new_mid)
       me.remove_alias(self)
       if me.decls.empty?
-        me.add_run_all_callsites(genv)
+        me.add_run_all_method_call_boxes(genv)
       else
         genv.add_run(self)
       end
@@ -713,7 +520,7 @@ module TypeProf::Core
     end
   end
 
-  class CallSite < Site
+  class MethodCallBox < Box
     def initialize(node, genv, recv, mid, a_args, subclasses)
       raise mid.to_s unless mid
       super(node)
@@ -901,7 +708,7 @@ module TypeProf::Core
     end
   end
 
-  class GVarReadSite < Site
+  class GVarReadBox < Box
     def initialize(node, genv, name)
       super(node)
       @vtx = genv.resolve_gvar(name).vtx
@@ -916,7 +723,7 @@ module TypeProf::Core
     end
   end
 
-  class IVarReadSite < Site
+  class IVarReadBox < Box
     def initialize(node, genv, cpath, singleton, name)
       super(node)
       @cpath = cpath
@@ -961,7 +768,7 @@ module TypeProf::Core
     end
   end
 
-  class MAsgnSite < Site
+  class MAsgnBox < Box
     def initialize(node, genv, rhs, lhss)
       super(node)
       @rhs = rhs
