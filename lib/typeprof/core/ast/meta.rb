@@ -70,7 +70,7 @@ module TypeProf::Core
         @args.each do |arg|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
           box = @changes.add_ivar_read_box(genv, self, @lenv.cref.cpath, false, ivar_name)
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, box.ret)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
         end
         Source.new
       end
@@ -110,12 +110,12 @@ module TypeProf::Core
         @args.zip(@static_ret) do |arg, ive|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
           box = @changes.add_ivar_read_box(genv, self, @lenv.cref.cpath, false, ivar_name)
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, box.ret)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
 
           vtx = Vertex.new("attr_writer-arg", self)
           @changes.add_edge(genv, vtx, ive.vtx)
           f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
-          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, vtx)
+          @changes.add_method_def_box(genv, self, @lenv.cref.cpath, false, "#{ arg }=".to_sym, f_args, [box])
         end
         Source.new
       end

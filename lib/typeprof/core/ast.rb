@@ -13,7 +13,7 @@ module TypeProf::Core
       Fiber[:comments] = result.comments
 
       cref = CRef::Toplevel
-      lenv = LocalEnv.new(path, cref, {})
+      lenv = LocalEnv.new(path, cref, {}, [])
 
       ProgramNode.new(raw_scope, lenv)
     end
@@ -254,7 +254,7 @@ module TypeProf::Core
       _buffer, _directives, raw_decls = RBS::Parser.parse_signature(src)
 
       cref = CRef::Toplevel
-      lenv = LocalEnv.new(path, cref, {})
+      lenv = LocalEnv.new(path, cref, {}, [])
 
       raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)

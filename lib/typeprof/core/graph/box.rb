@@ -236,6 +236,32 @@ module TypeProf::Core
     end
   end
 
+  class EscapeBox < Box
+    def initialize(node, genv, a_ret, f_ret)
+      super(node)
+      @a_ret = a_ret
+      @f_ret = f_ret
+      @f_ret.add_edge(genv, self)
+    end
+
+    attr_reader :f_ret
+
+    def ret = @a_ret
+
+    def run0(genv, changes)
+      unless @a_ret.check_match(genv, changes, @f_ret)
+        case @node
+        when AST::ReturnNode
+          changes.add_diagnostic(@node, :code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+        when AST::DefNode
+          changes.add_diagnostic(@node, :last_stmt_code_range, "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }")
+        else
+          pp @node.class
+        end
+      end
+    end
+  end
+
   class CheckReturnBox < Box
     def initialize(node, genv, a_ret, f_ret)
       super(node)
@@ -265,7 +291,7 @@ module TypeProf::Core
   end
 
   class MethodDefBox < Box
-    def initialize(node, genv, cpath, singleton, mid, f_args, ret)
+    def initialize(node, genv, cpath, singleton, mid, f_args, ret_boxes)
       super(node)
       @cpath = cpath
       @singleton = singleton
@@ -280,7 +306,11 @@ module TypeProf::Core
         record_blk_ty.add_edge(genv, @f_args.block)
       end
 
-      @ret = ret
+      @ret_boxes = ret_boxes
+      @ret = Vertex.new("ret:#{ mid }", node)
+      ret_boxes.each do |box|
+        @changes.add_edge(genv, box.ret, @ret)
+      end
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
       if me.decls.empty?
@@ -344,7 +374,10 @@ module TypeProf::Core
       if pass_positionals(changes, genv, nil, a_args)
         # TODO: block
         f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
-        changes.add_check_return_box(genv, @node, @ret, f_ret)
+        @ret_boxes.each do |ret_box|
+          changes.add_edge(genv, f_ret, ret_box.f_ret)
+        end
+        #changes.add_check_return_box(genv, @node, @ret, f_ret)
       end
     end
 
