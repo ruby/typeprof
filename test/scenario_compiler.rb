@@ -39,6 +39,7 @@ class ScenarioCompiler
       out << "core = TypeProf::Core::Service.new;"
     end
     close_str = ""
+    need_comment_removal = false
     File.foreach(scenario, chomp: true) do |line|
       if line =~ /\A##\s*/
         out << close_str
@@ -52,11 +53,16 @@ class ScenarioCompiler
           open_str, close_str = ary
           out << open_str.chomp
           close_str += "\n"
+          need_comment_removal = true if $1 == "definition"
         else
           raise "unknown directive: #{ line.inspect }"
         end
       else
         raise "NUL found" if line.include?("\0")
+        if need_comment_removal
+          line = line.gsub(/#\s*.*\Z/, "")
+          need_comment_removal = false
+        end
         out << line << "\n"
       end
     end
