@@ -173,10 +173,10 @@ module TypeProf::Core
               next unless me
               me.defs.each do |mdef|
                 code_range =
-                  case mdef.node
-                  when AST::DefNode then mdef.node.mid_code_range
-                  when AST::AttrReaderMetaNode, AST::AttrAccessorMetaNode then mdef.node.mname_code_range(mid)
-                  else mdef.node.code_range
+                  if mdef.node.respond_to?(:mname_code_range)
+                    mdef.node.mname_code_range(mid)
+                  else
+                    mdef.node.code_range
                   end
 
                 defs << [mdef.node.lenv.path, code_range]
