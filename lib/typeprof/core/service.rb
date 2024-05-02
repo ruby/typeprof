@@ -169,12 +169,13 @@ module TypeProf::Core
           end
           boxes << box if boxes.empty?
           boxes.each do |box|
-            box.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
+            box.resolve(genv, nil) do |me, _ty, mid, _orig_ty|
               next unless me
               me.defs.each do |mdef|
                 code_range =
                   case mdef.node
                   when AST::DefNode then mdef.node.mid_code_range
+                  when AST::AttrReaderMetaNode, AST::AttrAccessorMetaNode then mdef.node.mname_code_range(mid)
                   else mdef.node.code_range
                   end
 

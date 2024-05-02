@@ -66,6 +66,12 @@ module TypeProf::Core
       def opt_keywords = []
       def rest_keywords = nil
 
+      def mname_code_range(name)
+        idx = @args.index(name.to_sym) # TODO: support string args
+        node = @raw_node.arguments.arguments[idx].location
+        TypeProf::CodeRange.from_node(node)
+      end
+
       def install0(genv)
         @args.each do |arg|
           ivar_name = "@#{ arg }".to_sym # TODO: use DSYM
@@ -90,6 +96,12 @@ module TypeProf::Core
       attr_reader :args
 
       def attrs = { args: }
+
+      def mname_code_range(name)
+        idx = @args.index(name.to_sym) # TODO: support string args
+        node = @raw_node.arguments.arguments[idx].location
+        TypeProf::CodeRange.from_node(node)
+      end
 
       def define0(genv)
         @args.map do |arg|
