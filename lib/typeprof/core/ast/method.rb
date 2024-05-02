@@ -188,6 +188,8 @@ module TypeProf::Core
         block:,
       }
 
+      def mname_code_range(_name) = @mid_code_range
+
       def define(genv) # NOT define0
         return define_copy(genv) if @prev_node
         super(genv)
