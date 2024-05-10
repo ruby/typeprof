@@ -238,7 +238,8 @@ module TypeProf::Core
           break
         when :constant_path_node, :constant_path_target_node
           if raw_node.parent
-            names << raw_node.child.name
+            # temporarily support old Prism https://bugs.ruby-lang.org/issues/20467
+            names << (raw_node.respond_to?(:name) ? raw_node.name : raw_node.child.name)
             raw_node = raw_node.parent
           else
             return names.reverse
