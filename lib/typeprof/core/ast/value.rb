@@ -250,5 +250,11 @@ module TypeProf::Core
         Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
       end
     end
+
+    class LambdaNode < TypeProf::Core::AST::Node
+      def install0(genv)
+        Source.new(genv.proc_type)
+      end
+    end
   end
 end
