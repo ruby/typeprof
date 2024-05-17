@@ -172,6 +172,8 @@ module TypeProf::Core
       when :symbol_node then SymbolNode.new(raw_node, lenv)
       when :interpolated_symbol_node then InterpolatedSymbolNode.new(raw_node, lenv)
       when :string_node then StringNode.new(raw_node, lenv, raw_node.content)
+      when :x_string_node then StringNode.new(raw_node, lenv, "")
+      when :interpolated_x_string_node then InterpolatedStringNode.new(raw_node, lenv)
       when :source_file_node then StringNode.new(raw_node, lenv, "")
       when :source_line_node then IntegerNode.new(raw_node, lenv, 0)
       when :interpolated_string_node then InterpolatedStringNode.new(raw_node, lenv)
