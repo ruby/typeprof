@@ -18,3 +18,19 @@ class Object
   def bar: (Integer) -> String
   def qux: (Float) -> String
 end
+
+## update
+
+def xstring_lit(n)
+  `echo foo`
+end
+
+def interpolate_xstring
+  `echo #{xstring_lit(10)}`
+end
+
+## assert
+class Object
+  def xstring_lit: (Integer) -> String
+  def interpolate_xstring: -> String
+end
