@@ -58,6 +58,7 @@ module TypeProf::Core
       when :begin_node then BeginNode.new(raw_node, lenv)
       when :retry_node then RetryNode.new(raw_node, lenv)
       when :rescue_modifier_node then RescueModifierNode.new(raw_node, lenv)
+      when :rescue_node then RescueNode.new(raw_node, lenv)
 
       # constants
       when :constant_read_node, :constant_path_node

@@ -350,33 +350,64 @@ module TypeProf::Core
       end
     end
 
+    class RescueNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+
+        @exceptions = raw_node.exceptions.map {|raw_cond| AST.create_node(raw_cond, lenv) }
+        @statements = AST.create_node(raw_node.statements, lenv) if raw_node.statements
+        if raw_node.reference && @statements
+          @reference = AST.create_target_node(raw_node.reference, @statements.lenv)
+        end
+      end
+
+      attr_reader :exceptions, :reference, :statements
+
+      def subnodes = { exceptions:, reference:, statements: }
+
+      def define0(genv)
+        @exceptions.each {|exc| exc.define(genv) }
+        @reference.define(genv) if @reference
+        @statements.define(genv) if @statements
+      end
+
+      def undefine0(genv)
+        @exceptions.each {|exc| exc.undefine(genv) }
+        @reference.undefine(genv) if @reference
+        @statements.undefine(genv) if @statements
+      end
+
+      def install0(genv)
+        @exceptions.each {|exc| exc.install(genv) }
+        if @statements
+          @statements.install(genv)
+        else
+          Source.new(genv.nil_type)
+        end
+      end
+    end
+
     class BeginNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         @body = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : DummyNilNode.new(code_range, lenv)
-        @rescue_conds = []
+
         @rescue_clauses = []
         raw_res = raw_node.rescue_clause
         while raw_res
-          raw_res.exceptions.each do |raw_cond|
-            @rescue_conds << AST.create_node(raw_cond, lenv)
-          end
-          if raw_res.statements
-            @rescue_clauses << AST.create_node(raw_res.statements, lenv)
-          end
+          @rescue_clauses << AST.create_node(raw_res, lenv)
           raw_res = raw_res.subsequent
         end
         @else_clause = raw_node.else_clause&.statements ? AST.create_node(raw_node.else_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
         @ensure_clause = raw_node.ensure_clause&.statements ? AST.create_node(raw_node.ensure_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
       end
 
-      attr_reader :body, :rescue_conds, :rescue_clauses, :else_clause, :ensure_clause
+      attr_reader :body, :rescue_clauses, :else_clause, :ensure_clause
 
-      def subnodes = { body:, rescue_conds:, rescue_clauses:, else_clause:, ensure_clause: }
+      def subnodes = { body:, rescue_clauses:, else_clause:, ensure_clause: }
 
       def define0(genv)
         @body.define(genv)
-        @rescue_conds.each {|cond| cond.define(genv) }
         @rescue_clauses.each {|clause| clause.define(genv) }
         @else_clause.define(genv) if @else_clause
         @ensure_clause.define(genv) if @ensure_clause
@@ -384,7 +415,6 @@ module TypeProf::Core
 
       def undefine0(genv)
         @body.undefine(genv)
-        @rescue_conds.each {|cond| cond.undefine(genv) }
         @rescue_clauses.each {|clause| clause.undefine(genv) }
         @else_clause.undefine(genv) if @else_clause
         @ensure_clause.undefine(genv) if @ensure_clause
@@ -393,8 +423,7 @@ module TypeProf::Core
       def install0(genv)
         ret = Vertex.new(self)
         @changes.add_edge(genv, @body.install(genv), ret)
-        @rescue_conds.each {|cond| cond.install(genv) }
-        @rescue_clauses.each {|clause| @changes.add_edge(genv, clause.install(genv), ret) }
+        @rescue_clauses.each { |clause| @changes.add_edge(genv, clause.install(genv), ret) }
         @changes.add_edge(genv, @else_clause.install(genv), ret) if @else_clause
         @ensure_clause.install(genv) if @ensure_clause
         ret
