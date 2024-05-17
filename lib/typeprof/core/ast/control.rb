@@ -378,7 +378,14 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        @exceptions.each {|exc| exc.install(genv) }
+        cond_tys = @exceptions.map {|exc|
+          exc.install(genv)
+          Type::Instance.new(genv, genv.resolve_cpath(exc.static_ret.cpath), [])
+        }
+        if @reference
+          @reference.install(genv)
+          @changes.add_edge(genv, Source.new(*cond_tys), @reference.rhs.ret)
+        end
         if @statements
           @statements.install(genv)
         else
