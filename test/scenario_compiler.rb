@@ -34,7 +34,7 @@ class ScenarioCompiler
     @file = "test.rb"
     @pos = [0, 0]
     out = %(eval(<<'TYPEPROF_SCENARIO_END', nil, #{ scenario.dump }, 1)\n)
-    out << %(test(#{ scenario.dump }) {)
+    out << %(test(#{ scenario.dump }) do )
     unless @fast
       out << "core = TypeProf::Core::Service.new;"
     end
@@ -76,9 +76,9 @@ class ScenarioCompiler
         end
       END
     else
-      out << "core.reset!\n"
+      out << "ensure core.reset!\n"
     end
-    out << "}\n"
+    out << "end\n"
     out << %(TYPEPROF_SCENARIO_END\n)
   end
 
