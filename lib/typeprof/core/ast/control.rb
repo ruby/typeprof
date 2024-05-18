@@ -339,5 +339,15 @@ module TypeProf::Core
         ret
       end
     end
+
+    class RetryNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+      end
+
+      def install0(genv)
+        Source.new(genv.nil_type)
+      end
+    end
   end
 end
