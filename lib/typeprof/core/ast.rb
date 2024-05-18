@@ -53,6 +53,7 @@ module TypeProf::Core
       when :redo_node then RedoNode.new(raw_node, lenv)
       when :return_node then ReturnNode.new(raw_node, lenv)
       when :begin_node then BeginNode.new(raw_node, lenv)
+      when :retry_node then RetryNode.new(raw_node, lenv)
 
       # constants
       when :constant_read_node, :constant_path_node
