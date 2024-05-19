@@ -346,7 +346,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        Source.new(genv.nil_type)
+        Source.new(Type::Bot.new(genv))
       end
     end
   end
