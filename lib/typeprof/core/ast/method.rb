@@ -70,20 +70,16 @@ module TypeProf::Core
       opt_keywords = []
       opt_keyword_defaults = []
 
-      kw = raw_args.keywords
-      if false
-      while kw
-        raise unless kw.type == :KW_ARG
-        lasgn, kw = kw.children
-        var, expr = lasgn.children
-        if expr == :NODE_SPECIAL_REQUIRED_KEYWORD
-          req_keywords << var
-        else
-          opt_keywords << var
-          opt_keyword_defaults << AST.create_node(lasgn, lenv)
+      raw_args.keywords.each do |kw|
+        case kw.type
+        when :required_keyword_parameter_node
+          req_keywords << kw.name
+        when :optional_keyword_parameter_node
+          # TODO: support optional_keyword_parameter_node
         end
       end
 
+      if false
       rest_keywords = nil
       if args[8]
         raise unless args[8].type == :DVAR
@@ -146,8 +142,6 @@ module TypeProf::Core
         @opt_keyword_defaults = h[:opt_keyword_defaults]
         @rest_keywords = h[:rest_keywords]
         @block = h[:block]
-
-        # TODO: support opts, keywords, etc.
         @args_code_ranges = h[:args_code_ranges] || []
       end
 
