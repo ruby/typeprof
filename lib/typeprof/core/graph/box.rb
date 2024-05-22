@@ -479,11 +479,14 @@ module TypeProf::Core
       @f_args.post_positionals.each do |var|
         args << Type.strip_parens(var.show)
       end
-      @f_args.req_keywords.each do |f_vtx|
-        # `f_vtx.show_name[4..]` means 'var:x' => 'x'
-        args << "#{f_vtx.show_name[4..]}: #{Type.strip_parens(f_vtx.show)}"
+      if @node.is_a?(AST::DefNode)
+        @node.req_keywords.zip(@f_args.req_keywords) do |name, f_vtx|
+          args << "#{ name }: #{Type.strip_parens(f_vtx.show)}"
+        end
+        @node.opt_keywords.zip(@f_args.opt_keywords) do |name, f_vtx|
+          args << "?#{ name }: #{Type.strip_parens(f_vtx.show)}"
+        end
       end
-      # TODO: support opt_keywords
       args = args.join(", ")
       s = args.empty? ? [] : ["(#{ args })"]
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
