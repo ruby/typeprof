@@ -300,6 +300,12 @@ module TypeProf::Core
       when RBS::AST::Members::Private
       when RBS::AST::Members::Alias
         SigAliasNode.new(raw_decl, lenv)
+      when RBS::AST::Members::AttrReader
+        SigAttrReaderNode.new(raw_decl, lenv)
+      when RBS::AST::Members::AttrWriter
+        SigAttrWriterNode.new(raw_decl, lenv)
+      when RBS::AST::Members::AttrAccessor
+        SigAttrAccessorNode.new(raw_decl, lenv)
       when RBS::AST::Declarations::Base
         self.create_rbs_decl(raw_decl, lenv)
       else

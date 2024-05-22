@@ -273,6 +273,83 @@ module TypeProf::Core
       end
     end
 
+    class SigAttrReaderNode < Node
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        @mid = raw_decl.name
+        rbs_method_type = RBS::MethodType.new(
+          type: RBS::Types::Function.empty(raw_decl.type),
+          type_params: [],
+          block: nil,
+          location: raw_decl.type.location,
+        )
+        @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+      end
+
+      attr_reader :mid, :method_type
+
+      def subnodes = { method_type: }
+      def attrs = { mid: }
+
+      def install0(genv)
+        @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, @mid, [@method_type], false)
+        Source.new
+      end
+    end
+
+    class SigAttrWriterNode < Node
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        @mid = :"#{raw_decl.name}="
+
+        # (raw_decl.type) -> raw_decl.type
+        rbs_method_type = RBS::MethodType.new(
+          type: RBS::Types::Function.new(
+            required_positionals: [RBS::Types::Function::Param.new(name: nil, type: raw_decl.type, location: raw_decl.type.location)],
+            optional_positionals: [],
+            rest_positionals: nil,
+            trailing_positionals: [],
+            required_keywords: {},
+            optional_keywords: {},
+            rest_keywords: nil,
+            return_type: raw_decl.type,
+          ),
+          type_params: [],
+          block: nil,
+          location: raw_decl.type.location,
+        )
+        @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+      end
+
+      attr_reader :mid, :method_type
+
+      def subnodes = { method_type: }
+      def attrs = { mid: }
+
+      def install0(genv)
+        @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, @mid, [@method_type], false)
+        Source.new
+      end
+    end
+
+    class SigAttrAccessorNode < Node
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        @reader = SigAttrReaderNode.new(raw_decl, lenv)
+        @writer = SigAttrWriterNode.new(raw_decl, lenv)
+      end
+
+      attr_reader :reader, :writer
+
+      def subnodes = { reader:, writer: }
+
+      def install0(genv)
+        @reader.install0(genv)
+        @writer.install0(genv)
+        Source.new
+      end
+    end
+
     class SigConstNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
