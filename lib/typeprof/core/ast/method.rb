@@ -75,7 +75,8 @@ module TypeProf::Core
         when :required_keyword_parameter_node
           req_keywords << kw.name
         when :optional_keyword_parameter_node
-          # TODO: support optional_keyword_parameter_node
+          opt_keywords << kw.name
+          opt_keyword_defaults << AST.create_node(kw.value, lenv)
         end
       end
 
@@ -177,7 +178,6 @@ module TypeProf::Core
         post_positionals:,
         req_keywords:,
         opt_keywords:,
-        opt_keyword_defaults:,
         rest_keywords:,
         block:,
       }
