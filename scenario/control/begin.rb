@@ -42,3 +42,21 @@ end
 class Object
   def foo: -> (Integer | String | true)
 end
+
+## update
+def foo
+  begin
+    1
+  rescue
+    "str"
+  else
+    true
+  ensure
+    false
+  end
+end
+
+## assert
+class Object
+  def foo: -> (Integer | String | true)
+end
