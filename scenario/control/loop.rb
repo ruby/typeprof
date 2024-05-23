@@ -32,12 +32,19 @@ def qux
   b
 end
 
+def quux
+  for i in [1,2,3,4]
+    i
+  end
+end
+
 ## assert
 class Object
   def foo: -> nil
   def bar: -> [[nil]]
   def baz: -> nil
   def qux: -> ([[nil]] | [nil])?
+  def quux -> [Integer]
 end
 
 ## diagnostics

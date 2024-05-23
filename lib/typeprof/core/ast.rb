@@ -48,6 +48,7 @@ module TypeProf::Core
       when :case_node then CaseNode.new(raw_node, lenv)
       when :while_node then WhileNode.new(raw_node, lenv)
       when :until_node then UntilNode.new(raw_node, lenv)
+      when :for_node then ForNode.new(raw_node, lenv)
       when :break_node then BreakNode.new(raw_node, lenv)
       when :next_node then NextNode.new(raw_node, lenv)
       when :redo_node then RedoNode.new(raw_node, lenv)

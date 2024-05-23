@@ -157,6 +157,9 @@ module TypeProf::Core
     class UntilNode < LoopNode
     end
 
+    class ForNode < LoopNode
+    end
+
     class BreakNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
