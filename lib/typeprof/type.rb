@@ -734,14 +734,19 @@ module TypeProf
 
       def []=(k_ty, v_ty)
         k_ty.each_child_global do |k_ty|
-          # This is a temporal hack to mitigate type explosion
-          k_ty = Type.any if k_ty.is_a?(Type::Array)
-          k_ty = Type.any if k_ty.is_a?(Type::Hash)
-
-          if @map_tys[k_ty]
-            @map_tys[k_ty] = @map_tys[k_ty].union(v_ty)
+          if k_ty.is_a?(Type::Union)
+            # Flatten recursive union
+            self[k_ty] = v_ty
           else
-            @map_tys[k_ty] = v_ty
+            # This is a temporal hack to mitigate type explosion
+            k_ty = Type.any if k_ty.is_a?(Type::Array)
+            k_ty = Type.any if k_ty.is_a?(Type::Hash)
+
+            if @map_tys[k_ty]
+              @map_tys[k_ty] = @map_tys[k_ty].union(v_ty)
+            else
+              @map_tys[k_ty] = v_ty
+            end
           end
         end
       end
@@ -856,7 +861,7 @@ module TypeProf
     include Utils::StructuralEquality
 
     def screen_name(iseq, scratch)
-      fargs_str = "("
+      fargs_str = +"("
       sig_help = {}
       add_farg = -> farg, name, help: false, key: sig_help.size do
         name = "`#{ name }`" if RBS::Parser::KEYWORDS.key?(name.to_s)
@@ -912,11 +917,11 @@ module TypeProf
 
       fargs_str << ")"
 
-      fargs_str = "" if fargs_str == "()"
+      fargs_str = +"" if fargs_str == "()"
 
       # Dirty Hack: Stop the iteration at most once!
       # I'll remove this hack if RBS removes the limitation of nesting blocks
-      return fargs_str, sig_help if caller_locations.any? {|frame| frame.label == "show_block_signature" }
+      return fargs_str, sig_help if caller_locations.any? {|frame| frame.label =~ /\bshow_block_signature\z/ }
 
       optional = false
       blks = []

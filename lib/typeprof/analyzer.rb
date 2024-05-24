@@ -549,12 +549,27 @@ module TypeProf
       if klass == Type.any
         "???"
       else
-        path = @class_defs[klass.idx].name
+        class_def = @class_defs[klass.idx]
+        path = class_def.name
         if @namespace
+          # Find index where namespace and path don't match anymore
           i = 0
           i += 1 while @namespace[i] && @namespace[i] == path[i]
           if path[i]
-            path[i..].join("::")
+            parts = path[i..]
+
+            # Sometimes stripping off matching parts of the namespace can lead to matching the wrong
+            # class so we check here and fully qualify in a case of a mismatch
+            mismatched = (0..i).any? do |j|
+              search_path = @namespace[0..j] + parts
+              found = @class_defs.map { |(_, cd)| cd }.find { |cd| cd.name == search_path }
+              found && found != class_def
+            end
+
+            # Use the full path and add an empty field to cause leading ::
+            parts = [""] + path if mismatched
+
+            parts.join("::")
           else
             path.last.to_s
           end
@@ -1374,7 +1389,7 @@ module TypeProf
         obj, = operands
         env, ty = localize_type(Type.guess_literal_type(obj), env, ep)
         env = env.push(ty)
-      when :putstring
+      when :putstring, :putchilledstring
         str, = operands
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
         env = env.push(ty)
@@ -2137,7 +2152,7 @@ module TypeProf
           end
         end
         return
-      when :concatarray
+      when :concatarray, :concattoarray
         env, (ary1, ary2) = env.pop(2)
         if ary1.is_a?(Type::Local) && ary1.kind == Type::Array
           elems1 = get_container_elem_types(env, ep, ary1.id)
@@ -2155,6 +2170,20 @@ module TypeProf
           ty = Type::Array.new(Type::Array::Elements.new([], Type.any), Type::Instance.new(Type::Builtin[:ary]))
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
+        end
+      when :pushtoarray
+        num, = operands
+        env, (ary, ty, *tys) = env.pop(num + 1)
+        if ary.is_a?(Type::Local) && ary.kind == Type::Array
+          tys.each {|ty0| ty = ty.union(ty0) }
+          elems = get_container_elem_types(env, ep, ary.id)
+          elems = Type::Array::Elements.new([], elems.squash.union(ty))
+          env = update_container_elem_types(env, ep, ary.id, ary.base_type) { elems }
+          env = env.push(ary)
+        else
+          elems = Type::Array::Elements.new([], Type.any)
+          env = update_container_elem_types(env, ep, ary.id, ary.base_type) { elems }
+          env = env.push(ary)
         end
 
       when :checktype

@@ -6,16 +6,7 @@ module TypeProf
       # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
       VM_ENV_DATA_SIZE = 3
       # Check if Ruby 3.1 or later
-      RICH_AST = begin
-                  old_verbose = $VERBOSE
-                  $VERBOSE = nil # get rid of warning
-                  RubyVM::AbstractSyntaxTree.parse("1", keep_script_lines: true).node_id
-                  true
-                rescue
-                  false
-                ensure
-                  $VERBOSE = old_verbose
-                end
+      RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("_", keep_script_lines: true).node_id; true; rescue; false; end
     end
 
     FileInfo = Struct.new(
@@ -285,7 +276,7 @@ module TypeProf
               misc[:def_node_id] = node_id
             end
           end
-          ninsns << Insn.new(insn, operands, lineno, code_range, nil)
+          ninsns << i = Insn.new(insn, operands, lineno, code_range, nil)
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -732,7 +723,7 @@ module TypeProf
 
       case insn.insn
       when :putspecialobject, :putnil, :putobject, :duparray, :putstring,
-           :putself
+           :putchilledstring, :putself
         sp += 1
       when :newarray, :newarraykwsplat, :newhash, :concatstrings
         len, = operands
@@ -849,8 +840,13 @@ module TypeProf
         sp -= 1
         return nil if sp <= 0
         sp += num + (splat ? 1 : 0)
-      when :concatarray
+      when :concatarray, :concattoarray
         sp -= 2
+        return nil if sp <= 0
+        sp += 1
+      when :pushtoarray
+        num, = operands
+        sp -= num + 1
         return nil if sp <= 0
         sp += 1
       when :checktype

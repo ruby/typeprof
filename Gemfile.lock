@@ -1,17 +1,19 @@
 PATH
   remote: .
   specs:
-    typeprof (0.21.7)
+    typeprof (0.21.11)
       rbs (>= 1.8.1)
 
 GEM
   remote: https://rubygems.org/
   specs:
+    abbrev (0.1.2)
     coverage-helpers (1.0.0)
     docile (1.4.0)
     power_assert (2.0.1)
     rake (13.0.1)
-    rbs (3.0.2)
+    rbs (3.4.4)
+      abbrev
     simplecov (0.21.2)
       docile (~> 1.1)
       simplecov-html (~> 0.11)

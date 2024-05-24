@@ -1,0 +1,7 @@
+class Foo
+end
+
+class Bar
+  class Foo < Foo
+  end
+end

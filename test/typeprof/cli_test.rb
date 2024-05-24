@@ -7,7 +7,7 @@ module TypeProf
       rb_file = File.join(__dir__, "../../smoke/simple.rb")
       rb_files = [rb_file, rb_file]
       rbs_files = []
-      output = StringIO.new("")
+      output = StringIO.new(+"")
       options = {}
       options[:show_untyped] = true
       options[:show_errors] = true
@@ -37,7 +37,7 @@ end
       rb_file = File.join(__dir__, "../../smoke/any1.rb")
       rb_files = [rb_file]
       rbs_files = []
-      output = StringIO.new("")
+      output = StringIO.new(+"")
       options = {}
       options[:exclude_untyped] = true
       options[:show_untyped] = true
@@ -67,7 +67,7 @@ end
       rb_file = File.join(__dir__, "../../smoke/simple.rb")
       rb_files = [rb_file]
       rbs_files = [["test.rbs", "class Bar < Foo\nend"]]
-      output = StringIO.new("")
+      output = StringIO.new(+"")
       options = {}
       options[:show_untyped] = true
       options[:show_errors] = true
