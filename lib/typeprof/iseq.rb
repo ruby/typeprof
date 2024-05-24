@@ -6,7 +6,7 @@ module TypeProf
       # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
       VM_ENV_DATA_SIZE = 3
       # Check if Ruby 3.1 or later
-      RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("1", keep_script_lines: true).node_id; true; rescue; false; end
+      RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("_", keep_script_lines: true).node_id; true; rescue; false; end
     end
 
     FileInfo = Struct.new(
