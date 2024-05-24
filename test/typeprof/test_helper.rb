@@ -53,9 +53,9 @@ module TypeProf
       dir = File.join(__dir__, "../../testbed/", dir)
       unless File.directory?(dir)
         Dir.mkdir(dir)
-        system("git", "init", "-b", "master", chdir: dir, exception: true)
+        system("git", "init", "-q", "-b", "master", chdir: dir, exception: true)
         system("git", "remote", "add", "origin", github_repo_url, chdir: dir, exception: true)
-        system("git", "fetch", "origin", revision, chdir: dir, exception: true)
+        system("git", "fetch", "-q", "origin", revision, chdir: dir, exception: true)
       end
       system("git", "reset", "--quiet", "--hard", revision, chdir: dir, exception: true)
 
