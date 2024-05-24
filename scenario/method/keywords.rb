@@ -27,3 +27,13 @@ end
 class Object
   def foo: (y: untyped, ?x: Integer) -> Integer
 end
+
+## update
+def foo(**kw)
+  kw
+end
+
+## assert
+class Object
+  def foo: (**untyped) -> untyped
+end

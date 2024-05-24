@@ -80,15 +80,10 @@ module TypeProf::Core
         end
       end
 
-      if false
-      rest_keywords = nil
-      if args[8]
-        raise unless args[8].type == :DVAR
-        rest_keywords = args[8].children[0]
+      if raw_args.keyword_rest
+        rest_keywords = raw_args.keyword_rest.name
       end
 
-      block = args[9]
-      end
       block = raw_args.block.name if raw_args.block
 
       {
