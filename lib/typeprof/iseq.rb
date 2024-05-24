@@ -1,11 +1,13 @@
 module TypeProf
   class ISeq
-    # https://github.com/ruby/ruby/pull/4468
-    CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
-    # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
-    VM_ENV_DATA_SIZE = 3
-    # Check if Ruby 3.1 or later
-    RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("_", keep_script_lines: true).node_id; true; rescue; false; end
+    if defined?(RubyVM::InstructionSequence)
+      # https://github.com/ruby/ruby/pull/4468
+      CASE_WHEN_CHECKMATCH = RubyVM::InstructionSequence.compile("case 1; when Integer; end").to_a.last.any? {|insn,| insn == :checkmatch }
+      # https://github.com/ruby/ruby/blob/v3_0_2/vm_core.h#L1206
+      VM_ENV_DATA_SIZE = 3
+      # Check if Ruby 3.1 or later
+      RICH_AST = begin RubyVM::AbstractSyntaxTree.parse("_", keep_script_lines: true).node_id; true; rescue; false; end
+    end
 
     FileInfo = Struct.new(
       :node_id2node,
@@ -274,7 +276,7 @@ module TypeProf
               misc[:def_node_id] = node_id
             end
           end
-          ninsns << Insn.new(insn, operands, lineno, code_range, nil)
+          ninsns << i = Insn.new(insn, operands, lineno, code_range, nil)
         else
           raise "unknown iseq entry: #{ e }"
         end
@@ -447,6 +449,11 @@ module TypeProf
           insn.insn, insn.operands = :branch, [:nil] + insn.operands
         when :getblockparam, :getblockparamproxy
           insn.insn = :getlocal
+        when :getglobal
+          if insn.operands == [:$typeprof]
+            insn.insn = :putobject
+            insn.operands = [true]
+          end
         end
       end
     end
@@ -687,6 +694,27 @@ module TypeProf
           @insns[i + 1] = Insn.new(:getlocal_branch, [getlocal_operands, branch_operands])
         end
       end
+
+      # find a pattern: putobject, branch
+      (@insns.size - 1).times do |i|
+        next if branch_targets[i + 1]
+        insn0 = @insns[i]
+        insn1 = @insns[i + 1]
+        if insn0.insn == :putobject && insn1.insn == :branch
+          putobject_operands = insn0.operands
+          branch_operands = insn1.operands
+          obj = putobject_operands[0]
+          branch_type = branch_operands[0]
+          branch_target = branch_operands[1]
+          case branch_type
+          when :if     then jump = !!obj
+          when :unless then jump = !obj
+          when :nil    then jump = obj == nil
+          end
+          @insns[i    ] = Insn.new(:nop, [])
+          @insns[i + 1] = jump ? Insn.new(:jump, [branch_target]) : Insn.new(:nop, [])
+        end
+      end
     end
 
     def check_send_branch(sp, j)
@@ -695,7 +723,7 @@ module TypeProf
 
       case insn.insn
       when :putspecialobject, :putnil, :putobject, :duparray, :putstring,
-           :putself
+           :putchilledstring, :putself
         sp += 1
       when :newarray, :newarraykwsplat, :newhash, :concatstrings
         len, = operands
@@ -812,8 +840,13 @@ module TypeProf
         sp -= 1
         return nil if sp <= 0
         sp += num + (splat ? 1 : 0)
-      when :concatarray
+      when :concatarray, :concattoarray
         sp -= 2
+        return nil if sp <= 0
+        sp += 1
+      when :pushtoarray
+        num, = operands
+        sp -= num + 1
         return nil if sp <= 0
         sp += 1
       when :checktype

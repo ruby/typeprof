@@ -6,8 +6,13 @@ module TypeProf
       @repo = RBS::Repository.new
       collection_path = Config.current.collection_path
       if collection_path&.exist?
-        collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
-        @repo.add(collection_lock.repo_path)
+        lock_path = RBS::Collection::Config.to_lockfile_path(collection_path)
+        if lock_path.exist?
+          collection_lock = RBS::Collection::Config.from_path(lock_path)
+          @repo.add(collection_lock.repo_path)
+        else
+          raise "Please execute 'rbs collection install'"
+        end
       end
       @env, @loaded_gems, @builtin_env_json = RBSReader.get_builtin_env
     end
@@ -23,9 +28,14 @@ module TypeProf
         # TODO: invalidate this cache when rbs_collection.yml was changed
         collection_path = Config.current.collection_path
         if collection_path&.exist?
-          collection_lock = RBS::Collection::Config.lockfile_of(collection_path)
-          collection_lock.gems.each {|gem| @loaded_gems << gem["name"] }
-          loader.add_collection(collection_lock)
+          lock_path = RBS::Collection::Config.to_lockfile_path(collection_path)
+          if lock_path.exist?
+            collection_lock = RBS::Collection::Config::Lockfile.from_lockfile(lockfile_path: lock_path, data: YAML.load_file(lock_path.to_s))
+            collection_lock.gems.each_value {|gem| @loaded_gems << gem[:name] }
+            loader.add_collection(collection_lock)
+          else
+            raise "Please execute 'rbs collection install'"
+          end
         end
 
         new_decls = loader.load(env: @builtin_env).map {|decl,| decl }
@@ -77,19 +87,37 @@ module TypeProf
     def load_rbs_string(name, content)
       buffer = RBS::Buffer.new(name: name, content: content)
       new_decls = []
-      RBS::Parser.parse_signature(buffer).each do |decl|
-        @env << decl
-        new_decls << decl
+      ret = RBS::Parser.parse_signature(buffer)
+      if ret[0].is_a?(RBS::Buffer)
+        # rbs 3.0
+        buffer, directives, decls = ret
+        @env.add_signature(buffer: buffer, directives: directives, decls: decls)
+        new_decls.concat(decls)
+      else
+        ret.each do |decl|
+          @env << decl
+          new_decls << decl
+        end
       end
       RBSReader.load_rbs(@env, new_decls)
     end
 
     def self.load_rbs(env, new_decls)
       all_env = env.resolve_type_names
-      resolver = RBS::TypeNameResolver.from_env(all_env)
       cur_env = RBS::Environment.new
-      new_decls.each do |decl|
-        cur_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
+      if defined?(RBS::TypeNameResolver)
+        resolver = RBS::TypeNameResolver.from_env(all_env)
+        new_decls.each do |decl|
+          cur_env << env.resolve_declaration(resolver, decl, outer: [], prefix: RBS::Namespace.root)
+        end
+      else
+        resolver = RBS::Resolver::TypeNameResolver.new(all_env)
+        table = RBS::Environment::UseMap::Table.new()
+        table.compute_children
+        map = RBS::Environment::UseMap.new(table: table)
+        new_decls.each do |decl|
+          cur_env << s = env.resolve_declaration(resolver, map, decl, outer: [], prefix: RBS::Namespace.root)
+        end
       end
 
       RBS2JSON.new(all_env, cur_env).dump_json
@@ -134,6 +162,9 @@ module TypeProf
       gvars
     end
 
+    AliasDecl = defined?(RBS::AST::Declarations::Alias) ? RBS::AST::Declarations::Alias : RBS::AST::Declarations::AliasDecl
+    TypeAlias = defined?(RBS::AST::Declarations::TypeAlias) ? RBS::AST::Declarations::TypeAlias : nil
+
     def conv_classes
       json = {}
 
@@ -170,7 +201,12 @@ module TypeProf
             when RBS::AST::Members::MethodDefinition
               name = member.name
 
-              method_types = member.types.map do |method_type|
+              if member.respond_to?(:overloads)
+                types = member.overloads.map {|overload| overload.method_type }
+              else
+                types = member.types
+              end
+              method_types = types.map do |method_type|
                 case method_type
                 when RBS::MethodType then method_type
                 when :super then raise NotImplementedError
@@ -180,7 +216,7 @@ module TypeProf
               method_def = conv_method_def(method_types, visibility)
               rbs_source = [
                 (member.kind == :singleton ? "self." : "") + member.name.to_s,
-                member.types.map {|type| type.location.source },
+                types.map {|type| type.location.source },
                 [member.location.name, CodeRange.from_rbs(member.location)],
               ]
               if member.instance?
@@ -260,9 +296,10 @@ module TypeProf
 
             # The following declarations are ignoreable because they are handled in other level
             when RBS::AST::Declarations::Constant
-            when RBS::AST::Declarations::Alias # type alias
+            when AliasDecl # type alias
             when RBS::AST::Declarations::Class, RBS::AST::Declarations::Module
             when RBS::AST::Declarations::Interface
+            when TypeAlias
 
             else
               warn "Importing #{ member.class.name } is not supported yet"
@@ -487,7 +524,7 @@ module TypeProf
         else
           begin
             @alias_resolution_stack[ty.name] = true
-            alias_decl = @all_env.alias_decls[ty.name]
+            alias_decl = (@all_env.respond_to?(:alias_decls) ? @all_env.alias_decls : @all_env.type_alias_decls)[ty.name]
             alias_decl ? conv_type(alias_decl.decl.type) : [:any]
           ensure
             @alias_resolution_stack.delete(ty.name)
@@ -564,7 +601,14 @@ module TypeProf
         members = cdef[:members]
 
         name = classpath.last
-        superclass = path_to_klass(superclass) if superclass
+        if superclass
+          if superclass == classpath
+            # Remove the second to last element so that lookup happens in the parent
+            superclass = superclass.dup
+            superclass.delete_at(-2)
+          end
+          superclass = path_to_klass(superclass)
+        end
         base_klass = path_to_klass(classpath[0..-2])
 
         klass, = @scratch.get_constant(base_klass, name)

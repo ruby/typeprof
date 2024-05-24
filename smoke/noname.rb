@@ -5,5 +5,5 @@ __END__
 # Classes
 class Object
   private
-  def foo: (*untyped noname_2) -> nil
+  def foo: (*untyped noname) -> nil
 end

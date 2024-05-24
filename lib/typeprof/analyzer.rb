@@ -549,12 +549,27 @@ module TypeProf
       if klass == Type.any
         "???"
       else
-        path = @class_defs[klass.idx].name
+        class_def = @class_defs[klass.idx]
+        path = class_def.name
         if @namespace
+          # Find index where namespace and path don't match anymore
           i = 0
           i += 1 while @namespace[i] && @namespace[i] == path[i]
           if path[i]
-            path[i..].join("::")
+            parts = path[i..]
+
+            # Sometimes stripping off matching parts of the namespace can lead to matching the wrong
+            # class so we check here and fully qualify in a case of a mismatch
+            mismatched = (0..i).any? do |j|
+              search_path = @namespace[0..j] + parts
+              found = @class_defs.map { |(_, cd)| cd }.find { |cd| cd.name == search_path }
+              found && found != class_def
+            end
+
+            # Use the full path and add an empty field to cause leading ::
+            parts = [""] + path if mismatched
+
+            parts.join("::")
           else
             path.last.to_s
           end
@@ -1374,7 +1389,7 @@ module TypeProf
         obj, = operands
         env, ty = localize_type(Type.guess_literal_type(obj), env, ep)
         env = env.push(ty)
-      when :putstring
+      when :putstring, :putchilledstring
         str, = operands
         ty = Type::Literal.new(str, Type::Instance.new(Type::Builtin[:str]))
         env = env.push(ty)
@@ -1997,7 +2012,8 @@ module TypeProf
             env = env.push(Type.any) # or String | NilClass only?
           when 1 # VM_SVAR_BACKREF ($~)
             merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:matchdata])))
-            merge_env(ep.next, env.push(Type.nil))
+            # tentatively disabled; it is too conservative
+            #merge_env(ep.next, env.push(Type.nil))
             return
           else # flip-flop
             env = env.push(Type.bool)
@@ -2005,7 +2021,8 @@ module TypeProf
         else
           # NTH_REF ($1, $2, ...) / BACK_REF ($&, $+, ...)
           merge_env(ep.next, env.push(Type::Instance.new(Type::Builtin[:str])))
-          merge_env(ep.next, env.push(Type.nil))
+          # tentatively disabled; it is too conservative
+          #merge_env(ep.next, env.push(Type.nil))
           return
         end
       when :setspecial
@@ -2135,7 +2152,7 @@ module TypeProf
           end
         end
         return
-      when :concatarray
+      when :concatarray, :concattoarray
         env, (ary1, ary2) = env.pop(2)
         if ary1.is_a?(Type::Local) && ary1.kind == Type::Array
           elems1 = get_container_elem_types(env, ep, ary1.id)
@@ -2153,6 +2170,20 @@ module TypeProf
           ty = Type::Array.new(Type::Array::Elements.new([], Type.any), Type::Instance.new(Type::Builtin[:ary]))
           env, ty = localize_type(ty, env, ep)
           env = env.push(ty)
+        end
+      when :pushtoarray
+        num, = operands
+        env, (ary, ty, *tys) = env.pop(num + 1)
+        if ary.is_a?(Type::Local) && ary.kind == Type::Array
+          tys.each {|ty0| ty = ty.union(ty0) }
+          elems = get_container_elem_types(env, ep, ary.id)
+          elems = Type::Array::Elements.new([], elems.squash.union(ty))
+          env = update_container_elem_types(env, ep, ary.id, ary.base_type) { elems }
+          env = env.push(ary)
+        else
+          elems = Type::Array::Elements.new([], Type.any)
+          env = update_container_elem_types(env, ep, ary.id, ary.base_type) { elems }
+          env = env.push(ary)
         end
 
       when :checktype
@@ -2229,6 +2260,34 @@ module TypeProf
       merge_env(ep.next, env)
     end
 
+    private def ruby_3_3_keywords?
+      @ruby_3_3_keywords ||=
+        RubyVM::InstructionSequence.compile("foo(*a, **b)").to_a.last[-2][1][:orig_argc] == 2
+    end
+
+    private def type_to_keywords(ty, ep)
+      case ty
+      when Type::Hash
+        ty.elems.to_keywords
+      when Type::Union
+        hash_elems = nil
+        ty.elems&.each do |(container_kind, base_type), elems|
+          if container_kind == Type::Hash
+            elems.to_keywords
+            hash_elems = hash_elems ? hash_elems.union(elems) : elems
+          end
+        end
+        if hash_elems
+          hash_elems.to_keywords
+        else
+          { nil => Type.any }
+        end
+      else
+        warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
+        { nil => Type.any }
+      end
+    end
+
     private def setup_actual_arguments(kind, operands, ep, env)
       opt, blk_iseq = operands
       flags = opt[:flag]
@@ -2243,7 +2302,7 @@ module TypeProf
       _flag_args_fcall   = flags[ 2] != 0
       _flag_args_vcall   = flags[ 3] != 0
       _flag_args_simple  = flags[ 4] != 0 # unused in TP
-      _flag_blockiseq    = flags[ 5] != 0 # unused in VM :-)
+      flags <<= 1 if RUBY_VERSION >= "3.3" # blockiseq flag was removed in 3.3
       flag_args_kwarg    = flags[ 6] != 0
       flag_args_kw_splat = flags[ 7] != 0
       _flag_tailcall     = flags[ 8] != 0
@@ -2282,42 +2341,33 @@ module TypeProf
       blk_ty = new_blk_ty
 
       if flag_args_splat
-        # assert !flag_args_kwarg
-        rest_ty = aargs.last
-        aargs = aargs[0..-2]
-        if flag_args_kw_splat
-          # XXX: The types contained in ActualArguments are expected to be all local types.
-          # This "globalize_type" breaks the invariant, and violates the assertion of Union#globalize that asserts @elems be nil.
-          # To fix this issue fundamentally, ActualArguments should keep all arguments as-is (as like the VM does),
-          # and globalize some types on the on-demand bases.
-          ty = globalize_type(rest_ty, env, ep)
-          if ty.is_a?(Type::Array)
-            _, (ty,) = ty.elems.take_last(1)
-            case ty
-            when Type::Hash
-              kw_tys = ty.elems.to_keywords
-            when Type::Union
-              hash_elems = nil
-              ty.elems&.each do |(container_kind, base_type), elems|
-                if container_kind == Type::Hash
-                  elems.to_keywords
-                  hash_elems = hash_elems ? hash_elems.union(elems) : elems
-                end
-              end
-              if hash_elems
-                kw_tys = hash_elems.to_keywords
-              else
-                kw_tys = { nil => Type.any }
-              end
+        if ruby_3_3_keywords?
+          if flag_args_kw_splat
+            kw_tys = type_to_keywords(globalize_type(aargs[-1], env, ep), ep)
+            aargs = aargs[0..-2]
+          else
+            kw_tys = {}
+          end
+          rest_ty = aargs.last
+          aargs = aargs[0..-2]
+        else
+          rest_ty = aargs.last
+          aargs = aargs[0..-2]
+          if flag_args_kw_splat
+            # XXX: The types contained in ActualArguments are expected to be all local types.
+            # This "globalize_type" breaks the invariant, and violates the assertion of Union#globalize that asserts @elems be nil.
+            # To fix this issue fundamentally, ActualArguments should keep all arguments as-is (as like the VM does),
+            # and globalize some types on the on-demand bases.
+            ty = globalize_type(rest_ty, env, ep)
+            if ty.is_a?(Type::Array)
+              _, (ty,) = ty.elems.take_last(1)
+              kw_tys = type_to_keywords(ty, ep)
             else
-              warn(ep, "non hash is passed to **kwarg?") unless ty == Type.any
-              kw_tys = { nil => Type.any }
+              raise NotImplementedError
             end
           else
-            raise NotImplementedError
+            kw_tys = {}
           end
-        else
-          kw_tys = {}
         end
         aargs = ActualArguments.new(aargs, rest_ty, kw_tys, blk_ty)
       elsif flag_args_kw_splat

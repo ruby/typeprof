@@ -59,10 +59,13 @@ module TypeProf
         else
           if ty2.is_a?(Type::ContainerType)
             # ty2 may have type variables
-            return nil if ty1.class != ty2.class
-            ty1.match?(ty2)
+            if ty1.class == ty2.class
+              ty1.match?(ty2)
+            else
+              Type.match?(ty1, ty2.base_type)
+            end
           elsif ty1.is_a?(Type::ContainerType)
-            nil
+            Type.match?(ty1.base_type, ty2)
           else
             ty1.consistent?(ty2) ? {} : nil
           end
@@ -731,14 +734,19 @@ module TypeProf
 
       def []=(k_ty, v_ty)
         k_ty.each_child_global do |k_ty|
-          # This is a temporal hack to mitigate type explosion
-          k_ty = Type.any if k_ty.is_a?(Type::Array)
-          k_ty = Type.any if k_ty.is_a?(Type::Hash)
-
-          if @map_tys[k_ty]
-            @map_tys[k_ty] = @map_tys[k_ty].union(v_ty)
+          if k_ty.is_a?(Type::Union)
+            # Flatten recursive union
+            self[k_ty] = v_ty
           else
-            @map_tys[k_ty] = v_ty
+            # This is a temporal hack to mitigate type explosion
+            k_ty = Type.any if k_ty.is_a?(Type::Array)
+            k_ty = Type.any if k_ty.is_a?(Type::Hash)
+
+            if @map_tys[k_ty]
+              @map_tys[k_ty] = @map_tys[k_ty].union(v_ty)
+            else
+              @map_tys[k_ty] = v_ty
+            end
           end
         end
       end
@@ -810,7 +818,9 @@ module TypeProf
       when :$0, :$PROGRAM_NAME
         Type::Instance.new(Type::Builtin[:str])
       when :$~
-        Type.optional(Type::Instance.new(Type::Builtin[:matchdata]))
+        # optional type is tentatively disabled; it is too conservative
+        #Type.optional(Type::Instance.new(Type::Builtin[:matchdata]))
+        Type::Instance.new(Type::Builtin[:matchdata])
       when :$., :$$
         Type::Instance.new(Type::Builtin[:int])
       when :$?
@@ -851,11 +861,11 @@ module TypeProf
     include Utils::StructuralEquality
 
     def screen_name(iseq, scratch)
-      fargs_str = "("
+      fargs_str = +"("
       sig_help = {}
       add_farg = -> farg, name, help: false, key: sig_help.size do
         name = "`#{ name }`" if RBS::Parser::KEYWORDS.key?(name.to_s)
-        name = "noname_#{ name }" if name.is_a?(Integer)
+        name = "noname" if name.is_a?(Integer) || name == :"*"
         fargs_str << ", " if fargs_str != "("
         i = fargs_str.size
         fargs_str << (Config.current.options[:show_parameter_names] && name ? "#{ farg } #{ name }" : farg)
@@ -907,11 +917,11 @@ module TypeProf
 
       fargs_str << ")"
 
-      fargs_str = "" if fargs_str == "()"
+      fargs_str = +"" if fargs_str == "()"
 
       # Dirty Hack: Stop the iteration at most once!
       # I'll remove this hack if RBS removes the limitation of nesting blocks
-      return fargs_str, sig_help if caller_locations.any? {|frame| frame.label == "show_block_signature" }
+      return fargs_str, sig_help if caller_locations.any? {|frame| frame.label =~ /\bshow_block_signature\z/ }
 
       optional = false
       blks = []

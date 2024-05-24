@@ -2,7 +2,7 @@
 
 First, try it with an already-configured repository!
 
-1. `rbenv install 3.1.0-dev`
+1. `rbenv install 3.1.0`
 2. `git clone https://github.com/mame/rbswiki`
 3. `cd rbswiki && bundle install`
 4. `rbs collection install`
@@ -16,26 +16,25 @@ If everything goes well, you will see guessed signatures for each method:
 
 ### Troubleshooting
 
-* Make sure that you are using ruby 3.1.0-dev.
+* Make sure that you are using ruby 3.1.0.
 
 ```
 $ ruby -v
-ruby 3.1.0dev (2021-09-28T11:03:54Z master 545e01645f) [x86_64-linux]
+ruby 3.1.0p0 (2021-12-25 revision fb4df44d16) [x86_64-linux]
 ```
 
-* Check if typeprof version is 0.20.0 or later.
+* Check if typeprof version is 0.21.2 or later.
 
 ```
 $ bundle exec typeprof --version
-typeprof 0.20.0
+typeprof 0.21.2
 ```
 
 * Check if TypeProf can analyze `lib/rbswiki/wiki.rb` within one second.
 
 ```
 $ bundle exec typeprof lib/rbswiki/wiki.rb
-warning: rbs collection is experimental, and the behavior may change until RBS v2.0
-# TypeProf 0.20.0
+# TypeProf 0.21.2
 
 # Classes
 module RBSWiki
@@ -57,7 +56,9 @@ module RBSWiki
 
 ### Troubleshooting
 
-*TBD*
+* Note that in bash, `~/.bashrc` and `~/.bash_profile` do not contain scripts that assume that pseudo-TTYs are available (such as the `bind` command).
+  * TypeProf for IDE will run `typeprof --version` at startup to parse STDOUT and make sure the proper version is running.
+  * If the `.bashrc` contains a command that requires a pseudo-TTY, such as the `bind` command, unexpected error messages will be output to STDOUT, and the LSP server will stop because it fails to parse the execution results of the `typeprof` command.
 
 ## Protips, limitation, unimplemented features, ...
 
@@ -78,4 +79,8 @@ TypeProf for IDE is extremely preliminary! Please give it a try with a warm hear
 
 ## How to develop TypeProf for IDE
 
-See `../vscode/development.md`.
+See the [TypeProf VSCode document](https://github.com/ruby/vscode-typeprof/blob/master/development.md).
+
+## See also
+
+* [Live Ruby Type Checking with TypeProf-IDE - Big Nerd Ranch](https://bignerdranch.com/blog/live-ruby-type-checking-with-typeprof-ide/)

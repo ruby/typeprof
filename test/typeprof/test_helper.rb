@@ -24,7 +24,7 @@ module TypeProf
 
       rb_files = [@name]
       rbs_files = [@rbs_path].compact
-      output = StringIO.new("")
+      output = StringIO.new(+"")
       options[:show_untyped] = true unless options.key?(:show_untyped)
       options[:show_errors] = true unless options.key?(:show_errors)
       options[:show_indicator] = false unless options.key?(:show_indicator)
@@ -53,7 +53,7 @@ module TypeProf
       dir = File.join(__dir__, "../../testbed/", dir)
       unless File.directory?(dir)
         Dir.mkdir(dir)
-        system("git", "init", chdir: dir, exception: true)
+        system("git", "init", "-b", "master", chdir: dir, exception: true)
         system("git", "remote", "add", "origin", github_repo_url, chdir: dir, exception: true)
         system("git", "fetch", "origin", revision, chdir: dir, exception: true)
       end

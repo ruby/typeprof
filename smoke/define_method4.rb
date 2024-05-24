@@ -1,3 +1,4 @@
+# RUBY_VERSION >= 3.3
 class Foo
   define_method(:foo) do |*messages, **kw|
     bar(*messages, **kw)
@@ -11,5 +12,5 @@ __END__
 # Classes
 class Foo
 # def foo: () -> NilClass
-  def bar: (*untyped messages, **untyped) -> nil
+  def bar: (*untyped messages, **bot) -> nil
 end

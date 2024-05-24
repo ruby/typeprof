@@ -1,25 +1,42 @@
 name: Ruby
 
-on: [push,pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    #  # This job runs at 00:00 on Friday.
+    - cron: '0 15 * * 5'
 
 jobs:
+  ruby-versions:
+    uses: ruby/actions/.github/workflows/ruby_versions.yml@master
+    with:
+      engine: cruby-truffleruby
+      min_version: 3.0
+
   build:
+    needs: ruby-versions
+    name: build (${{ matrix.ruby }})
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: [2.7, 3.0,head]
+        ruby: ${{ fromJson(needs.ruby-versions.outputs.versions) }}
+        include:
+          - ruby: "3.3"
+            rubyopt: "--enable-frozen-string-literal"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: true
+    - uses: actions/checkout@v4
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: ${{ matrix.ruby-version }}
+        ruby-version: ${{ matrix.ruby }}
     - name: Bundle install
       run: |
         bundle install
+    - run: bundle exec typeprof --version
     - name: Run the test suite
       run: |
-        bundle exec rake TESTOPT=-v
+        bundle exec rake TESTOPT=-v RUBYOPT="${{ matrix.rubyopt }}"
+      if: ${{ !startsWith(matrix.ruby, 'truffle') }}

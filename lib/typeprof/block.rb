@@ -92,7 +92,7 @@ module TypeProf
       aargs = scratch.globalize_type(aargs, caller_env, caller_ep)
       subst = aargs.consistent_with_method_signature?(@msig)
       unless subst
-        scratch.warn(caller_ep, "The arguments is not compatibile to RBS block")
+        scratch.warn(caller_ep, "The arguments is not compatible to RBS block")
       end
       # check?
       #subst = { Type::Var.new(:self) => caller_env.static_env.recv_ty }

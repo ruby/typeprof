@@ -24,7 +24,7 @@ Here is a typical use case:
 $ typeprof sig/app.rbs app.rb -o sig/app.gen.rbs
 ```
 
-Here is a list of currently avaiable options:
+Here is a list of currently available options:
 
 * `-o OUTFILE`: Write the analyze result to OUTFILE instead of standard output
 * `-q`: Hide the progress indicator
@@ -130,7 +130,7 @@ In Ruby semantics, a class object is an instance of the class `Class`, but it is
 This is because, if it is abstracted, TypeProf cannot handle constant references and class methods correctly.
 
 A symbol is an abstract value returned by Symbol literals like `:foo`.
-A symbol object is not abstracted to an instance of the class `Symbol` because its concrete vgalue is often required in many cases, such as keyword argumetns, JSON data keys, the argument of `Module#attr_reader`, etc.
+A symbol object is not abstracted to an instance of the class `Symbol` because its concrete value is often required in many cases, such as keyword arguments, JSON data keys, the argument of `Module#attr_reader`, etc.
 Note that some Symbol objects are handled as instances of the class `Symbol`, for example, the return value of `String#to_sym` and Symbol literals that contains interpolation like `:"foo_#{ x }"`.
 
 `untyped` is an abstract value generated when TypeProf fails to trace values due to analysis limits or restrictions.
@@ -250,7 +250,7 @@ end
 ```
 
 In the above program, neither the method `foo` nor the method `bar` is called.
-TypeProf stub-calls the `bar` with a `untyped` arugment, so you can get the information that an `Integer` is passed to a method `foo`.
+TypeProf stub-calls the `bar` with a `untyped` argument, so you can get the information that an `Integer` is passed to a method `foo`.
 
 However, this feature may slow down the analysis and may also brings many wrong guesses, so we plan to allow a user to enable/disable this feature in the configuration.
 
@@ -275,7 +275,7 @@ Meta programming is only partially supported.
 
 ### Partial RBS specification
 
-Sometimes, TypeProf fails to correctly infer the programer's intent due to theoretical or implementation limitations.
+Sometimes, TypeProf fails to correctly infer the programmer's intent due to theoretical or implementation limitations.
 In such cases, you can manually write a RBS description for some difficult methods to convey your intent to TypeProf.
 
 For example, TypeProf does not handle a overloaded method.
@@ -426,7 +426,7 @@ When a container abstract value is read from an instance variable, an update ope
 Currently, TypeProf has some limitations about container instances (because of performance).
 
 * If you put a container type into a key of hash object, the key is replaced with `untyped`.
-* The maximam depth of nested arrays and hashs is limited to 5.
+* The maximum depth of nested arrays and hashes is limited to 5.
 
 We plan to allow them to be configurable, and relax the depth limitation when RBS is manually speficied (mainly for JSON data).
 

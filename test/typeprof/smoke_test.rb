@@ -8,9 +8,10 @@ module TypeProf
       name = "smoke/" + File.basename(path) 
 
       code, expected = File.read(path).split("__END__\n")
-      if code =~ /\A(?:#.*\n)*# RUBY_VERSION >= (\d+)\.(\d+)$/
+      case code
+      when /\A(?:#.*\n)*# RUBY_VERSION (>=|>|<|<=|==) (\d+)\.(\d+)$/
         major, minor = RUBY_VERSION.split(".")[0, 2].map {|s| s.to_i }
-        next unless ([major, minor] <=> [$1.to_i, $2.to_i]) >= 0
+        next unless ([major, minor] <=> [$2.to_i, $3.to_i]).send($1, 0)
       end
 
       show_errors = true
