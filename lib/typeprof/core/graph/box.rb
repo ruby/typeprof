@@ -487,6 +487,9 @@ module TypeProf::Core
           args << "?#{ name }: #{Type.strip_parens(f_vtx.show)}"
         end
       end
+      if @f_args.rest_keywords
+        args << "**#{ Type.strip_parens(@f_args.rest_keywords.show) }"
+      end
       args = args.join(", ")
       s = args.empty? ? [] : ["(#{ args })"]
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
