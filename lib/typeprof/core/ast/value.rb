@@ -169,6 +169,42 @@ module TypeProf::Core
       end
     end
 
+    class MatchLastLineNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+      end
+
+      def install0(genv) = Source.new(genv.regexp_type)
+    end
+
+    class InterpolatedMatchLastLineNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @parts = []
+        raw_node.parts.each do |raw_part|
+          case raw_part.type
+          when :string_node
+            @parts << AST.create_node(raw_part, lenv)
+          when :embedded_statements_node
+            @parts << AST.create_node(raw_part.statements, lenv)
+          else
+            raise "unknown regexp part: #{ raw_part.type }"
+          end
+        end
+      end
+
+      attr_reader :parts
+
+      def subnodes = { parts: }
+
+      def install0(genv)
+        @parts.each do |subnode|
+          subnode.install(genv)
+        end
+        Source.new(genv.regexp_type)
+      end
+    end
+
     class RangeNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
