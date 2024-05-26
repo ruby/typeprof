@@ -256,5 +256,11 @@ module TypeProf::Core
         Source.new(genv.proc_type)
       end
     end
+
+    class ImaginaryNode < TypeProf::Core::AST::Node
+      def install0(genv)
+        Source.new(genv.complex_type)
+      end
+    end
   end
 end

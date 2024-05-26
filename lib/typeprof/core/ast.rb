@@ -184,6 +184,7 @@ module TypeProf::Core
       when :array_node then ArrayNode.new(raw_node, lenv)
       when :hash_node then HashNode.new(raw_node, lenv)
       when :lambda_node then LambdaNode.new(raw_node, lenv)
+      when :imaginary_node then ImaginaryNode.new(raw_node, lenv)
 
       # misc
       when :defined_node then DefinedNode.new(raw_node, lenv)
