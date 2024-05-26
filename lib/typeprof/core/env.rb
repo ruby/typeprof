@@ -33,6 +33,7 @@ module TypeProf::Core
       @symbol_type = Type::Instance.new(self, resolve_cpath([:Symbol]), [])
       @set_type = Type::Instance.new(self, resolve_cpath([:Set]), [])
       @regexp_type = Type::Instance.new(self, resolve_cpath([:Regexp]), [])
+      @complex_type = Type::Instance.new(self, resolve_cpath([:Complex]), [])
 
       @run_count = 0
     end
@@ -42,7 +43,7 @@ module TypeProf::Core
     attr_reader :mod_object, :mod_ary
     attr_reader :cls_type, :mod_type
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type
-    attr_reader :proc_type, :symbol_type, :set_type, :regexp_type
+    attr_reader :proc_type, :symbol_type, :set_type, :regexp_type, :complex_type
 
     def gen_ary_type(elem_vtx)
       Type::Instance.new(self, @mod_ary, [elem_vtx])
