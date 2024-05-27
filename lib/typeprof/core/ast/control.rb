@@ -157,7 +157,80 @@ module TypeProf::Core
     class UntilNode < LoopNode
     end
 
-    class ForNode < LoopNode
+  # - name: ForNode
+  #   fields:
+  #     - name: index
+  #       type: node
+  #       comment: |
+  #         The index variable for `for` loops.
+
+  #           for i in a end
+  #               ^
+  #     - name: collection
+  #       type: node
+  #       comment: |
+  #         The collection to iterate over.
+
+  #           for i in a end
+  #                    ^
+  #     - name: statements
+  #       type: node?
+  #       kind: StatementsNode
+  #       comment: |
+  #         Represents the body of statements to execute for each iteration of the loop.
+
+  #           for i in a
+  #             foo(i)
+  #             ^^^^^^
+  #           end
+  #     - name: for_keyword_loc
+  #       type: location
+  #       comment: |
+  #         The location of the `for` keyword.
+
+  #           for i in a end
+  #           ^^^
+  #     - name: in_keyword_loc
+  #       type: location
+  #       comment: |
+  #         The location of the `in` keyword.
+
+  #           for i in a end
+  #                 ^^
+  #     - name: do_keyword_loc
+  #       type: location?
+  #       comment: |
+  #         The location of the `do` keyword, if present.
+
+  #           for i in a do end
+  #                     ^^
+  #     - name: end_keyword_loc
+  #       type: location
+  #       comment: |
+  #         The location of the `end` keyword.
+  #           for i in a end
+  #                     ^^^
+  #   comment: |
+  #     Represents the use of the `for` keyword.
+
+  #         for i in a end
+  #         ^^^^^^^^^^^^^^
+
+    class ForNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @body = AST.create_node(raw_node.statements, lenv)
+        @collection = AST.create_node(raw_node.collection, lenv)
+        @index = AST.create_node(raw_node.index, lenv)
+      end
+
+      def subnodes = { } # TODO
+
+      def install0(genv)
+        vars = []
+        @index.modified_vars(@lenv.locals.keys, vars)
+        @body.modified_vars(@lenv.locals.keys, vars)
+      end
     end
 
     class BreakNode < Node
