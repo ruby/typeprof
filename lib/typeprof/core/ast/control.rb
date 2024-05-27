@@ -186,8 +186,16 @@ module TypeProf::Core
     class NextNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        # TODO: next 1, 2
-        @arg = raw_node.arguments ? AST.create_node(raw_node.arguments.arguments.first, lenv) : DummyNilNode.new(code_range, lenv)
+        if raw_node.arguments
+          if raw_node.arguments.arguments.one?
+            @arg = AST.create_node(raw_node.arguments.arguments.first, lenv)
+          else
+            elems = raw_node.arguments.arguments
+            @arg = DummyArrayNode.new(elems, code_range, lenv)
+          end
+        else
+          @arg = DummyNilNode.new(code_range, lenv)
+        end
       end
 
       attr_reader :arg
