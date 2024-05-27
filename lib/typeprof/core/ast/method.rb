@@ -75,19 +75,15 @@ module TypeProf::Core
         when :required_keyword_parameter_node
           req_keywords << kw.name
         when :optional_keyword_parameter_node
-          # TODO: support optional_keyword_parameter_node
+          opt_keywords << kw.name
+          opt_keyword_defaults << AST.create_node(kw.value, lenv)
         end
       end
 
-      if false
-      rest_keywords = nil
-      if args[8]
-        raise unless args[8].type == :DVAR
-        rest_keywords = args[8].children[0]
+      if raw_args.keyword_rest
+        rest_keywords = raw_args.keyword_rest.name
       end
 
-      block = args[9]
-      end
       block = raw_args.block.name if raw_args.block
 
       {
@@ -177,7 +173,6 @@ module TypeProf::Core
         post_positionals:,
         req_keywords:,
         opt_keywords:,
-        opt_keyword_defaults:,
         rest_keywords:,
         block:,
       }

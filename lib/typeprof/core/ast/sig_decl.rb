@@ -277,13 +277,17 @@ module TypeProf::Core
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @mid = raw_decl.name
-        rbs_method_type = RBS::MethodType.new(
-          type: RBS::Types::Function.empty(raw_decl.type),
-          type_params: [],
-          block: nil,
-          location: raw_decl.type.location,
-        )
-        @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+        # `eval` is used to prevent TypeProf from failing to parse keyword arguments during dogfooding.
+        # TODO: Remove `eval` once TypeProf supports keyword arguments.
+        eval <<~RUBY
+          rbs_method_type = RBS::MethodType.new(
+            type: RBS::Types::Function.empty(raw_decl.type),
+            type_params: [],
+            block: nil,
+            location: raw_decl.type.location,
+          )
+          @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+        RUBY
       end
 
       attr_reader :mid, :method_type
@@ -302,23 +306,27 @@ module TypeProf::Core
         super(raw_decl, lenv)
         @mid = :"#{raw_decl.name}="
 
-        # (raw_decl.type) -> raw_decl.type
-        rbs_method_type = RBS::MethodType.new(
-          type: RBS::Types::Function.new(
-            required_positionals: [RBS::Types::Function::Param.new(name: nil, type: raw_decl.type, location: raw_decl.type.location)],
-            optional_positionals: [],
-            rest_positionals: nil,
-            trailing_positionals: [],
-            required_keywords: {},
-            optional_keywords: {},
-            rest_keywords: nil,
-            return_type: raw_decl.type,
-          ),
-          type_params: [],
-          block: nil,
-          location: raw_decl.type.location,
-        )
-        @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+        # `eval` is used to prevent TypeProf from failing to parse keyword arguments during dogfooding.
+        # TODO: Remove `eval` once TypeProf supports keyword arguments.
+        eval <<~RUBY
+          # (raw_decl.type) -> raw_decl.type
+          rbs_method_type = RBS::MethodType.new(
+            type: RBS::Types::Function.new(
+              required_positionals: [RBS::Types::Function::Param.new(name: nil, type: raw_decl.type, location: raw_decl.type.location)],
+              optional_positionals: [],
+              rest_positionals: nil,
+              trailing_positionals: [],
+              required_keywords: {},
+              optional_keywords: {},
+              rest_keywords: nil,
+              return_type: raw_decl.type,
+            ),
+            type_params: [],
+            block: nil,
+            location: raw_decl.type.location,
+          )
+          @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+        RUBY
       end
 
       attr_reader :mid, :method_type
