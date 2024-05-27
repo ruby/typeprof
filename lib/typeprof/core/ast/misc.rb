@@ -98,5 +98,11 @@ module TypeProf::Core
         Source.new(genv.true_type, genv.false_type)
       end
     end
+
+    class SourceEncodingNode < Node
+      def install0(genv)
+        Source.new(Type::Instance.new(genv, genv.resolve_cpath([:Encoding]), []))
+      end
+    end
   end
 end
