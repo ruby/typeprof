@@ -119,6 +119,11 @@ module TypeProf::Core
         rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
         InstanceVariableWriteNode.new(raw_node, rhs, lenv)
       #TODO: when :class_variable_read_node...
+      when :class_variable_read_node
+        ClassVariableReadNode.new(raw_node, lenv)
+      when :class_variable_write_node
+        ClassVariableWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+
       when :global_variable_read_node
         GlobalVariableReadNode.new(raw_node, lenv)
       when :global_variable_write_node

@@ -27,11 +27,13 @@ module TypeProf::Core
       @consts = {}
       @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
+      @cvars = { true => {}, false => {} }
       @type_aliases = {}
 
       @static_reads = {}
       @subclass_checks = Set[]
       @ivar_reads = Set[] # should be handled in @ivars ??
+      @cvar_reads = Set[]
     end
 
     attr_reader :cpath
@@ -52,11 +54,13 @@ module TypeProf::Core
     attr_reader :consts
     attr_reader :methods
     attr_reader :ivars
+    attr_reader :cvars
     attr_reader :type_aliases
 
     attr_reader :static_reads
     attr_reader :subclass_checks
     attr_reader :ivar_reads
+    attr_reader :cvar_reads
 
     def module?
       !@superclass && !@basic_object
@@ -350,6 +354,7 @@ module TypeProf::Core
         end
       end
       @ivar_reads.each {|ivar_read| genv.add_run(ivar_read) }
+      @cvar_reads.each {|cvar_read| genv.add_run(cvar_read) }
     end
 
     def each_descendant(base_mod = nil, &blk)
@@ -370,6 +375,10 @@ module TypeProf::Core
 
     def get_ivar(singleton, name)
       @ivars[singleton][name] ||= ValueEntity.new
+    end
+
+    def get_cvar(singleton, name)
+      @cvars[singleton][name] ||= ValueEntity.new
     end
 
     def get_type_alias(name)

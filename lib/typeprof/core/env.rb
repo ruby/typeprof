@@ -216,6 +216,12 @@ module TypeProf::Core
       mod.get_ivar(singleton, name)
     end
 
+    def resolve_cvar(cpath, singleton, name)
+      # TODO: include はあとで考える
+      mod = resolve_cpath(cpath)
+      mod.get_cvar(singleton, name)
+    end
+
     def resolve_type_alias(cpath, name)
       # TODO: include はあとで考える
       mod = resolve_cpath(cpath)
