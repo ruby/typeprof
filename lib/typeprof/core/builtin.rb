@@ -9,14 +9,16 @@ module TypeProf::Core
       recv = Source.new(ty)
       changes.add_method_call_box(@genv, recv, :initialize, a_args, false)
       changes.add_edge(@genv, Source.new(ty), ret)
+      true
     end
 
     def proc_call(changes, node, ty, a_args, ret)
       case ty
       when Type::Proc
         ty.block.accept_args(@genv, changes, a_args.positionals, ret, false)
+        true
       else
-        puts "??? proc_call"
+        false
       end
     end
 
@@ -32,11 +34,12 @@ module TypeProf::Core
           end
           vtx = ty.get_elem(@genv, idx)
           changes.add_edge(@genv, vtx, ret)
+          true
         else
-          #puts "??? array_aref"
+          false
         end
       else
-        #puts "??? array_aref"
+        false
       end
     end
 
@@ -51,11 +54,12 @@ module TypeProf::Core
           else
             changes.add_edge(@genv, val, ty.get_elem(@genv))
           end
+          true
         else
-          puts "??? array_aset #{ ty.class }"
+          false
         end
       else
-        puts "??? array_aset #{ a_args.positionals.size }"
+        false
       end
     end
 
@@ -68,7 +72,7 @@ module TypeProf::Core
         recv = Source.new(ty)
         changes.add_edge(@genv, recv, ret)
       else
-        puts "??? array_aset #{ a_args.positionals.size }"
+        false
       end
     end
 
@@ -79,11 +83,12 @@ module TypeProf::Core
           idx = node.positional_args[0]
           idx = idx.is_a?(AST::SymbolNode) ? idx.lit : nil
           changes.add_edge(@genv, ty.get_value(idx), ret)
+          true
         else
-          #puts "??? hash_aref 1"
+          false
         end
       else
-        puts "??? hash_aref 2"
+        false
       end
     end
 
@@ -102,11 +107,12 @@ module TypeProf::Core
             changes.add_edge(@genv, val, ty.get_value)
           end
           changes.add_edge(@genv, val, ret)
+          true
         else
-          #puts "??? hash_aset 1 #{ ty.object_id } #{ ty.inspect }"
+          false
         end
       else
-        puts "??? hash_aset 2"
+        false
       end
     end
 
