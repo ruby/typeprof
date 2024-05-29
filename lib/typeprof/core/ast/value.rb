@@ -174,7 +174,7 @@ module TypeProf::Core
         super(raw_node, lenv)
       end
 
-      def install0(genv) = Source.new(genv.regexp_type)
+      def install0(genv) = Source.new(genv.true_type, genv.false_type)
     end
 
     class InterpolatedMatchLastLineNode < Node
@@ -201,7 +201,7 @@ module TypeProf::Core
         @parts.each do |subnode|
           subnode.install(genv)
         end
-        Source.new(genv.regexp_type)
+        Source.new(genv.true_type, genv.false_type)
       end
     end
 
