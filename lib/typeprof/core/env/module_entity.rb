@@ -27,7 +27,7 @@ module TypeProf::Core
       @consts = {}
       @methods = { true => {}, false => {} }
       @ivars = { true => {}, false => {} }
-      @cvars = { true => {}, false => {} }
+      @cvars = {}
       @type_aliases = {}
 
       @static_reads = {}
@@ -377,8 +377,8 @@ module TypeProf::Core
       @ivars[singleton][name] ||= ValueEntity.new
     end
 
-    def get_cvar(singleton, name)
-      @cvars[singleton][name] ||= ValueEntity.new
+    def get_cvar(name)
+      @cvars[name] ||= ValueEntity.new
     end
 
     def get_type_alias(name)

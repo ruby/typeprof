@@ -805,10 +805,10 @@ module TypeProf::Core
 
     def run0(genv, changes)
       mod = genv.resolve_cpath(@cpath)
-      cur_cve = mod.get_cvar(@singleton, @name)
+      cur_cve = mod.get_cvar(@name)
       target_vtx = nil
       genv.each_direct_superclass(mod, @singleton) do |mod, singleton|
-        cve = mod.get_cvar(singleton, @name)
+        cve = mod.get_cvar(@name)
         if cve.exist?
           target_vtx = cve.vtx
         end
