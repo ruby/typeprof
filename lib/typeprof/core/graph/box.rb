@@ -564,9 +564,8 @@ module TypeProf::Core
             changes.add_diagnostic(meth, "undefined method: #{ orig_ty.show }##{ mid }")
           end
           error_count += 1
-        elsif me.builtin
-          # TODO: block? diagnostics?
-          me.builtin[changes, @node, orig_ty, @a_args, @ret]
+        elsif me.builtin && me.builtin[changes, @node, orig_ty, @a_args, @ret]
+          # do nothing
         elsif !me.decls.empty?
           # TODO: support "| ..."
           me.decls.each do |mdecl|
