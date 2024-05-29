@@ -274,8 +274,16 @@ module TypeProf::Core
     class ReturnNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        # TODO: return x, y
-        @arg = raw_node.arguments ? AST.create_node(raw_node.arguments.arguments.first, lenv) : DummyNilNode.new(code_range, lenv)
+        if raw_node.arguments
+          elems = raw_node.arguments.arguments
+          if elems.one?
+            @arg = AST.create_node(elems.first, lenv)
+          else
+            @arg = DummyArrayNode.new(elems, code_range, lenv)
+          end
+        else
+          @arg = DummyNilNode.new(code_range, lenv)
+        end
       end
 
       attr_reader :arg
