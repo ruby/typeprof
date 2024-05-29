@@ -6,16 +6,24 @@ def check2
   /foo#{ 1 }bar/
 end
 def check3
-  if /foo/ then end
+  if /foo/
+    :then
+  else
+    :else
+  end
 end
 def check4
-  if /foo#{ 1 }/ then end
+  if /foo#{ 1 }/
+    :then
+  else
+    :else
+  end
 end
 
 ## assert
 class Object
   def check1: -> Regexp
   def check2: -> Regexp
-  def check3: -> nil
-  def check4: -> nil
+  def check3: -> (:else | :then)
+  def check4: -> (:else | :then)
 end
