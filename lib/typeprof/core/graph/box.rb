@@ -785,18 +785,17 @@ module TypeProf::Core
   end
 
   class CVarReadBox < Box
-    def initialize(node, genv, cpath, singleton, name)
+    def initialize(node, genv, cpath, name)
       super(node)
       @cpath = cpath
       @name = name
-      @singleton = singleton
       genv.resolve_cpath(cpath).cvar_reads << self
       @proxy = Vertex.new("cvar", node)
       @ret = Vertex.new("cvar", node)
       genv.add_run(self)
     end
 
-    attr_reader :node, :const_read, :ret, :singleton
+    attr_reader :node, :const_read, :ret
 
     def destroy(genv)
       genv.resolve_cpath(@cpath).cvar_reads.delete(self)
@@ -807,7 +806,7 @@ module TypeProf::Core
       mod = genv.resolve_cpath(@cpath)
       cur_cve = mod.get_cvar(@name)
       target_vtx = nil
-      genv.each_direct_superclass(mod, @singleton) do |mod, singleton|
+      genv.each_direct_superclass(mod, nil) do |mod, _|
         cve = mod.get_cvar(@name)
         if cve.exist?
           target_vtx = cve.vtx

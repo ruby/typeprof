@@ -216,7 +216,7 @@ module TypeProf::Core
       mod.get_ivar(singleton, name)
     end
 
-    def resolve_cvar(cpath, singleton, name)
+    def resolve_cvar(cpath, name)
       # TODO: include はあとで考える
       mod = resolve_cpath(cpath)
       mod.get_cvar(name)

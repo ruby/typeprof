@@ -196,26 +196,26 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        mod = genv.resolve_cvar(@lenv.cref.cpath, @lenv.cref.singleton, @var)
+        mod = genv.resolve_cvar(@lenv.cref.cpath, @var)
         mod.add_def(self)
         mod
       end
 
       def define_copy(genv)
-        mod = genv.resolve_cvar(@lenv.cref.cpath, @lenv.cref.singleton, @var)
+        mod = genv.resolve_cvar(@lenv.cref.cpath, @var)
         mod.add_def(self)
         mod.remove_def(@prev_node)
         super(genv)
       end
 
       def undefine0(genv)
-        mod = genv.resolve_cvar(@lenv.cref.cpath, @lenv.cref.singleton, @var)
+        mod = genv.resolve_cvar(@lenv.cref.cpath, @var)
         mod.remove_def(self)
         @rhs.undefine(genv) if @rhs
       end
 
       def install0(genv)
-        @changes.add_cvar_read_box(genv, @lenv.cref.cpath, @lenv.cref.singleton, @var)
+        @changes.add_cvar_read_box(genv, @lenv.cref.cpath, @var)
         val = @rhs.install(genv)
         val = val.new_vertex(genv, "casgn", self) # avoid multi-edge from val to static_ret.vtx
         @changes.add_edge(genv, val, @static_ret.vtx)
@@ -239,7 +239,7 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        box = @changes.add_cvar_read_box(genv, lenv.cref.cpath, lenv.cref.singleton, @var)
+        box = @changes.add_cvar_read_box(genv, lenv.cref.cpath, @var)
         @lenv.apply_read_filter(genv, self, @var, box.ret)
       end
 
