@@ -111,6 +111,12 @@ module TypeProf::Core
       @new_boxes[key] = IVarReadBox.new(@node, genv, cpath, singleton, name)
     end
 
+    def add_cvar_read_box(genv, cpath, name)
+      key = [:cvar_read, cpath, name]
+      return if @new_boxes[key]
+      @new_boxes[key] = CVarReadBox.new(@node, genv, cpath, name)
+    end
+
     def add_type_read_box(genv, type)
       key = [:type_read, type]
       return if @new_boxes[key]

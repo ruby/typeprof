@@ -180,5 +180,72 @@ module TypeProf::Core
         super(pos, &blk)
       end
     end
+
+    class ClassVariableWriteNode < Node
+      def initialize(raw_node, rhs, lenv)
+        super(raw_node, lenv)
+        @var = raw_node.name
+        @var_code_range = TypeProf::CodeRange.from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
+        @rhs = rhs
+      end
+
+      attr_reader :var, :var_code_range, :rhs
+
+      def subnodes = { rhs: }
+      def attrs = { var: }
+
+      def define0(genv)
+        @rhs.define(genv) if @rhs
+        mod = genv.resolve_cvar(@lenv.cref.cpath, @var)
+        mod.add_def(self)
+        mod
+      end
+
+      def define_copy(genv)
+        mod = genv.resolve_cvar(@lenv.cref.cpath, @var)
+        mod.add_def(self)
+        mod.remove_def(@prev_node)
+        super(genv)
+      end
+
+      def undefine0(genv)
+        mod = genv.resolve_cvar(@lenv.cref.cpath, @var)
+        mod.remove_def(self)
+        @rhs.undefine(genv) if @rhs
+      end
+
+      def install0(genv)
+        @changes.add_cvar_read_box(genv, @lenv.cref.cpath, @var)
+        val = @rhs.install(genv)
+        val = val.new_vertex(genv, "casgn", self) # avoid multi-edge from val to static_ret.vtx
+        @changes.add_edge(genv, val, @static_ret.vtx)
+        val
+      end
+
+      def retrieve_at(pos, &blk)
+        yield self if @var_code_range && @var_code_range.include?(pos)
+        super(pos, &blk)
+      end
+    end
+
+    class ClassVariableReadNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @var = raw_node.name
+      end
+
+      attr_reader :var
+
+      def attrs = { var: }
+
+      def install0(genv)
+        box = @changes.add_cvar_read_box(genv, lenv.cref.cpath, @var)
+        @lenv.apply_read_filter(genv, self, @var, box.ret)
+      end
+
+      def retrieve_at(pos)
+        yield self if code_range.include?(pos)
+      end
+    end
   end
 end

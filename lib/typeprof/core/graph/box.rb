@@ -783,6 +783,49 @@ module TypeProf::Core
     end
   end
 
+  class CVarReadBox < Box
+    def initialize(node, genv, cpath, name)
+      super(node)
+      @cpath = cpath
+      @name = name
+      genv.resolve_cpath(cpath).cvar_reads << self
+      @proxy = Vertex.new("cvar", node)
+      @ret = Vertex.new("cvar", node)
+      genv.add_run(self)
+    end
+
+    attr_reader :node, :const_read, :ret
+
+    def destroy(genv)
+      genv.resolve_cpath(@cpath).cvar_reads.delete(self)
+      super(genv)
+    end
+
+    def run0(genv, changes)
+      mod = genv.resolve_cpath(@cpath)
+      cur_cve = mod.get_cvar(@name)
+      target_vtx = nil
+      genv.each_direct_superclass(mod, nil) do |mod, _|
+        cve = mod.get_cvar(@name)
+        if cve.exist?
+          target_vtx = cve.vtx
+        end
+      end
+
+      edges = []
+      if target_vtx
+        if target_vtx != cur_cve.vtx
+          edges << [cur_cve.vtx, @proxy] << [@proxy, target_vtx]
+        end
+        edges << [target_vtx, @ret]
+      end
+
+      edges.each do |src, dst|
+        changes.add_edge(genv, src, dst)
+      end
+    end
+  end
+
   class MAsgnBox < Box
     def initialize(node, genv, rhs, lhss)
       super(node)
