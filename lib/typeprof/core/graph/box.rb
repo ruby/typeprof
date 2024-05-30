@@ -819,8 +819,6 @@ module TypeProf::Core
           edges << [cur_cve.vtx, @proxy] << [@proxy, target_vtx]
         end
         edges << [target_vtx, @ret]
-      else
-        # raise "undefined class variable: #{ @name }"
       end
 
       edges.each do |src, dst|
