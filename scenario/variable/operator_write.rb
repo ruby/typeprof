@@ -4,6 +4,8 @@ $gv += 1
 class C
   D = 0
   D += 1
+  @@cvar = ""
+  @@cvar += "1"
   def get_lv
     lv = 0
     lv += 1
@@ -15,6 +17,11 @@ class C
   end
   def get_iv = @iv
   def get_gv = $gv
+  def set_cv
+    @@cvar = ""
+    @@cvar += "hoge"
+  end
+  def get_cv = @@cvar
   def get_index_asgn
     ary = [0]
     ary[0] += 1
@@ -41,6 +48,8 @@ class C
   def set_iv: -> Integer
   def get_iv: -> Integer
   def get_gv: -> Integer
+  def set_cv: -> String
+  def get_cv: -> String
   def get_index_asgn: -> [Integer]
   def get_attr_asgn: -> Integer
   def test_attr: -> Integer
