@@ -223,6 +223,7 @@ module TypeProf::Core
           end
         end
         CallNode.new(raw_node, lenv)
+      when :keyword_hash_node then KeywordHashNode.new(raw_node, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"

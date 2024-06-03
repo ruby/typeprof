@@ -287,6 +287,46 @@ module TypeProf::Core
       end
     end
 
+    class KeywordHashNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @keys = []
+        @vals = []
+        raw_node.elements.each do |raw_elem|
+          case raw_elem.type
+          when :assoc_node
+            @keys << AST.create_node(raw_elem.key, lenv)
+            @vals << AST.create_node(raw_elem.value, lenv)
+          else
+            raise "unknown hash elem"
+          end
+        end
+      end
+
+      attr_reader :keys, :vals
+
+      def subnodes = { keys:, vals: }
+
+      def install0(genv)
+        unified_key = Vertex.new("keyword-hash-keys-unified", self)
+        unified_val = Vertex.new("keyword-hash-vals-unified", self)
+        literal_pairs = {}
+        @keys.zip(@vals) do |key, val|
+          if key
+            k = key.install(genv).new_vertex(genv, "keyword-hash-key", self)
+            v = val.install(genv).new_vertex(genv, "keyword-hash-val", self)
+            @changes.add_edge(genv, k, unified_key)
+            @changes.add_edge(genv, v, unified_val)
+            literal_pairs[key.lit] = v if key.is_a?(SymbolNode)
+          else
+            _h = val.install(genv)
+            # TODO: if h is a hash, we need to connect its elements to the new hash
+          end
+        end
+        Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
+      end
+    end
+
     class LambdaNode < TypeProf::Core::AST::Node
       def install0(genv)
         Source.new(genv.proc_type)
