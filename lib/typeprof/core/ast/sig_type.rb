@@ -28,9 +28,18 @@ module TypeProf::Core
         end
         param = raw_decl.type.rest_positionals
         @rest_positionals = param ? AST.create_rbs_type(param.type, lenv) : nil
-        #@required_keywords = func.required_keywords
-        #@optional_keywords = func.optional_keywords
-        #@rest_keywords = func.rest_keywords
+
+        @req_keywords = raw_decl.type.required_keywords.to_h do |key, ty|
+          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+          [key, AST.create_rbs_type(ty.type, lenv)]
+        end
+        @opt_keywords = raw_decl.type.optional_keywords.to_h do |key, ty|
+          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+          [key, AST.create_rbs_type(ty.type, lenv)]
+        end
+        param = raw_decl.type.rest_keywords
+        @rest_keywords = param ? AST.create_rbs_type(param.type, lenv) : nil
+
         @return_type = AST.create_rbs_type(raw_decl.type.return_type, lenv)
       end
 
@@ -39,6 +48,9 @@ module TypeProf::Core
       attr_reader :post_positionals
       attr_reader :opt_positionals
       attr_reader :rest_positionals
+      attr_reader :req_keywords
+      attr_reader :opt_keywords
+      attr_reader :rest_keywords
       attr_reader :return_type
 
       def subnodes = {
@@ -47,6 +59,9 @@ module TypeProf::Core
         post_positionals:,
         opt_positionals:,
         rest_positionals:,
+        req_keywords: @req_keywords.values,
+        opt_keywords: @opt_keywords.values,
+        rest_keywords:,
         return_type:,
       }
       def attrs = { type_params:, block_required: }

@@ -9,6 +9,12 @@ class Object
   def rest_positional_args: (*Integer) -> Integer
 
   def rest_post_positional_args: (*Integer, Integer) -> Integer
+
+  def required_keywords: (a: Integer) -> Integer
+
+  def optional_keywords: (?a: Integer) -> Integer
+
+  def rest_keywords: (**untyped) -> Integer
 end
 
 ## update: test.rb
@@ -17,6 +23,9 @@ optional_positional_args
 post_required_positional_args
 rest_positional_args
 rest_post_positional_args
+required_keywords
+optional_keywords
+rest_keywords
 
 ## hover: test.rb:1:1
 Object#required_positional_args : (::Integer) -> ::Integer
@@ -31,4 +40,14 @@ Object#post_required_positional_args : (?::Integer, ::Integer) -> ::Integer
 Object#rest_positional_args : (*::Integer) -> ::Integer
 
 ## hover: test.rb:5:1
+
 Object#rest_post_positional_args : (*::Integer, ::Integer) -> ::Integer
+
+## hover: test.rb:6:1
+Object#required_keywords : (a: ::Integer) -> ::Integer
+
+## hover: test.rb:7:1
+Object#optional_keywords : (?a: ::Integer) -> ::Integer
+
+## hover: test.rb:8:1
+Object#rest_keywords : (**untyped) -> ::Integer
