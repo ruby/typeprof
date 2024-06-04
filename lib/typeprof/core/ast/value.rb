@@ -243,15 +243,14 @@ module TypeProf::Core
     end
 
     class HashNode < Node
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, lenv, keywords)
         super(raw_node, lenv)
         @keys = []
         @vals = []
-        #if raw_node.first_lineno == contents.first_lineno && raw_node.first_column == contents.first_column
-        #  # Looks like there is no open brace
-        #  @keywords = true
-        #end
+        @keywords = keywords
+
         raw_node.elements.each do |raw_elem|
+          # TODO: Support :assoc_splat_node
           case raw_elem.type
           when :assoc_node
             @keys << AST.create_node(raw_elem.key, lenv)
@@ -275,46 +274,6 @@ module TypeProf::Core
           if key
             k = key.install(genv).new_vertex(genv, "hash-key", self)
             v = val.install(genv).new_vertex(genv, "hash-val", self)
-            @changes.add_edge(genv, k, unified_key)
-            @changes.add_edge(genv, v, unified_val)
-            literal_pairs[key.lit] = v if key.is_a?(SymbolNode)
-          else
-            _h = val.install(genv)
-            # TODO: if h is a hash, we need to connect its elements to the new hash
-          end
-        end
-        Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
-      end
-    end
-
-    class KeywordHashNode < Node
-      def initialize(raw_node, lenv)
-        super(raw_node, lenv)
-        @keys = []
-        @vals = []
-        raw_node.elements.each do |raw_elem|
-          case raw_elem.type
-          when :assoc_node
-            @keys << AST.create_node(raw_elem.key, lenv)
-            @vals << AST.create_node(raw_elem.value, lenv)
-          else
-            raise "unknown hash elem"
-          end
-        end
-      end
-
-      attr_reader :keys, :vals
-
-      def subnodes = { keys:, vals: }
-
-      def install0(genv)
-        unified_key = Vertex.new("keyword-hash-keys-unified", self)
-        unified_val = Vertex.new("keyword-hash-vals-unified", self)
-        literal_pairs = {}
-        @keys.zip(@vals) do |key, val|
-          if key
-            k = key.install(genv).new_vertex(genv, "keyword-hash-key", self)
-            v = val.install(genv).new_vertex(genv, "keyword-hash-val", self)
             @changes.add_edge(genv, k, unified_key)
             @changes.add_edge(genv, v, unified_val)
             literal_pairs[key.lit] = v if key.is_a?(SymbolNode)

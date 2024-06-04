@@ -199,7 +199,8 @@ module TypeProf::Core
       when :interpolated_match_last_line_node then InterpolatedMatchLastLineNode.new(raw_node, lenv)
       when :range_node then RangeNode.new(raw_node, lenv)
       when :array_node then ArrayNode.new(raw_node, lenv)
-      when :hash_node then HashNode.new(raw_node, lenv)
+      when :hash_node then HashNode.new(raw_node, lenv, false)
+      when :keyword_hash_node then HashNode.new(raw_node, lenv, true)
       when :lambda_node then LambdaNode.new(raw_node, lenv)
       when :imaginary_node then ImaginaryNode.new(raw_node, lenv)
 
@@ -223,7 +224,6 @@ module TypeProf::Core
           end
         end
         CallNode.new(raw_node, lenv)
-      when :keyword_hash_node then KeywordHashNode.new(raw_node, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"

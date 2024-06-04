@@ -355,7 +355,7 @@ module TypeProf::Core
       end
 
       a_args = ActualArguments.new(positional_args, splat_flags, nil, nil) # TODO: keywords and block
-      if pass_positionals(changes, genv, a_args)
+      if pass_arguments(changes, genv, a_args)
         # TODO: block
         f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
         @ret_boxes.each do |ret_box|
@@ -364,7 +364,7 @@ module TypeProf::Core
       end
     end
 
-    def pass_positionals(changes, genv, a_args)
+    def pass_arguments(changes, genv, a_args)
       if a_args.splat_flags.any?
         # there is at least one splat actual argument
 
@@ -454,11 +454,32 @@ module TypeProf::Core
           end
         end
       end
+
+      if a_args.keywords
+        # TODO: support diagnostics
+        @node.req_keywords.zip(@f_args.req_keywords) do |name, f_vtx|
+          a_args.keywords.each_type do |ty|
+            changes.add_edge(genv, ty.get_value(name), f_vtx)
+          end
+        end
+
+        @node.opt_keywords.zip(@f_args.opt_keywords).each do |name, f_vtx|
+          a_args.keywords.each_type do |ty|
+            changes.add_edge(genv, ty.get_value(name), f_vtx)
+          end
+        end
+
+        if @node.rest_keywords
+          # FIXME: Extract the rest keywords excluding req_keywords and opt_keywords.
+          changes.add_edge(genv, a_args.keywords, @f_args.rest_keywords)
+        end
+      end
+
       return true
     end
 
     def call(changes, genv, a_args, ret)
-      if pass_positionals(changes, genv, a_args)
+      if pass_arguments(changes, genv, a_args)
         changes.add_edge(genv, a_args.block, @f_args.block) if @f_args.block && a_args.block
 
         changes.add_edge(genv, @ret, ret)
@@ -551,6 +572,7 @@ module TypeProf::Core
       @mid = mid
       @a_args = a_args.new_vertexes(genv, mid, node)
       @a_args.positionals.each {|arg| arg.add_edge(genv, self) }
+      @a_args.keywords.add_edge(genv, self) if @a_args.keywords
       @a_args.block.add_edge(genv, self) if @a_args.block
       @ret = Vertex.new("ret:#{ mid }", node)
       @subclasses = subclasses
