@@ -47,7 +47,16 @@ module TypeProf::Core
             @block_pass = nil
             @block_tbl = raw_block.locals
             # TODO: optional args, etc.
-            @block_f_args = raw_block.parameters ? raw_block.parameters.parameters.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name } : []
+            @block_f_args = case raw_block.parameters
+                            when Prism::BlockParametersNode
+                              raw_block.parameters.parameters.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name }
+                            when Prism::NumberedParametersNode
+                              1.upto(raw_block.parameters.maximum).map { |n| :"_#{n}" }
+                            when nil
+                              []
+                            else
+                              raise "not supported yet: #{ raw_block.parameters.class }"
+                            end
             ncref = CRef.new(lenv.cref.cpath, false, @mid, lenv.cref)
             nlenv = LocalEnv.new(@lenv.path, ncref, {}, @lenv.return_boxes)
             @block_body = raw_block.body ? AST.create_node(raw_block.body, nlenv) : DummyNilNode.new(code_range, lenv)
