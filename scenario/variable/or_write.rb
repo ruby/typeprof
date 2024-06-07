@@ -3,6 +3,7 @@ $gv ||= :GVar
 
 class C
   D ||= :ConstD
+  @@cv ||= :CV0
   def get_lv
     lv = nil
     lv ||= :LVar
@@ -13,6 +14,10 @@ class C
   end
   def get_iv = @iv
   def get_gv = $gv
+  def set_cv
+    @@cv ||= :CV1
+  end
+  def get_cv = @@cv
   def get_index_asgn
     ary = [nil]
     ary[0] ||= :IndexAsgn
@@ -36,6 +41,8 @@ class C
   def set_iv: -> :IVar
   def get_iv: -> :IVar
   def get_gv: -> :GVar
+  def set_cv: -> (:CV0 | :CV1)
+  def get_cv: -> (:CV0 | :CV1)
   def get_index_asgn: -> [:IndexAsgn?]
   def get_attr_asgn: -> :AttrAsgn
   def test_attr: -> nil
