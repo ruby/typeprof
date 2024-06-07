@@ -118,7 +118,6 @@ module TypeProf::Core
         read = InstanceVariableReadNode.new(raw_node, lenv)
         rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
         InstanceVariableWriteNode.new(raw_node, rhs, lenv)
-      #TODO: when :class_variable_read_node...
       when :class_variable_read_node
         ClassVariableReadNode.new(raw_node, lenv)
       when :class_variable_write_node
@@ -126,6 +125,13 @@ module TypeProf::Core
       when :class_variable_operator_write_node
         read = ClassVariableReadNode.new(raw_node, lenv)
         rhs = OperatorNode.new(raw_node, read, lenv)
+      when :class_variable_or_write_node
+        read = ClassVariableReadNode.new(raw_node, lenv)
+        rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
+        ClassVariableWriteNode.new(raw_node, rhs, lenv)
+      when :class_variable_and_write_node
+        read = ClassVariableReadNode.new(raw_node, lenv)
+        rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
         ClassVariableWriteNode.new(raw_node, rhs, lenv)
       when :global_variable_read_node
         GlobalVariableReadNode.new(raw_node, lenv)
