@@ -59,8 +59,8 @@ module TypeProf::Core
         post_positionals:,
         opt_positionals:,
         rest_positionals:,
-        req_keywords: @req_keywords.values,
-        opt_keywords: @opt_keywords.values,
+        req_keywords:,
+        opt_keywords:,
         rest_keywords:,
         return_type:,
       }

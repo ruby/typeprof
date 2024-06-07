@@ -21,21 +21,19 @@ module TypeProf::Core
       def attrs = {}
 
       def each_subnode
-        subnodes.each_value do |subnode|
+        queue = subnodes.values
+
+        until queue.empty?
+          subnode = queue.shift
           next unless subnode
+
           case subnode
           when AST::Node
             yield subnode
           when Array
-            subnode.each do |n|
-              if n
-                if n.is_a?(Array)
-                  n.each {|n| yield n }
-                else
-                  yield n
-                end
-              end
-            end
+            queue.unshift(*subnode)
+          when Hash
+            queue.unshift(*subnode.values)
           else
             raise subnode.class.to_s
           end
