@@ -225,12 +225,18 @@ module TypeProf::Core
         method_type.req_positionals.each do |arg|
           args << arg.show
         end
-        # TODO
-        method_type.opt_positionals
-        method_type.rest_positionals
-        method_type.post_positionals
-        # method_type.req_keywords
-        # method_type.req_keywords
+        method_type.opt_positionals.each do |arg|
+          args << "?#{arg.show}"
+        end
+        method_type.post_positionals.each do |arg|
+          args << arg.show
+        end
+        if method_type.rest_positionals
+          args << "*#{method_type.rest_positionals.show}"
+        end
+
+        # TODO: req_keywords, opt_keywords, rest_keywords
+
         s = args.empty? ? "-> " : "(#{ args.join(", ") }) -> "
         s += method_type.return_type.show
       end.join(" | ")
