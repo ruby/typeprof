@@ -235,7 +235,15 @@ module TypeProf::Core
           args << arg.show
         end
 
-        # TODO: req_keywords, opt_keywords, rest_keywords
+        method_type.req_keywords.each do |key, arg|
+          args << "#{ key }: #{arg.show}"
+        end
+        method_type.opt_keywords.each do |key, arg|
+          args << "?#{ key }: #{arg.show}"
+        end
+        if method_type.rest_keywords
+          args << "**#{method_type.rest_keywords.show}"
+        end
 
         s = args.empty? ? "-> " : "(#{ args.join(", ") }) -> "
         s += method_type.return_type.show
