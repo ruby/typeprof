@@ -1,8 +1,11 @@
 ## update
-def foo(x: 1)
-  x
+def foo(a)
+  a
 end
 
-foo(x: "str")
+foo(x: 1)
 
 ## assert
+class Object
+  def foo: (Hash[:x, Integer]) -> Hash[:x, Integer]
+end

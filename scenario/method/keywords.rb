@@ -37,3 +37,39 @@ end
 class Object
   def foo: (**untyped) -> untyped
 end
+
+## update
+def foo(x:)
+  x
+end
+
+foo(x: "str")
+
+## assert
+class Object
+  def foo: (x: String) -> String
+end
+
+## update
+def foo(x: 1)
+  x
+end
+
+foo(x: "str")
+
+## assert
+class Object
+  def foo: (?x: Integer | String) -> (Integer | String)
+end
+
+## update
+def foo(a:, b: 1, **c)
+  c
+end
+
+foo(a: '', b: 1, c: true)
+
+## assert
+class Object
+  def foo: (a: String, ?b: Integer, **Hash[:a | :b | :c, Integer | String | true]) -> Hash[:a | :b | :c, Integer | String | true]
+end

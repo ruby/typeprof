@@ -36,7 +36,7 @@ module TypeProf::Core
     def new_vertexes(genv, name, node)
       positionals = @positionals.map {|arg| arg.new_vertex(genv, "arg:#{ name }", node) }
       splat_flags = @splat_flags
-      keywords = @keywords # TODO
+      keywords = @keywords ? @keywords.new_vertex(genv, "kw:#{ name }", node) : nil
       block = @block ? @block.new_vertex(genv, "block:#{ name }", node) : nil
       ActualArguments.new(positionals, splat_flags, keywords, block)
     end

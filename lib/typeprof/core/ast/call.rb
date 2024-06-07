@@ -32,12 +32,11 @@ module TypeProf::Core
           end
           @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
 
-          #last_hash_arg = @positional_args.last
-          #if last_hash_arg.is_a?(HashNode) && last_hash_arg.keywords
-          #  @positional_args.pop
-          #  @keyword_args = last_hash_arg
-          #end
+          if @positional_args.last.is_a?(TypeProf::Core::AST::HashNode) && @positional_args.last.keywords
+            @keyword_args = @positional_args.pop
+          end
         end
+
         @positional_args << last_arg if last_arg
 
         if raw_block

@@ -243,15 +243,14 @@ module TypeProf::Core
     end
 
     class HashNode < Node
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, lenv, keywords)
         super(raw_node, lenv)
         @keys = []
         @vals = []
-        #if raw_node.first_lineno == contents.first_lineno && raw_node.first_column == contents.first_column
-        #  # Looks like there is no open brace
-        #  @keywords = true
-        #end
+        @keywords = keywords
+
         raw_node.elements.each do |raw_elem|
+          # TODO: Support :assoc_splat_node
           case raw_elem.type
           when :assoc_node
             @keys << AST.create_node(raw_elem.key, lenv)
