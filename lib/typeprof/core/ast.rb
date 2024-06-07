@@ -122,6 +122,9 @@ module TypeProf::Core
         ClassVariableReadNode.new(raw_node, lenv)
       when :class_variable_write_node
         ClassVariableWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+      when :class_variable_operator_write_node
+        read = ClassVariableReadNode.new(raw_node, lenv)
+        rhs = OperatorNode.new(raw_node, read, lenv)
       when :class_variable_or_write_node
         read = ClassVariableReadNode.new(raw_node, lenv)
         rhs = OrNode.new(raw_node, read, raw_node.value, lenv)
