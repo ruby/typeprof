@@ -39,3 +39,7 @@ jobs:
       run: |
         bundle exec rake TESTOPT=-v RUBYOPT="${{ matrix.rubyopt }}"
       if: ${{ !startsWith(matrix.ruby, 'truffle') }}
+    - name: Run the dog bench
+      run: |
+        bundle exec ruby tool/dog_bench.rb
+      if: ${{ !startsWith(matrix.ruby, 'truffle') }}
