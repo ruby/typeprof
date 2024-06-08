@@ -294,7 +294,11 @@ module TypeProf::Core
     end
 
     def get_var(name)
-      @locals[name] || raise
+      @locals[name] || raise("#{ name }")
+    end
+
+    def exist_var?(name)
+      !!@locals[name]
     end
 
     def add_return_box(box)

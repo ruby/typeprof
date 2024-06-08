@@ -136,7 +136,17 @@ module TypeProf::Core
           nvtx_then = NilFilter.new(genv, self, old_vtxs[@cond.var], self.is_a?(UntilNode)).next_vtx
           @lenv.set_var(@cond.var, nvtx_then)
         end
+
+        if @lenv.exist_var?(:"*expected_block_ret")
+          expected_block_ret = @lenv.locals[:"*expected_block_ret"]
+          @lenv.set_var(:"*expected_block_ret", nil)
+        end
+
         @body.install(genv)
+
+        if expected_block_ret
+          @lenv.set_var(:"*expected_block_ret", expected_block_ret)
+        end
 
         vars.each do |var|
           @changes.add_edge(genv, @lenv.get_var(var), old_vtxs[var])
@@ -186,7 +196,9 @@ module TypeProf::Core
 
       def install0(genv)
         @arg.install(genv)
-        @lenv.add_next_box(@changes.add_escape_box(genv, @arg.ret, @lenv.get_var(:"*expected_block_ret")))
+        if @lenv.exist_var?(:"*expected_block_ret")
+          @lenv.add_next_box(@changes.add_escape_box(genv, @arg.ret, @lenv.get_var(:"*expected_block_ret")))
+        end
         Source.new(Type::Bot.new(genv))
       end
     end
