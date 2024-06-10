@@ -225,7 +225,7 @@ module TypeProf::Core
     class CaseNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @pivot = AST.create_node(raw_node.predicate, lenv)
+        @pivot = raw_node.predicate ? AST.create_node(raw_node.predicate, lenv) : nil
         @whens = []
         @clauses = []
         raw_node.conditions.each do |raw_cond|
@@ -241,7 +241,7 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new("case", self)
-        @pivot.install(genv)
+        @pivot&.install(genv)
         @whens.zip(@clauses) do |vals, clause|
           vals.install(genv)
           @changes.add_edge(genv, clause.install(genv), ret)
