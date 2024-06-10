@@ -1,6 +1,8 @@
 ## update
 def foo
   "foo#{ bar(1) }"
+  "foo"\
+    "#{ bar(1) }"
   "foo#{ bar(1) }baz#{ qux(1.0) }"
 end
 
