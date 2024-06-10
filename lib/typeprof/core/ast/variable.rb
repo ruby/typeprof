@@ -247,5 +247,21 @@ module TypeProf::Core
         yield self if code_range.include?(pos)
       end
     end
+
+    class NumberedReferenceReadNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @var = :"$#{raw_node.number}"
+      end
+
+      attr_reader :var
+
+      def attrs = { var: }
+
+      def install0(genv)
+        box = @changes.add_gvar_read_box(genv, @var)
+        box.ret
+      end
+    end
   end
 end
