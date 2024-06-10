@@ -109,12 +109,19 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         @parts = []
-        raw_node.parts.each do |raw_part|
+
+        queue = raw_node.parts
+
+        until queue.empty?
+          raw_part = queue.shift
+
           case raw_part.type
           when :string_node
             @parts << AST.create_node(raw_part, lenv)
           when :embedded_statements_node
             @parts << AST.create_node(raw_part.statements, lenv)
+          when :interpolated_string_node
+            queue.unshift(*raw_part.parts)
           else
             raise "unknown string part: #{ raw_part.type }"
           end
