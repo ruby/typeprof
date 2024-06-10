@@ -149,6 +149,8 @@ module TypeProf::Core
         read = GlobalVariableReadNode.new(raw_node, lenv)
         rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
         GlobalVariableWriteNode.new(raw_node, rhs, lenv)
+      when :numbered_reference_read_node
+        NumberedReferenceReadNode.new(raw_node, lenv)
 
       # assignment targets
       when :index_operator_write_node
