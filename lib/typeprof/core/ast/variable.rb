@@ -259,8 +259,7 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        box = @changes.add_gvar_read_box(genv, @var)
-        box.ret
+        Source.new(genv.str_type)
       end
     end
   end
