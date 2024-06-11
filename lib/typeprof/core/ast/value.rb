@@ -110,7 +110,7 @@ module TypeProf::Core
         super(raw_node, lenv)
         @parts = []
 
-        queue = raw_node.parts
+        queue = raw_node.parts.dup
 
         until queue.empty?
           raw_part = queue.shift
