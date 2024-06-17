@@ -13,7 +13,7 @@ module TypeProf::Core
       Fiber[:comments] = result.comments
 
       cref = CRef::Toplevel
-      lenv = LocalEnv.new(path, cref, {}, [])
+      lenv = LocalEnv.new(path, cref, {}, [], nil)
 
       ProgramNode.new(raw_scope, lenv)
     end
@@ -39,6 +39,7 @@ module TypeProf::Core
       when :class_node then ClassNode.new(raw_node, lenv, use_result)
       when :def_node then DefNode.new(raw_node, lenv, use_result)
       when :alias_method_node then AliasNode.new(raw_node, lenv)
+      when :singleton_class_node then SingletonClassNode.new(raw_node, lenv)
 
       # control
       when :and_node then AndNode.new(raw_node, lenv)
@@ -283,7 +284,7 @@ module TypeProf::Core
       _buffer, _directives, raw_decls = RBS::Parser.parse_signature(src)
 
       cref = CRef::Toplevel
-      lenv = LocalEnv.new(path, cref, {}, [])
+      lenv = LocalEnv.new(path, cref, {}, [], nil)
 
       raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
