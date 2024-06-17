@@ -371,22 +371,24 @@ module TypeProf::Core
     end
 
     def dump_declarations(path)
-      depth = 0
+      stack = []
       out = []
       @text_nodes[path].traverse do |event, node|
         case node
         when AST::ModuleNode
           if node.static_cpath
             if event == :enter
-              out << "  " * depth + "module #{ node.static_cpath.join("::") }"
-              depth += 1
+              out << "  " * stack.size + "module #{ node.static_cpath.join("::") }"
+              stack.push(node)
             else
-              depth -= 1
-              out << "  " * depth + "end"
+              stack.pop
+              out << "  " * stack.size + "end"
             end
           end
-        when AST::ClassNode
+        when AST::ClassNode, AST::SingletonClassNode
           if node.static_cpath
+            next if stack.any? { node.is_a?(AST::SingletonClassNode) && (_1.is_a?(AST::ClassNode) || _1.is_a?(AST::ModuleNode)) && node.static_cpath == _1.static_cpath }
+
             if event == :enter
               s = "class #{ node.static_cpath.join("::") }"
               mod = @genv.resolve_cpath(node.static_cpath)
@@ -396,28 +398,28 @@ module TypeProf::Core
               elsif superclass.cpath != []
                 s << " < #{ superclass.show_cpath }"
               end
-              out << "  " * depth + s
-              depth += 1
+              out << "  " * stack.size + s
+              stack.push(node)
               mod.included_modules.each do |inc_def, inc_mod|
                 if inc_def.is_a?(AST::ConstantReadNode) && inc_def.lenv.path == path
-                  out << "  " * depth + "include #{ inc_mod.show_cpath }"
+                  out << "  " * stack.size + "include #{ inc_mod.show_cpath }"
                 end
               end
             else
-              depth -= 1
-              out << "  " * depth + "end"
+              stack.pop
+              out << "  " * stack.size + "end"
             end
           end
         when AST::ConstantWriteNode
           if node.static_cpath
             if event == :enter
-              out << "  " * depth + "#{ node.static_cpath.join("::") }: #{ node.ret.show }"
+              out << "  " * stack.size + "#{ node.static_cpath.join("::") }: #{ node.ret.show }"
             end
           end
         else
           if event == :enter
             node.boxes(:mdef) do |mdef|
-              out << "  " * depth + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show
+              out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show
             end
           end
         end

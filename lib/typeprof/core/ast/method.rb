@@ -104,7 +104,7 @@ module TypeProf::Core
     class DefNode < Node
       def initialize(raw_node, lenv, use_result)
         super(raw_node, lenv)
-        singleton = !!raw_node.receiver
+        singleton = !!raw_node.receiver || !!lenv.implicit_receiver
         mid = raw_node.name
         mid_code_range = TypeProf::CodeRange.from_node(raw_node.name_loc)
         @tbl = raw_node.locals
@@ -118,7 +118,7 @@ module TypeProf::Core
         @mid_code_range = mid_code_range
 
         ncref = CRef.new(lenv.cref.cpath, @singleton, @mid, lenv.cref)
-        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
+        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [], nil)
         if raw_body
           @body = AST.create_node(raw_body, nlenv)
         else

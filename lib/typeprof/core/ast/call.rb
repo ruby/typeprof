@@ -57,7 +57,7 @@ module TypeProf::Core
                               raise "not supported yet: #{ raw_block.parameters.class }"
                             end
             ncref = CRef.new(lenv.cref.cpath, false, @mid, lenv.cref)
-            nlenv = LocalEnv.new(@lenv.path, ncref, {}, @lenv.return_boxes)
+            nlenv = LocalEnv.new(@lenv.path, ncref, {}, @lenv.return_boxes, nil)
             @block_body = raw_block.body ? AST.create_node(raw_block.body, nlenv) : DummyNilNode.new(code_range, lenv)
           end
         end

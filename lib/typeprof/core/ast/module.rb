@@ -12,7 +12,7 @@ module TypeProf::Core
 
         if @static_cpath
           ncref = CRef.new(@static_cpath, true, nil, lenv.cref)
-          nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
+          nlenv = LocalEnv.new(@lenv.path, ncref, {}, [], nil)
           @body = raw_scope ? AST.create_node(raw_scope, nlenv, use_result) : DummyNilNode.new(code_range, lenv)
         else
           @body = nil
@@ -111,6 +111,88 @@ module TypeProf::Core
       def install0(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
         super(genv)
+      end
+    end
+
+    class SingletonClassNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+
+        @expression = AST.create_node(raw_node.expression, lenv)
+        @tbl = raw_node.locals
+
+        @static_cpath = case @expression
+                        when ConstantReadNode
+                          AST.parse_cpath(@raw_node.expression, lenv.cref.cpath)
+                        when SelfNode
+                          lenv.cref.cpath
+                        else
+                          raise "unsupported expression: #{@expression}"
+                        end
+
+        if @static_cpath.nil? || @static_cpath.empty?
+          @body = nil
+        else
+          ncref = CRef.new(static_cpath, true, nil, lenv.cref)
+          nlenv = LocalEnv.new(lenv.path, ncref, {}, [], ncref)
+          @body = @raw_node.body ? AST.create_node(@raw_node.body, nlenv) : DummyNilNode.new(code_range, lenv)
+        end
+      end
+
+      attr_reader :expression, :tbl, :static_cpath, :body
+
+      def subnodes = { expression:, body: }
+      def attrs = { tbl:, static_cpath: }
+
+      def define0(genv)
+        @expression.define(genv)
+
+        if @body
+          @body.define(genv)
+          @mod = genv.resolve_cpath(@static_cpath)
+          @mod_cdef = @mod.add_module_def(genv, self)
+        else
+          @changes.add_diagnostic(:code_range, "TypeProf cannot analyze a non-static class") # warning
+          nil
+        end
+      end
+
+      def define_copy(genv)
+        if @body
+          @mod_cdef.add_def(self)
+          @mod_cdef.remove_def(@prev_node)
+        end
+        super(genv)
+      end
+
+      def undefine0(genv)
+        if @body
+          @mod.remove_module_def(genv, self)
+          @body.undefine(genv)
+        end
+
+        @expression.undefine(genv)
+      end
+
+      def install0(genv)
+        @expression.install(genv)
+
+        if @body
+          @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
+          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
+
+          @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
+          @changes.add_edge(genv, @mod_val, @mod_cdef.vtx)
+          ret = Vertex.new(self)
+          @changes.add_edge(genv, @body.install(genv), ret)
+          ret
+        else
+          Source.new
+        end
+      end
+
+      def modified_vars(tbl, vars)
+        # skip
       end
     end
   end

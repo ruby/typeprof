@@ -1,11 +1,21 @@
 ## update
+k = Time
+class << k
+  def foo = :ok
+end
+
+## assert
+class Time
+  def self.foo: -> :ok
+end
+
+## update
 class Foo
   class << self
-    def foo = :ok
+    def self.bar = :ok
   end
 end
 
 ## assert
 class Foo
-  def self.foo: -> :ok
 end
