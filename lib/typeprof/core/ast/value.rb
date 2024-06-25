@@ -224,7 +224,7 @@ module TypeProf::Core
       def subnodes = { begin:, end: }
 
       def install0(genv)
-        elem = Vertex.new("range-elem", self)
+        elem = Vertex.new(self)
         @changes.add_edge(genv, @begin.install(genv), elem)
         @changes.add_edge(genv, @end.install(genv), elem)
         Source.new(genv.gen_range_type(elem))
@@ -242,8 +242,8 @@ module TypeProf::Core
       def subnodes = { elems: }
 
       def install0(genv)
-        elems = @elems.map {|e| e.install(genv).new_vertex(genv, "ary-elem", self) }
-        unified_elem = Vertex.new("ary-elems-unified", self)
+        elems = @elems.map {|e| e.install(genv).new_vertex(genv, self) }
+        unified_elem = Vertex.new(self)
         elems.each {|vtx| @changes.add_edge(genv, vtx, unified_elem) }
         Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem)))
       end
@@ -274,13 +274,13 @@ module TypeProf::Core
       def attrs = { keywords: }
 
       def install0(genv)
-        unified_key = Vertex.new("hash-keys-unified", self)
-        unified_val = Vertex.new("hash-vals-unified", self)
+        unified_key = Vertex.new(self)
+        unified_val = Vertex.new(self)
         literal_pairs = {}
         @keys.zip(@vals) do |key, val|
           if key
-            k = key.install(genv).new_vertex(genv, "hash-key", self)
-            v = val.install(genv).new_vertex(genv, "hash-val", self)
+            k = key.install(genv).new_vertex(genv, self)
+            v = val.install(genv).new_vertex(genv, self)
             @changes.add_edge(genv, k, unified_key)
             @changes.add_edge(genv, v, unified_val)
             literal_pairs[key.lit] = v if key.is_a?(SymbolNode)

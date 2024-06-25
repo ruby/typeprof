@@ -8,7 +8,7 @@ module TypeProf::Core
   class NilFilter < Filter
     def initialize(genv, node, prev_vtx, allow_nil)
       @node = node
-      @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
+      @next_vtx = Vertex.new(node)
       @allow_nil = allow_nil
       prev_vtx.add_edge(genv, self)
     end
@@ -42,7 +42,7 @@ module TypeProf::Core
       @types = Set[]
       @const_read = const_read
       @const_read.followers << self
-      @next_vtx = Vertex.new("#{ prev_vtx.show_name }:filter", node)
+      @next_vtx = Vertex.new(node)
       prev_vtx.add_edge(genv, self)
       @neg = neg
     end
@@ -98,7 +98,7 @@ module TypeProf::Core
       @node = node
       @types = {}
       @prev_vtx = prev_vtx
-      @next_vtx = Vertex.new("#{ prev_vtx.show_name }:botfilter", node)
+      @next_vtx = Vertex.new(node)
       @base_vtx = base_vtx
       base_vtx.add_edge(genv, self)
       prev_vtx.add_edge(genv, self) if prev_vtx != base_vtx

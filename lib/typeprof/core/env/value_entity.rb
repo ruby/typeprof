@@ -4,7 +4,7 @@ module TypeProf::Core
       @decls = Set[]
       @defs = Set[]
       @read_boxes = Set[]
-      @vtx = Vertex.new("gvar", self)
+      @vtx = Vertex.new(self)
     end
 
     attr_reader :decls, :defs, :read_boxes, :vtx

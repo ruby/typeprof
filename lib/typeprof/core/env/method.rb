@@ -33,11 +33,11 @@ module TypeProf::Core
 
     attr_reader :positionals, :splat_flags, :keywords, :block
 
-    def new_vertexes(genv, name, node)
-      positionals = @positionals.map {|arg| arg.new_vertex(genv, "arg:#{ name }", node) }
+    def new_vertexes(genv, node)
+      positionals = @positionals.map {|arg| arg.new_vertex(genv, node) }
       splat_flags = @splat_flags
-      keywords = @keywords ? @keywords.new_vertex(genv, "kw:#{ name }", node) : nil
-      block = @block ? @block.new_vertex(genv, "block:#{ name }", node) : nil
+      keywords = @keywords ? @keywords.new_vertex(genv, node) : nil
+      block = @block ? @block.new_vertex(genv, node) : nil
       ActualArguments.new(positionals, splat_flags, keywords, block)
     end
 
@@ -98,11 +98,11 @@ module TypeProf::Core
       @node = node
       @used = false
       @f_args = []
-      @ret = Vertex.new("record_block_ret", node)
+      @ret = Vertex.new(node)
     end
 
     def get_f_arg(i)
-      @f_args[i] ||= Vertex.new("record_block_arg", @node)
+      @f_args[i] ||= Vertex.new(@node)
     end
 
     attr_reader :node, :f_args, :ret, :used

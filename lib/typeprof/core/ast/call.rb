@@ -101,12 +101,12 @@ module TypeProf::Core
           vars.uniq!
           vars.each do |var|
             vtx = @lenv.get_var(var)
-            nvtx = vtx.new_vertex(genv, "#{ vtx.show_name }'", self)
+            nvtx = vtx.new_vertex(genv, self)
             @lenv.set_var(var, nvtx)
             @block_body.lenv.set_var(var, nvtx)
           end
 
-          e_ret = @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new("expected_method_ret", self)
+          e_ret = @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new(self)
           @block_body.install(genv)
           @block_body.lenv.add_next_box(@changes.add_escape_box(genv, @block_body.ret, e_ret))
 

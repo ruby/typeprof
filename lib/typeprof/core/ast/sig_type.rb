@@ -75,7 +75,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex(genv, changes, subst)
-        vtx = Vertex.new("rbs_type", self)
+        vtx = Vertex.new(self)
         contravariant_vertex0(genv, changes, vtx, subst)
         vtx
       end
@@ -447,7 +447,7 @@ module TypeProf::Core
       def subnodes = { types: }
 
       def covariant_vertex0(genv, changes, vtx, subst)
-        unified_elem = Vertex.new("ary-unified", self) # TODO
+        unified_elem = Vertex.new(self) # TODO
         elems = @types.map do |type|
           nvtx = type.covariant_vertex(genv, changes, subst)
           nvtx.add_edge(genv, unified_elem)
@@ -457,7 +457,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        unified_elem = Vertex.new("ary-unified", self)
+        unified_elem = Vertex.new(self)
         elems = @types.map do |type|
           nvtx = type.contravariant_vertex(genv, changes, subst)
           nvtx.add_edge(genv, unified_elem)

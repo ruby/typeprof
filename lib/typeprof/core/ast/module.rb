@@ -63,7 +63,7 @@ module TypeProf::Core
 
           @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
           @changes.add_edge(genv, @mod_val, @mod_cdef.vtx)
-          ret = Vertex.new("module_return", self)
+          ret = Vertex.new(self)
           @changes.add_edge(genv, @body.install(genv), ret)
           ret
         else

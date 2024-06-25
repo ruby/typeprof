@@ -99,8 +99,8 @@ module TypeProf::Core
     def on_type_removed(genv, src_var, removed_types)
     end
 
-    def new_vertex(genv, show_name, origin)
-      nvtx = Vertex.new(show_name, origin)
+    def new_vertex(genv, origin)
+      nvtx = Vertex.new(origin)
       add_edge(genv, nvtx)
       nvtx
     end
@@ -134,10 +134,9 @@ module TypeProf::Core
   end
 
   class Vertex < BasicVertex
-    def initialize(show_name, origin)
-      # Note that show_name and origin are just for debug.
+    def initialize(origin)
+      # Note that origin is just for debug.
       # When an AST node is reused, the value of the origin will be invalid.
-      @show_name = show_name
       case origin
       when AST::Node
       when RBS::AST::Declarations::Base
@@ -149,7 +148,7 @@ module TypeProf::Core
       super({})
     end
 
-    attr_reader :show_name, :next_vtxs, :types
+    attr_reader :next_vtxs, :types
 
     def on_type_added(genv, src_var, added_types)
       new_added_types = []
@@ -191,8 +190,8 @@ module TypeProf::Core
       end
     end
 
-    def new_vertex(genv, show_name, origin)
-      nvtx = Vertex.new(show_name, origin)
+    def new_vertex(genv, origin)
+      nvtx = Vertex.new(origin)
       add_edge(genv, nvtx)
       nvtx
     end
@@ -210,7 +209,7 @@ module TypeProf::Core
     $new_id = 0 # TODO: Use class variable
 
     def to_s
-      "v#{ @id ||= $new_id += 1 }:#{ @show_name }"
+      "v#{ @id ||= $new_id += 1 }"
     end
 
     alias inspect to_s

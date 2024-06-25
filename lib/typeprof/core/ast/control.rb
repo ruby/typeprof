@@ -26,7 +26,7 @@ module TypeProf::Core
       def subnodes = { cond:, then:, else: }
 
       def install0(genv)
-        ret = Vertex.new("if", self)
+        ret = Vertex.new(self)
 
         @cond.install(genv)
 
@@ -39,8 +39,8 @@ module TypeProf::Core
         modified_vtxs = {}
         vars.uniq.each do |var|
           vtx = @lenv.get_var(var)
-          nvtx_then = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
-          nvtx_else = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
+          nvtx_then = vtx.new_vertex(genv, self)
+          nvtx_else = vtx.new_vertex(genv, self)
           modified_vtxs[var] = [nvtx_then, nvtx_else]
         end
         if @cond.is_a?(LocalVariableReadNode)
@@ -91,7 +91,7 @@ module TypeProf::Core
         modified_vtxs.each do |var, (nvtx_then, nvtx_else)|
           nvtx_then = BotFilter.new(genv, self, nvtx_then, then_val).next_vtx
           nvtx_else = BotFilter.new(genv, self, nvtx_else, else_val).next_vtx
-          nvtx_join = nvtx_then.new_vertex(genv, "xxx", self)
+          nvtx_join = nvtx_then.new_vertex(genv, self)
           @changes.add_edge(genv, nvtx_else, nvtx_join)
           @lenv.set_var(var, nvtx_join)
         end
@@ -126,7 +126,7 @@ module TypeProf::Core
         old_vtxs = {}
         vars.each do |var|
           vtx = @lenv.get_var(var)
-          nvtx = vtx.new_vertex(genv, "#{ vtx.is_a?(Vertex) ? vtx.show_name : "???" }'", self)
+          nvtx = vtx.new_vertex(genv, self)
           old_vtxs[var] = nvtx
           @lenv.set_var(var, nvtx)
         end
@@ -240,7 +240,7 @@ module TypeProf::Core
       def subnodes = { pivot:, whens:, clauses:, else_clause: }
 
       def install0(genv)
-        ret = Vertex.new("case", self)
+        ret = Vertex.new(self)
         @pivot&.install(genv)
         @whens.zip(@clauses) do |vals, clause|
           vals.install(genv)
@@ -263,7 +263,7 @@ module TypeProf::Core
       def subnodes = { e1:, e2: }
 
       def install0(genv)
-        ret = Vertex.new("and", self)
+        ret = Vertex.new(self)
         @changes.add_edge(genv, @e1.install(genv), ret)
         @changes.add_edge(genv, @e2.install(genv), ret)
         ret
@@ -282,7 +282,7 @@ module TypeProf::Core
       def subnodes = { e1:, e2: }
 
       def install0(genv)
-        ret = Vertex.new("or", self)
+        ret = Vertex.new(self)
         v1 = @e1.install(genv)
         v1 = NilFilter.new(genv, self, v1, false).next_vtx
         @changes.add_edge(genv, v1, ret)
@@ -358,7 +358,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        ret = Vertex.new("rescue-ret", self)
+        ret = Vertex.new(self)
         @changes.add_edge(genv, @body.install(genv), ret)
         @rescue_conds.each {|cond| cond.install(genv) }
         @rescue_clauses.each {|clause| @changes.add_edge(genv, clause.install(genv), ret) }

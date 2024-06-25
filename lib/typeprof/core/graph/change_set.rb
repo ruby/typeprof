@@ -46,7 +46,7 @@ module TypeProf::Core
 
     def new_vertex(genv, sig_type_node)
       # This is used to avoid duplicated vertex generation for the same sig node
-      @covariant_types[sig_type_node] ||= Vertex.new("rbs_type", sig_type_node)
+      @covariant_types[sig_type_node] ||= Vertex.new(sig_type_node)
     end
 
     def add_edge(genv, src, dst)
