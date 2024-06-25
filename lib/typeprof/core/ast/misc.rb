@@ -23,7 +23,7 @@ module TypeProf::Core
           ret = stmt ? stmt.install(genv) : nil
         end
         if ret
-          ret2 = Vertex.new("stmts_result", self)
+          ret2 = Vertex.new(self)
           @changes.add_edge(genv, ret, ret2)
           ret2
         else

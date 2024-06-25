@@ -106,7 +106,7 @@ module TypeProf::Core
       def install0(genv)
         @changes.add_ivar_read_box(genv, @lenv.cref.cpath, @lenv.cref.singleton, @var)
         val = @rhs.install(genv)
-        val = val.new_vertex(genv, "iasgn", self) # avoid multi-edge from val to static_ret.vtx
+        val = val.new_vertex(genv, self) # avoid multi-edge from val to static_ret.vtx
         @changes.add_edge(genv, val, @static_ret.vtx)
         val
       end
@@ -217,7 +217,7 @@ module TypeProf::Core
       def install0(genv)
         @changes.add_cvar_read_box(genv, @lenv.cref.cpath, @var)
         val = @rhs.install(genv)
-        val = val.new_vertex(genv, "casgn", self) # avoid multi-edge from val to static_ret.vtx
+        val = val.new_vertex(genv, self) # avoid multi-edge from val to static_ret.vtx
         @changes.add_edge(genv, val, @static_ret.vtx)
         val
       end

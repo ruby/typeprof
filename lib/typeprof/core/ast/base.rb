@@ -238,7 +238,7 @@ module TypeProf::Core
       end
 
       def install0(_)
-        Vertex.new("dummy_rhs", self)
+        Vertex.new(self)
       end
     end
 

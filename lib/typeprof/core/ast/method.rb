@@ -220,7 +220,7 @@ module TypeProf::Core
         end
 
         if @body
-          e_ret = @body.lenv.locals[:"*expected_method_ret"] = Vertex.new("expected_method_ret", self)
+          e_ret = @body.lenv.locals[:"*expected_method_ret"] = Vertex.new(self)
           @body.install(genv)
           @body.lenv.add_return_box(@changes.add_escape_box(genv, @body.ret, e_ret))
         end

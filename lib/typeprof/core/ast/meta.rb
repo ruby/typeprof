@@ -133,7 +133,7 @@ module TypeProf::Core
           box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, :"@#{ arg }")
           @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
 
-          vtx = Vertex.new("attr_writer-arg", self)
+          vtx = Vertex.new(self)
           @changes.add_edge(genv, vtx, ive.vtx)
           f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
           @changes.add_method_def_box(genv, @lenv.cref.cpath, false, :"#{ arg }=", f_args, [box])

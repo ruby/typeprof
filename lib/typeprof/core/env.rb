@@ -286,7 +286,7 @@ module TypeProf::Core
     attr_reader :path, :cref, :locals, :return_boxes, :next_boxes
 
     def new_var(name, node)
-      @locals[name] = Vertex.new("var:#{ name }", node)
+      @locals[name] = Vertex.new(node)
     end
 
     def set_var(name, vtx)

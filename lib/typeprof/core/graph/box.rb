@@ -61,7 +61,7 @@ module TypeProf::Core
       super(node)
       @const_read = const_read
       const_read.followers << self
-      @ret = Vertex.new("cname", node)
+      @ret = Vertex.new(node)
       genv.add_run(self)
     end
 
@@ -80,7 +80,7 @@ module TypeProf::Core
     def initialize(node, genv, rbs_type)
       super(node)
       @rbs_type = rbs_type
-      @ret = Vertex.new("type-read", node)
+      @ret = Vertex.new(node)
       genv.add_run(self)
     end
 
@@ -185,7 +185,7 @@ module TypeProf::Core
         param_map0 = param_map.dup
         if method_type.type_params
           method_type.type_params.map do |var|
-            vtx = Vertex.new("ty-var-#{ var }", node)
+            vtx = Vertex.new(node)
             param_map0[var] = vtx
           end
         end
@@ -299,7 +299,7 @@ module TypeProf::Core
       end
 
       @ret_boxes = ret_boxes
-      @ret = Vertex.new("ret:#{ mid }", node)
+      @ret = Vertex.new(node)
       ret_boxes.each do |box|
         @changes.add_edge(genv, box.ret, @ret)
       end
@@ -575,14 +575,14 @@ module TypeProf::Core
     def initialize(node, genv, recv, mid, a_args, subclasses)
       raise mid.to_s unless mid
       super(node)
-      @recv = recv.new_vertex(genv, "recv:#{ mid }", node)
+      @recv = recv.new_vertex(genv, node)
       @recv.add_edge(genv, self)
       @mid = mid
-      @a_args = a_args.new_vertexes(genv, mid, node)
+      @a_args = a_args.new_vertexes(genv, node)
       @a_args.positionals.each {|arg| arg.add_edge(genv, self) }
       @a_args.keywords.add_edge(genv, self) if @a_args.keywords
       @a_args.block.add_edge(genv, self) if @a_args.block
-      @ret = Vertex.new("ret:#{ mid }", node)
+      @ret = Vertex.new(node)
       @subclasses = subclasses
     end
 
@@ -763,7 +763,7 @@ module TypeProf::Core
     def initialize(node, genv, name)
       super(node)
       @vtx = genv.resolve_gvar(name).vtx
-      @ret = Vertex.new("gvar", node)
+      @ret = Vertex.new(node)
       genv.add_run(self)
     end
 
@@ -781,8 +781,8 @@ module TypeProf::Core
       @singleton = singleton
       @name = name
       genv.resolve_cpath(cpath).ivar_reads << self
-      @proxy = Vertex.new("ivar", node)
-      @ret = Vertex.new("ivar", node)
+      @proxy = Vertex.new(node)
+      @ret = Vertex.new(node)
       genv.add_run(self)
     end
 
@@ -825,8 +825,8 @@ module TypeProf::Core
       @cpath = cpath
       @name = name
       genv.resolve_cpath(cpath).cvar_reads << self
-      @proxy = Vertex.new("cvar", node)
-      @ret = Vertex.new("cvar", node)
+      @proxy = Vertex.new(node)
+      @ret = Vertex.new(node)
       genv.add_run(self)
     end
 
