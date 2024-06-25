@@ -13,7 +13,7 @@ module TypeProf::Core
       prev_vtx.add_edge(genv, self)
     end
 
-    attr_reader :show_name, :next_vtx, :allow_nil
+    attr_reader :next_vtx, :allow_nil
 
     def filter(types, nil_type)
       types.select {|ty| (ty == nil_type) == @allow_nil }
