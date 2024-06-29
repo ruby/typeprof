@@ -18,7 +18,13 @@ module TypeProf::Core
         super(raw_node, lenv)
         @cond = AST.create_node(raw_node.predicate, lenv)
         @then = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : nil
-        @else = raw_node.consequent && raw_node.consequent.statements ? AST.create_node(raw_node.consequent.statements, lenv) : nil
+        else_clause = raw_node.consequent
+        if else_clause
+          else_clause = else_clause.statements if else_clause.type == :else_node
+          @else = else_clause ? AST.create_node(else_clause, lenv) : nil
+        else
+          @else = nil
+        end
       end
 
       attr_reader :cond, :then, :else
