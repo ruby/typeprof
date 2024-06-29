@@ -230,7 +230,7 @@ module TypeProf::Core
     end
 
     def load_core_rbs(raw_decls)
-      lenv = LocalEnv.new(nil, CRef::Toplevel, {}, [])
+      lenv = LocalEnv.new(nil, CRef::Toplevel, {}, [], nil)
       decls = raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
@@ -274,16 +274,17 @@ module TypeProf::Core
   end
 
   class LocalEnv
-    def initialize(path, cref, locals, return_boxes)
+    def initialize(path, cref, locals, return_boxes, implicit_receiver)
       @path = path
       @cref = cref
       @locals = locals
       @return_boxes = return_boxes
       @next_boxes = []
       @filters = {}
+      @implicit_receiver = implicit_receiver
     end
 
-    attr_reader :path, :cref, :locals, :return_boxes, :next_boxes
+    attr_reader :path, :cref, :locals, :return_boxes, :next_boxes, :implicit_receiver
 
     def new_var(name, node)
       @locals[name] = Vertex.new(node)
