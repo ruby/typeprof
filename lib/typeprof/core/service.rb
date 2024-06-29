@@ -1,23 +1,4 @@
 module TypeProf::Core
-  class TextId
-    def initialize(path, version)
-      @path = path
-      @version = version
-    end
-
-    attr_reader :path, :version
-
-    def ==(other)
-      @path == other.path && @version == other.version
-    end
-
-    alias eql? ==
-
-    def to_s
-      "#{ @path }@#{ @version }"
-    end
-  end
-
   class Service
     def initialize
       unless defined?($rbs_env)
