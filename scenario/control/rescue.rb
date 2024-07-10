@@ -19,10 +19,16 @@ def foo(n)
   end
 end
 
+def baz(n)
+  n rescue :a
+end
+
 foo(1)
+baz(1)
 
 ## assert
 class Object
   def bar: (String) -> :c
   def foo: (Integer) -> (:a | :b | :c | :d | Float)
+  def baz: (Integer) -> (:a | Integer)
 end
