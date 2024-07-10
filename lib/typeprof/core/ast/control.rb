@@ -377,5 +377,24 @@ module TypeProf::Core
         Source.new(Type::Bot.new(genv))
       end
     end
+
+    class RescueModifierNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @expression = AST.create_node(raw_node.expression, lenv)
+        @rescue_expression = AST.create_node(raw_node.rescue_expression, lenv)
+      end
+
+      attr_reader :expression, :rescue_expression
+
+      def subnodes = { expression:, rescue_expression: }
+
+      def install0(genv)
+        ret = Vertex.new(self)
+        @changes.add_edge(genv, @expression.install(genv), ret)
+        @changes.add_edge(genv, @rescue_expression.install(genv), ret)
+        ret
+      end
+    end
   end
 end
