@@ -163,7 +163,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         recv = raw_node.receiver ? AST.create_node(raw_node.receiver, lenv) : nil
         mid = raw_node.name
-        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc)
+        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc) if raw_node.message_loc
         raw_args = raw_node.arguments
         raw_block = raw_node.block
         super(raw_node, recv, mid, mid_code_range, raw_args, nil, raw_block, lenv)
