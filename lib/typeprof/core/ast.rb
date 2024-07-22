@@ -37,9 +37,9 @@ module TypeProf::Core
       when :statements_node then StatementsNode.new(raw_node, lenv, use_result)
       when :module_node then ModuleNode.new(raw_node, lenv, use_result)
       when :class_node then ClassNode.new(raw_node, lenv, use_result)
+      when :singleton_class_node then SingletonClassNode.new(raw_node, lenv, use_result)
       when :def_node then DefNode.new(raw_node, lenv, use_result)
       when :alias_method_node then AliasNode.new(raw_node, lenv)
-      when :singleton_class_node then SingletonClassNode.new(raw_node, lenv)
 
       # control
       when :and_node then AndNode.new(raw_node, lenv)
@@ -258,7 +258,7 @@ module TypeProf::Core
       end
     end
 
-    def self.parse_cpath(raw_node, base_cpath)
+    def self.parse_cpath(raw_node, cref)
       names = []
       while raw_node
         case raw_node.type
@@ -273,11 +273,14 @@ module TypeProf::Core
           else
             return names.reverse
           end
+        when :self_node
+          break if cref.scope_level == :class
+          return nil
         else
           return nil
         end
       end
-      return base_cpath + names.reverse
+      return cref.cpath + names.reverse
     end
 
     def self.parse_rbs(path, src)
