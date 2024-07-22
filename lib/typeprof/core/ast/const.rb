@@ -66,12 +66,12 @@ module TypeProf::Core
         when :constant_path_write_node, :constant_path_operator_write_node, :constant_path_or_write_node, :constant_path_and_write_node
           # expr::C = expr
           @cpath = AST.create_node(raw_node.target, lenv)
-          @static_cpath = AST.parse_cpath(raw_node.target, lenv.cref.cpath)
+          @static_cpath = AST.parse_cpath(raw_node.target, lenv.cref)
           @cname_code_range = TypeProf::CodeRange.from_node(raw_node.target)
         when :constant_path_target_node
           # expr::C, * = ary
           @cpath = ConstantReadNode.new(raw_node, lenv)
-          @static_cpath = AST.parse_cpath(raw_node, lenv.cref.cpath)
+          @static_cpath = AST.parse_cpath(raw_node, lenv.cref)
           @cname_code_range = TypeProf::CodeRange.from_node(raw_node)
         else
           raise
