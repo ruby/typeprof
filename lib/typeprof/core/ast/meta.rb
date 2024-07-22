@@ -5,8 +5,9 @@ module TypeProf::Core
         super(raw_node, lenv)
         # TODO: error for splat
         @args = raw_node.arguments.arguments.map do |raw_arg|
+          next if raw_arg.is_a?(Prism::SplatNode)
           AST.create_node(raw_arg, lenv)
-        end
+        end.compact
         # TODO: error for non-LIT
         # TODO: fine-grained hover
       end
