@@ -11,7 +11,6 @@ A動物::B猫.new.🐱🐱🐱
 
 ## definition: test.rb:9:1
 test.rb:(1,7)-(1,10)
-test.rb:(2,8)-(2,10)
 
 ## definition: test.rb:9:6
 test.rb:(2,8)-(2,10)
