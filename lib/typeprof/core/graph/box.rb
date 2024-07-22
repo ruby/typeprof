@@ -338,8 +338,22 @@ module TypeProf::Core
       _block = method_type.block
 
       mod = genv.resolve_cpath(@cpath)
-      ty = @singleton ? Type::Singleton.new(genv, mod) : Type::Instance.new(genv, mod, []) # TODO: type params
-      param_map0 = Type.default_param_map(genv, ty)
+      if @singleton
+        ty = Type::Singleton.new(genv, mod)
+        param_map0 = Type.default_param_map(genv, ty)
+      else
+        type_params = mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+        ty = Type::Instance.new(genv, mod, type_params)
+        param_map0 = Type.default_param_map(genv, ty)
+        if ty.is_a?(Type::Instance)
+          ty.mod.type_params.zip(ty.args) do |param, arg|
+            param_map0[param] = arg
+          end
+        end
+      end
+      method_type.type_params.each do |param|
+        param_map0[param] = Source.new()
+      end
 
       positional_args = []
       splat_flags = []
