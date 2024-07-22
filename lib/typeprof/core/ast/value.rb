@@ -293,13 +293,13 @@ module TypeProf::Core
       end
     end
 
-    class LambdaNode < TypeProf::Core::AST::Node
+    class LambdaNode < Node
       def install0(genv)
         Source.new(genv.proc_type)
       end
     end
 
-    class ImaginaryNode < TypeProf::Core::AST::Node
+    class ImaginaryNode < Node
       def install0(genv)
         Source.new(genv.complex_type)
       end
