@@ -165,6 +165,7 @@ module TypeProf::Core
             end
           end
         end
+        return defs unless defs.empty?
       end
       return defs
     end
