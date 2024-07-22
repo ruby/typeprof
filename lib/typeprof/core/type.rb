@@ -302,11 +302,11 @@ module TypeProf::Core
       attr_reader :name, :vtx
 
       def base_type(genv)
-        raise "unsupported"
+        genv.obj_type # Is this ok?
       end
 
       def check_match(genv, changes, vtx)
-        raise "unsupported"
+        true # should implement a better support...
       end
 
       def show
