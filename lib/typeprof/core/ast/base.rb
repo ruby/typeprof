@@ -20,6 +20,7 @@ module TypeProf::Core
       def subnodes = {}
       def attrs = {}
 
+      #: { (TypeProf::Core::AST::Node) -> void } -> nil
       def each_subnode
         queue = subnodes.values
 
@@ -196,7 +197,7 @@ module TypeProf::Core
         @tbl = raw_node.locals
         raw_body = raw_node.statements
 
-        @body = AST.create_node(raw_body, lenv)
+        @body = AST.create_node(raw_body, lenv, false)
       end
 
       attr_reader :tbl, :body

@@ -102,7 +102,7 @@ module TypeProf::Core
     end
 
     class DefNode < Node
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, lenv, use_result)
         super(raw_node, lenv)
         singleton = !!raw_node.receiver
         mid = raw_node.name
@@ -139,6 +139,10 @@ module TypeProf::Core
         @rest_keywords = h[:rest_keywords]
         @block = h[:block]
         @args_code_ranges = h[:args_code_ranges] || []
+
+        # If the result of `def` statement, stop reusing this node
+        # TODO: `private def ...` should be handled well
+        @reusable = !use_result
       end
 
       attr_reader :singleton, :mid, :mid_code_range
@@ -155,6 +159,7 @@ module TypeProf::Core
       attr_reader :block
       attr_reader :body
       attr_reader :rbs_method_type
+      attr_reader :reusable
 
       def subnodes = {
         body:,
@@ -175,17 +180,18 @@ module TypeProf::Core
         opt_keywords:,
         rest_keywords:,
         block:,
+        reusable:,
       }
 
       def mname_code_range(_name) = @mid_code_range
 
       def define(genv) # NOT define0
-        return define_copy(genv) if @prev_node
+        return define_copy(genv) if @prev_node && @reusable
         super(genv)
       end
 
       def install(genv) # NOT install0
-        return install_copy(genv) if @prev_node
+        return install_copy(genv) if @prev_node && @reusable
         super(genv)
       end
 
