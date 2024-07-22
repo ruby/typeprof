@@ -230,7 +230,7 @@ module TypeProf::Core
     end
 
     def load_core_rbs(raw_decls)
-      lenv = LocalEnv.new(nil, CRef::Toplevel, {}, [], nil)
+      lenv = LocalEnv.new(nil, CRef::Toplevel, {}, [])
       decls = raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
@@ -274,17 +274,16 @@ module TypeProf::Core
   end
 
   class LocalEnv
-    def initialize(path, cref, locals, return_boxes, implicit_receiver)
+    def initialize(path, cref, locals, return_boxes)
       @path = path
       @cref = cref
       @locals = locals
       @return_boxes = return_boxes
       @next_boxes = []
       @filters = {}
-      @implicit_receiver = implicit_receiver
     end
 
-    attr_reader :path, :cref, :locals, :return_boxes, :next_boxes, :implicit_receiver
+    attr_reader :path, :cref, :locals, :return_boxes, :next_boxes
 
     def new_var(name, node)
       @locals[name] = Vertex.new(node)
@@ -330,23 +329,26 @@ module TypeProf::Core
   end
 
   class CRef
-    def initialize(cpath, singleton, mid, outer)
+    def initialize(cpath, scope_level, mid, outer)
       @cpath = cpath
-      @singleton = singleton
+      @scope_level = scope_level
       @mid = mid
       @outer = outer
     end
 
-    attr_reader :cpath, :singleton, :mid, :outer
+    attr_reader :cpath, :scope_level, :mid, :outer
 
     def get_self(genv)
-      if @singleton
-        Type::Singleton.new(genv, genv.resolve_cpath(@cpath || []))
+      case @scope_level
+      when :instance
+        Source.new(Type::Instance.new(genv, genv.resolve_cpath(@cpath || []), []))
+      when :class
+        Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@cpath || [])))
       else
-        Type::Instance.new(genv, genv.resolve_cpath(@cpath || []), [])
+        Source.new()
       end
     end
 
-    Toplevel = self.new([], false, nil, nil)
+    Toplevel = self.new([], :instance, nil, nil)
   end
 end

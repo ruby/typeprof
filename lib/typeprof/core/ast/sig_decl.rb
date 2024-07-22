@@ -14,8 +14,8 @@ module TypeProf::Core
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
         # TODO: decl.type_params
         # TODO: decl.super_class.args
-        ncref = CRef.new(@cpath, true, nil, lenv.cref)
-        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [], nil)
+        ncref = CRef.new(@cpath, :class, nil, lenv.cref)
+        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
         @members = raw_decl.members.map do |member|
           AST.create_rbs_member(member, nlenv)
         end.compact

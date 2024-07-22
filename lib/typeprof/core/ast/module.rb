@@ -11,8 +11,8 @@ module TypeProf::Core
         # TODO: class Foo < Struct.new(:foo, :bar)
 
         if @static_cpath
-          ncref = CRef.new(@static_cpath, true, nil, lenv.cref)
-          nlenv = LocalEnv.new(@lenv.path, ncref, {}, [], nil)
+          ncref = CRef.new(@static_cpath, :class, nil, lenv.cref)
+          nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
           @body = raw_scope ? AST.create_node(raw_scope, nlenv, use_result) : DummyNilNode.new(code_range, lenv)
         else
           @body = nil
@@ -59,7 +59,7 @@ module TypeProf::Core
         @cpath.install(genv)
         if @static_cpath
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
+          @body.lenv.locals[:"*self"] = @body.lenv.cref.get_self(genv)
 
           @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
           @changes.add_edge(genv, @mod_val, @mod_cdef.vtx)
@@ -133,8 +133,8 @@ module TypeProf::Core
         if @static_cpath.nil? || @static_cpath.empty?
           @body = nil
         else
-          ncref = CRef.new(static_cpath, true, nil, lenv.cref)
-          nlenv = LocalEnv.new(lenv.path, ncref, {}, [], ncref)
+          ncref = CRef.new(static_cpath, :metaclass, nil, lenv.cref)
+          nlenv = LocalEnv.new(lenv.path, ncref, {}, [])
           @body = @raw_node.body ? AST.create_node(@raw_node.body, nlenv) : DummyNilNode.new(code_range, lenv)
         end
       end
@@ -179,7 +179,7 @@ module TypeProf::Core
 
         if @body
           @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
+          @body.lenv.locals[:"*self"] = @body.lenv.cref.get_self(genv)
 
           @mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
           @changes.add_edge(genv, @mod_val, @mod_cdef.vtx)

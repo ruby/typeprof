@@ -79,7 +79,7 @@ module TypeProf::Core
 
     def on_cbase_updated(genv)
       if @cbase && @cbase.cpath
-        resolve(genv, CRef.new(@cbase.cpath, false, nil, nil), true)
+        resolve(genv, CRef.new(@cbase.cpath, :class, nil, nil), true)
       else
         resolution_failed(genv)
       end

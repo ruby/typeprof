@@ -61,8 +61,13 @@ module TypeProf::Core
       def attrs = { var: }
 
       def install0(genv)
-        box = @changes.add_ivar_read_box(genv, lenv.cref.cpath, lenv.cref.singleton, @var)
-        @lenv.apply_read_filter(genv, self, @var, box.ret)
+        case @lenv.cref.scope_level
+        when :class, :instance
+          box = @changes.add_ivar_read_box(genv, lenv.cref.cpath, lenv.cref.scope_level == :class, @var)
+          @lenv.apply_read_filter(genv, self, @var, box.ret)
+        else
+          Source.new()
+        end
       end
 
       def retrieve_at(pos)
@@ -85,29 +90,44 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.singleton, @var)
-        mod.add_def(self)
-        mod
+        case @lenv.cref.scope_level
+        when :class, :instance
+          mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
+          mod.add_def(self)
+          mod
+        else
+          # TODO: warn
+          nil
+        end
       end
 
       def define_copy(genv)
-        mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.singleton, @var)
-        mod.add_def(self)
-        mod.remove_def(@prev_node)
+        case @lenv.cref.scope_level
+        when :class, :instance
+          mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
+          mod.add_def(self)
+          mod.remove_def(@prev_node)
+        end
         super(genv)
       end
 
       def undefine0(genv)
-        mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.singleton, @var)
-        mod.remove_def(self)
+        case @lenv.cref.scope_level
+        when :class, :instance
+          mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
+          mod.remove_def(self)
+        end
         @rhs.undefine(genv) if @rhs
       end
 
       def install0(genv)
-        @changes.add_ivar_read_box(genv, @lenv.cref.cpath, @lenv.cref.singleton, @var)
         val = @rhs.install(genv)
-        val = val.new_vertex(genv, self) # avoid multi-edge from val to static_ret.vtx
-        @changes.add_edge(genv, val, @static_ret.vtx)
+        case @lenv.cref.scope_level
+        when :class, :instance
+          @changes.add_ivar_read_box(genv, @lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
+          val = val.new_vertex(genv, self) # avoid multi-edge from val to static_ret.vtx
+          @changes.add_edge(genv, val, @static_ret.vtx)
+        end
         val
       end
 

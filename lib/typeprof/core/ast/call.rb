@@ -56,8 +56,8 @@ module TypeProf::Core
                             else
                               raise "not supported yet: #{ raw_block.parameters.class }"
                             end
-            ncref = CRef.new(lenv.cref.cpath, false, @mid, lenv.cref)
-            nlenv = LocalEnv.new(@lenv.path, ncref, {}, @lenv.return_boxes, nil)
+            ncref = CRef.new(lenv.cref.cpath, :instance, @mid, lenv.cref)
+            nlenv = LocalEnv.new(@lenv.path, ncref, {}, @lenv.return_boxes)
             @block_body = raw_block.body ? AST.create_node(raw_block.body, nlenv) : DummyNilNode.new(code_range, lenv)
           end
         end
@@ -84,7 +84,7 @@ module TypeProf::Core
         if @block_body
           @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
           @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @block_body.lenv.locals[:"*self"] = Source.new(@block_body.lenv.cref.get_self(genv))
+          @block_body.lenv.locals[:"*self"] = @block_body.lenv.cref.get_self(genv)
 
           blk_f_args = []
           if @block_f_args

@@ -104,7 +104,8 @@ module TypeProf::Core
     class DefNode < Node
       def initialize(raw_node, lenv, use_result)
         super(raw_node, lenv)
-        singleton = !!raw_node.receiver || !!lenv.implicit_receiver
+        # TODO: warn "def self.foo" in a metaclass
+        singleton = !!raw_node.receiver || lenv.cref.scope_level == :metaclass
         mid = raw_node.name
         mid_code_range = TypeProf::CodeRange.from_node(raw_node.name_loc)
         @tbl = raw_node.locals
@@ -117,8 +118,8 @@ module TypeProf::Core
         @mid = mid
         @mid_code_range = mid_code_range
 
-        ncref = CRef.new(lenv.cref.cpath, @singleton, @mid, lenv.cref)
-        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [], nil)
+        ncref = CRef.new(lenv.cref.cpath, @singleton ? :class : :instance, @mid, lenv.cref)
+        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
         if raw_body
           @body = AST.create_node(raw_body, nlenv)
         else
@@ -201,7 +202,7 @@ module TypeProf::Core
         end
 
         @tbl.each {|var| @body.lenv.locals[var] = Source.new(genv.nil_type) }
-        @body.lenv.locals[:"*self"] = Source.new(@body.lenv.cref.get_self(genv))
+        @body.lenv.locals[:"*self"] = @body.lenv.cref.get_self(genv)
 
         req_positionals = @req_positionals.map {|var| @body.lenv.new_var(var, self) }
         opt_positionals = @opt_positionals.map {|var| @body.lenv.new_var(var, self) }
