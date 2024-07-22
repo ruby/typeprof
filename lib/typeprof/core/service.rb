@@ -399,7 +399,7 @@ module TypeProf::Core
               out << "  " * depth + s
               depth += 1
               mod.included_modules.each do |inc_def, inc_mod|
-                if (inc_def.is_a?(AST::ConstantReadNode) || inc_def.is_a?(AST::ConstantPathNode)) && inc_def.lenv.path == path
+                if inc_def.is_a?(AST::ConstantReadNode) && inc_def.lenv.path == path
                   out << "  " * depth + "include #{ inc_mod.show_cpath }"
                 end
               end
