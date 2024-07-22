@@ -1,11 +1,12 @@
 module TypeProf::Core
   class AST
     class StatementsNode < Node
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, lenv, use_result)
         super(raw_node, lenv)
-        @stmts = raw_node.body.map do |n|
+        stmts = raw_node.body
+        @stmts = stmts.map.with_index do |n, i|
           if n
-            AST.create_node(n, lenv)
+            AST.create_node(n, lenv, i == stmts.length - 1 ? use_result : false)
           else
             last = code_range.last
             DummyNilNode.new(TypeProf::CodeRange.new(last, last), lenv)

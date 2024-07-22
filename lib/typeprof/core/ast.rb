@@ -18,8 +18,8 @@ module TypeProf::Core
       ProgramNode.new(raw_scope, lenv)
     end
 
-    #: (untyped, TypeProf::Core::LocalEnv) -> TypeProf::Core::AST::Node
-    def self.create_node(raw_node, lenv)
+    #: (untyped, TypeProf::Core::LocalEnv, ?bool) -> TypeProf::Core::AST::Node
+    def self.create_node(raw_node, lenv, use_result = true)
       while true
         case raw_node.type
         when :parentheses_node
@@ -34,10 +34,10 @@ module TypeProf::Core
       case raw_node.type
 
       # definition
-      when :statements_node then StatementsNode.new(raw_node, lenv)
-      when :module_node then ModuleNode.new(raw_node, lenv)
-      when :class_node then ClassNode.new(raw_node, lenv)
-      when :def_node then DefNode.new(raw_node, lenv)
+      when :statements_node then StatementsNode.new(raw_node, lenv, use_result)
+      when :module_node then ModuleNode.new(raw_node, lenv, use_result)
+      when :class_node then ClassNode.new(raw_node, lenv, use_result)
+      when :def_node then DefNode.new(raw_node, lenv, use_result)
       when :alias_method_node then AliasNode.new(raw_node, lenv)
 
       # control

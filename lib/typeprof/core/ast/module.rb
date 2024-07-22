@@ -1,7 +1,7 @@
 module TypeProf::Core
   class AST
     class ModuleBaseNode < Node
-      def initialize(raw_node, lenv, raw_cpath, raw_scope)
+      def initialize(raw_node, lenv, raw_cpath, raw_scope, use_result)
         super(raw_node, lenv)
 
         @cpath = AST.create_node(raw_cpath, lenv)
@@ -13,7 +13,7 @@ module TypeProf::Core
         if @static_cpath
           ncref = CRef.new(@static_cpath, true, nil, lenv.cref)
           nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
-          @body = raw_scope ? AST.create_node(raw_scope, nlenv) : DummyNilNode.new(code_range, lenv)
+          @body = raw_scope ? AST.create_node(raw_scope, nlenv, use_result) : DummyNilNode.new(code_range, lenv)
         else
           @body = nil
         end
@@ -77,14 +77,14 @@ module TypeProf::Core
     end
 
     class ModuleNode < ModuleBaseNode
-      def initialize(raw_node, lenv)
-        super(raw_node, lenv, raw_node.constant_path, raw_node.body)
+      def initialize(raw_node, lenv, use_result)
+        super(raw_node, lenv, raw_node.constant_path, raw_node.body, use_result)
       end
     end
 
     class ClassNode < ModuleBaseNode
-      def initialize(raw_node, lenv)
-        super(raw_node, lenv, raw_node.constant_path, raw_node.body)
+      def initialize(raw_node, lenv, use_result)
+        super(raw_node, lenv, raw_node.constant_path, raw_node.body, use_result)
         raw_superclass = raw_node.superclass
         @superclass_cpath = raw_superclass ? AST.create_node(raw_superclass, lenv) : nil
       end
