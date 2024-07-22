@@ -53,7 +53,7 @@ test.rb:(2,2)-(2,5) # Jump to Foo#BAR (constant_write_node)
 test.rb:(21,0)-(21,9) # Jump to Foo#BBAR (constant_path_write_node)
 
 ## definition: test.rb:24:5
-test.rb:(23,0)-(23,9) # Jump to Foo#BBAR (first arg of constant_path_target_node)
+test.rb:(23,0)-(23,9) # Jump to Foo#CCAR (first arg of constant_path_target_node)
 
 ## definition: test.rb:25:5
-test.rb:(23,11)-(23,20) # Jump to Foo#BBAR (second arg of constant_path_target_node)
+test.rb:(23,11)-(23,20) # Jump to Foo#DDAR (second arg of constant_path_target_node)
