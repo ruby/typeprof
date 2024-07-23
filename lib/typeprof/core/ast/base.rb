@@ -209,6 +209,8 @@ module TypeProf::Core
         @tbl.each {|var| @lenv.locals[var] = Source.new(genv.nil_type) }
         @lenv.locals[:"*self"] = lenv.cref.get_self(genv)
 
+        # for toplevel return
+        @body.lenv.locals[:"*expected_method_ret"] = Vertex.new(self)
         @body.install(genv)
       end
     end
