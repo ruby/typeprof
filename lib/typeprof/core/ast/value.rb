@@ -219,17 +219,24 @@ module TypeProf::Core
       def initialize(raw_node, lenv, elems = raw_node.elements)
         super(raw_node, lenv)
         @elems = elems.map {|n| AST.create_node(n, lenv) }
+        @splat = @elems.any? {|e| e.is_a?(SplatNode) }
       end
 
-      attr_reader :elems
+      attr_reader :elems, :splat
 
       def subnodes = { elems: }
+      def attrs = { splat: }
 
       def install0(genv)
         elems = @elems.map {|e| e.install(genv).new_vertex(genv, self) }
         unified_elem = Vertex.new(self)
         elems.each {|vtx| @changes.add_edge(genv, vtx, unified_elem) }
-        Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem)))
+        base_ty = genv.gen_ary_type(unified_elem)
+        if @splat
+          Source.new(base_ty)
+        else
+          Source.new(Type::Array.new(genv, elems, base_ty))
+        end
       end
     end
 

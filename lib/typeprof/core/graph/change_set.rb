@@ -69,6 +69,12 @@ module TypeProf::Core
       @new_boxes[key] = EscapeBox.new(@node, genv, a_ret, f_ret)
     end
 
+    def add_splat_box(genv, arg)
+      key = [:splat, arg]
+      return if @new_boxes[key]
+      @new_boxes[key] = SplatBox.new(@node, genv, arg)
+    end
+
     def add_masgn_box(genv, rhs, lhss)
       key = [:masgn, rhs, lhss]
       return if @new_boxes[key]

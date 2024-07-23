@@ -105,5 +105,21 @@ module TypeProf::Core
         Source.new(Type::Instance.new(genv, genv.resolve_cpath([:Encoding]), []))
       end
     end
+
+    class SplatNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @expr = AST.create_node(raw_node.expression, lenv)
+      end
+
+      attr_reader :expr
+
+      def subnodes = { expr: }
+
+      def install0(genv)
+        ty = @expr.install(genv)
+        @changes.add_splat_box(genv, ty).ret
+      end
+    end
   end
 end
