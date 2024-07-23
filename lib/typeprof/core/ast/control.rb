@@ -116,7 +116,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         @cond = AST.create_node(raw_node.predicate, lenv)
-        @body = AST.create_node(raw_node.statements, lenv)
+        @body = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : DummyNilNode.new(code_range, lenv)
       end
 
       attr_reader :cond, :body

@@ -10,9 +10,14 @@ def bar(x)
   end
 end
 
+def baz(x)
+  while x
+  end
+end
 
 ## assert
 class Object
   def foo: (untyped) -> nil
   def bar: (untyped) -> nil
+  def baz: (untyped) -> nil
 end
