@@ -76,8 +76,10 @@ module TypeProf::Core
       def install0(genv)
         @args.each do |arg|
           ivar_name = :"@#{ arg }"
-          box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, ivar_name)
-          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
+          ivar_box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, ivar_name)
+          e_ret = Vertex.new(self)
+          ret_box = @changes.add_escape_box(genv, ivar_box.ret, e_ret)
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [ret_box])
         end
         Source.new
       end
@@ -131,13 +133,15 @@ module TypeProf::Core
 
       def install0(genv)
         @args.zip(@static_ret) do |arg, ive|
-          box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, :"@#{ arg }")
-          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [box])
+          ivar_box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, :"@#{ arg }")
+          e_ret = Vertex.new(self)
+          ret_box = @changes.add_escape_box(genv, ivar_box.ret, e_ret)
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [ret_box])
 
           vtx = Vertex.new(self)
           @changes.add_edge(genv, vtx, ive.vtx)
           f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
-          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, :"#{ arg }=", f_args, [box])
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, :"#{ arg }=", f_args, [ret_box])
         end
         Source.new
       end

@@ -275,6 +275,8 @@ module TypeProf::Core
           changes.add_diagnostic(:code_range, msg)
         when AST::CallNode
           changes.add_diagnostic(:block_last_stmt_code_range, msg)
+        when AST::AttrReaderMetaNode, AST::AttrAccessorMetaNode
+          changes.add_diagnostic(:code_range, msg)
         else
           pp @node.class
         end
