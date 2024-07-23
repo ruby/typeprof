@@ -189,19 +189,23 @@ module TypeProf::Core
       end
     end
 
+    def self.parse_return_arguments(raw_node, lenv, code_range)
+      if raw_node.arguments
+        elems = raw_node.arguments.arguments
+        if elems.one?
+          AST.create_node(elems.first, lenv)
+        else
+          ArrayNode.new(raw_node.arguments, lenv, elems)
+        end
+      else
+        DummyNilNode.new(code_range, lenv)
+      end
+  end
+
     class NextNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        if raw_node.arguments
-          if raw_node.arguments.arguments.one?
-            @arg = AST.create_node(raw_node.arguments.arguments.first, lenv)
-          else
-            elems = raw_node.arguments.arguments
-            @arg = DummyArrayNode.new(elems, code_range, lenv)
-          end
-        else
-          @arg = DummyNilNode.new(code_range, lenv)
-        end
+        @arg = AST.parse_return_arguments(raw_node, lenv, code_range)
       end
 
       attr_reader :arg
@@ -300,16 +304,7 @@ module TypeProf::Core
     class ReturnNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        if raw_node.arguments
-          elems = raw_node.arguments.arguments
-          if elems.one?
-            @arg = AST.create_node(elems.first, lenv)
-          else
-            @arg = DummyArrayNode.new(elems, code_range, lenv)
-          end
-        else
-          @arg = DummyNilNode.new(code_range, lenv)
-        end
+        @arg = AST.parse_return_arguments(raw_node, lenv, code_range)
       end
 
       attr_reader :arg

@@ -216,9 +216,9 @@ module TypeProf::Core
     end
 
     class ArrayNode < Node
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, lenv, elems = raw_node.elements)
         super(raw_node, lenv)
-        @elems ||= raw_node.elements.map {|n| AST.create_node(n, lenv) }
+        @elems = elems.map {|n| AST.create_node(n, lenv) }
       end
 
       attr_reader :elems
@@ -286,14 +286,6 @@ module TypeProf::Core
     class ImaginaryNode < Node
       def install0(genv)
         Source.new(genv.complex_type)
-      end
-    end
-
-    class DummyArrayNode < ArrayNode
-      def initialize(elements, code_range, lenv)
-        @elems = elements.map {|n| AST.create_node(n, lenv) }
-        @code_range = code_range
-        super(nil, lenv)
       end
     end
   end
