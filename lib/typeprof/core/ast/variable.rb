@@ -268,10 +268,10 @@ module TypeProf::Core
       end
     end
 
-    class NumberedReferenceReadNode < Node
+    class RegexpReferenceReadNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @var = :"$#{raw_node.number}"
+        @var = raw_node.type == :back_reference_read_node ? :"$&" : :"$#{raw_node.number}"
       end
 
       attr_reader :var
