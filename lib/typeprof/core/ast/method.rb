@@ -304,5 +304,25 @@ module TypeProf::Core
         end
       end
     end
+
+    class UndefNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @names = raw_node.names.map do |raw_name|
+          AST.create_node(raw_name, lenv)
+        end
+      end
+
+      attr_reader :names
+
+      def subnodes = { names: }
+
+      def install0(genv)
+        @names.each do |name|
+          name.install(genv)
+        end
+        Source.new(genv.nil_type)
+      end
+    end
   end
 end
