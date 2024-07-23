@@ -1,5 +1,18 @@
 module TypeProf::Core
   class AST
+    def self.create_part_node(raw_part, lenv)
+      case raw_part.type
+      when :string_node
+        AST.create_node(raw_part, lenv)
+      when :embedded_statements_node
+        AST.create_node(raw_part.statements, lenv)
+      when :embedded_variable_node
+        AST.create_node(raw_part.variable, lenv)
+      else
+        raise "unknown symbol part: #{ raw_part.type }"
+      end
+    end
+
     class SelfNode < Node
       def install0(genv)
         @lenv.get_var(:"*self")
@@ -72,16 +85,8 @@ module TypeProf::Core
     class InterpolatedSymbolNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @parts = []
-        raw_node.parts.each do |raw_part|
-          case raw_part.type
-          when :string_node
-            @parts << AST.create_node(raw_part, lenv)
-          when :embedded_statements_node
-            @parts << AST.create_node(raw_part.statements, lenv)
-          else
-            raise "unknown symbol part: #{ raw_part.type }"
-          end
+        @parts = raw_node.parts.map do |raw_part|
+          AST.create_part_node(raw_part, lenv)
         end
       end
 
@@ -115,15 +120,10 @@ module TypeProf::Core
         until queue.empty?
           raw_part = queue.shift
 
-          case raw_part.type
-          when :string_node
-            @parts << AST.create_node(raw_part, lenv)
-          when :embedded_statements_node
-            @parts << AST.create_node(raw_part.statements, lenv)
-          when :interpolated_string_node
+          if raw_part.type == :interpolated_string_node
             queue.unshift(*raw_part.parts)
           else
-            raise "unknown string part: #{ raw_part.type }"
+            @parts << AST.create_part_node(raw_part, lenv)
           end
         end
       end
@@ -151,16 +151,8 @@ module TypeProf::Core
     class InterpolatedRegexpNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @parts = []
-        raw_node.parts.each do |raw_part|
-          case raw_part.type
-          when :string_node
-            @parts << AST.create_node(raw_part, lenv)
-          when :embedded_statements_node
-            @parts << AST.create_node(raw_part.statements, lenv)
-          else
-            raise "unknown regexp part: #{ raw_part.type }"
-          end
+        @parts = raw_node.parts.map do |raw_part|
+          AST.create_part_node(raw_part, lenv)
         end
       end
 
@@ -187,16 +179,8 @@ module TypeProf::Core
     class InterpolatedMatchLastLineNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @parts = []
-        raw_node.parts.each do |raw_part|
-          case raw_part.type
-          when :string_node
-            @parts << AST.create_node(raw_part, lenv)
-          when :embedded_statements_node
-            @parts << AST.create_node(raw_part.statements, lenv)
-          else
-            raise "unknown regexp part: #{ raw_part.type }"
-          end
+        @parts = raw_node.parts.map do |raw_part|
+          AST.create_part_node(raw_part, lenv)
         end
       end
 

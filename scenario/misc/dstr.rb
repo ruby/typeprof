@@ -22,7 +22,6 @@ class Object
 end
 
 ## update
-
 def xstring_lit(n)
   `echo foo`
 end
@@ -35,4 +34,14 @@ end
 class Object
   def xstring_lit: (Integer) -> String
   def interpolate_xstring: -> String
+end
+
+## update
+def foo
+  "#$1"
+end
+
+## assert
+class Object
+  def foo: -> String
 end
