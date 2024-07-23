@@ -284,6 +284,28 @@ module TypeProf::Core
     end
   end
 
+  class SplatBox < Box
+    def initialize(node, genv, arg)
+      super(node)
+      @arg = arg
+      @arg.add_edge(genv, self)
+      @ret = Vertex.new(node)
+    end
+
+    attr_reader :arg, :ret
+
+    def run0(genv, changes)
+      @arg.each_type do |ty|
+        ty = ty.base_type(genv)
+        if ty.mod == genv.mod_range # very ad-hoc! is it possible to check to_a?
+          changes.add_edge(genv, ty.args[0], @ret)
+        else
+          changes.add_edge(genv, Source.new(ty), @ret)
+        end
+      end
+    end
+  end
+
   class MethodDefBox < Box
     def initialize(node, genv, cpath, singleton, mid, f_args, ret_boxes)
       super(node)

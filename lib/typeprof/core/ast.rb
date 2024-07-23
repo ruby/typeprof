@@ -213,6 +213,7 @@ module TypeProf::Core
 
       # misc
       when :defined_node then DefinedNode.new(raw_node, lenv)
+      when :splat_node then SplatNode.new(raw_node, lenv)
 
       # call
       when :super_node then SuperNode.new(raw_node, lenv)
