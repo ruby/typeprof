@@ -8,4 +8,4 @@ foo(ARGV[0].to_i)
 ## assert
 class Object
   def foo: (Integer) -> String
-end
+en
