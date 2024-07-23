@@ -40,6 +40,7 @@ module TypeProf::Core
       when :singleton_class_node then SingletonClassNode.new(raw_node, lenv, use_result)
       when :def_node then DefNode.new(raw_node, lenv, use_result)
       when :alias_method_node then AliasNode.new(raw_node, lenv)
+      when :undef_node then UndefNode.new(raw_node, lenv)
 
       # control
       when :and_node then AndNode.new(raw_node, lenv)
