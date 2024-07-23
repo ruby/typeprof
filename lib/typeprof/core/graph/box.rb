@@ -556,10 +556,11 @@ module TypeProf::Core
       @old_mid = old_mid
       @ret = Source.new(genv.nil_type)
 
-      me = genv.resolve_method(@cpath, @singleton, @new_mid)
-      me.add_alias(self, @old_mid)
-      if me.decls.empty?
-        me.add_run_all_method_call_boxes(genv)
+      old_me = genv.resolve_method(@cpath, @singleton, @old_mid)
+      new_me = genv.resolve_method(@cpath, @singleton, @new_mid)
+      new_me.add_alias(self, old_me)
+      if new_me.decls.empty?
+        new_me.add_run_all_method_call_boxes(genv)
       else
         genv.add_run(self)
       end
@@ -680,8 +681,7 @@ module TypeProf::Core
             me = ty.mod.get_method(ty.is_a?(Type::Singleton), mid)
             changes.add_depended_method_entity(me) if changes
             if !me.aliases.empty?
-              mid = me.aliases.values.first
-              redo
+              me = me.aliases.values.first
             end
             if me.exist?
               yield me, ty, mid, orig_ty
@@ -720,8 +720,7 @@ module TypeProf::Core
         me = self_ty.mod.get_method(false, mid)
         changes.add_depended_method_entity(me) if changes
         if !me.aliases.empty?
-          mid = me.aliases.values.first
-          redo
+          me = me.aliases.values.first
         end
         if me.exist?
           found = true
@@ -741,8 +740,7 @@ module TypeProf::Core
         me = inc_ty.mod.get_method(false, mid)
         changes.add_depended_method_entity(me) if changes
         if !me.aliases.empty?
-          mid = me.aliases.values.first
-          redo
+          me = me.aliases.values.first
         end
         if me.exist?
           found = true

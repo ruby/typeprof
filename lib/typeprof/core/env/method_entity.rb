@@ -28,8 +28,8 @@ module TypeProf::Core
       @defs.delete(mdef) || raise
     end
 
-    def add_alias(node, old_mid)
-      @aliases[node] = old_mid
+    def add_alias(node, old_me)
+      @aliases[node] = old_me || raise
     end
 
     def remove_alias(node)
