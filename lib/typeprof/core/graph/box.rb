@@ -558,11 +558,10 @@ module TypeProf::Core
       @old_mid = old_mid
       @ret = Source.new(genv.nil_type)
 
-      old_me = genv.resolve_method(@cpath, @singleton, @old_mid)
-      new_me = genv.resolve_method(@cpath, @singleton, @new_mid)
-      new_me.add_alias(self, old_me)
-      if new_me.decls.empty?
-        new_me.add_run_all_method_call_boxes(genv)
+      me = genv.resolve_method(@cpath, @singleton, @new_mid)
+      me.add_alias(self, @old_mid)
+      if me.decls.empty?
+        me.add_run_all_method_call_boxes(genv)
       else
         genv.add_run(self)
       end
@@ -678,12 +677,15 @@ module TypeProf::Core
 
         base_ty_env = Type.default_param_map(genv, ty)
 
+        alias_limit = 0
         while ty
           unless skip
             me = ty.mod.get_method(ty.is_a?(Type::Singleton), mid)
             changes.add_depended_method_entity(me) if changes
             if !me.aliases.empty?
-              me = me.aliases.values.first
+              mid = me.aliases.values.first
+              alias_limit += 1
+              redo if alias_limit < 5
             end
             if me.exist?
               yield me, ty, mid, orig_ty
@@ -711,6 +713,7 @@ module TypeProf::Core
     def resolve_included_modules(genv, changes, base_ty_env, ty, mid, &blk)
       found = false
 
+      alias_limit = 0
       ty.mod.self_types.each do |(mdecl, idx), self_ty_mod|
         raise unless mdecl.is_a?(AST::SigModuleNode)
         if self_ty_mod.type_params
@@ -722,7 +725,9 @@ module TypeProf::Core
         me = self_ty.mod.get_method(false, mid)
         changes.add_depended_method_entity(me) if changes
         if !me.aliases.empty?
-          me = me.aliases.values.first
+          mid = me.aliases.values.first
+          alias_limit += 1
+          redo if alias_limit < 5
         end
         if me.exist?
           found = true
@@ -732,6 +737,7 @@ module TypeProf::Core
         end
       end
 
+      alias_limit = 0
       ty.mod.included_modules.each do |inc_decl, inc_mod|
         if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
           inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, base_ty_env, ty)
@@ -742,7 +748,9 @@ module TypeProf::Core
         me = inc_ty.mod.get_method(false, mid)
         changes.add_depended_method_entity(me) if changes
         if !me.aliases.empty?
-          me = me.aliases.values.first
+          mid = me.aliases.values.first
+          alias_limit += 1
+          redo if alias_limit < 5
         end
         if me.exist?
           found = true

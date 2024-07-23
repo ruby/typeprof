@@ -28,8 +28,8 @@ module TypeProf::Core
       @defs.delete(mdef) || raise
     end
 
-    def add_alias(node, old_me)
-      @aliases[node] = old_me || raise
+    def add_alias(node, old_mid)
+      @aliases[node] = old_mid
     end
 
     def remove_alias(node)
@@ -37,7 +37,7 @@ module TypeProf::Core
     end
 
     def exist?
-      @builtin || !@decls.empty? || !@defs.empty? || !@aliases.empty?
+      @builtin || !@decls.empty? || !@defs.empty?
     end
 
     def add_run_all_mdefs(genv)
