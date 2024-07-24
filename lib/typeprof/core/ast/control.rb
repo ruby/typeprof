@@ -200,7 +200,7 @@ module TypeProf::Core
       else
         DummyNilNode.new(code_range, lenv)
       end
-  end
+    end
 
     class NextNode < Node
       def initialize(raw_node, lenv)
