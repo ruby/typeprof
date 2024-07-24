@@ -24,3 +24,15 @@ end
 class D2 < C
   def foo: -> :str
 end
+
+## update
+class StringifyKeyHash < Hash
+  def [](key)
+    super(key.to_s)
+  end
+end
+
+## assert
+class StringifyKeyHash < Hash
+  def []: (untyped) -> untyped
+end

@@ -125,7 +125,7 @@ module TypeProf::Core
       if singleton
         Type::Singleton.new(self, super_mod)
       else
-        get_instance_type(super_mod, ty.mod.superclass_type_args, changes, base_ty_env, ty)
+        get_instance_type(super_mod, ty.mod.superclass_type_args || [], changes, base_ty_env, ty)
       end
     end
 
