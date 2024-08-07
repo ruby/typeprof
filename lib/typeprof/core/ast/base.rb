@@ -128,6 +128,7 @@ module TypeProf::Core
               subnode = [subnode] if subnode.is_a?(AST::Node)
               prev_subnode = [prev_subnode] if prev_subnode.is_a?(AST::Node)
               subnode.zip(prev_subnode) do |subnode0, prev_subnode0|
+                next if subnode0 == nil && prev_subnode0 == nil
                 subnode0.diff(prev_subnode0)
                 return unless subnode0.prev_node
               end

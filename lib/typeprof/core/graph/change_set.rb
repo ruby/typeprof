@@ -75,6 +75,12 @@ module TypeProf::Core
       @new_boxes[key] = SplatBox.new(@node, genv, arg)
     end
 
+    def add_hash_splat_box(genv, arg, unified_key, unified_val)
+      key = [:hash_splat, arg, unified_key, unified_val]
+      return if @new_boxes[key]
+      @new_boxes[key] = HashSplatBox.new(@node, genv, arg, unified_key, unified_val)
+    end
+
     def add_masgn_box(genv, rhs, lhss)
       key = [:masgn, rhs, lhss]
       return if @new_boxes[key]
