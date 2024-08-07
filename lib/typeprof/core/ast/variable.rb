@@ -213,6 +213,22 @@ module TypeProf::Core
       end
     end
 
+    class PostExecutionNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @body = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : DummyNilNode.new(TypeProf::CodeRange.new(code_range.last, code_range.last), lenv)
+      end
+
+      attr_reader :body
+
+      def subnodes = { body: }
+
+      def install0(genv)
+        @body.install(genv)
+        Source.new(genv.nil_type)
+      end
+    end
+
     class ClassVariableWriteNode < Node
       def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)
