@@ -125,5 +125,25 @@ module TypeProf::Core
         @changes.add_splat_box(genv, vtx).ret
       end
     end
+
+    class ForNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        # XXX: tentative implementation
+        # raw_node.index
+        @expr = AST.create_node(raw_node.collection, lenv)
+        @body = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : DummyNilNode.new(TypeProf::CodeRange.new(code_range.last, code_range.last), lenv)
+      end
+
+      attr_reader :expr, :body
+
+      def subnodes = { expr:, body: }
+
+      def install0(genv)
+        @expr.install(genv)
+        @body.install(genv)
+        Source.new(genv.nil_type)
+      end
+    end
   end
 end
