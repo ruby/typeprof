@@ -215,6 +215,7 @@ module TypeProf::Core
       when :defined_node then DefinedNode.new(raw_node, lenv)
       when :splat_node then SplatNode.new(raw_node, lenv)
       when :for_node then ForNode.new(raw_node, lenv)
+      when :alias_global_variable_node then AliasGlobalVariableNode.new(raw_node, lenv)
 
       # call
       when :super_node then SuperNode.new(raw_node, lenv)
