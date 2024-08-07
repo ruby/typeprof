@@ -306,6 +306,32 @@ module TypeProf::Core
     end
   end
 
+  class HashSplatBox < Box
+    def initialize(node, genv, hsh, unified_key, unified_val)
+      super(node)
+      @hsh = hsh
+      @unified_key = unified_key
+      @unified_val = unified_val
+      @hsh.add_edge(genv, self)
+    end
+
+    def ret = @hsh # dummy
+
+    attr_reader :hsh, :unified_key, :unified_val
+
+    def run0(genv, changes)
+      @hsh.each_type do |ty|
+        ty = ty.base_type(genv)
+        if ty.mod == genv.mod_hash
+          changes.add_edge(genv, ty.args[0], @unified_key)
+          changes.add_edge(genv, ty.args[1], @unified_val)
+        else
+          "???"
+        end
+      end
+    end
+  end
+
   class MethodDefBox < Box
     def initialize(node, genv, cpath, singleton, mid, f_args, ret_boxes)
       super(node)

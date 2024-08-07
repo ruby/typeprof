@@ -246,6 +246,7 @@ module TypeProf::Core
         @keys = []
         @vals = []
         @keywords = keywords
+        @splat = false
 
         raw_node.elements.each do |raw_elem|
           # TODO: Support :assoc_splat_node
@@ -253,16 +254,20 @@ module TypeProf::Core
           when :assoc_node
             @keys << AST.create_node(raw_elem.key, lenv)
             @vals << AST.create_node(raw_elem.value, lenv)
+          when :assoc_splat_node
+            @keys << nil
+            @vals << AST.create_node(raw_elem.value, lenv)
+            @splat = true
           else
-            raise "unknown hash elem"
+            raise "unknown hash elem: #{ raw_elem.type }"
           end
         end
       end
 
-      attr_reader :keys, :vals, :keywords
+      attr_reader :keys, :vals, :splat, :keywords
 
       def subnodes = { keys:, vals: }
-      def attrs = { keywords: }
+      def attrs = { splat:, keywords: }
 
       def install0(genv)
         unified_key = Vertex.new(self)
@@ -276,11 +281,16 @@ module TypeProf::Core
             @changes.add_edge(genv, v, unified_val)
             literal_pairs[key.lit] = v if key.is_a?(SymbolNode)
           else
-            _h = val.install(genv)
-            # TODO: if h is a hash, we need to connect its elements to the new hash
+            h = val.install(genv)
+            # TODO: do we want to call to_hash on h?
+            @changes.add_hash_splat_box(genv, h, unified_key, unified_val)
           end
         end
-        Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
+        if @splat
+          Source.new(genv.gen_hash_type(unified_key, unified_val))
+        else
+          Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
+        end
       end
     end
 
