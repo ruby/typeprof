@@ -92,9 +92,9 @@ module TypeProf::Core
         @rhs.define(genv) if @rhs
         case @lenv.cref.scope_level
         when :class, :instance
-          mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
-          mod.add_def(self)
-          mod
+          val = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
+          val.add_def(self)
+          val
         else
           # TODO: warn
           nil
@@ -104,9 +104,9 @@ module TypeProf::Core
       def define_copy(genv)
         case @lenv.cref.scope_level
         when :class, :instance
-          mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
-          mod.add_def(self)
-          mod.remove_def(@prev_node)
+          val = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
+          val.add_def(self)
+          val.remove_def(@prev_node)
         end
         super(genv)
       end
@@ -114,8 +114,8 @@ module TypeProf::Core
       def undefine0(genv)
         case @lenv.cref.scope_level
         when :class, :instance
-          mod = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
-          mod.remove_def(self)
+          val = genv.resolve_ivar(@lenv.cref.cpath, @lenv.cref.scope_level == :class, @var)
+          val.remove_def(self)
         end
         @rhs.undefine(genv) if @rhs
       end
@@ -172,20 +172,21 @@ module TypeProf::Core
 
       def define0(genv)
         @rhs.define(genv) if @rhs
-        mod = genv.resolve_gvar(@var)
-        mod.add_def(self)
-        mod
+        val = genv.resolve_gvar(@var)
+        val.add_def(self)
+        val
       end
 
       def define_copy(genv)
-        mod = genv.resolve_gvar(@var)
-        mod.add_def(self)
-        mod.remove_def(@prev_node)
+        val = genv.resolve_gvar(@var)
+        val.add_def(self)
+        val.remove_def(@prev_node)
         super(genv)
       end
 
       def undefine0(genv)
-        genv.resolve_gvar(@var).remove_def(self)
+        val = genv.resolve_gvar(@var)
+        val.remove_def(self)
         @rhs.undefine(genv) if @rhs
       end
 
