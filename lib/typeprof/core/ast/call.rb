@@ -195,8 +195,8 @@ module TypeProf::Core
 
     class OperatorNode < CallBaseNode
       def initialize(raw_node, recv, lenv)
-        mid = raw_node.operator
-        mid_code_range = TypeProf::CodeRange.from_node(raw_node.operator_loc)
+        mid = raw_node.binary_operator
+        mid_code_range = TypeProf::CodeRange.from_node(raw_node.binary_operator_loc)
         last_arg = AST.create_node(raw_node.value, lenv)
         super(raw_node, recv, mid, mid_code_range, nil, last_arg, nil, lenv)
       end
