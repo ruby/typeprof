@@ -117,8 +117,12 @@ module TypeProf::Core
       def subnodes = { expr: }
 
       def install0(genv)
-        ty = @expr.install(genv)
-        @changes.add_splat_box(genv, ty).ret
+        vtx = @expr.install(genv)
+
+        a_args = ActualArguments.new([], [], nil, nil)
+        vtx = @changes.add_method_call_box(genv, vtx, :to_a, a_args, false).ret
+
+        @changes.add_splat_box(genv, vtx).ret
       end
     end
   end
