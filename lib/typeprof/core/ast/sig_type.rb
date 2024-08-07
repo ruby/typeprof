@@ -14,31 +14,42 @@ module TypeProf::Core
         # TODO?: param.variance, param.unchecked, param.upper_bound
         @type_params = raw_type_params ? raw_type_params.map {|param| param.name } : nil
 
-        @req_positionals = raw_decl.type.required_positionals.map do |ty|
-          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
-          AST.create_rbs_type(ty.type, lenv)
-        end
-        @post_positionals = raw_decl.type.trailing_positionals.map do |ty|
-          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
-          AST.create_rbs_type(ty.type, lenv)
-        end
-        @opt_positionals = raw_decl.type.optional_positionals.map do |ty|
-          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
-          AST.create_rbs_type(ty.type, lenv)
-        end
-        param = raw_decl.type.rest_positionals
-        @rest_positionals = param ? AST.create_rbs_type(param.type, lenv) : nil
+        if raw_decl.type.is_a?(RBS::Types::Function)
+          @req_positionals = raw_decl.type.required_positionals.map do |ty|
+            raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+            AST.create_rbs_type(ty.type, lenv)
+          end
+          @post_positionals = raw_decl.type.trailing_positionals.map do |ty|
+            raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+            AST.create_rbs_type(ty.type, lenv)
+          end
+          @opt_positionals = raw_decl.type.optional_positionals.map do |ty|
+            raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+            AST.create_rbs_type(ty.type, lenv)
+          end
+          param = raw_decl.type.rest_positionals
+          @rest_positionals = param ? AST.create_rbs_type(param.type, lenv) : nil
 
-        @req_keywords = raw_decl.type.required_keywords.to_h do |key, ty|
-          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
-          [key, AST.create_rbs_type(ty.type, lenv)]
+          @req_keywords = raw_decl.type.required_keywords.to_h do |key, ty|
+            raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+            [key, AST.create_rbs_type(ty.type, lenv)]
+          end
+          @opt_keywords = raw_decl.type.optional_keywords.to_h do |key, ty|
+            raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
+            [key, AST.create_rbs_type(ty.type, lenv)]
+          end
+          param = raw_decl.type.rest_keywords
+          @rest_keywords = param ? AST.create_rbs_type(param.type, lenv) : nil
+        else
+          # RBS::Types::UntypedFunction
+          @req_positionals = []
+          @post_positionals = []
+          @opt_positionals = []
+          @rest_positionals = SigTyBaseAnyNode.new(raw_decl, lenv)
+          @req_keywords = {}
+          @opt_keywords = {}
+          @rest_keywords = nil
         end
-        @opt_keywords = raw_decl.type.optional_keywords.to_h do |key, ty|
-          raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
-          [key, AST.create_rbs_type(ty.type, lenv)]
-        end
-        param = raw_decl.type.rest_keywords
-        @rest_keywords = param ? AST.create_rbs_type(param.type, lenv) : nil
 
         @return_type = AST.create_rbs_type(raw_decl.type.return_type, lenv)
       end
