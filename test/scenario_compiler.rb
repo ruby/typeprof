@@ -63,7 +63,7 @@ class ScenarioCompiler
           line = line.gsub(/#\s*.*\Z/, "")
           need_comment_removal = false
         end
-        out << line << "\n"
+        out << line.gsub("\\") { "\\\\" } << "\n"
       end
     end
     out << close_str
