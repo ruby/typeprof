@@ -12,7 +12,7 @@ module TypeProf::Core
       @followers.each do |follower|
         case follower
         when ModuleEntity
-          follower.on_parent_modules_changed(genv)
+          genv.add_static_eval_queue(:parent_modules_changed, follower)
         when ScopedStaticRead
           follower.on_cbase_updated(genv)
         when Box, IsAFilter
