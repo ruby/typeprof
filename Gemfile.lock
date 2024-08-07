@@ -1,16 +1,16 @@
 GIT
   remote: https://github.com/ruby/rbs.git
-  revision: eb432930287d2c71ea7805be8c345d5679df9e1e
+  revision: bcc737da3c8c625d55d9b8856d9b8399b92a32d4
   specs:
-    rbs (3.5.0.pre.2)
-      abbrev
+    rbs (3.5.1)
+      logger
 
 GEM
   remote: https://rubygems.org/
   specs:
-    abbrev (0.1.2)
     coverage-helpers (1.0.0)
     docile (1.4.0)
+    logger (1.6.0)
     power_assert (2.0.3)
     prism (0.30.0)
     rake (13.2.1)
