@@ -202,6 +202,17 @@ module TypeProf::Core
       end
     end
 
+    class AliasGlobalVariableNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        # XXX: Who use this? I want to hard-code English.rb
+      end
+
+      def install0(genv)
+        Source.new(genv.nil_type)
+      end
+    end
+
     class ClassVariableWriteNode < Node
       def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)
