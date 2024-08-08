@@ -341,7 +341,10 @@ module TypeProf::Core
     def get_self(genv)
       case @scope_level
       when :instance
-        Source.new(Type::Instance.new(genv, genv.resolve_cpath(@cpath || []), []))
+        mod = genv.resolve_cpath(@cpath || [])
+        type_params = mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+        ty = Type::Instance.new(genv, mod, type_params)
+        Source.new(ty)
       when :class
         Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@cpath || [])))
       else
