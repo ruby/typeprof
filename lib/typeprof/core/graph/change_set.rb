@@ -50,7 +50,7 @@ module TypeProf::Core
     end
 
     def add_edge(genv, src, dst)
-      raise unless src.is_a?(BasicVertex)
+      raise src.class.to_s unless src.is_a?(BasicVertex)
       src.add_edge(genv, dst) if !@edges.include?([src, dst]) && !@new_edges.include?([src, dst])
       @new_edges << [src, dst]
     end
@@ -81,10 +81,10 @@ module TypeProf::Core
       @new_boxes[key] = HashSplatBox.new(@node, genv, arg, unified_key, unified_val)
     end
 
-    def add_masgn_box(genv, rhs, lhss)
-      key = [:masgn, rhs, lhss]
+    def add_masgn_box(genv, value, lefts, rest_elem, rights)
+      key = [:masgn, value, lefts, rest_elem, rights]
       return if @new_boxes[key]
-      @new_boxes[key] = MAsgnBox.new(@node, genv, rhs, lhss)
+      @new_boxes[key] = MAsgnBox.new(@node, genv, value, lefts, rest_elem, rights)
     end
 
     def add_method_def_box(genv, cpath, singleton, mid, f_args, ret_boxes)

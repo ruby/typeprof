@@ -60,22 +60,46 @@ module TypeProf::Core
     class MultiWriteNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @rhs = AST.create_node(raw_node.value, lenv)
-        @lhss = []
-        raw_node.lefts.each do |raw_lhs|
-          lhs = AST.create_target_node(raw_lhs, lenv)
-          @lhss << lhs
+        @value = AST.create_node(raw_node.value, lenv)
+        @lefts = raw_node.lefts.map do |raw_lhs|
+          AST.create_target_node(raw_lhs, lenv)
         end
+        if raw_node.rest
+          # TODO: need more complex case handling
+          raise unless raw_node.rest.type == :splat_node
+          @rest = AST.create_target_node(raw_node.rest.expression, lenv)
+        end
+        @rights = raw_node.rights.map do |raw_lhs|
+          AST.create_target_node(raw_lhs, lenv)
+        end
+        # TODO: raw_node.rest, raw_node.rights
       end
 
-      attr_reader :rhs, :lhss
+      attr_reader :value, :lefts, :rest, :rights
 
-      def subnodes = { rhs:, lhss: }
+      def subnodes = { value:, lefts:, rest:, rights: }
 
       def install0(genv)
-        @lhss.each {|lhs| lhs.install(genv) }
-        rhs = @rhs.install(genv)
-        box = @changes.add_masgn_box(genv, rhs, @lhss.map {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) })
+        value = @value.install(genv)
+
+        @lefts.each {|lhs| lhs.install(genv) }
+        @lefts.each {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) }
+        lefts = @lefts.map {|lhs| lhs.rhs.ret }
+
+        if @rest
+          @rest.install(genv)
+          @rest.rhs.ret || raise(@rest.rhs.inspect)
+          rest_elem = Vertex.new(self)
+          @changes.add_edge(genv, Source.new(Type::Instance.new(genv, genv.mod_ary, [rest_elem])), @rest.rhs.ret)
+        end
+
+        if @rights
+          @rights.each {|lhs| lhs.install(genv) }
+          @rights.each {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) }
+          rights = @rights.map {|rhs| rhs.ret }
+        end
+
+        box = @changes.add_masgn_box(genv, value, lefts, rest_elem, rights)
         box.ret
       end
 
