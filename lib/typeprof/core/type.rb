@@ -75,6 +75,7 @@ module TypeProf::Core
         raise mod.class.to_s unless mod.is_a?(ModuleEntity)
         @mod = mod
         @args = args
+        raise unless @args.is_a?(::Array)
       end
 
       attr_reader :mod, :args
@@ -163,6 +164,35 @@ module TypeProf::Core
         else
           @base_type.args.first
         end
+      end
+
+      def splat_assign(genv, lefts, rest_elem, rights)
+        edges = []
+        state = :left
+        j = nil
+        @elems.each_with_index do |elem, i|
+          case state
+          when :left
+            if i < lefts.size
+              edges << [elem, lefts[i]]
+            else
+              break unless rest_elem
+              state = :rest
+              redo
+            end
+          when :rest
+            if @elems.size - i > rights.size
+              edges << [elem, rest_elem]
+            else
+              state = :right
+              j = i
+              redo
+            end
+          when :right
+            edges << [elem, rights[i - j]]
+          end
+        end
+        edges
       end
 
       def base_type(genv)

@@ -951,17 +951,19 @@ module TypeProf::Core
   end
 
   class MAsgnBox < Box
-    def initialize(node, genv, rhs, lhss)
+    def initialize(node, genv, value, lefts, rest_elem, rights)
       super(node)
-      @rhs = rhs
-      @lhss = lhss
-      @rhs.add_edge(genv, self)
+      @value = value
+      @lefts = lefts
+      @rest_elem = rest_elem
+      @rights = rights
+      @value.add_edge(genv, self)
     end
 
-    attr_reader :node, :rhs, :lhss
+    attr_reader :node, :value, :lefts, :rest_elem, :rights
 
     def destroy(genv)
-      @rhs.remove_edge(genv, self) # TODO: Is this really needed?
+      @value.remove_edge(genv, self) # TODO: Is this really needed?
       super(genv)
     end
 
@@ -969,14 +971,19 @@ module TypeProf::Core
 
     def run0(genv, changes)
       edges = []
-      @rhs.each_type do |ty|
+      @value.each_type do |ty|
+        # TODO: call to_ary?
         case ty
         when Type::Array
-          @lhss.each_with_index do |lhs, i|
-            edges << [ty.get_elem(genv, i), lhs]
-          end
+          edges.concat(ty.splat_assign(genv, @lefts, @rest_elem, @rights))
         else
-          edges << [Source.new(ty), @lhss[0]]
+          if @lefts.size >= 1
+            edges << [Source.new(ty), @lefts[0]]
+          elsif @rights.size >= 1
+            edges << [Source.new(ty), @rights[0]]
+          else
+            edges << [Source.new(ty), @rest_elem]
+          end
         end
       end
       edges.each do |src, dst|
