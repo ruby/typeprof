@@ -87,20 +87,28 @@ module TypeProf::Core
       def define0(genv)
         @cpath.define(genv) if @cpath
         @rhs.define(genv) if @rhs
-        mod = genv.resolve_const(@static_cpath)
-        mod.add_def(self)
-        mod
+        if @static_cpath
+          mod = genv.resolve_const(@static_cpath)
+          mod.add_def(self)
+          mod
+        else
+          nil
+        end
       end
 
       def define_copy(genv)
-        mod = genv.resolve_const(@static_cpath)
-        mod.add_def(self)
-        mod.remove_def(@prev_node)
+        if @static_cpath
+          mod = genv.resolve_const(@static_cpath)
+          mod.add_def(self)
+          mod.remove_def(@prev_node)
+        end
         super(genv)
       end
 
       def undefine0(genv)
-        genv.resolve_const(@static_cpath).remove_def(self)
+        if @static_cpath
+          genv.resolve_const(@static_cpath).remove_def(self)
+        end
         @rhs.undefine(genv) if @rhs
         @cpath.undefine(genv) if @cpath
       end
@@ -108,7 +116,9 @@ module TypeProf::Core
       def install0(genv)
         @cpath.install(genv) if @cpath
         val = @rhs.install(genv)
-        @changes.add_edge(genv, val, @static_ret.vtx)
+        if @static_cpath
+          @changes.add_edge(genv, val, @static_ret.vtx)
+        end
         val
       end
     end
