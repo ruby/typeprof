@@ -151,6 +151,8 @@ module TypeProf::Core
 
       def subnodes = { expr: }
 
+      def mid_code_range = nil
+
       def install0(genv)
         vtx = @expr.install(genv)
 
