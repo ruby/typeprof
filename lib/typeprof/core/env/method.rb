@@ -62,6 +62,23 @@ module TypeProf::Core
 
       vtxs.uniq
     end
+
+    def get_keyword_arg(genv, changes, name)
+      vtx = Vertex.new(self)
+      @keywords.each_type do |ty|
+        case ty
+        when Type::Hash
+          changes.add_edge(genv, ty.get_value(name), vtx)
+        when Type::Instance
+          if ty.mod == genv.mod_hash
+            changes.add_edge(genv, ty.args[1], vtx)
+          end
+        else
+          # what to do?
+        end
+      end
+      vtx
+    end
   end
 
   class Block

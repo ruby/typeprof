@@ -530,33 +530,11 @@ module TypeProf::Core
       if a_args.keywords
         # TODO: support diagnostics
         @node.req_keywords.zip(@f_args.req_keywords) do |name, f_vtx|
-          a_args.keywords.each_type do |ty|
-            case ty
-            when Type::Hash
-              changes.add_edge(genv, ty.get_value(name), f_vtx)
-            when Type::Instance
-              if ty.mod == genv.mod_hash
-                changes.add_edge(genv, ty.args[1], f_vtx)
-              end
-            else
-              # what to do?
-            end
-          end
+          changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
         end
 
         @node.opt_keywords.zip(@f_args.opt_keywords).each do |name, f_vtx|
-          a_args.keywords.each_type do |ty|
-            case ty
-            when Type::Hash
-              changes.add_edge(genv, ty.get_value(name), f_vtx)
-            when Type::Instance
-              if ty.mod == genv.mod_hash
-                changes.add_edge(genv, ty.args[1], f_vtx)
-              end
-            else
-              # what to do?
-            end
-          end
+          changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
         end
 
         if @node.rest_keywords
