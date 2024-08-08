@@ -66,8 +66,16 @@ module TypeProf::Core
         end
         if raw_node.rest
           # TODO: need more complex case handling
-          raise unless raw_node.rest.type == :splat_node
-          @rest = AST.create_target_node(raw_node.rest.expression, lenv)
+          @rest_exist = true
+          case raw_node.rest.type
+          when :splat_node
+            if raw_node.rest.expression
+              @rest = AST.create_target_node(raw_node.rest.expression, lenv)
+            end
+          when :implicit_rest_node
+          else
+            raise "unexpected rest node: #{raw_node.rest.type}"
+          end
         end
         @rights = raw_node.rights.map do |raw_lhs|
           AST.create_target_node(raw_lhs, lenv)
@@ -75,9 +83,10 @@ module TypeProf::Core
         # TODO: raw_node.rest, raw_node.rights
       end
 
-      attr_reader :value, :lefts, :rest, :rights
+      attr_reader :value, :lefts, :rest, :rest_exist, :rights
 
       def subnodes = { value:, lefts:, rest:, rights: }
+      def attrs = { rest_exist: }
 
       def install0(genv)
         value = @value.install(genv)
@@ -86,11 +95,13 @@ module TypeProf::Core
         @lefts.each {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) }
         lefts = @lefts.map {|lhs| lhs.rhs.ret }
 
-        if @rest
-          @rest.install(genv)
-          @rest.rhs.ret || raise(@rest.rhs.inspect)
+        if @rest_exist
           rest_elem = Vertex.new(self)
-          @changes.add_edge(genv, Source.new(Type::Instance.new(genv, genv.mod_ary, [rest_elem])), @rest.rhs.ret)
+          if @rest
+            @rest.install(genv)
+            @rest.rhs.ret || raise(@rest.rhs.inspect)
+            @changes.add_edge(genv, Source.new(Type::Instance.new(genv, genv.mod_ary, [rest_elem])), @rest.rhs.ret)
+          end
         end
 
         if @rights

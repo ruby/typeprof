@@ -19,3 +19,25 @@ end
 class Object
   def check: -> [:a, Array[:b | :c], :d]
 end
+
+## update
+def check
+  a, *, d = [:a, :b, :c, :d]
+  [a, d]
+end
+
+## assert
+class Object
+  def check: -> [:a, :d]
+end
+
+## update
+def check
+  a, = [:a, :b, :c, :d]
+  a
+end
+
+## assert
+class Object
+  def check: -> :a
+end
