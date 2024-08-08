@@ -50,7 +50,7 @@ module TypeProf::Core
           a_arg.each_type do |ty|
             ty = ty.base_type(genv)
             if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
-              vtxs << ty.args[0]
+              vtxs << ty.args[0].new_vertex(genv, self)
             else
               "???"
             end

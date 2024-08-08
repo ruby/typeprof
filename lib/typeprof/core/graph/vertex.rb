@@ -141,6 +141,7 @@ module TypeProf::Core
       when AST::Node
       when RBS::AST::Declarations::Base
       when ValueEntity
+      when ActualArguments
       else
         raise "unknown class: #{ origin.class }"
       end
