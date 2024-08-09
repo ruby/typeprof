@@ -184,8 +184,7 @@ module TypeProf::Core
       @method_types.each do |method_type|
         param_map0 = param_map.dup
         if method_type.type_params
-          method_type.type_params.map do |var|
-            vtx = Vertex.new(node)
+          method_type.type_params.zip(yield(method_type)) do |var, vtx|
             param_map0[var] = vtx
           end
         end
@@ -210,6 +209,7 @@ module TypeProf::Core
           end
         end
         ret_vtx = method_type.return_type.covariant_vertex(genv, changes, param_map0)
+
         changes.add_edge(genv, ret_vtx, ret)
         match_any_overload = true
       end
@@ -644,6 +644,7 @@ module TypeProf::Core
       @a_args.block.add_edge(genv, self) if @a_args.block
       @ret = Vertex.new(node)
       @subclasses = subclasses
+      @generics = {}
     end
 
     attr_reader :recv, :mid, :ret
@@ -673,7 +674,9 @@ module TypeProf::Core
                 ty_env[param] = arg
               end
             end
-            mdecl.resolve_overloads(changes, genv, @node, ty_env, @a_args, @ret)
+            mdecl.resolve_overloads(changes, genv, @node, ty_env, @a_args, @ret) do |method_type|
+              @generics[method_type] ||= method_type.type_params.map {|var| Vertex.new(@node) }
+            end
           end
         elsif !me.defs.empty?
           me.defs.each do |mdef|
