@@ -590,7 +590,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        raise NotImplementedError
+        Source.new()
       end
 
       def show
