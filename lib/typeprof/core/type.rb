@@ -118,7 +118,8 @@ module TypeProf::Core
           if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
             inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, {}, ty)
           else
-            inc_ty = Type::Instance.new(genv, inc_mod, [])
+            type_params = inc_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+            inc_ty = Type::Instance.new(genv, inc_mod, type_params)
           end
           if inc_ty.mod == other_ty.mod
             args_all_match = true
