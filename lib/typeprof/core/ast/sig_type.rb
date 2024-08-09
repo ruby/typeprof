@@ -80,13 +80,13 @@ module TypeProf::Core
 
     class SigTyNode < Node
       def covariant_vertex(genv, changes, subst)
-        vtx = changes.new_vertex(genv, self)
+        vtx = changes.new_covariant_vertex(genv, self)
         covariant_vertex0(genv, changes, vtx, subst)
         vtx
       end
 
       def contravariant_vertex(genv, changes, subst)
-        vtx = Vertex.new(self)
+        vtx = changes.new_contravariant_vertex(genv, self)
         contravariant_vertex0(genv, changes, vtx, subst)
         vtx
       end
@@ -458,23 +458,23 @@ module TypeProf::Core
       def subnodes = { types: }
 
       def covariant_vertex0(genv, changes, vtx, subst)
-        unified_elem = Vertex.new(self) # TODO
+        unified_elem = changes.new_covariant_vertex(genv, self) # TODO
         elems = @types.map do |type|
           nvtx = type.covariant_vertex(genv, changes, subst)
-          nvtx.add_edge(genv, unified_elem)
+          changes.add_edge(genv, nvtx, unified_elem)
           nvtx
         end
         changes.add_edge(genv, Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))), vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        unified_elem = Vertex.new(self)
+        unified_elem = changes.new_contravariant_vertex(genv, self) # TODO
         elems = @types.map do |type|
           nvtx = type.contravariant_vertex(genv, changes, subst)
-          nvtx.add_edge(genv, unified_elem)
+          changes.add_edge(genv, nvtx, unified_elem)
           nvtx
         end
-        Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))), vtx)
       end
 
       def show
