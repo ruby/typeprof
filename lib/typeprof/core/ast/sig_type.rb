@@ -80,13 +80,13 @@ module TypeProf::Core
 
     class SigTyNode < Node
       def covariant_vertex(genv, changes, subst)
-        vtx = changes.new_vertex(genv, self)
+        vtx = changes.new_covariant_vertex(genv, self)
         covariant_vertex0(genv, changes, vtx, subst)
         vtx
       end
 
       def contravariant_vertex(genv, changes, subst)
-        vtx = Vertex.new(self)
+        vtx = changes.new_contravariant_vertex(genv, self)
         contravariant_vertex0(genv, changes, vtx, subst)
         vtx
       end
@@ -98,7 +98,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new(genv.true_type, genv.false_type).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(genv.true_type, genv.false_type), vtx)
       end
 
       def show
@@ -112,7 +112,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new(genv.nil_type).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(genv.nil_type), vtx)
       end
 
       def show
@@ -126,7 +126,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        subst[:"*self"].add_edge(genv, vtx)
+        changes.add_edge(genv, subst[:"*self"], vtx)
       end
 
       def show
@@ -140,7 +140,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new(genv.obj_type).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(genv.obj_type), vtx)
       end
 
       def show
@@ -181,7 +181,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new(Type::Bot.new(genv)).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(Type::Bot.new(genv)), vtx)
       end
 
       def show
@@ -195,7 +195,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        subst[:"*instance"].add_edge(genv, vtx)
+        changes.add_edge(genv, subst[:"*instance"], vtx)
       end
 
       def show
@@ -209,7 +209,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        subst[:"*class"].add_edge(genv, vtx)
+        changes.add_edge(genv, subst[:"*class"], vtx)
       end
 
       def show
@@ -375,7 +375,7 @@ module TypeProf::Core
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
-        Source.new(Type::Singleton.new(genv, mod)).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(Type::Singleton.new(genv, mod)), vtx)
       end
 
       def show
@@ -436,7 +436,7 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
-        Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
       def show
@@ -458,23 +458,23 @@ module TypeProf::Core
       def subnodes = { types: }
 
       def covariant_vertex0(genv, changes, vtx, subst)
-        unified_elem = Vertex.new(self) # TODO
+        unified_elem = changes.new_covariant_vertex(genv, [self, :Elem]) # TODO
         elems = @types.map do |type|
           nvtx = type.covariant_vertex(genv, changes, subst)
-          nvtx.add_edge(genv, unified_elem)
+          changes.add_edge(genv, nvtx, unified_elem)
           nvtx
         end
         changes.add_edge(genv, Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))), vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        unified_elem = Vertex.new(self)
+        unified_elem = changes.new_contravariant_vertex(genv, [self, :Elem]) # TODO
         elems = @types.map do |type|
           nvtx = type.contravariant_vertex(genv, changes, subst)
-          nvtx.add_edge(genv, unified_elem)
+          changes.add_edge(genv, nvtx, unified_elem)
           nvtx
         end
-        Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))), vtx)
       end
 
       def show
@@ -513,7 +513,7 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         raise "unknown type variable: #{ @var }" unless subst[@var]
-        Source.new(Type::Var.new(genv, @var, subst[@var])).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(Type::Var.new(genv, @var, subst[@var])), vtx)
       end
 
       def show
@@ -537,7 +537,7 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         @type.contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new(genv.nil_type).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(genv.nil_type), vtx)
       end
 
       def show
@@ -576,7 +576,7 @@ module TypeProf::Core
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new(get_type(genv)).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(get_type(genv)), vtx)
       end
 
       def show
@@ -648,7 +648,7 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
-        Source.new(Type::Instance.new(genv, mod, args)).add_edge(genv, vtx)
+        changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
       def show

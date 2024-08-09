@@ -4,6 +4,7 @@ module TypeProf::Core
       @node = node
       @target = target
       @covariant_types = {}
+      @contravariant_types = {}
       @edges = []
       @new_edges = []
       @boxes = {}
@@ -44,9 +45,14 @@ module TypeProf::Core
       other.diagnostics.clear
     end
 
-    def new_vertex(genv, sig_type_node)
+    def new_covariant_vertex(genv, sig_type_node)
       # This is used to avoid duplicated vertex generation for the same sig node
       @covariant_types[sig_type_node] ||= Vertex.new(sig_type_node)
+    end
+
+    def new_contravariant_vertex(genv, sig_type_node)
+      # This is used to avoid duplicated vertex generation for the same sig node
+      @contravariant_types[sig_type_node] ||= Vertex.new(sig_type_node)
     end
 
     def add_edge(genv, src, dst)

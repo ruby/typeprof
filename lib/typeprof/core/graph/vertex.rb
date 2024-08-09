@@ -142,6 +142,7 @@ module TypeProf::Core
       when RBS::AST::Declarations::Base
       when ValueEntity
       when ActualArguments
+      when Array
       else
         raise "unknown class: #{ origin.class }"
       end
