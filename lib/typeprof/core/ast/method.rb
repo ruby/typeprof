@@ -80,8 +80,15 @@ module TypeProf::Core
         end
       end
 
-      if raw_args.keyword_rest
-        rest_keywords = raw_args.keyword_rest.name
+      case raw_args.keyword_rest
+      when Prism::KeywordRestParameterNode
+        rest_keywords = raw_args.keyword_rest.name if raw_args.keyword_rest
+      when Prism::NoKeywordsParameterNode
+        # what to do?
+      when nil
+        # nothing to do
+      else
+        raise "unexpected keyword rest: #{ raw_args.keyword_rest.class }"
       end
 
       block = raw_args.block.name if raw_args.block
