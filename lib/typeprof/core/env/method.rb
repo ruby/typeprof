@@ -82,8 +82,9 @@ module TypeProf::Core
   end
 
   class Block
-    def initialize(node, f_args, next_boxes)
+    def initialize(node, f_ary_arg, f_args, next_boxes)
       @node = node
+      @f_ary_arg = f_ary_arg
       @f_args = f_args
       @next_boxes = next_boxes
     end
@@ -93,7 +94,7 @@ module TypeProf::Core
     def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
       if caller_positionals.size == 1 && @f_args.size >= 2
         # TODO: support splat "do |a, *b, c|"
-        changes.add_masgn_box(genv, caller_positionals[0], @f_args, nil, nil)
+        changes.add_edge(genv, caller_positionals[0].new_vertex(genv, @node), @f_ary_arg)
       else
         caller_positionals.zip(@f_args) do |a_arg, f_arg|
           changes.add_edge(genv, a_arg, f_arg) if f_arg
@@ -128,7 +129,7 @@ module TypeProf::Core
     def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
       @used = true
       caller_positionals.each_with_index do |a_arg, i|
-        changes.add_edge(genv, a_arg, get_f_arg(i))
+        changes.add_edge(genv, a_arg.new_vertex(genv, @node), get_f_arg(i))
       end
       changes.add_edge(genv, caller_ret, @ret)
     end

@@ -114,7 +114,9 @@ module TypeProf::Core
             @changes.add_edge(genv, @block_body.lenv.get_var(var), @lenv.get_var(var))
           end
 
-          block = Block.new(self, blk_f_args, @block_body.lenv.next_boxes)
+          blk_f_ary_arg = Vertex.new(self)
+          @changes.add_masgn_box(genv, blk_f_ary_arg, blk_f_args, nil, nil) # TODO: support splat "do |a, *b, c|"
+          block = Block.new(self, blk_f_ary_arg, blk_f_args, @block_body.lenv.next_boxes)
           blk_ty = Source.new(Type::Proc.new(genv, block))
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
