@@ -192,6 +192,7 @@ module TypeProf::Core
 
       def install0(genv)
         val = @rhs.install(genv)
+        val = val.new_vertex(genv, self) # avoid multi-edge from val to static_ret.vtx
         @changes.add_edge(genv, val, @static_ret.vtx)
         val
       end
