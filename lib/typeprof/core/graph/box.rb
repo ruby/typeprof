@@ -254,7 +254,7 @@ module TypeProf::Core
   class EscapeBox < Box
     def initialize(node, genv, a_ret, f_ret)
       super(node)
-      @a_ret = a_ret
+      @a_ret = a_ret.new_vertex(genv, node)
       @f_ret = f_ret
       @f_ret.add_edge(genv, self)
     end
