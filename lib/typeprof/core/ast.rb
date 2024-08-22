@@ -249,7 +249,8 @@ module TypeProf::Core
         LocalVariableWriteNode.new(raw_node, dummy_node, lenv)
       when :instance_variable_target_node
         InstanceVariableWriteNode.new(raw_node, dummy_node, lenv)
-      #when :class_variable_target_node
+      when :class_variable_target_node
+        ClassVariableWriteNode.new(raw_node, dummy_node, lenv)
       when :global_variable_target_node
         GlobalVariableWriteNode.new(raw_node, dummy_node, lenv)
       when :constant_target_node
