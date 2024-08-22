@@ -120,6 +120,29 @@ module TypeProf::Core
       end
     end
 
+    class MatchWriteNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @call = AST.create_node(raw_node.call, lenv)
+        @targets = raw_node.targets.map do |raw_lhs|
+          AST.create_target_node(raw_lhs, lenv)
+        end
+      end
+
+      attr_reader :call, :targets
+      def subnodes = { call:, targets: }
+
+      def install0(genv)
+        ret = @call.install(genv)
+        @targets.each do |target|
+          target.install(genv)
+          target.rhs.ret || raise(target.rhs.inspect)
+          @changes.add_edge(genv, Source.new(Type::Instance.new(genv, genv.mod_str, [])), target.rhs.ret)
+        end
+        ret
+      end
+    end
+
     class DefinedNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)

@@ -183,6 +183,7 @@ module TypeProf::Core
         rhs = AndNode.new(raw_node, read, raw_node.value, lenv)
         CallWriteNode.new(raw_node, rhs, lenv)
       when :multi_write_node then MultiWriteNode.new(raw_node, lenv)
+      when :match_write_node then MatchWriteNode.new(raw_node, lenv)
 
       # value
       when :self_node then SelfNode.new(raw_node, lenv)
