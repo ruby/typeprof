@@ -313,8 +313,8 @@ module TypeProf::Core
 
       def install0(genv)
         @arg.install(genv)
-        e_ret = @lenv.get_var(:"*expected_method_ret")
-        @lenv.add_return_box(@changes.add_escape_box(genv, @arg.ret, e_ret))
+        e_ret = @lenv.locals[:"*expected_method_ret"]
+        @lenv.add_return_box(@changes.add_escape_box(genv, @arg.ret, e_ret)) if e_ret
         Source.new(Type::Bot.new(genv))
       end
     end
