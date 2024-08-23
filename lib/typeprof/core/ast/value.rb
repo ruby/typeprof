@@ -74,6 +74,22 @@ module TypeProf::Core
       def install0(genv) = Source.new(genv.float_type)
     end
 
+    class RationalNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, raw_node.slice.to_r)
+      end
+
+      def install0(genv) = Source.new(genv.rational_type)
+    end
+
+    class ComplexNode < LiteralNode
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv, raw_node.slice.to_c)
+      end
+
+      def install0(genv) = Source.new(genv.complex_type)
+    end
+
     class SymbolNode < LiteralNode
       def initialize(raw_node, lenv)
         super(raw_node, lenv, raw_node.value.to_sym)
@@ -297,12 +313,6 @@ module TypeProf::Core
     class LambdaNode < Node
       def install0(genv)
         Source.new(genv.proc_type)
-      end
-    end
-
-    class ImaginaryNode < Node
-      def install0(genv)
-        Source.new(genv.complex_type)
       end
     end
   end

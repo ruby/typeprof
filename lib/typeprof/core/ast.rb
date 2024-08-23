@@ -192,6 +192,8 @@ module TypeProf::Core
       when :false_node then FalseNode.new(raw_node, lenv)
       when :integer_node then IntegerNode.new(raw_node, lenv)
       when :float_node then FloatNode.new(raw_node, lenv)
+      when :rational_node then RationalNode.new(raw_node, lenv)
+      when :imaginary_node then ComplexNode.new(raw_node, lenv)
       when :symbol_node then SymbolNode.new(raw_node, lenv)
       when :interpolated_symbol_node then InterpolatedSymbolNode.new(raw_node, lenv)
       when :string_node then StringNode.new(raw_node, lenv, raw_node.content)
@@ -210,7 +212,6 @@ module TypeProf::Core
       when :hash_node then HashNode.new(raw_node, lenv, false)
       when :keyword_hash_node then HashNode.new(raw_node, lenv, true)
       when :lambda_node then LambdaNode.new(raw_node, lenv)
-      when :imaginary_node then ImaginaryNode.new(raw_node, lenv)
 
       # misc
       when :defined_node then DefinedNode.new(raw_node, lenv)

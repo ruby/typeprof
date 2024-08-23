@@ -30,11 +30,12 @@ module TypeProf::Core
       @str_type = Type::Instance.new(self, resolve_cpath([:String]), [])
       @int_type = Type::Instance.new(self, resolve_cpath([:Integer]), [])
       @float_type = Type::Instance.new(self, resolve_cpath([:Float]), [])
+      @rational_type = Type::Instance.new(self, resolve_cpath([:Rational]), [])
+      @complex_type = Type::Instance.new(self, resolve_cpath([:Complex]), [])
       @proc_type = Type::Instance.new(self, resolve_cpath([:Proc]), [])
       @symbol_type = Type::Instance.new(self, resolve_cpath([:Symbol]), [])
       @set_type = Type::Instance.new(self, resolve_cpath([:Set]), [])
       @regexp_type = Type::Instance.new(self, resolve_cpath([:Regexp]), [])
-      @complex_type = Type::Instance.new(self, resolve_cpath([:Complex]), [])
 
       @run_count = 0
     end
@@ -43,8 +44,9 @@ module TypeProf::Core
 
     attr_reader :mod_object, :mod_ary, :mod_hash, :mod_range, :mod_str
     attr_reader :cls_type, :mod_type
-    attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type, :int_type, :float_type
-    attr_reader :proc_type, :symbol_type, :set_type, :regexp_type, :complex_type
+    attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type
+    attr_reader :int_type, :float_type, :rational_type, :complex_type
+    attr_reader :proc_type, :symbol_type, :set_type, :regexp_type
 
     def gen_ary_type(elem_vtx)
       Type::Instance.new(self, @mod_ary, [elem_vtx])

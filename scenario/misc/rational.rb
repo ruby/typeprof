@@ -1,9 +1,9 @@
 ## update
 def check
-  1i
+  1r
 end
 
 ## assert
 class Object
-  def check: -> Complex
+  def check: -> Rational
 end
