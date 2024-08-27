@@ -28,14 +28,17 @@ module TypeProf::Core
         end
       end
 
+      return true if @types.empty?
       return true if vtx.types.empty?
 
       each_type do |ty|
-        next if vtx.types.include?(ty) # fast path
-        return false unless ty.check_match(genv, changes, vtx)
+        return true if vtx.types.include?(ty) # fast path
+        if ty.check_match(genv, changes, vtx)
+          return true
+        end
       end
 
-      return true
+      return false
     end
 
     def show
