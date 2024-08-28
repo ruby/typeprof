@@ -23,7 +23,7 @@ module TypeProf::Core
     def check_match(genv, changes, vtx)
       vtx.each_type do |ty|
         if ty.is_a?(Type::Var)
-          changes.add_edge(genv, self, ty.vtx)
+          changes.add_edge(genv, self, ty.vtx) if self != ty.vtx
           return true
         end
       end
