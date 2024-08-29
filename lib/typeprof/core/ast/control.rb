@@ -18,7 +18,7 @@ module TypeProf::Core
         super(raw_node, lenv)
         @cond = AST.create_node(raw_node.predicate, lenv)
         @then = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : nil
-        else_clause = raw_node.consequent
+        else_clause = raw_node.is_a?(Prism::IfNode) ? raw_node.subsequent : raw_node.else_clause
         if else_clause
           else_clause = else_clause.statements if else_clause.type == :else_node
           @else = else_clause ? AST.create_node(else_clause, lenv) : nil
@@ -242,7 +242,7 @@ module TypeProf::Core
           @whens << AST.create_node(raw_cond.conditions.first, lenv) # XXX: multiple conditions
           @clauses << (raw_cond.statements ? AST.create_node(raw_cond.statements, lenv) : DummyNilNode.new(code_range, lenv)) # TODO: code_range for NilNode
         end
-        @else_clause = raw_node.consequent && raw_node.consequent.statements ? AST.create_node(raw_node.consequent.statements, lenv) : DummyNilNode.new(code_range, lenv) # TODO: code_range for NilNode
+        @else_clause = raw_node.else_clause && raw_node.else_clause.statements ? AST.create_node(raw_node.else_clause.statements, lenv) : DummyNilNode.new(code_range, lenv) # TODO: code_range for NilNode
       end
 
       attr_reader :pivot, :whens, :clauses, :else_clause
@@ -333,7 +333,7 @@ module TypeProf::Core
           if raw_res.statements
             @rescue_clauses << AST.create_node(raw_res.statements, lenv)
           end
-          raw_res = raw_res.consequent
+          raw_res = raw_res.subsequent
         end
         @else_clause = raw_node.else_clause ? AST.create_node(raw_node.else_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
         @ensure_clause = raw_node.ensure_clause ? AST.create_node(raw_node.ensure_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
