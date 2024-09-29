@@ -205,5 +205,23 @@ module TypeProf::Core
         Source.new(genv.nil_type)
       end
     end
+
+    class FlipFlopNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @e1 = AST.create_node(raw_node.left, lenv)
+        @e2 = AST.create_node(raw_node.right, lenv)
+      end
+
+      attr_reader :e1, :e2
+
+      def subnodes = { e1:, e2: }
+
+      def install0(genv)
+        @e1.install(genv)
+        @e2.install(genv)
+        Source.new(genv.true_type, genv.false_type)
+      end
+    end
   end
 end
