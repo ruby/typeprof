@@ -554,7 +554,7 @@ module TypeProf::Core
       end
     end
 
-    def show
+    def show(output_parameter_names)
       block_show = []
       if @record_block.used
         blk_f_args = @record_block.f_args.map {|arg| arg.show }.join(", ")
@@ -585,6 +585,21 @@ module TypeProf::Core
       if @f_args.rest_keywords
         args << "**#{ Type.strip_parens(@f_args.rest_keywords.show) }"
       end
+
+      if output_parameter_names && @node.is_a?(AST::DefNode)
+        names = []
+        names.concat(@node.req_positionals)
+        names.concat(@node.opt_positionals)
+        names.concat(@node.rest_positionals) if @node.rest_positionals
+        names.concat(@node.post_positionals)
+        names.concat(@node.req_keywords)
+        names.concat(@node.opt_keywords)
+        names.concat(@node.rest_keywords) if @node.rest_keywords
+        args = args.zip(names).map do |arg, name|
+          name ? "#{ arg } #{ name }" : arg
+        end
+      end
+
       args = args.join(", ")
       s = args.empty? ? [] : ["(#{ args })"]
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?

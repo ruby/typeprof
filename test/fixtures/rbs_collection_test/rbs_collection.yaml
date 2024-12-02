@@ -1,0 +1,10 @@
+# Download sources
+sources:
+  - type: local
+    path: ./dummy_rbs_collection
+
+# A directory to install the downloaded RBSs
+path: .gem_rbs_collection
+
+gems:
+  - name: my_dummy_gem

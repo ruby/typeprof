@@ -124,7 +124,7 @@ module TypeProf::Core
           if inc_ty.mod == other_ty.mod
             args_all_match = true
             inc_ty.args.zip(other_ty.args) do |arg, other_arg|
-              unless arg.check_match(genv, changes, other_arg)
+              if other_arg && !arg.check_match(genv, changes, other_arg)
                 args_all_match = false
                 break
               end

@@ -1,0 +1,3 @@
+class MyDummyGem
+  def hello: (String) -> :ok
+end

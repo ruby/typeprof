@@ -1,0 +1,9 @@
+---
+path: ".gem_rbs_collection"
+gems:
+- name: my_dummy_gem
+  version: '1.0'
+  source:
+    type: local
+    path: "./dummy_rbs_collection"
+gemfile_lock_path: Gemfile.lock

@@ -19,7 +19,7 @@ def main(core)
   pp h
 end
 
-core = Service.new
+core = Service.new({})
 if ARGV[0] == "pf2"
   require "pf2"
   Pf2.start(interval_ms: 1, time_mode: :wall, threads: [Thread.current])

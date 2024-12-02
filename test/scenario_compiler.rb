@@ -19,7 +19,7 @@ class ScenarioCompiler
       require #{ File.join(__dir__, "../lib/typeprof").dump }
       require #{ File.join(__dir__, "helper").dump }
       class ScenarioTest < Test::Unit::TestCase
-        core = TypeProf::Core::Service.new
+        core = TypeProf::Core::Service.new({})
         _ = core # stop "unused" warning
     END
   end
@@ -36,7 +36,7 @@ class ScenarioCompiler
     out = %(eval(<<'TYPEPROF_SCENARIO_END', nil, #{ scenario.dump }, 1)\n)
     out << %(test(#{ scenario.dump }) do )
     unless @fast
-      out << "core = TypeProf::Core::Service.new;"
+      out << "core = TypeProf::Core::Service.new({});"
     end
     close_str = ""
     need_comment_removal = false
