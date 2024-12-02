@@ -1,0 +1,3 @@
+source "https://rubygems.org"
+
+gem "my_dummy_gem", path: "dummy_gem_source/my_dummy_gem"

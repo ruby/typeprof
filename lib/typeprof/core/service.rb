@@ -1,17 +1,26 @@
 module TypeProf::Core
   class Service
-    def initialize
-      unless defined?($rbs_env)
-        loader = RBS::EnvironmentLoader.new
-        $rbs_env = RBS::Environment.from_loader(loader)
-      end
+    def initialize(options)
+      @options = options
 
       @text_nodes = {}
 
       @genv = GlobalEnv.new
-      @genv.load_core_rbs($rbs_env.declarations)
+      @genv.load_core_rbs(load_rbs_declarations(@options[:rbs_collection]).declarations)
 
       Builtin.new(genv).deploy
+    end
+
+    def load_rbs_declarations(rbs_collection)
+      if rbs_collection
+        loader = RBS::EnvironmentLoader.new
+        loader.add_collection(rbs_collection)
+        RBS::Environment.from_loader(loader)
+      else
+        return $raw_rbs_env if defined?($raw_rbs_env)
+        loader = RBS::EnvironmentLoader.new
+        $raw_rbs_env = RBS::Environment.from_loader(loader)
+      end
     end
 
     attr_reader :genv
@@ -50,7 +59,7 @@ module TypeProf::Core
 
       code = File.read(path) unless code
       node = AST.parse_rb(path, code)
-      return unless node
+      return false unless node
 
       node.diff(@text_nodes[path]) if prev_node
       @text_nodes[path] = node
@@ -101,6 +110,8 @@ module TypeProf::Core
           end
         end
       end
+
+      return true
     end
 
     def update_rbs_file(path, code)
@@ -109,8 +120,8 @@ module TypeProf::Core
       code = File.read(path) unless code
       begin
         decls = AST.parse_rbs(path, code)
-      rescue SyntaxError
-        return
+      rescue RBS::ParsingError
+        return false
       end
 
       # TODO: diff
@@ -123,6 +134,8 @@ module TypeProf::Core
       decls.each {|decl| decl.install(@genv) }
       prev_decls.each {|decl| decl.uninstall(@genv) } if prev_decls
       @genv.run_all
+
+      true
     end
 
     def diagnostics(path, &blk)
@@ -305,7 +318,7 @@ module TypeProf::Core
                 end
                 if !me.defs.empty?
                   me.defs.each do |mdef|
-                    return "#{ orig_ty.show }##{ mid } : #{ mdef.show }"
+                    return "#{ orig_ty.show }##{ mid } : #{ mdef.show(@options[:output_parameter_names]) }"
                   end
                 end
               end
@@ -332,7 +345,7 @@ module TypeProf::Core
           if event == :enter
             next if node.is_a?(AST::DefNode) && node.rbs_method_type
             node.boxes(:mdef) do |mdef|
-              hint = mdef.show
+              hint = mdef.show(@options[:output_parameter_names])
               if hint
                 yield mdef.node.code_range, hint
               end
@@ -357,7 +370,7 @@ module TypeProf::Core
                 end
                 unless sig
                   me.defs.each do |mdef|
-                    sig = mdef.show
+                    sig = mdef.show(@options[:output_parameter_names])
                     break
                   end
                 end
@@ -379,6 +392,10 @@ module TypeProf::Core
           if node.static_cpath
             if event == :enter
               out << "  " * stack.size + "module #{ node.static_cpath.join("::") }"
+              if stack == [:toplevel]
+                out << "end"
+                stack.pop
+              end
               stack.push(node)
             else
               stack.pop
@@ -397,6 +414,10 @@ module TypeProf::Core
                 s << " # failed to identify its superclass"
               elsif superclass.cpath != []
                 s << " < #{ superclass.show_cpath }"
+              end
+              if stack == [:toplevel]
+                out << "end"
+                stack.pop
               end
               out << "  " * stack.size + s
               stack.push(node)
@@ -419,19 +440,24 @@ module TypeProf::Core
         else
           if event == :enter
             node.boxes(:mdef) do |mdef|
-              out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show
+              if stack.empty?
+                out << "  " * stack.size + "class Object"
+                stack << :toplevel
+              end
+              if @options[:output_source_locations]
+                pos = mdef.node.code_range.first
+                out << "  " * stack.size + "# #{ path }:#{ pos.lineno }:#{ pos.column + 1 }"
+              end
+              out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show(@options[:output_parameter_names])
             end
           end
         end
       end
-      out = out.map {|s| s + "\n" }.chunk {|s| s.start_with?("def ") }.flat_map do |toplevel, lines|
-        if toplevel
-          ["class Object\n"] + lines.map {|line| "  " + line } + ["end\n"]
-        else
-          lines
-        end
+      if stack == [:toplevel]
+        out << "end"
+        stack.pop
       end
-      out.join
+      out.join("\n") + "\n"
     end
 
     def get_method_sig(cpath, singleton, mid)
@@ -441,11 +467,56 @@ module TypeProf::Core
       end
       s
     end
+
+    def batch(files, output)
+      if @options[:output_typeprof_version]
+        output.puts "# TypeProf #{ TypeProf::VERSION }"
+        output.puts
+      end
+
+      i = 0
+      show_files = files.select do |file|
+        if @options[:display_indicator]
+          $stderr << "\r[%d/%d] %s\e[K" % [i, files.size, file]
+          i += 1
+        end
+
+        if File.extname(file) == ".rbs"
+          res = update_rbs_file(file, File.read(file))
+        else
+          res = update_rb_file(file, File.read(file))
+        end
+
+        if res
+          true
+        else
+          output.puts "# failed to analyze: #{ file }"
+          false
+        end
+      end
+      if @options[:display_indicator]
+        $stderr << "\r\e[K"
+      end
+
+      first = true
+      show_files.each do |file|
+        next if File.extname(file) == ".rbs"
+        output.puts unless first
+        first = false
+        output.puts "# #{ file }"
+        if @options[:output_diagnostics]
+          diagnostics(file) do |diag|
+            output.puts "# #{ diag.code_range.to_s }:#{ diag.msg }"
+          end
+        end
+        output.puts dump_declarations(file)
+      end
+    end
   end
 end
 
 if $0 == __FILE__
-  core = TypeProf::Core::Service.new
+  core = TypeProf::Core::Service.new({})
   core.add_workspaces(["foo"].to_a)
   core.update_rb_file("foo", "foo")
 end
