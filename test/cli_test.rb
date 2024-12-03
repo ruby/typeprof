@@ -9,6 +9,7 @@ module TypeProf
         yield if block_given?
         cli = TypeProf::CLI::CLI.new(argv)
         cli.cli_options[:output] = output
+        cli.core_options[:display_indicator] = false
         cli.run
       end
       output.string
@@ -104,7 +105,9 @@ module TypeProf
       assert_equal(exp, test_run("rbs_collection_test", ["test.rb"]) do
         lock_path = RBS::Collection::Config.to_lockfile_path(Pathname("rbs_collection.yaml").expand_path)
 
-        RBS::Collection::Installer.new(lockfile_path: lock_path).install_from_lockfile
+        open(IO::NULL, "w") do |null_stdout|
+          RBS::Collection::Installer.new(lockfile_path: lock_path, stdout: null_stdout).install_from_lockfile
+        end
       end)
     end
   end
