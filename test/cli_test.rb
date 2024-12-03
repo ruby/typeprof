@@ -88,6 +88,10 @@ module TypeProf
     end
 
     def test_e2e_rbs_collection
+      # The "rbs collection install" command attempts to create a symlink,
+      # which requires elevated privileges on Windows
+      omit if RUBY_PLATFORM =~ /mswin|mingw/
+
       exp = <<~END
         # TypeProf #{ TypeProf::VERSION }
 
