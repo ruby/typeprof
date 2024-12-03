@@ -39,7 +39,7 @@ module TypeProf::LSP
     end
 
     def init(fixture)
-      @folder = "file://" + File.expand_path(File.join(__dir__, "..", "fixtures", fixture)) + "/"
+      @folder = TypeProf::LSP.file_path_to_uri(File.expand_path(File.join(__dir__, "..", "fixtures", fixture))) + "/"
       id = request("initialize", workspaceFolders: [{ uri: @folder }])
       expect_response(id) do |recv|
         assert_equal({ name: "typeprof", version: TypeProf::VERSION }, recv[:serverInfo])

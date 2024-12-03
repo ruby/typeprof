@@ -72,7 +72,7 @@ module TypeProf::LSP
     def run
       folders = @params[:workspaceFolders].map do |folder|
         folder => { uri:, }
-        URI(uri).path
+        TypeProf::LSP.file_uri_to_path(uri)
       end
 
       @server.add_workspaces(folders)
@@ -146,7 +146,7 @@ module TypeProf::LSP
     def run
       @params => { textDocument: { uri:, version:, text: } }
 
-      path = URI(uri).path
+      path = TypeProf::LSP.file_uri_to_path(uri)
       return unless @server.target_path?(path)
 
       text = Text.new(path, text, version)
