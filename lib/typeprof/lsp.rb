@@ -1,6 +1,5 @@
 require "socket"
 require "json"
-require "uri"
 
 require_relative "lsp/text"
 require_relative "lsp/messages"
