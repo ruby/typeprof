@@ -219,6 +219,7 @@ module TypeProf::Core
       when :for_node then ForNode.new(raw_node, lenv)
       when :alias_global_variable_node then AliasGlobalVariableNode.new(raw_node, lenv)
       when :post_execution_node then PostExecutionNode.new(raw_node, lenv)
+      when :flip_flop_node then FlipFlopNode.new(raw_node, lenv)
       when :shareable_constant_node
         create_node(raw_node.write, lenv)
 
