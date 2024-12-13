@@ -5,10 +5,21 @@ module TypeProf::Core
     end
 
     def class_new(changes, node, ty, a_args, ret)
-      ty = ty.get_instance_type(@genv)
-      recv = Source.new(ty)
-      changes.add_method_call_box(@genv, recv, :initialize, a_args, false)
-      changes.add_edge(@genv, Source.new(ty), ret)
+      if ty.is_a?(Type::Singleton)
+        ty = ty.get_instance_type(@genv)
+        recv = Source.new(ty)
+        changes.add_method_call_box(@genv, recv, :initialize, a_args, false)
+        changes.add_edge(@genv, Source.new(ty), ret)
+      end
+      true
+    end
+
+    def object_class(changes, node, ty, a_args, ret)
+      ty = ty.base_type(@genv)
+      mod = ty.is_a?(Type::Instance) ? ty.mod : @genv.mod_class
+      ty = Type::Singleton.new(@genv, mod)
+      vtx = Source.new(ty)
+      changes.add_edge(@genv, vtx, ret)
       true
     end
 
@@ -119,6 +130,7 @@ module TypeProf::Core
     def deploy
       {
         class_new: [[:Class], false, :new],
+        object_class: [[:Object], false, :class],
         proc_call: [[:Proc], false, :call],
         array_aref: [[:Array], false, :[]],
         array_aset: [[:Array], false, :[]=],
