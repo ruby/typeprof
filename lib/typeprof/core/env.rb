@@ -42,7 +42,7 @@ module TypeProf::Core
 
     attr_reader :type_table
 
-    attr_reader :mod_object, :mod_ary, :mod_hash, :mod_range, :mod_str
+    attr_reader :mod_class, :mod_object, :mod_ary, :mod_hash, :mod_range, :mod_str
     attr_reader :cls_type, :mod_type
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type
     attr_reader :int_type, :float_type, :rational_type, :complex_type
