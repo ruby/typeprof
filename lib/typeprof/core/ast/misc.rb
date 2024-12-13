@@ -223,5 +223,41 @@ module TypeProf::Core
         Source.new(genv.true_type, genv.false_type)
       end
     end
+
+    class MatchRequiredNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @value = AST.create_node(raw_node.value, lenv)
+        @pat = AST.create_pattern_node(raw_node.pattern, lenv)
+      end
+
+      attr_reader :value, :pat
+
+      def subnodes = { value:, pat: }
+
+      def install0(genv)
+        @value.install(genv)
+        @pat.install(genv)
+        Source.new(genv.nil_type)
+      end
+    end
+
+    class MatchPreidcateNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @value = AST.create_node(raw_node.value, lenv)
+        @pat = AST.create_pattern_node(raw_node.pattern, lenv)
+      end
+
+      attr_reader :value, :pat
+
+      def subnodes = { value:, pat: }
+
+      def install0(genv)
+        @value.install(genv)
+        @pat.install(genv)
+        Source.new(genv.true_type, genv.false_type)
+      end
+    end
   end
 end

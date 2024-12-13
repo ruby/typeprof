@@ -261,6 +261,36 @@ module TypeProf::Core
       end
     end
 
+    class CaseMatchNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @pivot = AST.create_node(raw_node.predicate, lenv)
+        @patterns = []
+        @clauses = []
+        raw_node.conditions.each do |raw_cond|
+          raise if raw_cond.type != :in_node
+          @patterns << AST.create_pattern_node(raw_cond.pattern, lenv)
+          @clauses << (raw_cond.statements ? AST.create_node(raw_cond.statements, lenv) : DummyNilNode.new(code_range, lenv)) # TODO: code_range for NilNode
+        end
+        @else_clause = raw_node.else_clause && raw_node.else_clause.statements ? AST.create_node(raw_node.else_clause.statements, lenv) : nil
+      end
+
+      attr_reader :pivot, :patterns, :clauses, :else_clause
+
+      def subnodes = { pivot:, patterns:, clauses:, else_clause: }
+
+      def install0(genv)
+        ret = Vertex.new(self)
+        @pivot&.install(genv)
+        @patterns.zip(@clauses) do |pattern, clause|
+          pattern.install(genv)
+          @changes.add_edge(genv, clause.install(genv), ret)
+        end
+        @changes.add_edge(genv, @else_clause.install(genv), ret) if @else_clause
+        ret
+      end
+    end
+
     class AndNode < Node
       def initialize(raw_node, e1 = nil, raw_e2 = nil, lenv)
         super(raw_node, lenv)

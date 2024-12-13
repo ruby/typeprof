@@ -48,6 +48,7 @@ module TypeProf::Core
       when :if_node then IfNode.new(raw_node, lenv)
       when :unless_node then UnlessNode.new(raw_node, lenv)
       when :case_node then CaseNode.new(raw_node, lenv)
+      when :case_match_node then CaseMatchNode.new(raw_node, lenv)
       when :while_node then WhileNode.new(raw_node, lenv)
       when :until_node then UntilNode.new(raw_node, lenv)
       when :break_node then BreakNode.new(raw_node, lenv)
@@ -194,15 +195,15 @@ module TypeProf::Core
       when :float_node then FloatNode.new(raw_node, lenv)
       when :rational_node then RationalNode.new(raw_node, lenv)
       when :imaginary_node then ComplexNode.new(raw_node, lenv)
-      when :symbol_node then SymbolNode.new(raw_node, lenv)
-      when :interpolated_symbol_node then InterpolatedSymbolNode.new(raw_node, lenv)
-      when :string_node then StringNode.new(raw_node, lenv, raw_node.content)
-      when :x_string_node then StringNode.new(raw_node, lenv, "")
-      when :interpolated_x_string_node then InterpolatedStringNode.new(raw_node, lenv)
       when :source_file_node then StringNode.new(raw_node, lenv, "")
       when :source_line_node then IntegerNode.new(raw_node, lenv, 0)
       when :source_encoding_node then SourceEncodingNode.new(raw_node, lenv)
+      when :symbol_node then SymbolNode.new(raw_node, lenv)
+      when :interpolated_symbol_node then InterpolatedSymbolNode.new(raw_node, lenv)
+      when :string_node then StringNode.new(raw_node, lenv, raw_node.content)
       when :interpolated_string_node then InterpolatedStringNode.new(raw_node, lenv)
+      when :x_string_node then StringNode.new(raw_node, lenv, "")
+      when :interpolated_x_string_node then InterpolatedStringNode.new(raw_node, lenv)
       when :regular_expression_node then RegexpNode.new(raw_node, lenv)
       when :interpolated_regular_expression_node then InterpolatedRegexpNode.new(raw_node, lenv)
       when :match_last_line_node then MatchLastLineNode.new(raw_node, lenv)
@@ -220,8 +221,9 @@ module TypeProf::Core
       when :alias_global_variable_node then AliasGlobalVariableNode.new(raw_node, lenv)
       when :post_execution_node then PostExecutionNode.new(raw_node, lenv)
       when :flip_flop_node then FlipFlopNode.new(raw_node, lenv)
-      when :shareable_constant_node
-        create_node(raw_node.write, lenv)
+      when :shareable_constant_node then create_node(raw_node.write, lenv)
+      when :match_required_node then MatchRequiredNode.new(raw_node, lenv)
+      when :match_predicate_node then MatchPreidcateNode.new(raw_node, lenv)
 
       # call
       when :super_node then SuperNode.new(raw_node, lenv)
@@ -268,6 +270,67 @@ module TypeProf::Core
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"
+      end
+    end
+
+    def self.create_pattern_node(raw_node, lenv)
+      while true
+        case raw_node.type
+        when :parentheses_node
+          raw_node = raw_node.body
+        when :implicit_node
+          raw_node = raw_node.value
+        else
+          break
+        end
+      end
+
+      case raw_node.type
+      when :array_pattern_node then ArrayPatternNode.new(raw_node, lenv)
+      when :hash_pattern_node then HashPatternNode.new(raw_node, lenv)
+      when :find_pattern_node then FindPatternNode.new(raw_node, lenv)
+
+      when :alternation_pattern_node then AltPatternNode.new(raw_node, lenv)
+
+      when :capture_pattern_node then CapturePatternNode.new(raw_node, lenv)
+
+      when :if_node then IfPatternNode.new(raw_node, lenv)
+
+      when :pinned_variable_node then PinnedPatternNode.new(raw_node, lenv)
+      when :pinned_expression_node then PinnedPatternNode.new(raw_node, lenv)
+
+      when :local_variable_target_node
+        dummy_node = DummyRHSNode.new(TypeProf::CodeRange.from_node(raw_node.location), lenv)
+        LocalVariableWriteNode.new(raw_node, dummy_node, lenv)
+
+      when :constant_read_node, :constant_path_node
+        ConstantReadNode.new(raw_node, lenv)
+
+      when :self_node then SelfNode.new(raw_node, lenv)
+      when :nil_node then NilNode.new(raw_node, lenv)
+      when :true_node then TrueNode.new(raw_node, lenv)
+      when :false_node then FalseNode.new(raw_node, lenv)
+      when :integer_node then IntegerNode.new(raw_node, lenv)
+      when :float_node then FloatNode.new(raw_node, lenv)
+      when :rational_node then RationalNode.new(raw_node, lenv)
+      when :imaginary_node then ComplexNode.new(raw_node, lenv)
+      when :source_file_node then StringNode.new(raw_node, lenv, "")
+      when :source_line_node then IntegerNode.new(raw_node, lenv, 0)
+      when :source_encoding_node then SourceEncodingNode.new(raw_node, lenv)
+      when :symbol_node then SymbolNode.new(raw_node, lenv)
+      when :interpolated_symbol_node then InterpolatedSymbolNode.new(raw_node, lenv)
+      when :string_node then StringNode.new(raw_node, lenv, raw_node.content)
+      when :interpolated_string_node then InterpolatedStringNode.new(raw_node, lenv)
+      when :x_string_node then StringNode.new(raw_node, lenv, "")
+      when :interpolated_x_string_node then InterpolatedStringNode.new(raw_node, lenv)
+      when :regular_expression_node then RegexpNode.new(raw_node, lenv)
+      when :interpolated_regular_expression_node then InterpolatedRegexpNode.new(raw_node, lenv)
+
+      when :array_node then ArrayNode.new(raw_node, lenv) # for %w[foo bar]
+      when :range_node then RangeNode.new(raw_node, lenv) # TODO: support range pattern correctly
+
+      else
+        raise "unknown pattern node type: #{ raw_node.type }"
       end
     end
 
