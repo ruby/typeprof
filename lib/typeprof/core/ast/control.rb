@@ -366,8 +366,8 @@ module TypeProf::Core
           end
           raw_res = raw_res.subsequent
         end
-        @else_clause = raw_node.else_clause ? AST.create_node(raw_node.else_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
-        @ensure_clause = raw_node.ensure_clause ? AST.create_node(raw_node.ensure_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
+        @else_clause = raw_node.else_clause&.statements ? AST.create_node(raw_node.else_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
+        @ensure_clause = raw_node.ensure_clause&.statements ? AST.create_node(raw_node.ensure_clause.statements, lenv) : DummyNilNode.new(code_range, lenv)
       end
 
       attr_reader :body, :rescue_conds, :rescue_clauses, :else_clause, :ensure_clause
