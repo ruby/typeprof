@@ -60,3 +60,17 @@ end
 class Object
   def foo: -> (Integer | String | true)
 end
+
+## update
+def foo
+  begin
+  rescue
+  else
+  ensure
+  end
+end
+
+## assert
+class Object
+  def foo: -> nil
+end
