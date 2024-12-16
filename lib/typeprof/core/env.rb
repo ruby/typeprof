@@ -282,11 +282,12 @@ module TypeProf::Core
       @cref = cref
       @locals = locals
       @return_boxes = return_boxes
+      @break_vtx = nil
       @next_boxes = []
       @filters = {}
     end
 
-    attr_reader :path, :cref, :locals, :return_boxes, :next_boxes
+    attr_reader :path, :cref, :locals, :return_boxes, :break_vtx, :next_boxes
 
     def new_var(name, node)
       @locals[name] = Vertex.new(node)
@@ -311,6 +312,11 @@ module TypeProf::Core
     def add_next_box(box)
       @next_boxes << box
     end
+
+    def get_break_vtx
+      @break_vtx ||= Vertex.new(:break_vtx)
+    end
+
 
     def push_read_filter(name, type)
       (@filters[name] ||= []) << type

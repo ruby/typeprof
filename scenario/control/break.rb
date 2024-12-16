@@ -16,5 +16,17 @@ end
 ## assert
 class Object
   def foo: { (Integer) -> Float } -> String
-  def bar: -> String
+  def bar: -> String?
+end
+
+## update: test.rb
+def foo
+  loop do
+    break 1
+  end
+end
+
+## assert
+class Object
+  def foo: -> Integer
 end

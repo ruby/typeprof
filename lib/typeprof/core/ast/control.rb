@@ -176,7 +176,7 @@ module TypeProf::Core
     class BreakNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @arg = raw_node.arguments ? AST.create_node(raw_node.arguments.arguments.first, lenv) : nil
+        @arg = AST.parse_return_arguments(raw_node, lenv, code_range)
       end
 
       attr_reader :arg
@@ -184,8 +184,9 @@ module TypeProf::Core
       def subnodes = { arg: }
 
       def install0(genv)
-        _arg = @arg ? @arg.install(genv) : Source.new(genv.nil_type)
-        # TODO: implement!
+        arg = @arg.install(genv)
+        @changes.add_edge(genv, arg, @lenv.get_break_vtx)
+        Source.new()
       end
     end
 
