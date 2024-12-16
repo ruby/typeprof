@@ -146,6 +146,7 @@ module TypeProf::Core
       when ValueEntity
       when ActualArguments
       when Array
+      when Symbol
       else
         raise "unknown class: #{ origin.class }"
       end

@@ -124,7 +124,15 @@ module TypeProf::Core
 
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
         box = @changes.add_method_call_box(genv, recv, @mid, a_args, !@recv)
-        box.ret
+
+        if @block_body && @block_body.lenv.break_vtx
+          ret = Vertex.new(self)
+          @changes.add_edge(genv, box.ret, ret)
+          @changes.add_edge(genv, @block_body.lenv.break_vtx, ret)
+          ret
+        else
+          box.ret
+        end
       end
 
       def block_last_stmt_code_range
