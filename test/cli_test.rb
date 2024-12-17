@@ -110,5 +110,23 @@ module TypeProf
         end
       end)
     end
+
+    def test_lsp_options_with_lsp_mode
+      assert_nothing_raised { TypeProf::CLI::CLI.new(["--lsp", "--stdio"]) }
+    end
+
+    def test_lsp_options_with_non_lsp_mode
+      invalid_options = [
+        ["--stdio", "."],
+        ["--port", "123456", "."],
+      ]
+
+      invalid_options.each do |argv|
+        stdout, _stderr = capture_output do
+          assert_raises(SystemExit) { TypeProf::CLI::CLI.new(argv) }
+        end
+        assert_equal("invalid option: lsp options with non-lsp mode\n", stdout)
+      end
+    end
   end
 end
