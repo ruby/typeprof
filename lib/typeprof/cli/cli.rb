@@ -49,7 +49,7 @@ module TypeProf::CLI
 
       opt.parse!(argv)
 
-      if cli_options[:lsp] && !lsp_options.empty?
+      if !cli_options[:lsp] && !lsp_options.empty?
         raise OptionParser::InvalidOption.new("lsp options with non-lsp mode")
       end
 
