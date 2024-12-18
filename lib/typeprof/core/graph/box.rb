@@ -485,7 +485,11 @@ module TypeProf::Core
 
         if @f_args.rest_positionals
           rest_vtxs.each do |vtx|
-            changes.add_edge(genv, vtx, @f_args.rest_positionals)
+            @f_args.rest_positionals.each_type do |ty|
+              if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
+                changes.add_edge(genv, vtx, ty.args[0])
+              end
+            end
           end
         end
       else
@@ -519,9 +523,12 @@ module TypeProf::Core
 
         if start_rest < end_rest
           if @f_args.rest_positionals
-            f_arg = @f_args.rest_positionals
             (start_rest..end_rest-1).each do |i|
-              changes.add_edge(genv, a_args.positionals[i], f_arg)
+              @f_args.rest_positionals.each_type do |ty|
+                if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
+                  changes.add_edge(genv, a_args.positionals[i], ty.args[0])
+                end
+              end
             end
           end
         end
@@ -569,7 +576,7 @@ module TypeProf::Core
         args << ("?" + Type.strip_parens(f_vtx.show))
       end
       if @f_args.rest_positionals
-        args << ("*" + Type.strip_parens(@f_args.rest_positionals.show))
+        args << ("*" + Type.strip_array(Type.strip_parens(@f_args.rest_positionals.show)))
       end
       @f_args.post_positionals.each do |var|
         args << Type.strip_parens(var.show)
