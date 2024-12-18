@@ -11,6 +11,10 @@ module TypeProf::Core
       s.start_with?("(") && s.end_with?(")") ? s[1..-2] || raise : s
     end
 
+    def self.strip_array(s)
+      s.start_with?("Array[") && s.end_with?("]") ? s[6..-2] || raise : s
+    end
+
     def self.default_param_map(genv, ty)
       ty = ty.base_type(genv)
       instance_ty = ty.is_a?(Type::Instance) ? ty : Type::Instance.new(genv, ty.mod, []) # TODO: type params

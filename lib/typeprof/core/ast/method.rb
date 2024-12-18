@@ -220,6 +220,10 @@ module TypeProf::Core
         rest_keywords = @rest_keywords ? @body.lenv.new_var(@rest_keywords, self) : nil
         block = @block ? @body.lenv.new_var(@block, self) : nil
 
+        if rest_positionals
+          @changes.add_edge(genv, Source.new(genv.gen_ary_type(Vertex.new(self))), rest_positionals)
+        end
+
         @opt_positional_defaults.zip(opt_positionals) do |expr, vtx|
           @changes.add_edge(genv, expr.install(genv), vtx)
         end
