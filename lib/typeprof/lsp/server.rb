@@ -44,7 +44,7 @@ module TypeProf::LSP
       end
     end
 
-    def initialize(core, reader, writer, url_schema: nil)
+    def initialize(core, reader, writer, url_schema: nil, publish_all_diagnostics: false)
       @core = core
       @workspaces = {}
       @reader = reader
@@ -56,6 +56,7 @@ module TypeProf::LSP
       @exit = false
       @signature_enabled = true
       @url_schema = url_schema || (File::ALT_SEPARATOR != "\\" ? "file://" : "file:///")
+      @publish_all_diagnostics = publish_all_diagnostics # TODO: implement more dedicated publish feature
     end
 
     attr_reader :core, :open_texts
@@ -144,6 +145,22 @@ module TypeProf::LSP
 
     def exit
       @exit = true
+    end
+
+    def publish_diagnostics(uri)
+      (@publish_all_diagnostics ? @open_texts : [[uri, @open_texts[uri]]]).each do |uri, text|
+        diags = []
+        if text
+          @core.diagnostics(text.path) do |diag|
+            diags << diag.to_lsp
+          end
+        end
+        send_notification(
+          "textDocument/publishDiagnostics",
+          uri: uri,
+          diagnostics: diags
+        )
+      end
     end
   end
 
