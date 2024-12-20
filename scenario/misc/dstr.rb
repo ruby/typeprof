@@ -22,6 +22,16 @@ class Object
 end
 
 ## update
+def foo
+  "foo#{ }"
+end
+
+## assert
+class Object
+  def foo: -> String
+end
+
+## update
 def xstring_lit(n)
   `echo foo`
 end
