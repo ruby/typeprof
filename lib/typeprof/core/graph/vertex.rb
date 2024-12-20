@@ -42,6 +42,7 @@ module TypeProf::Core
     end
 
     def show
+      Fiber[:show_rec] ||= Set[]
       if Fiber[:show_rec].include?(self)
         "untyped"
       else
@@ -117,6 +118,7 @@ module TypeProf::Core
     end
 
     def show
+      Fiber[:show_rec] ||= Set[]
       if Fiber[:show_rec].include?(self)
         "...(recursive)..."
       else
