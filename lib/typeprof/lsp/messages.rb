@@ -28,21 +28,6 @@ module TypeProf::LSP
       @server.send_notification(method, **params)
     end
 
-    def publish_diagnostics(uri)
-      text = @server.open_texts[uri]
-      diags = []
-      if text
-        @server.core.diagnostics(text.path) do |diag|
-          diags << diag.to_lsp
-        end
-      end
-      notify(
-        "textDocument/publishDiagnostics",
-        uri: uri,
-        diagnostics: diags
-      )
-    end
-
     Classes = []
     def self.inherited(klass)
       Classes << klass
@@ -153,7 +138,7 @@ module TypeProf::LSP
       @server.open_texts[uri] = text
       @server.core.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
-      publish_diagnostics(uri)
+      @server.publish_diagnostics(uri)
     end
   end
 
@@ -166,7 +151,7 @@ module TypeProf::LSP
       text.apply_changes(changes, version)
       @server.core.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
-      publish_diagnostics(uri)
+      @server.publish_diagnostics(uri)
     end
   end
 
