@@ -44,7 +44,7 @@ module TypeProf::LSP
       end
     end
 
-    def initialize(core, reader, writer)
+    def initialize(core, reader, writer, url_schema: nil)
       @core = core
       @workspaces = {}
       @reader = reader
@@ -55,10 +55,19 @@ module TypeProf::LSP
       @open_texts = {}
       @exit = false
       @signature_enabled = true
+      @url_schema = url_schema || (File::ALT_SEPARATOR != "\\" ? "file://" : "file:///")
     end
 
     attr_reader :core, :open_texts
     attr_accessor :signature_enabled
+
+    def path_to_uri(path)
+      @url_schema + File.expand_path(path)
+    end
+
+    def uri_to_path(url)
+      url.delete_prefix(@url_schema)
+    end
 
     def add_workspaces(folders)
       folders.each do |path|

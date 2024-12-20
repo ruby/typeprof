@@ -72,7 +72,7 @@ module TypeProf::LSP
     def run
       folders = @params[:workspaceFolders].map do |folder|
         folder => { uri:, }
-        TypeProf::LSP.file_uri_to_path(uri)
+        @server.uri_to_path(uri)
       end
 
       @server.add_workspaces(folders)
@@ -146,7 +146,7 @@ module TypeProf::LSP
     def run
       @params => { textDocument: { uri:, version:, text: } }
 
-      path = TypeProf::LSP.file_uri_to_path(uri)
+      path = @server.uri_to_path(uri)
       return unless @server.target_path?(path)
 
       text = Text.new(path, text, version)
@@ -204,7 +204,7 @@ module TypeProf::LSP
       else
         respond(defs.map do |path, code_range|
           {
-            uri: "file://" + path,
+            uri: @server.path_to_uri(path),
             range: code_range.to_lsp,
           }
         end)
@@ -230,7 +230,7 @@ module TypeProf::LSP
       else
         respond(defs.map do |path, code_range|
           {
-            uri: "file://" + path,
+            uri: @server.path_to_uri(path),
             range: code_range.to_lsp,
           }
         end)
@@ -254,7 +254,7 @@ module TypeProf::LSP
       if callsites
         respond(callsites.map do |path, code_range|
           {
-            uri: "file://" + path,
+            uri: @server.path_to_uri(path),
             range: code_range.to_lsp,
           }
         end)
@@ -373,7 +373,7 @@ module TypeProf::LSP
       if renames
         changes = {}
         renames.each do |path, cr|
-          (changes["file://" + path] ||= []) << {
+          (changes[@server.path_to_uri(path)] ||= []) << {
             range: cr.to_lsp,
             newText: newName,
           }

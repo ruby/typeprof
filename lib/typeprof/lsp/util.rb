@@ -48,14 +48,4 @@ module TypeProf::LSP
 
     JSON.parse(json, **opts)
   end
-
-  FILE_URL_PREFIX = File::ALT_SEPARATOR != "\\" ? "file://" : "file:///"
-
-  def self.file_path_to_uri(path)
-    FILE_URL_PREFIX + File.expand_path(path)
-  end
-
-  def self.file_uri_to_path(url)
-    url.delete_prefix(FILE_URL_PREFIX)
-  end
 end

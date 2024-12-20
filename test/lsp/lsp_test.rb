@@ -30,16 +30,14 @@ module TypeProf::LSP
 
     def setup
       @dummy_io = DummyIO.new
-      @th = Thread.new do
-        core = TypeProf::Core::Service.new({})
-        serv = TypeProf::LSP::Server.new(core, @dummy_io, @dummy_io)
-        serv.run
-      end
+      @core = TypeProf::Core::Service.new({})
+      @lsp = TypeProf::LSP::Server.new(@core, @dummy_io, @dummy_io)
+      @th = Thread.new { @lsp.run }
       @id = 0
     end
 
     def init(fixture)
-      @folder = TypeProf::LSP.file_path_to_uri(File.expand_path(File.join(__dir__, "..", "fixtures", fixture))) + "/"
+      @folder = @lsp.path_to_uri(File.expand_path(File.join(__dir__, "..", "fixtures", fixture))) + "/"
       id = request("initialize", workspaceFolders: [{ uri: @folder }])
       expect_response(id) do |recv|
         assert_equal({ name: "typeprof", version: TypeProf::VERSION }, recv[:serverInfo])
