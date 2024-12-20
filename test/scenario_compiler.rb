@@ -88,7 +88,7 @@ class ScenarioCompiler
 #{ @check_diff ? 2 : 1 }.times {|i|
   core.update_#{ ext }_file(#{ @file.dump }, %q\0DATA\0)
   if i != 0 && "#{ ext }" == "rb"
-    if !core.instance_variable_get(:@text_nodes)[#{ @file.dump }].prev_node
+    if !core.instance_variable_get(:@rb_text_nodes)[#{ @file.dump }].prev_node
       raise "AST diff does not work well; the completely same code generates a different AST"
     end
   end

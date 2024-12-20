@@ -3,7 +3,8 @@ module TypeProf::Core
     def initialize(options)
       @options = options
 
-      @text_nodes = {}
+      @rb_text_nodes = {}
+      @rbs_text_nodes = {}
 
       @genv = GlobalEnv.new
       @genv.load_core_rbs(load_rbs_declarations(@options[:rbs_collection]).declarations)
@@ -26,43 +27,39 @@ module TypeProf::Core
     attr_reader :genv
 
     def reset!
-      @text_nodes.each_value do |node|
-        if node.is_a?(Array)
-          node.each {|n| n.undefine(@genv) }
-        else
-          node.undefine(@genv)
-        end
-      end
+      @rb_text_nodes.each_value {|node| node.undefine(@genv) }
+      @rbs_text_nodes.each_value {|nodes| nodes.each {|n| n.undefine(@genv) } }
       @genv.define_all
-      @text_nodes.each_value do |node|
-        if node.is_a?(Array)
-          node.each {|n| n.uninstall(@genv) }
-        else
-          node.uninstall(@genv)
-        end
-      end
+      @rb_text_nodes.each_value {|node| node.uninstall(@genv) }
+      @rbs_text_nodes.each_value {|nodes| nodes.each {|n| n.uninstall(@genv) } }
       @genv.run_all
-      @text_nodes.clear
+      @rb_text_nodes.clear
+      @rbs_text_nodes.clear
     end
 
     def add_workspace(rb_folder, rbs_folder)
-      Dir.glob(File.expand_path(rb_folder + "/**/*.rb")) do |path|
-        update_rb_file(path, nil)
+      Dir.glob(File.expand_path(rb_folder + "/**/*.{rb,rbs}")) do |path|
+        update_file(path, nil)
       end
-      Dir.glob(File.expand_path(rbs_folder + "/**/*.rbs")) do |path|
-        update_rbs_file(path, nil)
+    end
+
+    def update_file(path, code)
+      if File.extname(path) == ".rbs"
+        update_rbs_file(path, code)
+      else
+        update_rb_file(path, code)
       end
     end
 
     def update_rb_file(path, code)
-      prev_node = @text_nodes[path]
+      prev_node = @rb_text_nodes[path]
 
       code = File.read(path) unless code
       node = AST.parse_rb(path, code)
       return false unless node
 
-      node.diff(@text_nodes[path]) if prev_node
-      @text_nodes[path] = node
+      node.diff(@rb_text_nodes[path]) if prev_node
+      @rb_text_nodes[path] = node
 
       node.define(@genv)
       prev_node.undefine(@genv) if prev_node
@@ -115,7 +112,7 @@ module TypeProf::Core
     end
 
     def update_rbs_file(path, code)
-      prev_decls = @text_nodes[path]
+      prev_decls = @rbs_text_nodes[path]
 
       code = File.read(path) unless code
       begin
@@ -125,7 +122,7 @@ module TypeProf::Core
       end
 
       # TODO: diff
-      @text_nodes[path] = decls
+      @rbs_text_nodes[path] = decls
 
       decls.each {|decl| decl.define(@genv) }
       prev_decls.each {|decl| decl.undefine(@genv) } if prev_decls
@@ -139,13 +136,12 @@ module TypeProf::Core
     end
 
     def diagnostics(path, &blk)
-      node = @text_nodes[path]
-      node.diagnostics(@genv, &blk) if node
+      @rb_text_nodes[path]&.diagnostics(@genv, &blk)
     end
 
     def definitions(path, pos)
       defs = []
-      @text_nodes[path].retrieve_at(pos) do |node|
+      @rb_text_nodes[path]&.retrieve_at(pos) do |node|
         node.boxes(:cread) do |box|
           if box.const_read && box.const_read.cdef
             box.const_read.cdef.defs.each do |cdef_node|
@@ -184,7 +180,7 @@ module TypeProf::Core
     end
 
     def type_definitions(path, pos)
-      @text_nodes[path].retrieve_at(pos) do |node|
+      @rb_text_nodes[path]&.retrieve_at(pos) do |node|
         if node.ret
           ty_defs = []
           node.ret.types.map do |ty, _source|
@@ -206,7 +202,7 @@ module TypeProf::Core
     #: (String, TypeProf::CodePosition) -> Array[[String?, TypeProf::CodeRange]]?
     def references(path, pos)
       refs = []
-      @text_nodes[path].retrieve_at(pos) do |node|
+      @rb_text_nodes[path]&.retrieve_at(pos) do |node|
         case node
         when AST::DefNode
           if node.mid_code_range.include?(pos)
@@ -246,7 +242,7 @@ module TypeProf::Core
     def rename(path, pos)
       mdefs = []
       cdefs = []
-      @text_nodes[path].retrieve_at(pos) do |node|
+      @rb_text_nodes[path]&.retrieve_at(pos) do |node|
         node.boxes(:mcall) do |box|
           box.resolve(genv, nil) do |me, _ty, _mid, _orig_ty|
             next unless me
@@ -298,7 +294,7 @@ module TypeProf::Core
     end
 
     def hover(path, pos)
-      @text_nodes[path].retrieve_at(pos) do |node|
+      @rb_text_nodes[path]&.retrieve_at(pos) do |node|
         node.boxes(:mcall) do |box|
           boxes = []
           box.changes.boxes.each do |key, box|
@@ -332,7 +328,7 @@ module TypeProf::Core
 
     def code_lens(path)
       cpaths = []
-      @text_nodes[path].traverse do |event, node|
+      @rb_text_nodes[path]&.traverse do |event, node|
         if node.is_a?(AST::ModuleBaseNode)
           if node.static_cpath
             if event == :enter
@@ -356,7 +352,7 @@ module TypeProf::Core
     end
 
     def completion(path, trigger, pos)
-      @text_nodes[path].retrieve_at(pos) do |node|
+      @rb_text_nodes[path]&.retrieve_at(pos) do |node|
         if node.code_range.last == pos.right
           node.ret.types.map do |ty, _source|
             base_ty = ty.base_type(genv)
@@ -386,7 +382,7 @@ module TypeProf::Core
     def dump_declarations(path)
       stack = []
       out = []
-      @text_nodes[path].traverse do |event, node|
+      @rb_text_nodes[path]&.traverse do |event, node|
         case node
         when AST::ModuleNode
           if node.static_cpath
@@ -481,11 +477,7 @@ module TypeProf::Core
           i += 1
         end
 
-        if File.extname(file) == ".rbs"
-          res = update_rbs_file(file, File.read(file))
-        else
-          res = update_rb_file(file, File.read(file))
-        end
+        res = update_file(file, File.read(file))
 
         if res
           true
