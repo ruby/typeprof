@@ -1,5 +1,3 @@
-require "io/console"
-
 module TypeProf::CLI
   class CLI
     def initialize(argv)
