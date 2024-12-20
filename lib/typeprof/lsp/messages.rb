@@ -151,7 +151,7 @@ module TypeProf::LSP
 
       text = Text.new(path, text, version)
       @server.open_texts[uri] = text
-      @server.core.update_rb_file(text.path, text.string)
+      @server.core.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
       publish_diagnostics(uri)
     end
@@ -164,7 +164,7 @@ module TypeProf::LSP
       text = @server.open_texts[uri]
       return unless text
       text.apply_changes(changes, version)
-      @server.core.update_rb_file(text.path, text.string)
+      @server.core.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
       publish_diagnostics(uri)
     end
@@ -180,7 +180,7 @@ module TypeProf::LSP
       @params => { textDocument: { uri: } }
       text = @server.open_texts.delete(uri)
       return unless text
-      @server.core.update_rb_file(text.path, nil)
+      @server.core.update_file(text.path, nil)
     end
   end
 
@@ -332,7 +332,7 @@ module TypeProf::LSP
       items = []
       sort = "aaaa"
       text.modify_for_completion(text, pos) do |string, trigger, pos|
-        @server.core.update_rb_file(text.path, string)
+        @server.core.update_file(text.path, string)
         pos = TypeProf::CodePosition.from_lsp(pos)
         @server.core.completion(text.path, trigger, pos) do |mid, hint|
           items << {
@@ -348,7 +348,7 @@ module TypeProf::LSP
         isIncomplete: false,
         items: items,
       )
-      @server.core.update_rb_file(text.path, text.string)
+      @server.core.update_file(text.path, text.string)
     end
   end
 
