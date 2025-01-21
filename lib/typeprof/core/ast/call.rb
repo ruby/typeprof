@@ -22,9 +22,12 @@ module TypeProf::Core
           args = []
           @splat_flags = []
           raw_args.arguments.each do |raw_arg|
-            if raw_arg.is_a?(Prism::SplatNode)
+            case raw_arg
+            when Prism::SplatNode
               args << raw_arg.expression
               @splat_flags << true
+            when Prism::ForwardingArgumentsNode
+              # TODO: Support forwarding arguments
             else
               args << raw_arg
               @splat_flags << false

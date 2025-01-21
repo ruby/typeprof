@@ -83,6 +83,10 @@ module TypeProf::Core
       case raw_args.keyword_rest
       when Prism::KeywordRestParameterNode
         rest_keywords = raw_args.keyword_rest.name if raw_args.keyword_rest
+      when Prism::ForwardingParameterNode
+        # TODO: The variable names might be subject to change when supporting the propagation of parameter values to the graph during method calls.
+        rest_positionals = :"..."
+        rest_keywords = :"..."
       when Prism::NoKeywordsParameterNode
         # what to do?
       when nil
