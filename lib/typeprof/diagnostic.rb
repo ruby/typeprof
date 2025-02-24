@@ -1,18 +1,18 @@
 module TypeProf
   class Diagnostic
-    def initialize(node, meth, msg)
+    def initialize(node, meth, msg, severity: :error, tags: nil)
       @node = node
       @meth = meth
       @msg = msg
-      @severity = :error # TODO: keyword argument
-      @tags = nil # TODO: keyword argument
+      @severity = severity
+      @tags = tags
     end
 
     def reuse(new_node)
       @node = new_node
     end
 
-    attr_reader :msg, :severity
+    attr_reader :msg, :severity, :tags
 
     def code_range
       @node.send(@meth)
