@@ -28,18 +28,19 @@ module TypeProf::Core
         else
           raise raw_node.type.to_s
         end
+        @strict_const_scope = lenv.strict_const_scope
       end
 
-      attr_reader :cname, :cbase, :toplevel, :cname_code_range
+      attr_reader :cname, :cbase, :toplevel, :cname_code_range, :strict_const_scope
 
-      def attrs = { cname:, toplevel: }
+      def attrs = { cname:, toplevel:, strict_const_scope: }
       def subnodes = { cbase: }
 
       def define0(genv)
         if @cbase
-          ScopedConstRead.new(@cname, @cbase.define(genv))
+          ScopedConstRead.new(@cname, @cbase.define(genv), @strict_const_scope)
         else
-          BaseConstRead.new(genv, @cname, @toplevel ? CRef::Toplevel : @lenv.cref)
+          BaseConstRead.new(genv, @cname, @toplevel ? CRef::Toplevel : @lenv.cref, @strict_const_scope)
         end
       end
 

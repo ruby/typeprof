@@ -6,7 +6,9 @@ module TypeProf::Core
         # TODO: error for splat
         @args = raw_node.arguments.arguments.map do |raw_arg|
           next if raw_arg.is_a?(Prism::SplatNode)
-          AST.create_node(raw_arg, lenv)
+          lenv.use_strict_const_scope do
+            AST.create_node(raw_arg, lenv)
+          end
         end.compact
         # TODO: error for non-LIT
         # TODO: fine-grained hover

@@ -89,10 +89,10 @@ module TypeProf::Core
         static_ret[:self_types] = self_types = []
         @self_types.zip(@self_type_args) do |(cpath, toplevel), args|
           args.each {|arg| arg.define(genv) }
-          const_read = BaseConstRead.new(genv, cpath.first, toplevel ? CRef::Toplevel : @lenv.cref)
+          const_read = BaseConstRead.new(genv, cpath.first, toplevel ? CRef::Toplevel : @lenv.cref, false)
           const_reads = [const_read]
           cpath[1..].each do |cname|
-            const_read = ScopedConstRead.new(cname, const_read)
+            const_read = ScopedConstRead.new(cname, const_read, false)
             const_reads << const_read
           end
           mod = genv.resolve_cpath(@cpath)
@@ -150,10 +150,10 @@ module TypeProf::Core
         const_reads = []
         if @superclass_cpath
           @superclass_args.each {|arg| arg.define(genv) }
-          const_read = BaseConstRead.new(genv, @superclass_cpath.first, @superclass_toplevel ? CRef::Toplevel : @lenv.cref)
+          const_read = BaseConstRead.new(genv, @superclass_cpath.first, @superclass_toplevel ? CRef::Toplevel : @lenv.cref, false)
           const_reads << const_read
           @superclass_cpath[1..].each do |cname|
-            const_read = ScopedConstRead.new(cname, const_read)
+            const_read = ScopedConstRead.new(cname, const_read, false)
             const_reads << const_read
           end
           mod = genv.resolve_cpath(@cpath)
@@ -219,10 +219,10 @@ module TypeProf::Core
       def define0(genv)
         @args.each {|arg| arg.define(genv) }
         const_reads = []
-        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref)
+        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref, false)
         const_reads << const_read
         @cpath[1..].each do |cname|
-          const_read = ScopedConstRead.new(cname, const_read)
+          const_read = ScopedConstRead.new(cname, const_read, false)
           const_reads << const_read
         end
         mod = genv.resolve_cpath(@lenv.cref.cpath)
