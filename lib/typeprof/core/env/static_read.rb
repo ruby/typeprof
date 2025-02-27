@@ -30,10 +30,9 @@ module TypeProf::Core
       @source_modules.clear
     end
 
-    def resolve(genv, cref, break_object)
+    def resolve(genv, cref, search_ancestors, break_object)
       destroy(genv)
 
-      first = true
       while cref
         scope = cref.cpath
         mod = genv.resolve_cpath(scope)
@@ -47,9 +46,9 @@ module TypeProf::Core
 
           return if check_module(genv, mod)
 
-          break unless first
+          break unless search_ancestors
         end
-        first = false
+        search_ancestors = false
         cref = cref.outer
       end
       resolution_failed(genv)
@@ -57,29 +56,31 @@ module TypeProf::Core
   end
 
   class BaseStaticRead < StaticRead
-    def initialize(genv, name, cref)
+    def initialize(genv, name, cref, strict_const_scope)
       super(name)
       @cref = cref
+      @search_ancestors = !strict_const_scope
       genv.add_static_eval_queue(:static_read_changed, self)
     end
 
     attr_reader :cref
 
     def on_scope_updated(genv)
-      resolve(genv, @cref, false)
+      resolve(genv, @cref, @search_ancestors, false)
     end
   end
 
   class ScopedStaticRead < StaticRead
-    def initialize(name, cbase)
+    def initialize(name, cbase, strict_const_scope)
       super(name)
       @cbase = cbase
       @cbase.followers << self if @cbase
+      @search_ancestors = !strict_const_scope
     end
 
     def on_cbase_updated(genv)
       if @cbase && @cbase.cpath
-        resolve(genv, CRef.new(@cbase.cpath, :class, nil, nil), true)
+        resolve(genv, CRef.new(@cbase.cpath, :class, nil, nil), @search_ancestors, true)
       else
         resolution_failed(genv)
       end
