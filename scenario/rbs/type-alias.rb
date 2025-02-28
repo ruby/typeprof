@@ -25,6 +25,9 @@ class Object
   def test3: (untyped) -> (Integer | String)
 end
 
+## diagnostics: test.rb
+(10,10)-(10,13): wrong type of arguments
+
 ## update: test.rbs
 type a = Integer
 class Foo
@@ -35,9 +38,13 @@ end
 ## assert: test.rb
 class Object
   def test1: -> Integer
-  def test2: -> untyped
+  def test2: -> Integer
   def test3: (untyped) -> Integer
 end
+
+## diagnostics: test.rb
+(6,10)-(6,13): wrong type of arguments
+(10,10)-(10,13): wrong type of arguments
 
 ## update: test.rbs
 type a = Integer
@@ -48,9 +55,13 @@ end
 ## assert: test.rb
 class Object
   def test1: -> Integer
-  def test2: -> untyped
+  def test2: -> Integer
   def test3: (untyped) -> Integer
 end
+
+## diagnostics: test.rb
+(6,10)-(6,13): wrong type of arguments
+(10,10)-(10,13): wrong type of arguments
 
 ## update: test.rbs
 class Bar
@@ -63,6 +74,10 @@ end
 ## assert: test.rb
 class Object
   def test1: -> Integer
-  def test2: -> untyped
+  def test2: -> Integer
   def test3: (untyped) -> Integer
 end
+
+## diagnostics: test.rb
+(6,10)-(6,13): wrong type of arguments
+(10,10)-(10,13): wrong type of arguments

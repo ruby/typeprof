@@ -179,39 +179,74 @@ module TypeProf::Core
       return true
     end
 
-    def resolve_overloads(changes, genv, node, param_map, a_args, ret)
+    def check_match_overload(changes, genv, method_type, node, param_map, a_args, ret, force)
+      param_map0 = param_map.dup
+      if method_type.type_params
+        method_type.type_params.zip(yield(method_type)) do |var, vtx|
+          param_map0[var] = vtx
+        end
+      end
+
+      unless match_arguments?(genv, changes, param_map0, a_args, method_type)
+        if force
+          meth = node.mid_code_range ? :mid_code_range : :code_range
+          changes.add_diagnostic(meth, "wrong type of arguments") # XXX: more friendly and fine-grained error message
+        end
+        return false
+      end
+
+      rbs_blk = method_type.block
+      if method_type.block_required && !a_args.block
+        if force
+          meth = node.mid_code_range ? :mid_code_range : :code_range
+          changes.add_diagnostic(meth, "block is expected") # XXX: more friendly error message
+        end
+        return false
+      end
+      if !rbs_blk && a_args.block
+        if force
+          meth = node.mid_code_range ? :mid_code_range : :code_range
+          changes.add_diagnostic(meth, "block is not expected") # XXX: more friendly error message
+        end
+        return false
+      end
+      if rbs_blk && a_args.block
+        # rbs_blk_func.optional_keywords, ...
+        a_args.block.each_type do |ty|
+          case ty
+          when Type::Proc
+            blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
+            blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
+              blk_a_arg.covariant_vertex(genv, changes, param_map0)
+            end
+
+            ty.block.accept_args(genv, changes, blk_a_args, blk_f_ret, true)
+          end
+        end
+      end
+
+      force = true
+      return true
+
+    ensure
+      if force
+        ret_vtx = method_type.return_type.covariant_vertex(genv, changes, param_map0)
+        changes.add_edge(genv, ret_vtx, ret)
+      end
+    end
+
+    def resolve_overloads(changes, genv, node, param_map, a_args, ret, &blk)
+      if @method_types.size == 1
+        method_type = @method_types.first
+        check_match_overload(changes, genv, method_type, node, param_map, a_args, ret, true, &blk)
+        return
+      end
+
       match_any_overload = false
       @method_types.each do |method_type|
-        param_map0 = param_map.dup
-        if method_type.type_params
-          method_type.type_params.zip(yield(method_type)) do |var, vtx|
-            param_map0[var] = vtx
-          end
+        if check_match_overload(changes, genv, method_type, node, param_map, a_args, ret, false, &blk)
+          match_any_overload = true
         end
-
-        next unless match_arguments?(genv, changes, param_map0, a_args, method_type)
-
-        rbs_blk = method_type.block
-        next if method_type.block_required && !a_args.block
-        next if !rbs_blk && a_args.block
-        if rbs_blk && a_args.block
-          # rbs_blk_func.optional_keywords, ...
-          a_args.block.each_type do |ty|
-            case ty
-            when Type::Proc
-              blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
-              blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
-                blk_a_arg.covariant_vertex(genv, changes, param_map0)
-              end
-
-              ty.block.accept_args(genv, changes, blk_a_args, blk_f_ret, true)
-            end
-          end
-        end
-        ret_vtx = method_type.return_type.covariant_vertex(genv, changes, param_map0)
-
-        changes.add_edge(genv, ret_vtx, ret)
-        match_any_overload = true
       end
       unless match_any_overload
         meth = node.mid_code_range ? :mid_code_range : :code_range
@@ -265,7 +300,9 @@ module TypeProf::Core
 
     def run0(genv, changes)
       unless @a_ret.check_match(genv, changes, @f_ret)
-        msg = "expected: #{ @f_ret.show }; actual: #{ @a_ret.show }"
+        actual_ty = @a_ret.show
+        return if actual_ty == "untyped" # XXX: too ad-hoc?
+        msg = "expected: #{ @f_ret.show }; actual: #{ actual_ty }"
         case @node
         when AST::ReturnNode
           changes.add_diagnostic(:code_range, msg)

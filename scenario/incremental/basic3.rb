@@ -24,6 +24,6 @@ end
 
 ## assert
 class Object
-  def foo: (String) -> untyped
-  def main: -> untyped
+  def foo: (String) -> String
+  def main: -> String
 end

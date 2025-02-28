@@ -32,7 +32,7 @@ module TypeProf
 
         # ./type_error.rb
         class Object
-          def check: -> untyped
+          def check: -> :ok
         end
       END
 
@@ -40,9 +40,9 @@ module TypeProf
         # TypeProf #{ TypeProf::VERSION }
 
         # ./type_error.rb
-        # (2,10)-(2,20):failed to resolve overloads
+        # (2,10)-(2,20):wrong type of arguments
         class Object
-          def check: -> untyped
+          def check: -> :ok
         end
       END
     end

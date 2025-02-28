@@ -44,19 +44,27 @@ class Object
   def test_a_b: -> :a
   def test_a_c: -> :a
   def test_a_d: -> :a
-  def test_b_a: -> untyped
+  def test_b_a: -> :b
   def test_b_b: -> :b
   def test_b_c: -> :b
   def test_b_d: -> :b
-  def test_c_a: -> untyped
-  def test_c_b: -> untyped
+  def test_c_a: -> :c
+  def test_c_b: -> :c
   def test_c_c: -> :c
   def test_c_d: -> :c
-  def test_d_a: -> untyped
-  def test_d_b: -> untyped
-  def test_d_c: -> untyped
+  def test_d_a: -> :d
+  def test_d_b: -> :d
+  def test_d_c: -> :d
   def test_d_d: -> :d
 end
+
+## diagnostics: test.rb
+(7,15)-(7,23): wrong type of arguments
+(12,15)-(12,23): wrong type of arguments
+(13,15)-(13,23): wrong type of arguments
+(17,15)-(17,23): wrong type of arguments
+(18,15)-(18,23): wrong type of arguments
+(19,15)-(19,23): wrong type of arguments
 
 ## update: test.rbs
 class A
@@ -74,18 +82,29 @@ end
 class Object
   def test_a_a: -> :a
   def test_a_b: -> :a
-  def test_a_c: -> untyped
+  def test_a_c: -> :a
   def test_a_d: -> :a
-  def test_b_a: -> untyped
+  def test_b_a: -> :b
   def test_b_b: -> :b
-  def test_b_c: -> untyped
+  def test_b_c: -> :b
   def test_b_d: -> :b
-  def test_c_a: -> untyped
-  def test_c_b: -> untyped
+  def test_c_a: -> :c
+  def test_c_b: -> :c
   def test_c_c: -> :c
-  def test_c_d: -> untyped
-  def test_d_a: -> untyped
-  def test_d_b: -> untyped
-  def test_d_c: -> untyped
+  def test_c_d: -> :c
+  def test_d_a: -> :d
+  def test_d_b: -> :d
+  def test_d_c: -> :d
   def test_d_d: -> :d
 end
+
+## diagnostics: test.rb
+(4,15)-(4,23): wrong type of arguments
+(7,15)-(7,23): wrong type of arguments
+(9,15)-(9,23): wrong type of arguments
+(12,15)-(12,23): wrong type of arguments
+(13,15)-(13,23): wrong type of arguments
+(15,15)-(15,23): wrong type of arguments
+(17,15)-(17,23): wrong type of arguments
+(18,15)-(18,23): wrong type of arguments
+(19,15)-(19,23): wrong type of arguments

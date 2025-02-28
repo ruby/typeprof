@@ -24,7 +24,10 @@ end
 ## assert
 class Object
   def test1: -> :ok
-  def test2: -> untyped
+  def test2: -> :ok
   def test3: -> :ok
   def test4: -> :ok
 end
+
+## diagnostics
+(6,8)-(6,11): wrong type of arguments

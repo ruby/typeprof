@@ -28,7 +28,6 @@ module TypeProf::Core
         end
       end
 
-      return true if @types.empty?
       return true if vtx.types.empty?
 
       each_type do |ty|
