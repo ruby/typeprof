@@ -25,5 +25,8 @@ end
 
 ## assert: test0.rb
 class Object
-  def foo: (String) -> untyped
+  def foo: (String) -> String
 end
+
+## diagnostics: test0.rb
+(2,4)-(2,5): wrong type of arguments

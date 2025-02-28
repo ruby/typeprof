@@ -28,9 +28,15 @@ end
 ## assert
 class Object
   def test1: -> :ok
-  def test2: -> untyped
+  def test2: -> :ok
   def test3: -> :ok
   def test4: -> :ok
-  def test5: -> untyped
+  def test5: -> :ok
   def test6: -> :ok
 end
+
+## diagnostics
+(5,2)-(5,10): block is not expected
+(11,2)-(11,20): expected: Integer; actual: nil
+(14,2)-(14,16): block is expected
+(17,2)-(17,20): expected: Integer; actual: nil
