@@ -57,6 +57,7 @@ module TypeProf::LSP
       @signature_enabled = true
       @url_schema = url_schema || (File::ALT_SEPARATOR != "\\" ? "file://" : "file:///")
       @publish_all_diagnostics = publish_all_diagnostics # TODO: implement more dedicated publish feature
+      @diagnostic_severity = :error
     end
 
     attr_reader :core, :open_texts
@@ -77,6 +78,15 @@ module TypeProf::LSP
           conf = TypeProf::LSP.load_json_with_comments(conf_path, symbolize_names: true)
           if conf
             if conf[:typeprof_version] == "experimental"
+              if conf[:diagnostic_severity]
+                severity = conf[:diagnostic_severity].to_sym
+                case severity
+                when :error, :warning, :info, :hint
+                  @diagnostic_severity = severity
+                else
+                  puts "unknown severity: #{ severity }"
+                end
+              end
               if conf[:analysis_unit_dirs].size >= 2
                  puts "currently analysis_unit_dirs can have only one directory"
               end
@@ -152,7 +162,7 @@ module TypeProf::LSP
         diags = []
         if text
           @core.diagnostics(text.path) do |diag|
-            diags << diag.to_lsp
+            diags << diag.to_lsp(severity: @diagnostic_severity)
           end
         end
         send_notification(
