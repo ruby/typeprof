@@ -57,6 +57,7 @@ module TypeProf::LSP
       @signature_enabled = true
       @url_schema = url_schema || (File::ALT_SEPARATOR != "\\" ? "file://" : "file:///")
       @publish_all_diagnostics = publish_all_diagnostics # TODO: implement more dedicated publish feature
+      @diagnostic_severity = :error
     end
 
     attr_reader :open_texts
@@ -92,6 +93,15 @@ module TypeProf::LSP
           end
           @rbs_dir = rbs_dir
           if conf[:typeprof_version] == "experimental"
+            if conf[:diagnostic_severity]
+              severity = conf[:diagnostic_severity].to_sym
+              case severity
+              when :error, :warning, :info, :hint
+                @diagnostic_severity = severity
+              else
+                puts "unknown severity: #{ severity }"
+              end
+            end
             conf[:analysis_unit_dirs].each do |dir|
               dir = File.expand_path(dir, path)
               core = @cores[dir] = TypeProf::Core::Service.new(@core_options)
@@ -230,7 +240,7 @@ module TypeProf::LSP
         if text
           @cores.each do |_, core|
             core.diagnostics(text.path) do |diag|
-              diags << diag.to_lsp
+              diags << diag.to_lsp(severity: @diagnostic_severity)
             end
           end
         end

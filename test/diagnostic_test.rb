@@ -8,26 +8,9 @@ module TypeProf
       end
     end
 
-    def test_diagnostic_with_default_values
+    def test_diagnostic
       diag = Diagnostic.new(DummyNode.new, :code_range, "test message")
-      assert_equal :error, diag.severity
       assert_nil diag.tags
-    end
-
-    def test_diagnostic_with_custom_severity
-      diag = Diagnostic.new(DummyNode.new, :code_range, "test message", severity: :warning)
-      assert_equal :warning, diag.severity
-    end
-
-    def test_diagnostic_with_custom_tags
-      diag = Diagnostic.new(DummyNode.new, :code_range, "test message", tags: [:deprecated])
-      assert_equal [:deprecated], diag.tags
-    end
-
-    def test_diagnostic_with_custom_severity_and_tags
-      diag = Diagnostic.new(DummyNode.new, :code_range, "test message", severity: :info, tags: [:experimental])
-      assert_equal :info, diag.severity
-      assert_equal [:experimental], diag.tags
     end
   end
 end
