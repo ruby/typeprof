@@ -1,5 +1,6 @@
 module TypeProf::LSP
   class Message
+    #: (Server, untyped) -> void
     def initialize(server, json)
       @server = server
       @id = json[:id]
@@ -136,7 +137,7 @@ module TypeProf::LSP
 
       text = Text.new(path, text, version)
       @server.open_texts[uri] = text
-      @server.core.update_file(text.path, text.string)
+      @server.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
       @server.publish_diagnostics(uri)
     end
@@ -146,10 +147,12 @@ module TypeProf::LSP
     METHOD = "textDocument/didChange" # notification
     def run
       @params => { textDocument: { uri:, version: }, contentChanges: changes }
+
       text = @server.open_texts[uri]
       return unless text
+
       text.apply_changes(changes, version)
-      @server.core.update_file(text.path, text.string)
+      @server.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
       @server.publish_diagnostics(uri)
     end
@@ -163,9 +166,11 @@ module TypeProf::LSP
     METHOD = "textDocument/didClose" # notification
     def run
       @params => { textDocument: { uri: } }
+
       text = @server.open_texts.delete(uri)
       return unless text
-      @server.core.update_file(text.path, nil)
+
+      @server.update_file(text.path, nil)
     end
   end
 
@@ -178,12 +183,13 @@ module TypeProf::LSP
         textDocument: { uri: },
         position: pos,
       }
+
       text = @server.open_texts[uri]
       unless text
         respond(nil)
         return
       end
-      defs = @server.core.definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
+      defs = @server.definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
       if defs.empty?
         respond(nil)
       else
@@ -209,7 +215,7 @@ module TypeProf::LSP
         respond(nil)
         return
       end
-      defs = @server.core.type_definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
+      defs = @server.type_definitions(text.path, TypeProf::CodePosition.from_lsp(pos))
       if defs.empty?
         respond(nil)
       else
@@ -235,7 +241,7 @@ module TypeProf::LSP
         respond(nil)
         return
       end
-      callsites = @server.core.references(text.path, TypeProf::CodePosition.from_lsp(pos))
+      callsites = @server.references(text.path, TypeProf::CodePosition.from_lsp(pos))
       if callsites
         respond(callsites.map do |path, code_range|
           {
@@ -261,7 +267,7 @@ module TypeProf::LSP
         respond(nil)
         return
       end
-      str = @server.core.hover(text.path, TypeProf::CodePosition.from_lsp(pos))
+      str = @server.hover(text.path, TypeProf::CodePosition.from_lsp(pos))
       if str
         respond(contents: { language: "ruby", value: str })
       else
@@ -280,7 +286,7 @@ module TypeProf::LSP
         return
       end
       ret = []
-      @server.core.code_lens(text.path) do |code_range, title|
+      @server.code_lens(text.path) do |code_range, title|
         pos = code_range.first
         ret << {
           range: TypeProf::CodeRange.new(pos, pos.right).to_lsp,
@@ -317,9 +323,9 @@ module TypeProf::LSP
       items = []
       sort = "aaaa"
       text.modify_for_completion(text, pos) do |string, trigger, pos|
-        @server.core.update_file(text.path, string)
+        @server.update_file(text.path, string)
         pos = TypeProf::CodePosition.from_lsp(pos)
-        @server.core.completion(text.path, trigger, pos) do |mid, hint|
+        @server.completion(text.path, trigger, pos) do |mid, hint|
           items << {
             label: mid,
             kind: 2, # Method
@@ -333,7 +339,7 @@ module TypeProf::LSP
         isIncomplete: false,
         items: items,
       )
-      @server.core.update_file(text.path, text.string)
+      @server.update_file(text.path, text.string)
     end
   end
 
@@ -354,7 +360,7 @@ module TypeProf::LSP
         respond(nil)
         return
       end
-      renames = @server.core.rename(text.path, TypeProf::CodePosition.from_lsp(pos))
+      renames = @server.rename(text.path, TypeProf::CodePosition.from_lsp(pos))
       if renames
         changes = {}
         renames.each do |path, cr|

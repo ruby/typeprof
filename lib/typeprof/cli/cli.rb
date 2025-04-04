@@ -101,27 +101,28 @@ module TypeProf::CLI
     attr_reader :core_options, :lsp_options, :cli_options
 
     def run
-      core = TypeProf::Core::Service.new(@core_options)
 
       if @cli_options[:lsp]
-        run_lsp(core)
+        run_lsp
       else
-        run_cli(core)
+        run_cli
       end
     end
 
-    def run_lsp(core)
+    def run_lsp
       if @lsp_options[:stdio]
-        TypeProf::LSP::Server.start_stdio(core)
+        TypeProf::LSP::Server.start_stdio(@core_options)
       else
-        TypeProf::LSP::Server.start_socket(core)
+        TypeProf::LSP::Server.start_socket(@core_options)
       end
     rescue Exception
       puts $!.detailed_message(highlight: false).gsub(/^/, "---")
       raise
     end
 
-    def run_cli(core)
+    def run_cli
+      core = TypeProf::Core::Service.new(@core_options)
+
       puts "typeprof #{ TypeProf::VERSION }" if @cli_options[:display_version]
 
       files = find_files

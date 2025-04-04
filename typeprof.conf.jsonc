@@ -11,9 +11,8 @@
 
     // The directories containing Ruby files to be analyzed by TypeProf
     // Each directory will be independently analyzed
-    // (but currently, multiple analysis units are not supported yet)
     "analysis_unit_dirs": [
         "lib/typeprof/core/",
-        // "lib/typeprof/lsp",
+        "lib/typeprof/lsp",
     ]
 }
