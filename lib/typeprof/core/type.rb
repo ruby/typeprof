@@ -97,7 +97,7 @@ module TypeProf::Core
               if ty.mod == other_ty.mod
                 args_all_match = true
                 ty.args.zip(other_ty.args) do |arg, other_arg|
-                  unless arg.check_match(genv, changes, other_arg)
+                  unless arg.check_match(genv, changes, other_arg || Source.new)
                     args_all_match = false
                     break
                   end

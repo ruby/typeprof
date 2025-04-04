@@ -112,7 +112,7 @@ module TypeProf::Core
       ty_env = base_ty_env.dup
       if base_ty.is_a?(Type::Instance)
         base_ty.mod.type_params.zip(base_ty.args) do |param, arg|
-          ty_env[param] = arg
+          ty_env[param] = arg || Source.new
         end
       end
       args = mod.type_params.zip(type_args).map do |param, arg|

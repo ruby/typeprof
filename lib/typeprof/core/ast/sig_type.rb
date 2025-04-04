@@ -435,7 +435,11 @@ module TypeProf::Core
         cpath = @static_ret.last.cpath
         return unless cpath
         mod = genv.resolve_cpath(cpath)
-        args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
+        # TODO: report error for wrong type arguments
+        # TODO: support default type args
+        args = mod.type_params.zip(@args).map do |_, arg|
+          arg ? arg.contravariant_vertex(genv, changes, subst) : Source.new
+        end
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
