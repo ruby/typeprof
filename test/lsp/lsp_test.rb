@@ -1,13 +1,6 @@
 require_relative "../helper"
 
 module TypeProf::LSP
-  class Server
-    remove_method(:target_path?)
-    def target_path?(_path)
-      true
-    end
-  end
-
   class LSPTest < Test::Unit::TestCase
     class DummyIO
       def initialize
@@ -30,8 +23,7 @@ module TypeProf::LSP
 
     def setup
       @dummy_io = DummyIO.new
-      @core = TypeProf::Core::Service.new({})
-      @lsp = TypeProf::LSP::Server.new(@core, @dummy_io, @dummy_io)
+      @lsp = TypeProf::LSP::Server.new({}, @dummy_io, @dummy_io)
       @th = Thread.new { @lsp.run }
       @id = 0
     end

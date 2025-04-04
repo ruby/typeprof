@@ -41,6 +41,9 @@ module TypeProf::Core
       Dir.glob(File.expand_path(rb_folder + "/**/*.{rb,rbs}")) do |path|
         update_file(path, nil)
       end
+      Dir.glob(File.expand_path(rbs_folder + "/**/*.{rb,rbs}")) do |path|
+        update_file(path, nil)
+      end
     end
 
     def update_file(path, code)

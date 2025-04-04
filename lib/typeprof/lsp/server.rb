@@ -8,17 +8,17 @@ module TypeProf::LSP
   end
 
   class Server
-    def self.start_stdio(core)
+    def self.start_stdio(core_options)
       $stdin.binmode
       $stdout.binmode
       reader = Reader.new($stdin)
       writer = Writer.new($stdout)
       # pipe all builtin print output to stderr to avoid conflicting with lsp
       $stdout = $stderr
-      new(core, reader, writer).run
+      new(core_options, reader, writer).run
     end
 
-    def self.start_socket(core)
+    def self.start_socket(core_options)
       Socket.tcp_server_sockets("localhost", nil) do |servs|
         serv = servs[0].local_address
         $stdout << JSON.generate({
@@ -35,7 +35,7 @@ module TypeProf::LSP
           begin
             reader = Reader.new(sock)
             writer = Writer.new(sock)
-            new(core, reader, writer).run
+            new(core_options, reader, writer).run
           ensure
             sock.close
           end
@@ -44,9 +44,9 @@ module TypeProf::LSP
       end
     end
 
-    def initialize(core, reader, writer, url_schema: nil, publish_all_diagnostics: false)
-      @core = core
-      @workspaces = {}
+    def initialize(core_options, reader, writer, url_schema: nil, publish_all_diagnostics: false)
+      @core_options = core_options
+      @cores = {}
       @reader = reader
       @writer = writer
       @request_id = 0
@@ -59,9 +59,10 @@ module TypeProf::LSP
       @publish_all_diagnostics = publish_all_diagnostics # TODO: implement more dedicated publish feature
     end
 
-    attr_reader :core, :open_texts
+    attr_reader :open_texts
     attr_accessor :signature_enabled
 
+    #: (String) -> String
     def path_to_uri(path)
       @url_schema + File.expand_path(path)
     end
@@ -70,36 +71,112 @@ module TypeProf::LSP
       url.delete_prefix(@url_schema)
     end
 
+    #: (Array[String]) -> void
     def add_workspaces(folders)
       folders.each do |path|
-        conf_path = File.join(path, "typeprof.conf.json")
-        if File.readable?(conf_path)
-          conf = TypeProf::LSP.load_json_with_comments(conf_path, symbolize_names: true)
-          if conf
-            if conf[:typeprof_version] == "experimental"
-              if conf[:analysis_unit_dirs].size >= 2
-                 puts "currently analysis_unit_dirs can have only one directory"
-              end
-              conf[:analysis_unit_dirs].each do |dir|
-                dir = File.expand_path(dir, path)
-                @workspaces[dir] = true
-                @core.add_workspace(dir, conf[:rbs_dir])
-              end
-            else
-              puts "Unknown typeprof_version: #{ conf[:typeprof_version] }"
-            end
+        conf_path = [".json", ".jsonc"].map do |ext|
+          File.join(path, "typeprof.conf" + ext)
+        end.find do |path|
+          File.readable?(path)
+        end
+        unless conf_path
+          puts "typeprof.conf.json is not found in #{ path }"
+          next
+        end
+        conf = TypeProf::LSP.load_json_with_comments(conf_path, symbolize_names: true)
+        if conf
+          if conf[:rbs_dir]
+            rbs_dir = File.expand_path(conf[:rbs_dir])
+          else
+            rbs_dir = File.expand_path(File.expand_path("sig", path))
           end
-        else
-          puts "typeprof.conf.json is not found"
+          @rbs_dir = rbs_dir
+          if conf[:typeprof_version] == "experimental"
+            conf[:analysis_unit_dirs].each do |dir|
+              dir = File.expand_path(dir, path)
+              core = @cores[dir] = TypeProf::Core::Service.new(@core_options)
+              core.add_workspace(dir, @rbs_dir)
+            end
+          else
+            puts "Unknown typeprof_version: #{ conf[:typeprof_version] }"
+          end
         end
       end
     end
 
+    #: (String) -> bool
     def target_path?(path)
-      @workspaces.each do |folder, _|
+      return true if @rbs_dir && path.start_with?(@rbs_dir)
+      @cores.each do |folder, _|
         return true if path.start_with?(folder)
       end
       return false
+    end
+
+    def each_core(path)
+      @cores.each do |folder, core|
+        if path.start_with?(folder) || @rbs_dir && path.start_with?(@rbs_dir)
+          yield core
+        end
+      end
+    end
+
+    def aggregate_each_core(path)
+      ret = []
+      each_core(path) do |core|
+        ret.concat(yield(core))
+      end
+      ret
+    end
+
+    def update_file(path, text)
+      each_core(path) do |core|
+        core.update_file(path, text)
+      end
+    end
+
+    def definitions(path, pos)
+      aggregate_each_core(path) do |core|
+        core.definitions(path, pos)
+      end
+    end
+
+    def type_definitions(path, pos)
+      aggregate_each_core(path) do |core|
+        core.type_definitions(path, pos)
+      end
+    end
+
+    def references(path, pos)
+      aggregate_each_core(path) do |core|
+        core.references(path, pos)
+      end
+    end
+
+    def hover(path, pos)
+      ret = []
+      each_core(path) do |core|
+        ret << core.hover(path, pos)
+      end
+      ret.compact.first # TODO
+    end
+
+    def code_lens(path, &blk)
+      each_core(path) do |core|
+        core.code_lens(path, &blk)
+      end
+    end
+
+    def completion(path, trigger, pos, &blk)
+      each_core(path) do |core|
+        core.completion(path, trigger, pos, &blk)
+      end
+    end
+
+    def rename(path, pos)
+      aggregate_each_core(path) do |core|
+        core.rename(path, pos)
+      end
     end
 
     def run
@@ -151,8 +228,10 @@ module TypeProf::LSP
       (@publish_all_diagnostics ? @open_texts : [[uri, @open_texts[uri]]]).each do |uri, text|
         diags = []
         if text
-          @core.diagnostics(text.path) do |diag|
-            diags << diag.to_lsp
+          @cores.each do |_, core|
+            core.diagnostics(text.path) do |diag|
+              diags << diag.to_lsp
+            end
           end
         end
         send_notification(

@@ -1,2 +1,19 @@
 module TypeProf
+  class CodePosition
+    def self.from_lsp: (untyped) -> instance
+  end
+
+  module Core
+    class Service
+      def initialize: (Hash[untyped, untyped]) -> void
+      def update_file: (String, String?) -> void
+      def definitions: (String, CodePosition) -> Array[untyped]
+      def type_definitions: (String, CodePosition) -> Array[untyped]
+      def references: (String, CodePosition) -> Array[untyped]
+      def hover: (String, CodePosition) -> Array[untyped]
+      def code_lens: (String) { (untyped) -> untyped } -> Array[untyped]
+      def completion: (String, untyped, CodePosition) { (untyped) -> untyped } -> Array[untyped]
+      def rename: (String, CodePosition) -> void
+    end
+  end
 end

@@ -1,5 +1,6 @@
 module TypeProf::LSP
   class Text
+    #: (String, String, Integer) -> void
     def initialize(path, text, version)
       @path = path
       @lines = Text.split(text)

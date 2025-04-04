@@ -1,4 +1,5 @@
 /tmp/
+/pkg/
 dog_bench.stackprof.dump
 dog_bench.pf2profile
 dog_bench.json
