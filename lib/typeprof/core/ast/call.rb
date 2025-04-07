@@ -17,6 +17,7 @@ module TypeProf::Core
         @block_tbl = nil
         @block_f_args = nil
         @block_body = nil
+        @safe_navigation = raw_node.respond_to?(:safe_navigation?) && raw_node.safe_navigation?
 
         if raw_args
           args = []
@@ -71,12 +72,18 @@ module TypeProf::Core
       attr_reader :recv, :mid, :mid_code_range, :yield
       attr_reader :positional_args, :splat_flags, :keyword_args
       attr_reader :block_tbl, :block_f_args, :block_body, :block_pass
+      attr_reader :safe_navigation
 
       def subnodes = { recv:, positional_args:, keyword_args:, block_body:, block_pass: }
-      def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield: }
+      def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield:, safe_navigation: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")
+
+        if @safe_navigation
+          allow_nil = NilFilter.new(genv, self, recv, true).next_vtx
+          recv = NilFilter.new(genv, self, recv, false).next_vtx
+        end
 
         positional_args = @positional_args.map do |arg|
           arg.install(genv)
@@ -132,10 +139,15 @@ module TypeProf::Core
           ret = Vertex.new(self)
           @changes.add_edge(genv, box.ret, ret)
           @changes.add_edge(genv, @block_body.lenv.break_vtx, ret)
-          ret
         else
-          box.ret
+          ret = box.ret
         end
+
+        if @safe_navigation
+          @changes.add_edge(genv, allow_nil, ret)
+        end
+
+        ret
       end
 
       def block_last_stmt_code_range
