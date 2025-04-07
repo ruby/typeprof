@@ -57,14 +57,14 @@ module TypeProf
 
     def self.from_node(node, encoding = Encoding::UTF_16LE)
       node = node.location if node.is_a?(Prism::Node)
+      node = node.location if node.is_a?(RBS::MethodType)
       if node.is_a?(Prism::Location)
         pos1 = CodePosition.new(node.start_line, node.start_code_units_column(encoding))
         pos2 = CodePosition.new(node.end_line, node.end_code_units_column(encoding))
-      elsif node.respond_to?(:location)
-        loc = node.location
-        row, col = loc.start_loc
+      elsif node.is_a?(RBS::Location)
+        row, col = node.start_loc
         pos1 = CodePosition.new(row, col) # TODO: use SPLAT
-        row, col = loc.end_loc
+        row, col = node.end_loc
         pos2 = CodePosition.new(row, col)
       else
         p node.class.ancestors
