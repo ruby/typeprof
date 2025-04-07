@@ -164,6 +164,18 @@ module TypeProf::Core
           boxes.each do |box|
             box.resolve(genv, nil) do |me, _ty, mid, _orig_ty|
               next unless me
+              me.decls.each do |mdecl|
+                next unless mdecl.node.lenv.path
+
+                code_range =
+                  if mdecl.node.respond_to?(:mname_code_range)
+                    mdecl.node.mname_code_range(mid)
+                  else
+                    mdecl.node.code_range
+                  end
+
+                defs << [mdecl.node.lenv.path, code_range]
+              end
               me.defs.each do |mdef|
                 code_range =
                   if mdef.node.respond_to?(:mname_code_range)
