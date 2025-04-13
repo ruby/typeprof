@@ -392,11 +392,75 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new(self)
+
+        vars = []
+        @body.modified_vars(@lenv.locals.keys, vars) if @body
+        @rescue_clauses.each do |clause|
+          clause.modified_vars(@lenv.locals.keys, vars)
+        end
+        @else_clause.modified_vars(@lenv.locals.keys, vars) if @else_clause
+        @ensure_clause.modified_vars(@lenv.locals.keys, vars) if @ensure_clause
+        vars.uniq!
+
+        old_vtxs = {}
+        vars.each do |var|
+          vtx = @lenv.get_var(var)
+          old_vtxs[var] = vtx
+        end
+
         @changes.add_edge(genv, @body.install(genv), ret)
-        @rescue_conds.each {|cond| cond.install(genv) }
-        @rescue_clauses.each {|clause| @changes.add_edge(genv, clause.install(genv), ret) }
-        @changes.add_edge(genv, @else_clause.install(genv), ret) if @else_clause
+
+        body_vtxs = {}
+        vars.each do |var|
+          body_vtxs[var] = @lenv.get_var(var)
+        end
+
+        @rescue_conds.each { |cond| cond.install(genv) }
+
+        rescue_vtxs = []
+        @rescue_clauses.each do |clause|
+          vars.each do |var|
+            old_vtx = old_vtxs[var]
+            nvtx = old_vtx.new_vertex(genv, self)
+
+            @changes.add_edge(genv, body_vtxs[var], nvtx) if body_vtxs[var]
+
+            @lenv.set_var(var, nvtx)
+          end
+
+          @changes.add_edge(genv, clause.install(genv), ret)
+
+          rescue_vtxs << {}
+          vars.each do |var|
+            rescue_vtxs.last[var] = @lenv.get_var(var)
+          end
+        end
+
+        if @else_clause
+          vars.each do |var|
+            @lenv.set_var(var, body_vtxs[var])
+          end
+          @changes.add_edge(genv, @else_clause.install(genv), ret)
+        end
+
         @ensure_clause.install(genv) if @ensure_clause
+
+        result_vtxs = {}
+        vars.each do |var|
+          result_vtx = old_vtxs[var].new_vertex(genv, self)
+          result_vtxs[var] = result_vtx
+
+          @changes.add_edge(genv, body_vtxs[var], result_vtx) unless body_vtxs[var] == old_vtxs[var]
+
+          rescue_vtxs.each do |rescue_vtx|
+            @changes.add_edge(genv, rescue_vtx[var], result_vtx)
+          end
+        end
+
+        vars.each do |var|
+          @lenv.set_var(var, result_vtxs[var])
+        end
+
         ret
       end
     end
