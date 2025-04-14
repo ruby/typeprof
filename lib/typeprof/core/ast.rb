@@ -356,7 +356,8 @@ module TypeProf::Core
           return nil
         end
       end
-      return cref.cpath + names.reverse
+      cpath = cref.cpath # annotate
+      return cpath + names.reverse if cpath
     end
 
     def self.parse_rbs(path, src)
