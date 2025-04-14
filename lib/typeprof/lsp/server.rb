@@ -134,7 +134,8 @@ module TypeProf::LSP
     def aggregate_each_core(path)
       ret = []
       each_core(path) do |core|
-        ret.concat(yield(core))
+        r = yield(core)
+        ret.concat(r) if r
       end
       ret
     end
