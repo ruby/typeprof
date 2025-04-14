@@ -273,6 +273,13 @@ module TypeProf::Core
             end
           end
         end
+        if node.is_a?(AST::ConstantWriteNode)
+          if node.cname_code_range.include?(pos) && node.static_cpath
+            genv.resolve_const(node.static_cpath).defs.each do |cdef|
+              cdefs << cdef
+            end
+          end
+        end
         if node.is_a?(AST::DefNode) && node.mid_code_range.include?(pos)
           node.boxes(:mdef) do |mdef|
             mdefs << mdef
