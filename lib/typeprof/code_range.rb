@@ -56,8 +56,7 @@ module TypeProf
     end
 
     def self.from_node(node, encoding = Encoding::UTF_16LE)
-      node = node.location if node.is_a?(Prism::Node)
-      node = node.location if node.is_a?(RBS::MethodType)
+      node = node.location if node.respond_to?(:location)
       if node.is_a?(Prism::Location)
         pos1 = CodePosition.new(node.start_line, node.start_code_units_column(encoding))
         pos2 = CodePosition.new(node.end_line, node.end_code_units_column(encoding))
