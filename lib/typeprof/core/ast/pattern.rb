@@ -5,7 +5,15 @@ module TypeProf::Core
         super(raw_node, lenv)
         @requireds = raw_node.requireds.map {|raw_pat| AST.create_pattern_node(raw_pat, lenv) }
         @rest = !!raw_node.rest
-        @rest_pattern = raw_node.rest && raw_node.rest.expression ? AST.create_pattern_node(raw_node.rest.expression, lenv) : nil
+        @rest_pattern = case raw_node.rest
+                        when Prism::SplatNode
+                          AST.create_pattern_node(raw_node.rest.expression, lenv) if raw_node.rest.expression
+                        when Prism::ImplicitRestNode, nil
+                          nil
+                        else
+                          raise
+                        end
+
         @posts = raw_node.posts.map {|raw_pat| AST.create_pattern_node(raw_pat, lenv) }
       end
 

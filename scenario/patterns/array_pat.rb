@@ -12,6 +12,8 @@ def check(x)
     :baz # TODO: this should be excluded
   in MyArray[1, 2, 3]
     :qux
+  in [1,]
+    :waldo
   else
     :zzz
   end
@@ -23,5 +25,5 @@ check([1].to_a)
 class MyArray
 end
 class Object
-  def check: (Array[Integer]) -> (:bar | :baz | :foo | :qux | :zzz)
+  def check: (Array[Integer]) -> (:bar | :baz | :foo | :qux | :waldo | :zzz)
 end
