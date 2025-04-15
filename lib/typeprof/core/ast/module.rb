@@ -19,6 +19,7 @@ module TypeProf::Core
         end
 
         @cname_code_range = meta ? nil : TypeProf::CodeRange.from_node(raw_node.constant_path)
+        @mod_cdef = nil
       end
 
       attr_reader :tbl, :cpath, :static_cpath, :cname_code_range, :body
@@ -29,9 +30,9 @@ module TypeProf::Core
       def define0(genv)
         @cpath.define(genv)
         if @static_cpath
+          mod = genv.resolve_cpath(@static_cpath)
+          @mod_cdef = mod.add_module_def(genv, self)
           @body.define(genv)
-          @mod = genv.resolve_cpath(@static_cpath)
-          @mod_cdef = @mod.add_module_def(genv, self)
         else
           kind = self.is_a?(ModuleNode) ? "module" : "class"
           @changes.add_diagnostic(:code_range, "TypeProf cannot analyze a non-static #{ kind }") # warning
@@ -41,15 +42,17 @@ module TypeProf::Core
 
       def define_copy(genv)
         if @static_cpath
-          @mod_cdef.add_def(self)
-          @mod_cdef.remove_def(@prev_node)
+          mod = genv.resolve_cpath(@static_cpath)
+          @mod_cdef = mod.add_module_def(genv, self)
+          mod.remove_module_def(genv, @prev_node)
         end
         super(genv)
       end
 
       def undefine0(genv)
         if @static_cpath
-          @mod.remove_module_def(genv, self)
+          mod = genv.resolve_cpath(@static_cpath)
+          mod.remove_module_def(genv, self)
           @body.undefine(genv)
         end
         @cpath.undefine(genv)
