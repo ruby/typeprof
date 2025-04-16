@@ -12,7 +12,6 @@ def foo(n)
   rescue SyntaxError
     :b
   rescue Exception
-    ## TODO: bar should accept "Integer | String" ???
     bar(n)
   else
     :d
@@ -28,7 +27,7 @@ baz(1)
 
 ## assert
 class Object
-  def bar: (String) -> :c
+  def bar: (Integer | String) -> :c
   def foo: (Integer) -> (:a | :b | :c | :d | Float)
   def baz: (Integer) -> (:a | Integer)
 end
