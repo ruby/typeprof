@@ -35,3 +35,15 @@ end
 class Foo < Bar
   def self.foo: -> :ok
 end
+
+## update
+class Foo
+  def self.foo
+    (class << self; self; end)
+  end
+end
+
+## assert
+class Foo
+  def self.foo: -> untyped
+end
