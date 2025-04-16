@@ -61,10 +61,8 @@ module TypeProf
         pos1 = CodePosition.new(node.start_line, node.start_code_units_column(encoding))
         pos2 = CodePosition.new(node.end_line, node.end_code_units_column(encoding))
       elsif node.is_a?(RBS::Location)
-        row, col = node.start_loc
-        pos1 = CodePosition.new(row, col) # TODO: use SPLAT
-        row, col = node.end_loc
-        pos2 = CodePosition.new(row, col)
+        pos1 = CodePosition.new(*node.start_loc)
+        pos2 = CodePosition.new(*node.end_loc)
       else
         p node.class.ancestors
         raise "unknown type: #{ node.class }"
