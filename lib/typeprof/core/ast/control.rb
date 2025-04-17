@@ -378,14 +378,24 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        cond_tys = @exceptions.map {|exc|
-          exc.install(genv)
-          Type::Instance.new(genv, genv.resolve_cpath(exc.static_ret.cpath), [])
-        }
+        cond_vtxs = @exceptions.map do |exc|
+          case exc
+          when AST::SplatNode
+            ary_vtx = exc.expr.install(genv)
+            @changes.add_splat_box(genv, ary_vtx).ret
+          else
+            exc.install(genv)
+          end
+        end
+
         if @reference
           @reference.install(genv)
-          @changes.add_edge(genv, Source.new(*cond_tys), @reference.rhs.ret)
+          cond_vtxs.each do |cond_vtx|
+            instance_ty_box = @changes.add_instance_type_box(genv, cond_vtx)
+            @changes.add_edge(genv, instance_ty_box.ret, @reference.rhs.ret)
+          end
         end
+
         if @statements
           @statements.install(genv)
         else
