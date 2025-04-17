@@ -141,6 +141,12 @@ module TypeProf::Core
       @new_boxes[key] = TypeReadBox.new(@node, genv, type)
     end
 
+    def add_instance_type_box(genv, singleton_ty_vtx)
+      key = [:instance_type, singleton_ty_vtx]
+      return if @new_boxes[key]
+      @new_boxes[key] = InstanceTypeBox.new(@node, genv, singleton_ty_vtx)
+    end
+
     def add_diagnostic(meth, msg)
       @new_diagnostics << TypeProf::Diagnostic.new(@node, meth, msg)
     end

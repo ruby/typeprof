@@ -1032,4 +1032,24 @@ module TypeProf::Core
       end
     end
   end
+
+  class InstanceTypeBox < Box
+    def initialize(node, genv, singleton_ty_vtx)
+      super(node)
+      @singleton_ty_vtx = singleton_ty_vtx
+      @ret = Vertex.new(node)
+      genv.add_run(self)
+    end
+
+    attr_reader :ret
+
+    def run0(genv, changes)
+      instance_tys = []
+      @singleton_ty_vtx.each_type do |ty|
+        instance_tys << ty.get_instance_type(genv)
+      end
+      source_vtx = Source.new(*instance_tys)
+      changes.add_edge(genv, source_vtx, @ret)
+    end
+  end
 end
