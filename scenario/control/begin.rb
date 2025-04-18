@@ -9,7 +9,7 @@ end
 
 ## assert
 class Object
-  def foo: -> (Integer | String)?
+  def foo: -> (Integer | String)
 end
 
 ## update
@@ -23,7 +23,7 @@ end
 
 ## assert
 class Object
-  def foo: -> Integer?
+  def foo: -> Integer
 end
 
 
