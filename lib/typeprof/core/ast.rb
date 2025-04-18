@@ -92,6 +92,8 @@ module TypeProf::Core
       # variables
       when :local_variable_read_node
         LocalVariableReadNode.new(raw_node, lenv)
+      when :it_local_variable_read_node
+        ItLocalVariableReadNode.new(raw_node, lenv)
       when :local_variable_write_node
         LocalVariableWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
       when :local_variable_operator_write_node
