@@ -19,6 +19,22 @@ module TypeProf::Core
       end
     end
 
+    class ItLocalVariableReadNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+      end
+
+      def attrs = {}
+
+      def install0(genv)
+        @lenv.get_var(:it)
+      end
+
+      def retrieve_at(pos)
+        yield self if code_range.include?(pos)
+      end
+    end
+
     class LocalVariableWriteNode < Node
       def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)

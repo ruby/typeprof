@@ -55,6 +55,8 @@ module TypeProf::Core
                               raw_block.parameters.parameters.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name }
                             when Prism::NumberedParametersNode
                               1.upto(raw_block.parameters.maximum).map { |n| :"_#{n}" }
+                            when Prism::ItParametersNode
+                              [:it]
                             when nil
                               []
                             else
