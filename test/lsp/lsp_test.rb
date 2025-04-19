@@ -190,6 +190,34 @@ foo(1, 2)
       end
     end
 
+    def test_disable_directive
+      init("basic")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic.rb", version: 0, text: <<-END },
+def foo(nnn)
+  nnn
+end
+
+foo(1, 2) # typeprof:disable
+foo(1, 2)
+      END
+      )
+
+      expect_request("workspace/codeLens/refresh") {|json| }
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal([
+          {
+            message: "wrong number of arguments (2 for 1)",
+            range: { start: { line: 5, character: 0 }, end: { line: 5, character: 3 }},
+            severity: 1,
+            source: "TypeProf",
+          }
+        ], json[:diagnostics])
+      end
+    end
+
     def test_completion
       init("basic")
 

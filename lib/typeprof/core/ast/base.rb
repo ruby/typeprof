@@ -192,19 +192,32 @@ module TypeProf::Core
     end
 
     class ProgramNode < Node
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, lenv, disable_ranges: [])
         super(raw_node, lenv)
 
         @tbl = raw_node.locals
+        @disable_ranges = disable_ranges
         raw_body = raw_node.statements
 
         @body = AST.create_node(raw_body, lenv, false)
       end
 
-      attr_reader :tbl, :body
+      attr_reader :tbl, :disable_ranges, :body
 
       def subnodes = { body: }
       def attrs = { tbl: }
+
+      def diagnostics(genv, &blk)
+        if disable_ranges.empty?
+          super(genv, &blk)
+        else
+          filter = TypeProf::Diagnostic::DisableDirective::Filter.new(disable_ranges)
+          super(genv) do |diag|
+            next if filter.skip?(diag.code_range.first.lineno)
+            blk&.call(diag)
+          end
+        end
+      end
 
       def install0(genv)
         @tbl.each {|var| @lenv.locals[var] = Source.new(genv.nil_type) }
