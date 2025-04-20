@@ -2,17 +2,23 @@ module TypeProf
   class CodePosition
     def self.from_lsp: (untyped) -> instance
   end
+  class CodeRange
+    def self.from_node: (untyped) -> instance
+  end
 
   module Core
     class Service
       def initialize: (Hash[untyped, untyped]) -> void
-      def update_file: (String, String?) -> void
+      def update_file: (String, String?) -> bool
+      def update_rb_file: (String, String?) -> bool
+      def update_rbs_file: (String, String?) -> bool
       def definitions: (String, CodePosition) -> Array[untyped]
       def type_definitions: (String, CodePosition) -> Array[untyped]
-      def references: (String, CodePosition) -> Array[untyped]
+      def references: (String, CodePosition) -> Array[[String?, CodeRange]]?
       def hover: (String, CodePosition) -> Array[untyped]
-      def code_lens: (String) { (untyped) -> untyped } -> Array[untyped]
+      def code_lens: (String) { (CodeRange, String ) -> untyped } -> Array[untyped]
       def completion: (String, untyped, CodePosition) { (untyped) -> untyped } -> Array[untyped]
+      def dump_declarations: (String) -> String
       def rename: (String, CodePosition) -> void
     end
   end
