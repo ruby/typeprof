@@ -12,5 +12,5 @@ foo(1)
 
 ## assert
 class Object
-  def foo: (Integer) -> String?
+  def foo: (Integer) -> String
 end
