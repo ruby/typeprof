@@ -1,34 +1,27 @@
 ## update
-def bar(n)
-  :c
-end
-
-def foo(n)
+def foo
   begin
-    n = "str"
-    1.0
-  rescue
     :a
-  rescue SyntaxError
+  rescue
     :b
+  rescue SyntaxError
+    :c
   rescue Exception
-    ## TODO: bar should accept "Integer | String" ???
-    bar(n)
-  else
     :d
+  else
+    :e
   end
 end
 
-def baz(n)
+def bar(n)
   n rescue :a
 end
 
-foo(1)
-baz(1)
+foo
+bar(1)
 
 ## assert
 class Object
-  def bar: (String) -> :c
-  def foo: (Integer) -> (:a | :b | :c | :d | Float)
-  def baz: (Integer) -> (:a | Integer)
+  def foo: -> (:a | :b | :c | :d | :e)
+  def bar: (Integer) -> (:a | Integer)
 end
