@@ -69,7 +69,13 @@ module TypeProf::LSP
     end
 
     def uri_to_path(url)
-      url.delete_prefix(@url_schema)
+      path = url.delete_prefix(@url_schema)
+
+      if path.include?('%3A')
+        path.sub(/%3A/, ':')
+      else
+        path
+      end
     end
 
     #: (Array[String]) -> void
