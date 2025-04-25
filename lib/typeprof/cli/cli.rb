@@ -11,6 +11,7 @@ module TypeProf::CLI
 
       output = nil
       rbs_collection_path = nil
+      initialize_config_file = false
 
       opt.separator ""
       opt.separator "Options:"
@@ -39,6 +40,7 @@ module TypeProf::CLI
       opt.separator ""
       opt.separator "Advanced options:"
       opt.on("--[no-]stackprof MODE", /\Acpu|wall|object\z/, "Enable stackprof (for debugging purpose)") {|v| cli_options[:stackprof] = v.to_sym }
+      opt.on("--init", 'Generate TypeProf configuration file') {|v| initialize_config_file = true}
 
       opt.separator ""
       opt.separator "LSP options:"
@@ -46,6 +48,11 @@ module TypeProf::CLI
       opt.on("--stdio", "Use stdio for LSP transport") {|v| lsp_options[:stdio] = v }
 
       opt.parse!(argv)
+
+      if initialize_config_file
+        generate_config_file
+        exit 0
+      end
 
       if !cli_options[:lsp] && !lsp_options.empty?
         raise OptionParser::InvalidOption.new("lsp options with non-lsp mode")
@@ -174,6 +181,10 @@ module TypeProf::CLI
         StackProf.stop
         StackProf.results
       end
+    end
+
+    def generate_config_file
+      File.write('typeprof.conf.jsonc', File.read(File.join(__dir__, 'typeprof.conf.jsonc')))
     end
   end
 end
