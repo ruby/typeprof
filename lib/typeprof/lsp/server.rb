@@ -1,3 +1,5 @@
+require "cgi"
+
 module TypeProf::LSP
   module ErrorCodes
     ParseError = -32700
@@ -69,13 +71,7 @@ module TypeProf::LSP
     end
 
     def uri_to_path(url)
-      path = url.delete_prefix(@url_schema)
-
-      if path.include?('%3A')
-        path.sub(/%3A/, ':')
-      else
-        path
-      end
+      CGI.unescape_uri_component(url.delete_prefix(@url_schema))
     end
 
     #: (Array[String]) -> void
