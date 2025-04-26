@@ -487,7 +487,20 @@ module TypeProf::Core
           end
         end
 
-        @ensure_clause.install(genv) if @ensure_clause
+        if @ensure_clause
+          ensure_old_vtxs = {}
+          vars.each do |var|
+            ensure_old_vtxs[var] = @lenv.get_var(var)
+          end
+
+          @ensure_clause.install(genv)
+
+          clause_vtxs_list << {}
+          vars.each do |var|
+            clause_vtxs_list.last[var] = @lenv.get_var(var)
+            @lenv.set_var(var, ensure_old_vtxs[var])
+          end
+        end
 
         result_vtxs = {}
         vars.each do |var|
