@@ -8,11 +8,11 @@ def foo
   rescue
     check_rescue(x)
     x = :d
-  # ensure # TODO: Looks like commenting out these two lines makes the test fail? Need to fix
-  #   x = :f
   else
     check_else(x)
     x = :e
+  ensure
+    x = :f
   end
   check_after(x)
 end
@@ -26,5 +26,5 @@ class Object
   def foo: -> nil
   def check_rescue: (:a | :c) -> nil
   def check_else: (:c) -> nil
-  def check_after: (:a | :c | :d | :e) -> nil
+  def check_after: (:a | :c | :d | :e | :f) -> nil
 end
