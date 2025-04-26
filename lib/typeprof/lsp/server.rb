@@ -67,11 +67,11 @@ module TypeProf::LSP
 
     #: (String) -> String
     def path_to_uri(path)
-      @url_schema + File.expand_path(path).split("/").map {|s| CGI.escape_uri_component(s) }.join("/")
+      @url_schema + File.expand_path(path).split("/").map {|s| CGI.escapeURIComponent(s) }.join("/")
     end
 
     def uri_to_path(uri)
-      uri.delete_prefix(@url_schema).split("/").map {|s| CGI.unescape_uri_component(s) }.join("/")
+      uri.delete_prefix(@url_schema).split("/").map {|s| CGI.unescapeURIComponent(s) }.join("/")
     end
 
     #: (Array[String]) -> void
