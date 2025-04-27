@@ -17,14 +17,8 @@ module TypeProf::Core
             @cbase = nil
             @toplevel = true
           end
-          # temporarily support old Prism https://bugs.ruby-lang.org/issues/20467
-          if raw_node.respond_to?(:name)
-            @cname = raw_node.name
-            @cname_code_range = TypeProf::CodeRange.from_node(raw_node.name_loc)
-          else
-            @cname = raw_node.child.name
-            @cname_code_range = TypeProf::CodeRange.from_node(raw_node.child.location)
-          end
+          @cname = raw_node.name
+          @cname_code_range = TypeProf::CodeRange.from_node(raw_node.name_loc)
         else
           raise raw_node.type.to_s
         end
