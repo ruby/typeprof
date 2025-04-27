@@ -7,7 +7,7 @@ source "https://rubygems.org"
 #  gemspec
 #end
 
-gem "prism", ">= 1.0.0"
+gem "prism", ">= 1.4.0"
 
 group :development do
   gem "rake"
