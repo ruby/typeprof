@@ -226,7 +226,7 @@ module TypeProf::Core
       when :flip_flop_node then FlipFlopNode.new(raw_node, lenv)
       when :shareable_constant_node then create_node(raw_node.write, lenv)
       when :match_required_node then MatchRequiredNode.new(raw_node, lenv)
-      when :match_predicate_node then MatchPreidcateNode.new(raw_node, lenv)
+      when :match_predicate_node then MatchPredicateNode.new(raw_node, lenv)
 
       # call
       when :super_node then SuperNode.new(raw_node, lenv)

@@ -242,7 +242,7 @@ module TypeProf::Core
       end
     end
 
-    class MatchPreidcateNode < Node
+    class MatchPredicateNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         @value = AST.create_node(raw_node.value, lenv)
