@@ -91,7 +91,6 @@ module TypeProf::LSP
               "typeprof.disableSignature",
             ],
           },
-          #typeDefinitionProvider: true,
           referencesProvider: true,
         },
         serverInfo: {
