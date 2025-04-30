@@ -488,9 +488,13 @@ module TypeProf::Core
         end
 
         if @ensure_clause
-          ensure_old_vtxs = {}
           vars.each do |var|
-            ensure_old_vtxs[var] = @lenv.get_var(var)
+            union_vtx = old_vtxs[var].new_vertex(genv, self)
+            @changes.add_edge(genv, body_vtxs[var], union_vtx)
+            clause_vtxs_list.each do |clause_vtx|
+              @changes.add_edge(genv, clause_vtx[var], union_vtx)
+            end
+            @lenv.set_var(var, union_vtx)
           end
 
           @ensure_clause.install(genv)
@@ -498,7 +502,6 @@ module TypeProf::Core
           clause_vtxs_list << {}
           vars.each do |var|
             clause_vtxs_list.last[var] = @lenv.get_var(var)
-            @lenv.set_var(var, ensure_old_vtxs[var])
           end
         end
 
