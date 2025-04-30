@@ -20,9 +20,24 @@ module TypeProf::Core
 
       def install0(genv)
         ret = nil
+
+        post_stmts = []
+
         @stmts.each do |stmt|
-          ret = stmt ? stmt.install(genv) : nil
+          next if stmt.nil?
+
+          if stmt.is_a?(PostExecutionNode)
+            post_stmts << stmt
+            next
+          end
+
+          ret = stmt.install(genv)
         end
+
+        post_stmts.each do |stmt|
+          stmt.install(genv)
+        end
+
         if ret
           ret2 = Vertex.new(self)
           @changes.add_edge(genv, ret, ret2)
