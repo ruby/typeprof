@@ -11,5 +11,5 @@ end
 ## assert
 class Object
   def check: (String) -> nil
-  def foo: -> nil
+  def foo: -> String
 end
