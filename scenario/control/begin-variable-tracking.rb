@@ -12,6 +12,7 @@ def foo
     check_else(x)
     x = :e
   ensure
+    check_ensure(x)
     x = :f
   end
   check_after(x)
@@ -19,6 +20,7 @@ end
 
 def check_rescue(n) = nil
 def check_else(n) = nil
+def check_ensure(n) = nil
 def check_after(n) = nil
 
 ## assert
@@ -26,5 +28,6 @@ class Object
   def foo: -> nil
   def check_rescue: (:a | :c) -> nil
   def check_else: (:c) -> nil
+  def check_ensure: (:a | :c | :d | :e) -> nil
   def check_after: (:a | :c | :d | :e | :f) -> nil
 end
