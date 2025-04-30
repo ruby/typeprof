@@ -133,10 +133,6 @@ module TypeProf::Core
         nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
         if raw_body
           @body = AST.create_node(raw_body, nlenv)
-
-          if raw_body.is_a?(Prism::BeginNode) && raw_body.ensure_clause && raw_body.ensure_clause.statements
-            @ensure_clause = AST.create_node(raw_body.ensure_clause.statements, nlenv)
-          end
         else
           pos = code_range.last.left.left.left # before "end"
           cr = TypeProf::CodeRange.new(pos, pos)
@@ -176,14 +172,12 @@ module TypeProf::Core
       attr_reader :body
       attr_reader :rbs_method_type
       attr_reader :reusable
-      attr_reader :ensure_clause
 
       def subnodes = {
         body:,
         opt_positional_defaults:,
         opt_keyword_defaults:,
         rbs_method_type:,
-        ensure_clause:,
       }
       def attrs = {
         singleton:,
@@ -252,8 +246,6 @@ module TypeProf::Core
           @body.install(genv)
           @body.lenv.add_return_box(@changes.add_escape_box(genv, @body.ret, e_ret))
         end
-
-        @ensure_clause.install(genv) if @ensure_clause
 
         f_args = FormalArguments.new(
           req_positionals,
