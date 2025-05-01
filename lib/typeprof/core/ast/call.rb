@@ -45,7 +45,8 @@ module TypeProf::Core
 
         if raw_block
           if raw_block.type == :block_argument_node
-            @block_pass = AST.create_node(raw_block.expression, lenv)
+            # TODO: Support anonymous block forwarding
+            @block_pass = AST.create_node(raw_block.expression, lenv) if raw_block.expression
           else
             @block_pass = nil
             @block_tbl = raw_block.locals
