@@ -13,6 +13,6 @@ end
 
 ## assert
 class Object
-  def foo: -> untyped
-  def bar: { (Float) -> untyped } -> untyped
+  def foo: { (Float) -> String } -> String
+  def bar: { (Float) -> String } -> String
 end
