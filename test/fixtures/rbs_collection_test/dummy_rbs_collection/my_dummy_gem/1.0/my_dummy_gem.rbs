@@ -1,3 +1,4 @@
 class MyDummyGem
+  @name: String
   def hello: (String) -> :ok
 end
