@@ -95,7 +95,7 @@ module TypeProf::Core
         raise "unexpected keyword rest: #{ raw_args.keyword_rest.class }"
       end
 
-      block = raw_args.block.name if raw_args.block
+      block = raw_args.block.name || :"*anonymous_block" if raw_args.block
 
       {
         req_positionals:,

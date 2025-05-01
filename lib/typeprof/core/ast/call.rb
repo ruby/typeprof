@@ -18,6 +18,7 @@ module TypeProf::Core
         @block_f_args = nil
         @block_body = nil
         @safe_navigation = raw_node.respond_to?(:safe_navigation?) && raw_node.safe_navigation?
+        @anonymous_block_forwarding = false
 
         if raw_args
           args = []
@@ -45,8 +46,11 @@ module TypeProf::Core
 
         if raw_block
           if raw_block.type == :block_argument_node
-            # TODO: Support anonymous block forwarding
-            @block_pass = AST.create_node(raw_block.expression, lenv) if raw_block.expression
+            if raw_block.expression
+              @block_pass = AST.create_node(raw_block.expression, lenv)
+            else
+              @anonymous_block_forwarding = true
+            end
           else
             @block_pass = nil
             @block_tbl = raw_block.locals
@@ -74,11 +78,11 @@ module TypeProf::Core
 
       attr_reader :recv, :mid, :mid_code_range, :yield
       attr_reader :positional_args, :splat_flags, :keyword_args
-      attr_reader :block_tbl, :block_f_args, :block_body, :block_pass
+      attr_reader :block_tbl, :block_f_args, :block_body, :block_pass, :anonymous_block_forwarding
       attr_reader :safe_navigation
 
       def subnodes = { recv:, positional_args:, keyword_args:, block_body:, block_pass: }
-      def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield:, safe_navigation: }
+      def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield:, safe_navigation:, anonymous_block_forwarding: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")
@@ -133,6 +137,8 @@ module TypeProf::Core
           blk_ty = Source.new(Type::Proc.new(genv, block))
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
+        elsif @anonymous_block_forwarding
+          blk_ty = @lenv.get_var(:"*anonymous_block")
         end
 
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
