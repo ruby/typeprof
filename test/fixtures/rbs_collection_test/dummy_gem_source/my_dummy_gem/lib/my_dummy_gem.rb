@@ -1,4 +1,5 @@
 def hello(name)
-  "Hello, #{ name }"
+  @name = name
+  "Hello, #{ @name }"
   raise
 end
