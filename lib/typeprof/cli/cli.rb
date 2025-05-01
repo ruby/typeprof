@@ -184,7 +184,7 @@ module TypeProf::CLI
     end
 
     def generate_config_file
-      File.write('typeprof.conf.jsonc', File.read(File.join(__dir__, 'typeprof.conf.jsonc')))
+      File.write('typeprof.conf.jsonc', File.read(File.join(__dir__, 'typeprof.conf.jsonc')), mode: "wx")
     end
   end
 end
