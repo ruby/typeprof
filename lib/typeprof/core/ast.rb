@@ -413,6 +413,8 @@ module TypeProf::Core
         SigAttrAccessorNode.new(raw_decl, lenv)
       when RBS::AST::Declarations::Base
         self.create_rbs_decl(raw_decl, lenv)
+      when RBS::AST::Members::InstanceVariable
+        SigInstanceVariableNode.new(raw_decl, lenv)
       else
         raise "unsupported: #{ raw_decl.class }"
       end
