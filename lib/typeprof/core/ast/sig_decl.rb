@@ -473,6 +473,44 @@ module TypeProf::Core
       end
     end
 
+    class SigClassVariableNode < Node
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        @var = raw_decl.name
+        @cpath = lenv.cref.cpath
+        @type = AST.create_rbs_type(raw_decl.type, lenv)
+      end
+
+      attr_reader :cpath, :type
+      def subnodes = { type: }
+      def attrs = { cpath: }
+
+      def define0(genv)
+        @type.define(genv)
+        cvar = genv.resolve_cvar(cpath, @var)
+        cvar.add_decl(self)
+        cvar
+      end
+
+      def define_copy(genv)
+        cvar = genv.resolve_cvar(cpath, @var)
+        cvar.add_decl(self)
+        cvar.remove_decl(@prev_node)
+        super(genv)
+      end
+
+      def undefine0(genv)
+        genv.resolve_cvar(cpath, @var).remove_decl(self)
+        @type.undefine(genv)
+      end
+
+      def install0(genv)
+        box = @changes.add_type_read_box(genv, @type)
+        @changes.add_edge(genv, box.ret, @static_ret.vtx)
+        box.ret
+      end
+    end
+
     class SigGlobalVariableNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
