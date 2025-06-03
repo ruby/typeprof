@@ -258,9 +258,24 @@ module TypeProf::Core
         changes.add_depended_static_read(@static_ret.last)
         tae = @static_ret.last.type_alias_entity
         if tae && tae.exist?
+          # Check for recursive expansion
+          expansion_key = [@cpath, @name]
+          subst[:__expansion_stack__] ||= []
+
+          if subst[:__expansion_stack__].include?(expansion_key)
+            # Recursive expansion detected: this type alias references itself
+            # Stop expansion here to prevent SystemStackError. The type system
+            # will handle the incomplete expansion gracefully, typically by
+            # treating unresolved recursive references as 'untyped', which
+            # maintains type safety while allowing the program to continue.
+            return
+          end
+
           # need to check tae decls are all consistent?
           decl = tae.decls.each {|decl| break decl }
           subst0 = subst.dup
+          subst0[:__expansion_stack__] = subst[:__expansion_stack__].dup + [expansion_key]
+
           # raise if decl.params.size != @args.size # ?
           decl.params.zip(@args) do |param, arg|
             subst0[param] = arg.covariant_vertex(genv, changes, subst0) # passing subst0 is ok?
@@ -273,9 +288,24 @@ module TypeProf::Core
         changes.add_depended_static_read(@static_ret.last)
         tae = @static_ret.last.type_alias_entity
         if tae && tae.exist?
+          # Check for recursive expansion
+          expansion_key = [@cpath, @name]
+          subst[:__expansion_stack__] ||= []
+
+          if subst[:__expansion_stack__].include?(expansion_key)
+            # Recursive expansion detected: this type alias references itself
+            # Stop expansion here to prevent SystemStackError. The type system
+            # will handle the incomplete expansion gracefully, typically by
+            # treating unresolved recursive references as 'untyped', which
+            # maintains type safety while allowing the program to continue.
+            return
+          end
+
           # need to check tae decls are all consistent?
           decl = tae.decls.each {|decl| break decl }
           subst0 = subst.dup
+          subst0[:__expansion_stack__] = subst[:__expansion_stack__].dup + [expansion_key]
+
           # raise if decl.params.size != @args.size # ?
           decl.params.zip(@args) do |param, arg|
             subst0[param] = arg.contravariant_vertex(genv, changes, subst0)
