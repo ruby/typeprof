@@ -17,7 +17,7 @@ TypeProf supports Ruby 3.3 or later.
 ## Quick start
 
 1. Install VSCode [Ruby TypeProf](https://marketplace.visualstudio.com/items?itemName=mame.ruby-typeprof) extension: `code --install-extension mame.ruby-typeprof`
-2. Run `typeprof --init` in your project root to create `typeprof.config.jsonc` file.
+2. Run `typeprof --init` in your project root to create `typeprof.conf.jsonc` file.
     Other options are available. See [typeprof.conf.jsonc](typeprof.conf.jsonc) for details.
 
 3. Reopen your project in VSCode.
