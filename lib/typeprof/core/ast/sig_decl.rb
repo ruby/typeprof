@@ -435,33 +435,34 @@ module TypeProf::Core
     end
 
     class SigInstanceVariableNode < Node
-      def initialize(raw_decl, lenv)
+      def initialize(raw_decl, lenv, class_scope)
         super(raw_decl, lenv)
         @var = raw_decl.name
         @cpath = lenv.cref.cpath
+        @class_scope = class_scope
         @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
 
-      attr_reader :cpath, :type
+      attr_reader :cpath, :class_scope, :type
       def subnodes = { type: }
-      def attrs = { cpath: }
+      def attrs = { cpath:, class_scope: }
 
       def define0(genv)
         @type.define(genv)
-        mod = genv.resolve_ivar(cpath, false, @var)
+        mod = genv.resolve_ivar(cpath, @class_scope, @var)
         mod.add_decl(self)
         mod
       end
 
       def define_copy(genv)
-        mod = genv.resolve_ivar(cpath, false, @var)
+        mod = genv.resolve_ivar(cpath, @class_scope, @var)
         mod.add_decl(self)
         mod.remove_decl(@prev_node)
         super(genv)
       end
 
       def undefine0(genv)
-        genv.resolve_ivar(cpath, false, @var).remove_decl(self)
+        genv.resolve_ivar(cpath, @class_scope, @var).remove_decl(self)
         @type.undefine(genv)
       end
 
