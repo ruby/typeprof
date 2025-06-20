@@ -439,30 +439,29 @@ module TypeProf::Core
         super(raw_decl, lenv)
         @var = raw_decl.name
         @cpath = lenv.cref.cpath
-        @scope_level = lenv.cref.scope_level
         @type = AST.create_rbs_type(raw_decl.type, lenv)
       end
 
-      attr_reader :cpath, :scope_level, :type
+      attr_reader :cpath, :type
       def subnodes = { type: }
       def attrs = { cpath: }
 
       def define0(genv)
         @type.define(genv)
-        mod = genv.resolve_ivar(cpath, scope_level == :class, @var)
+        mod = genv.resolve_ivar(cpath, false, @var)
         mod.add_decl(self)
         mod
       end
 
       def define_copy(genv)
-        mod = genv.resolve_ivar(cpath, scope_level == :class, @var)
+        mod = genv.resolve_ivar(cpath, false, @var)
         mod.add_decl(self)
         mod.remove_decl(@prev_node)
         super(genv)
       end
 
       def undefine0(genv)
-        genv.resolve_ivar(cpath, scope_level == :class, @var).remove_decl(self)
+        genv.resolve_ivar(cpath, false, @var).remove_decl(self)
         @type.undefine(genv)
       end
 
