@@ -414,7 +414,9 @@ module TypeProf::Core
       when RBS::AST::Declarations::Base
         self.create_rbs_decl(raw_decl, lenv)
       when RBS::AST::Members::InstanceVariable
-        SigInstanceVariableNode.new(raw_decl, lenv)
+        SigInstanceVariableNode.new(raw_decl, lenv, false)
+      when RBS::AST::Members::ClassInstanceVariable
+        SigInstanceVariableNode.new(raw_decl, lenv, true)
       else
         raise "unsupported: #{ raw_decl.class }"
       end
