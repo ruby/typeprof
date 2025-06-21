@@ -417,6 +417,8 @@ module TypeProf::Core
         SigInstanceVariableNode.new(raw_decl, lenv, false)
       when RBS::AST::Members::ClassInstanceVariable
         SigInstanceVariableNode.new(raw_decl, lenv, true)
+      when RBS::AST::Members::ClassVariable
+        SigClassVariableNode.new(raw_decl, lenv)
       else
         raise "unsupported: #{ raw_decl.class }"
       end
