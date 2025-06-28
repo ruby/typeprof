@@ -487,16 +487,55 @@ module TypeProf::Core
     end
 
     class SigTyRecordNode < SigTyNode
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        @fields = raw_decl.fields.transform_values { |val| AST.create_rbs_type(val, lenv) }
+      end
+
+      attr_reader :fields
+      def subnodes = { fields: }
+
       def covariant_vertex0(genv, changes, vtx, subst)
-        raise NotImplementedError
+        field_vertices = {}
+        @fields.each do |key, field_node|
+          field_vertices[key] = field_node.covariant_vertex(genv, changes, subst)
+        end
+
+        # Create base Hash type for Record
+        key_vtx = Source.new(genv.symbol_type)
+        # Create union of all field values for the Hash value type
+        val_vtx = changes.new_covariant_vertex(genv, [self, :union])
+        field_vertices.each_value do |field_vtx|
+          changes.add_edge(genv, field_vtx, val_vtx)
+        end
+        base_hash_type = genv.gen_hash_type(key_vtx, val_vtx)
+
+        changes.add_edge(genv, Source.new(Type::Record.new(genv, field_vertices, base_hash_type)), vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        raise NotImplementedError
+        field_vertices = {}
+        @fields.each do |key, field_node|
+          field_vertices[key] = field_node.contravariant_vertex(genv, changes, subst)
+        end
+
+        # Create base Hash type for Record
+        key_vtx = Source.new(genv.symbol_type)
+        # Create union of all field values for the Hash value type
+        val_vtx = changes.new_contravariant_vertex(genv, [self, :union])
+        field_vertices.each_value do |field_vtx|
+          changes.add_edge(genv, field_vtx, val_vtx)
+        end
+        base_hash_type = genv.gen_hash_type(key_vtx, val_vtx)
+
+        changes.add_edge(genv, Source.new(Type::Record.new(genv, field_vertices, base_hash_type)), vtx)
       end
 
       def show
-        "(...record...)"
+        field_strs = @fields.map do |key, field_node|
+          "#{ key }: #{ field_node.show }"
+        end
+        "{ #{ field_strs.join(", ") } }"
       end
     end
 
