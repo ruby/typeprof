@@ -252,7 +252,28 @@ module TypeProf::Core
       end
 
       def check_match(genv, changes, vtx)
-        # TODO: implement
+        vtx.each_type do |other_ty|
+          case other_ty
+          when Record
+            # Hash can match with Record if Hash has Symbol keys
+            # and Hash value type can accept all Record field values
+            key_ty = get_key
+            val_ty = get_value
+
+            # Check if this Hash has Symbol keys
+            return false unless key_ty && Source.new(genv.symbol_type).check_match(genv, changes, key_ty)
+
+            # Check if Hash value type contains all required types for Record fields
+            other_ty.fields.each do |_key, field_val_vtx|
+              # For each Record field, check if field type can match with Hash value type
+              return false unless val_ty && field_val_vtx.check_match(genv, changes, val_ty)
+            end
+
+            return true
+          end
+        end
+
+        # Fall back to base_type check for other cases
         @base_type.check_match(genv, changes, vtx)
       end
 
@@ -346,6 +367,73 @@ module TypeProf::Core
 
       def show
         "var[#{ @name }]"
+      end
+    end
+
+    class Record < Type
+      #: (GlobalEnv, ::Hash[Symbol, Vertex], Instance) -> void
+      def initialize(genv, fields, base_type)
+        @fields = fields
+        @base_type = base_type
+        raise unless base_type.is_a?(Instance)
+      end
+
+      attr_reader :fields
+
+      def get_value(key = nil)
+        if key
+          # Return specific field value if it exists
+          @fields[key]
+        elsif @fields.empty?
+          # Empty record has no values
+          nil
+        else
+          # Return union of all field values if no specific key
+          @base_type.args[1]
+        end
+      end
+
+      def base_type(genv)
+        @base_type
+      end
+
+      def check_match(genv, changes, vtx)
+        vtx.each_type do |other_ty|
+          case other_ty
+          when Record
+            # Check if all fields match
+            return false unless @fields.size == other_ty.fields.size
+            @fields.each do |key, val_vtx|
+              other_val_vtx = other_ty.fields[key]
+              return false unless other_val_vtx
+              return false unless val_vtx.check_match(genv, changes, other_val_vtx)
+            end
+            return true
+          when Hash
+            # Record can match with Hash only if the Hash has Symbol keys
+            # and all record values can match with the Hash value type
+            key_vtx = other_ty.get_key
+            val_vtx = other_ty.get_value
+
+            # Check if Hash key type is Symbol
+            return false unless key_vtx && Source.new(genv.symbol_type).check_match(genv, changes, key_vtx)
+
+            # Check if all record field values can match with Hash value type
+            @fields.each do |_key, field_val_vtx|
+              return false unless field_val_vtx.check_match(genv, changes, val_vtx)
+            end
+
+            return true
+          end
+        end
+        return false
+      end
+
+      def show
+        field_strs = @fields.map do |key, val_vtx|
+          "#{ key }: #{ Type.strip_parens(val_vtx.show) }"
+        end
+        "{ #{ field_strs.join(", ") } }"
       end
     end
   end
