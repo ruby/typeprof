@@ -1,4 +1,5 @@
-require "cgi"
+require "cgi/escape"
+require "cgi/util" if RUBY_VERSION < "3.5"
 
 module TypeProf::LSP
   module ErrorCodes
