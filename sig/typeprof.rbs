@@ -4,6 +4,7 @@ module TypeProf
   end
   class CodeRange
     def self.from_node: (untyped) -> instance
+    def include?: (CodePosition) -> bool
   end
 
   module Core

@@ -63,12 +63,12 @@ module TypeProf::Core
       end
 
       def define_copy(genv)
-        @lenv = @prev_node.lenv
+        @lenv = (@prev_node || raise).lenv
         each_subnode do |subnode|
           subnode.define_copy(genv)
         end
         @prev_node.instance_variable_set(:@reused, true)
-        @static_ret = @prev_node.static_ret
+        @static_ret = (@prev_node || raise).static_ret
       end
 
       def define0(genv)
@@ -97,12 +97,12 @@ module TypeProf::Core
       end
 
       def install_copy(genv)
-        @changes.copy_from(@prev_node.changes)
+        @changes.copy_from((@prev_node || raise).changes)
         @changes.reuse(self)
         each_subnode do |subnode|
           subnode.install_copy(genv)
         end
-        @ret = @prev_node.ret
+        @ret = (@prev_node || raise).ret
       end
 
       def install0(_)
