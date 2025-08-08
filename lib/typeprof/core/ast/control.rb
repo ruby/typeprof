@@ -233,31 +233,115 @@ module TypeProf::Core
       end
     end
 
+    class WhenNode < Node
+      def initialize(raw_when_node, lenv, pivot_var = nil)
+        super(raw_when_node, lenv)
+        @conditions = raw_when_node.conditions.map {|cond| AST.create_node(cond, lenv) }
+        @body = raw_when_node.statements ? AST.create_node(raw_when_node.statements, lenv) : DummyNilNode.new(code_range, lenv)
+        @pivot_var = pivot_var
+      end
+
+      attr_reader :conditions, :body, :pivot_var
+
+      def subnodes = { conditions:, body: }
+
+      def install0(genv)
+        @conditions.each {|condition| condition.install(genv) }
+
+        # 型絞り込みが必要な場合（pivot_varが設定されている場合）
+        if @pivot_var && @lenv.locals.key?(:"*pivot")
+          original_vtx = @lenv.locals[:"*pivot"]
+
+          # 複数条件のOR（union）処理
+          filtered_vtxs = []
+
+          @conditions.each do |condition|
+            if condition.is_a?(ConstantReadNode) && condition.static_ret
+              # 各条件に対して独立して型絞り込みを適用
+              condition_vtx = original_vtx.new_vertex(genv, self)
+              condition_vtx = IsAFilter.new(genv, self, condition_vtx, false, condition.static_ret).next_vtx
+              filtered_vtxs << condition_vtx
+            end
+          end
+
+          # 複数の絞り込み結果をマージして使用
+          if !filtered_vtxs.empty?
+            merged_vtx = Vertex.new(self)
+            filtered_vtxs.each do |vtx|
+              @changes.add_edge(genv, vtx, merged_vtx)
+            end
+            @lenv.set_var(@pivot_var, merged_vtx)
+          end
+        end
+
+        @body.install(genv)
+      end
+
+      # else節での型除外に使用する条件を取得
+      def get_exclusion_conditions
+        @conditions.select {|condition| condition.is_a?(ConstantReadNode) && condition.static_ret }
+                   .map {|condition| condition.static_ret }
+      end
+    end
+
     class CaseNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         @pivot = raw_node.predicate ? AST.create_node(raw_node.predicate, lenv) : nil
-        @whens = []
-        @clauses = []
-        raw_node.conditions.each do |raw_cond|
-          @whens << AST.create_node(raw_cond.conditions.first, lenv) # XXX: multiple conditions
-          @clauses << (raw_cond.statements ? AST.create_node(raw_cond.statements, lenv) : DummyNilNode.new(code_range, lenv)) # TODO: code_range for NilNode
-        end
+
+        # pivot変数名を決定
+        pivot_var = @pivot.is_a?(LocalVariableReadNode) ? @pivot.var : nil
+
+        @when_nodes = raw_node.conditions.map {|raw_cond| WhenNode.new(raw_cond, lenv, pivot_var) }
         @else_clause = raw_node.else_clause && raw_node.else_clause.statements ? AST.create_node(raw_node.else_clause.statements, lenv) : DummyNilNode.new(code_range, lenv) # TODO: code_range for NilNode
       end
 
-      attr_reader :pivot, :whens, :clauses, :else_clause
+      attr_reader :pivot, :when_nodes, :else_clause
 
-      def subnodes = { pivot:, whens:, clauses:, else_clause: }
+      def subnodes = { pivot:, when_nodes:, else_clause: }
 
       def install0(genv)
         ret = Vertex.new(self)
         @pivot&.install(genv)
-        @whens.zip(@clauses) do |vals, clause|
-          vals.install(genv)
-          @changes.add_edge(genv, clause.install(genv), ret)
+
+        # case文での型絞り込みを実装
+        if @pivot && @pivot.is_a?(LocalVariableReadNode)
+          var = @pivot.var
+          original_vtx = @lenv.get_var(var)
+
+          # ダミー変数に元の型情報を設定
+          @lenv.set_var(:"*pivot", original_vtx)
+
+          # 各when節を実行
+          @when_nodes.each do |when_node|
+            clause_result = when_node.install(genv)
+            @changes.add_edge(genv, clause_result, ret)
+            # 元の型に戻す
+            @lenv.set_var(var, original_vtx)
+          end
+
+          # else節（他のwhen節で除外された後の型）
+          filtered_else_vtx = original_vtx.new_vertex(genv, self)
+          @when_nodes.each do |when_node|
+            when_node.get_exclusion_conditions.each do |static_ret|
+              # 各when節の型を除外（negation）
+              filtered_else_vtx = IsAFilter.new(genv, self, filtered_else_vtx, true, static_ret).next_vtx
+            end
+          end
+          @lenv.set_var(var, filtered_else_vtx)
+          @changes.add_edge(genv, @else_clause.install(genv), ret)
+          @lenv.set_var(var, original_vtx)
+
+          # ダミー変数をクリア
+          @lenv.locals.delete(:"*pivot")
+        else
+          # pivotが変数でない場合は従来通り
+          @when_nodes.each do |when_node|
+            @changes.add_edge(genv, when_node.install(genv), ret)
+          end
+          @changes.add_edge(genv, @else_clause.install(genv), ret)
         end
-        @changes.add_edge(genv, @else_clause.install(genv), ret)
+
         ret
       end
     end
