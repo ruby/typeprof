@@ -5,12 +5,11 @@ module TypeProf::Core
     end
 
     def class_new(changes, node, ty, a_args, ret)
-      if ty.is_a?(Type::Singleton)
-        ty = ty.get_instance_type(@genv)
-        recv = Source.new(ty)
-        changes.add_method_call_box(@genv, recv, :initialize, a_args, false)
-        changes.add_edge(@genv, Source.new(ty), ret)
-      end
+      type_param_vtxs = ty.mod.type_params.map { Vertex.new(node) }
+      temp_instance_ty = Type::Instance.new(@genv, ty.mod, type_param_vtxs)
+      recv = Source.new(temp_instance_ty)
+      changes.add_method_call_box(@genv, recv, :initialize, a_args, false)
+      changes.add_edge(@genv, recv, ret)
       true
     end
 
