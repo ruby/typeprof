@@ -16,7 +16,7 @@ end
 ## assert
 class Object
   def accept_x: -> [Integer, String]?
-  def accept_x_y_z: -> [Integer, String, untyped]?
+  def accept_x_y_z: -> [Integer, String, nil]?
 end
 
 ## update: test.rbs

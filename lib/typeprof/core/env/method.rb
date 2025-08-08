@@ -93,8 +93,22 @@ module TypeProf::Core
 
     def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
       if caller_positionals.size == 1 && @f_args.size >= 2
-        # TODO: support splat "do |a, *b, c|"
-        changes.add_edge(genv, caller_positionals[0].new_vertex(genv, @node), @f_ary_arg)
+        single_arg = caller_positionals[0]
+
+        @f_args.each_with_index do |f_arg, i|
+          elem_vtx = Vertex.new(@node)
+          single_arg.each_type do |ty|
+            case ty
+            when Type::Array
+              if ty.elems && i < ty.elems.size
+                changes.add_edge(genv, ty.elems[i], elem_vtx)
+              else
+                changes.add_edge(genv, ty.get_elem(genv, i), elem_vtx)
+              end
+            end
+          end
+          changes.add_edge(genv, elem_vtx, f_arg)
+        end
       else
         caller_positionals.zip(@f_args) do |a_arg, f_arg|
           changes.add_edge(genv, a_arg, f_arg) if f_arg
