@@ -107,12 +107,39 @@ module TypeProf::Core
               changes.add_depended_superclass(ty.mod)
 
               if other_ty.mod.module?
+                return true if check_match_prepended_modules(genv, changes, ty, other_ty)
                 return true if check_match_included_modules(genv, changes, ty, other_ty)
               end
 
               ty = genv.get_superclass_type(ty, changes, {})
             end
           end
+        end
+        return false
+      end
+
+      def check_match_prepended_modules(genv, changes, ty, other_ty)
+        ty.mod.prepended_modules.each do |prep_decl, prep_mod|
+          if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
+            prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, {}, ty)
+          else
+            type_params = prep_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+            prep_ty = Type::Instance.new(genv, prep_mod, type_params)
+          end
+          if prep_ty.mod == other_ty.mod
+            args_all_match = true
+            prep_ty.args.zip(other_ty.args) do |arg, other_arg|
+              if other_arg && !arg.check_match(genv, changes, other_arg)
+                args_all_match = false
+                break
+              end
+            end
+            return true if args_all_match
+          end
+          changes.add_depended_superclass(prep_ty.mod)
+
+          return true if check_match_prepended_modules(genv, changes, prep_ty, other_ty)
+          return true if check_match_included_modules(genv, changes, prep_ty, other_ty)
         end
         return false
       end

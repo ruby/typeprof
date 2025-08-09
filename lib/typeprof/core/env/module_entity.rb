@@ -7,6 +7,8 @@ module TypeProf::Core
       @module_defs = Set[]
       @include_decls = Set[]
       @include_defs = Set[]
+      @prepend_decls = []
+      @prepend_defs = []
 
       @inner_modules = {}
       @outer_module = outer_module
@@ -15,6 +17,7 @@ module TypeProf::Core
       @superclass = nil
       @self_types = {}
       @included_modules = {}
+      @prepended_modules = {}
       @basic_object = @cpath == [:BasicObject]
 
       # child modules (subclasses and all modules that include me)
@@ -46,6 +49,7 @@ module TypeProf::Core
     attr_reader :superclass
     attr_reader :self_types
     attr_reader :included_modules
+    attr_reader :prepended_modules
     attr_reader :child_modules
 
     attr_reader :superclass_type_args
@@ -192,6 +196,26 @@ module TypeProf::Core
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
+    def add_prepend_decl(genv, node)
+      @prepend_decls << node
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def remove_prepend_decl(genv, node)
+      @prepend_decls.delete(node) || raise
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def add_prepend_def(genv, node)
+      @prepend_defs << node
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def remove_prepend_def(genv, node)
+      @prepend_defs.delete(node) || raise
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
     def update_parent(genv, origin, old_parent, new_parent_cpath)
       new_parent = new_parent_cpath ? genv.resolve_cpath(new_parent_cpath) : nil
       if old_parent != new_parent
@@ -323,8 +347,41 @@ module TypeProf::Core
           any_updated = true
         end
       end
+      @prepend_decls.each do |pdecl|
+        new_parent_cpath = pdecl.static_ret.last.cpath
+        new_parent, updated = update_parent(genv, pdecl, @prepended_modules[pdecl], new_parent_cpath)
+        if updated
+          if new_parent
+            @prepended_modules[pdecl] = new_parent
+          else
+            @prepended_modules.delete(pdecl) || raise
+          end
+          any_updated = true
+        end
+      end
+      @prepend_defs.each do |pdef|
+        new_parent_cpath = pdef.static_ret ? pdef.static_ret.cpath : nil
+        new_parent, updated = update_parent(genv, pdef, @prepended_modules[pdef], new_parent_cpath)
+        if updated
+          if new_parent
+            @prepended_modules[pdef] = new_parent
+          else
+            @prepended_modules.delete(pdef) || raise
+          end
+          any_updated = true
+        end
+      end
       @included_modules.delete_if do |origin, old_mod|
         if @include_decls.include?(origin) || @include_defs.include?(origin)
+          false
+        else
+          _new_parent, updated = update_parent(genv, origin, old_mod, nil)
+          any_updated ||= updated
+          true
+        end
+      end
+      @prepended_modules.delete_if do |origin, old_mod|
+        if @prepend_decls.include?(origin) || @prepend_defs.include?(origin)
           false
         else
           _new_parent, updated = update_parent(genv, origin, old_mod, nil)

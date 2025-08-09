@@ -255,6 +255,55 @@ module TypeProf::Core
       end
     end
 
+    class SigPrependNode < Node
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        name = raw_decl.name
+        @cpath = name.namespace.path + [name.name]
+        @toplevel = name.namespace.absolute?
+        @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
+      end
+
+      attr_reader :cpath, :toplevel, :args
+      def subnodes = { args: }
+      def attrs = { cpath:, toplevel: }
+
+      def define0(genv)
+        @args.each {|arg| arg.define(genv) }
+        const_reads = []
+        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref, false)
+        const_reads << const_read
+        @cpath[1..].each do |cname|
+          const_read = ScopedConstRead.new(cname, const_read, false)
+          const_reads << const_read
+        end
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
+        const_read.followers << mod
+        mod.add_prepend_decl(genv, self)
+        const_reads
+      end
+
+      def define_copy(genv)
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
+        mod.add_prepend_decl(genv, self)
+        mod.remove_prepend_decl(genv, @prev_node)
+        super(genv)
+      end
+
+      def undefine0(genv)
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
+        mod.remove_prepend_decl(genv, self)
+        @static_ret.each do |const_read|
+          const_read.destroy(genv)
+        end
+        @args.each {|arg| arg.undefine(genv) }
+      end
+
+      def install0(genv)
+        Source.new
+      end
+    end
+
     class SigAliasNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
