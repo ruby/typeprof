@@ -628,16 +628,39 @@ module TypeProf::Core
     end
 
     class SigTyProcNode < SigTyNode
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        # raw_decl.type is an RBS::Types::Function, we need to wrap it in a MethodType
+        if raw_decl.type
+          method_type = RBS::MethodType.new(
+            type: raw_decl.type,
+            type_params: [],
+            block: raw_decl.block,
+            location: raw_decl.location
+          )
+          @type = AST.create_rbs_func_type(method_type, nil, raw_decl.block, lenv)
+        else
+          @type = nil
+        end
+      end
+
+      attr_reader :type
+      def subnodes = { type: }
+
       def covariant_vertex0(genv, changes, vtx, subst)
-        raise NotImplementedError
+        # For now, just return the base Proc type without the function signature details
+        # TODO: Create a proper Type::Proc with the function signature
+        changes.add_edge(genv, Source.new(genv.proc_type), vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        Source.new()
+        # For now, just return the base Proc type without the function signature details
+        # TODO: Create a proper Type::Proc with the function signature
+        changes.add_edge(genv, Source.new(genv.proc_type), vtx)
       end
 
       def show
-        "(...proc...)"
+        "^(...)"
       end
     end
 
