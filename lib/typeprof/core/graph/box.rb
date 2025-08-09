@@ -87,7 +87,20 @@ module TypeProf::Core
     attr_reader :node, :rbs_type, :ret
 
     def run0(genv, changes)
-      vtx = @rbs_type.covariant_vertex(genv, changes, {})
+      # Create substitution map for type parameters if we're in a SigInstanceVariableNode within a generic class
+      subst = {}
+      if @node.is_a?(AST::SigInstanceVariableNode) && @node.cpath
+        mod = genv.resolve_cpath(@node.cpath)
+        if mod.type_params && !mod.type_params.empty?
+          # Create a substitution map where each type parameter maps to a type variable vertex
+          subst = mod.type_params.to_h do |param|
+            type_var_vtx = Vertex.new(@node)
+            [param, type_var_vtx]
+          end
+        end
+      end
+
+      vtx = @rbs_type.covariant_vertex(genv, changes, subst)
       changes.add_edge(genv, vtx, @ret)
     end
   end
