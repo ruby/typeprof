@@ -786,6 +786,16 @@ module TypeProf::Core
         alias_limit = 0
         while ty
           unless skip
+            # First check prepended modules
+            if !ty.is_a?(Type::Singleton)
+              if resolve_prepended_modules(genv, changes, base_ty_env, ty, mid) do |me, ty, mid|
+                  yield me, ty, mid, orig_ty
+                end
+                break
+              end
+            end
+
+            # Then check the class/module itself
             me = ty.mod.get_method(ty.is_a?(Type::Singleton), mid)
             changes.add_depended_method_entity(me) if changes
             if !me.aliases.empty?
@@ -804,6 +814,7 @@ module TypeProf::Core
           if ty.is_a?(Type::Singleton)
             # TODO: extended modules
           else
+            # Finally check included modules
             break if resolve_included_modules(genv, changes, base_ty_env, ty, mid) do |me, ty, mid|
               yield me, ty, mid, orig_ty
             end
@@ -814,6 +825,38 @@ module TypeProf::Core
 
         yield nil, nil, mid, orig_ty unless ty
       end
+    end
+
+    def resolve_prepended_modules(genv, changes, base_ty_env, ty, mid, &blk)
+      found = false
+
+      alias_limit = 0
+      # Process prepended modules in reverse order (last prepended = first in ancestor chain)
+      ty.mod.prepended_modules.reverse_each do |prep_decl, prep_mod|
+        if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
+          prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, base_ty_env, ty)
+        else
+          type_params = prep_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+          prep_ty = Type::Instance.new(genv, prep_mod, type_params)
+        end
+
+        me = prep_ty.mod.get_method(false, mid)
+        changes.add_depended_method_entity(me) if changes
+        if !me.aliases.empty?
+          mid = me.aliases.values.first
+          alias_limit += 1
+          redo if alias_limit < 5
+        end
+        if me.exist?
+          found = true
+          yield me, prep_ty, mid
+        else
+          found = resolve_prepended_modules(genv, changes, base_ty_env, prep_ty, mid, &blk)
+        end
+        break if found
+      end
+
+      found
     end
 
     def resolve_included_modules(genv, changes, base_ty_env, ty, mid, &blk)

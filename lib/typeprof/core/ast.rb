@@ -400,6 +400,8 @@ module TypeProf::Core
         SigDefNode.new(raw_decl, lenv)
       when RBS::AST::Members::Include
         SigIncludeNode.new(raw_decl, lenv)
+      when RBS::AST::Members::Prepend
+        SigPrependNode.new(raw_decl, lenv)
       when RBS::AST::Members::Extend
       when RBS::AST::Members::Public
       when RBS::AST::Members::Private
