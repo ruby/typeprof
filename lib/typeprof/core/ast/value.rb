@@ -272,7 +272,11 @@ module TypeProf::Core
             @vals << AST.create_node(raw_elem.value, lenv)
           when :assoc_splat_node
             @keys << nil
-            @vals << AST.create_node(raw_elem.value, lenv)
+            if raw_elem.value
+              @vals << AST.create_node(raw_elem.value, lenv)
+            else
+              @vals << DummyNilNode.new(code_range, lenv)
+            end
             @splat = true
           else
             raise "unknown hash elem: #{ raw_elem.type }"
@@ -297,7 +301,11 @@ module TypeProf::Core
             @changes.add_edge(genv, v, unified_val)
             literal_pairs[key.lit] = v if key.is_a?(SymbolNode)
           else
-            h = val.install(genv)
+            if val.is_a?(DummyNilNode)
+              h = @lenv.get_var(:"**anonymous_keyword")
+            else
+              h = val.install(genv)
+            end
             # TODO: do we want to call to_hash on h?
             @changes.add_hash_splat_box(genv, h, unified_key, unified_val)
           end

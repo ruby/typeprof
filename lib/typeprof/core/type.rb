@@ -15,6 +15,20 @@ module TypeProf::Core
       s.start_with?("Array[") && s.end_with?("]") ? s[6..-2] || raise : s
     end
 
+    def self.extract_hash_value_type(s)
+      if s.start_with?("Hash[") && s.end_with?("]")
+        type = RBS::Parser.parse_type(s)
+
+        if type.is_a?(RBS::Types::Union)
+          type.types.map {|t| t.args[1].to_s }.join(" | ")
+        else
+          type.args[1].to_s
+        end
+      else
+        s
+      end
+    end
+
     def self.default_param_map(genv, ty)
       ty = ty.base_type(genv)
       instance_ty = ty.is_a?(Type::Instance) ? ty : Type::Instance.new(genv, ty.mod, []) # TODO: type params
