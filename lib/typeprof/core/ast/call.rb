@@ -35,7 +35,7 @@ module TypeProf::Core
               @splat_flags << false
             end
           end
-          @positional_args = args.map {|arg| AST.create_node(arg, lenv) }
+          @positional_args = args.map {|arg| arg ? AST.create_node(arg, lenv) : DummyNilNode.new(code_range, lenv) }
 
           if @positional_args.last.is_a?(TypeProf::Core::AST::HashNode) && @positional_args.last.keywords
             @keyword_args = @positional_args.pop
@@ -93,7 +93,11 @@ module TypeProf::Core
         end
 
         positional_args = @positional_args.map do |arg|
-          arg.install(genv)
+          if arg.is_a?(DummyNilNode)
+            @lenv.get_var(:"*anonymous_rest")
+          else
+            arg.install(genv)
+          end
         end
 
         keyword_args = @keyword_args ? @keyword_args.install(genv) : nil

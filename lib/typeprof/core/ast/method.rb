@@ -64,7 +64,7 @@ module TypeProf::Core
 
       post_positionals = raw_args.posts.map {|n| (n.is_a?(Prism::MultiTargetNode) ? nil : n.name) }
 
-      rest_positionals = raw_args.rest&.name
+      rest_positionals = raw_args.rest ? (raw_args.rest.name || :"*anonymous_rest") : nil
 
       req_keywords = []
       opt_keywords = []
@@ -82,7 +82,7 @@ module TypeProf::Core
 
       case raw_args.keyword_rest
       when Prism::KeywordRestParameterNode
-        rest_keywords = raw_args.keyword_rest.name if raw_args.keyword_rest
+        rest_keywords = raw_args.keyword_rest.name || :"**anonymous_keyword"
       when Prism::ForwardingParameterNode
         # TODO: The variable names might be subject to change when supporting the propagation of parameter values to the graph during method calls.
         rest_positionals = :"..."
@@ -226,6 +226,12 @@ module TypeProf::Core
 
         if rest_positionals
           @changes.add_edge(genv, Source.new(genv.gen_ary_type(Vertex.new(self))), rest_positionals)
+        end
+
+        if rest_keywords
+          if @rest_keywords == :"**anonymous_keyword"
+            @changes.add_edge(genv, Source.new(genv.gen_hash_type(Vertex.new(self), Vertex.new(self))), rest_keywords)
+          end
         end
 
         @opt_positional_defaults.zip(opt_positionals) do |expr, vtx|

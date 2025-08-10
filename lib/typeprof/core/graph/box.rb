@@ -640,7 +640,7 @@ module TypeProf::Core
         end
       end
       if @f_args.rest_keywords
-        args << "**#{ Type.strip_parens(@f_args.rest_keywords.show) }"
+        args << "**#{ Type.extract_hash_value_type(Type.strip_parens(@f_args.rest_keywords.show)) }"
       end
 
       if output_parameter_names && @node.is_a?(AST::DefNode)
