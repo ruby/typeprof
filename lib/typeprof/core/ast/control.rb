@@ -377,10 +377,21 @@ module TypeProf::Core
     end
 
     class AndNode < Node
-      def initialize(raw_node, e1 = nil, raw_e2 = nil, lenv)
+      def initialize(raw_node, e1 = nil, raw_e2 = raw_node.right, lenv)
         super(raw_node, lenv)
-        @e1 = e1 || AST.create_node(raw_node.left, lenv)
-        @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
+
+        if raw_node.type == :and_node && raw_node.left.type == :and_node
+          # Convert left-associative AND chain to right-associative for simpler processing
+          # (A && B) && C  →  A && (B && C)
+          @e1 = AST.create_node(raw_node.left.left, lenv)
+          e2_1 = AST.create_node(raw_node.left.right, lenv)
+          raw_e2_2 = raw_node.right
+          dummy_raw_node = raw_node.right
+          @e2 = AndNode.new(dummy_raw_node, e2_1, raw_e2_2, lenv)
+        else
+          @e1 = e1 || AST.create_node(raw_node.left, lenv)
+          @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
+        end
       end
 
       attr_reader :e1, :e2
@@ -389,17 +400,52 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new(self)
-        @changes.add_edge(genv, @e1.install(genv), ret)
-        @changes.add_edge(genv, @e2.install(genv), ret)
+
+        v1 = @e1.install(genv)
+
+        # Check if left side establishes type narrowing
+        var, filter_class = AST.is_a_class(@e1)
+
+        if var && filter_class
+          # Left side is is_a? check - apply narrowing to right side
+          original_vtx = @lenv.get_var(var)
+          narrowed_vtx = original_vtx.new_vertex(genv, self)
+          narrowed_vtx = IsAFilter.new(genv, self, narrowed_vtx, false, filter_class).next_vtx
+          @lenv.set_var(var, narrowed_vtx)
+
+          # Execute right side with narrowed type
+          v2 = @e2.install(genv)
+
+          # Restore original type
+          @lenv.set_var(var, original_vtx)
+        else
+          # No type narrowing from left side
+          v2 = @e2.install(genv)
+        end
+
+        @changes.add_edge(genv, v1, ret)
+        @changes.add_edge(genv, v2, ret)
+
         ret
       end
     end
 
     class OrNode < Node
-      def initialize(raw_node, e1 = nil, raw_e2 = nil, lenv)
+      def initialize(raw_node, e1 = nil, raw_e2 = raw_node.right, lenv)
         super(raw_node, lenv)
-        @e1 = e1 || AST.create_node(raw_node.left, lenv)
-        @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
+
+        if raw_node.type == :or_node && raw_node.left.type == :or_node
+          # Convert left-associative OR chain to right-associative for simpler processing
+          # (A || B) || C  →  A || (B || C)
+          @e1 = AST.create_node(raw_node.left.left, lenv)
+          e2_1 = AST.create_node(raw_node.left.right, lenv)
+          raw_e2_2 = raw_node.right
+          dummy_raw_node = raw_node.right # XXX: This is not correct
+          @e2 = OrNode.new(dummy_raw_node, e2_1, raw_e2_2, lenv)
+        else
+          @e1 = e1 || AST.create_node(raw_node.left, lenv)
+          @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
+        end
       end
 
       attr_reader :e1, :e2
@@ -408,10 +454,34 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new(self)
+
         v1 = @e1.install(genv)
         v1 = NilFilter.new(genv, self, v1, false).next_vtx
+
+        # Check if left side establishes type narrowing for OR (negation logic)
+        var, filter_class = AST.is_a_class(@e1)
+
+        if var && filter_class
+          # Left side is is_a? check - apply negated narrowing to right side
+          # For OR: if x.is_a?(String) || expr, then expr is executed when x is NOT String
+          original_vtx = @lenv.get_var(var)
+          narrowed_vtx = original_vtx.new_vertex(genv, self)
+          narrowed_vtx = IsAFilter.new(genv, self, narrowed_vtx, true, filter_class).next_vtx  # true = negated
+          @lenv.set_var(var, narrowed_vtx)
+
+          # Execute right side with negated narrowed type
+          v2 = @e2.install(genv)
+
+          # Restore original type
+          @lenv.set_var(var, original_vtx)
+        else
+          # No type narrowing from left side
+          v2 = @e2.install(genv)
+        end
+
         @changes.add_edge(genv, v1, ret)
-        @changes.add_edge(genv, @e2.install(genv), ret)
+        @changes.add_edge(genv, v2, ret)
+
         ret
       end
     end
