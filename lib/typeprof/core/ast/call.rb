@@ -37,7 +37,8 @@ module TypeProf::Core
           end
           @positional_args = args.map {|arg| arg ? AST.create_node(arg, lenv) : DummyNilNode.new(code_range, lenv) }
 
-          if @positional_args.last.is_a?(TypeProf::Core::AST::HashNode) && @positional_args.last.keywords
+          kw = @positional_args.last
+          if kw.is_a?(TypeProf::Core::AST::HashNode) && kw.keywords
             @keyword_args = @positional_args.pop
           end
         end
@@ -103,28 +104,30 @@ module TypeProf::Core
         keyword_args = @keyword_args ? @keyword_args.install(genv) : nil
 
         if @block_body
-          @lenv.locals.each {|var, vtx| @block_body.lenv.locals[var] = vtx }
-          @block_tbl.each {|var| @block_body.lenv.locals[var] = Source.new(genv.nil_type) }
+          block_body = @block_body # kinda type annotationty
+          block_tbl = @block_tbl || raise
+          @lenv.locals.each {|var, vtx| block_body.lenv.locals[var] = vtx }
+          block_tbl.each {|var| block_body.lenv.locals[var] = Source.new(genv.nil_type) }
           @block_body.lenv.locals[:"*self"] = @block_body.lenv.cref.get_self(genv)
 
           blk_f_args = []
           if @block_f_args
             @block_f_args.each do |arg|
-              blk_f_args << @block_body.lenv.new_var(arg, self)
+              blk_f_args << block_body.lenv.new_var(arg, self)
             end
           end
 
           @lenv.locals.each do |var, vtx|
-            @block_body.lenv.set_var(var, vtx)
+            block_body.lenv.set_var(var, vtx)
           end
           vars = []
-          @block_body.modified_vars(@lenv.locals.keys - @block_tbl, vars)
+          @block_body.modified_vars(@lenv.locals.keys - block_tbl, vars)
           vars.uniq!
           vars.each do |var|
             vtx = @lenv.get_var(var)
             nvtx = vtx.new_vertex(genv, self)
             @lenv.set_var(var, nvtx)
-            @block_body.lenv.set_var(var, nvtx)
+            block_body.lenv.set_var(var, nvtx)
           end
 
           e_ret = @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new(self)
@@ -132,7 +135,7 @@ module TypeProf::Core
           @block_body.lenv.add_next_box(@changes.add_escape_box(genv, @block_body.ret, e_ret))
 
           vars.each do |var|
-            @changes.add_edge(genv, @block_body.lenv.get_var(var), @lenv.get_var(var))
+            @changes.add_edge(genv, block_body.lenv.get_var(var), @lenv.get_var(var))
           end
 
           blk_f_ary_arg = Vertex.new(self)
@@ -148,10 +151,11 @@ module TypeProf::Core
         a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
         box = @changes.add_method_call_box(genv, recv, @mid, a_args, !@recv)
 
-        if @block_body && @block_body.lenv.break_vtx
+        block_body = @block_body
+        if block_body && block_body.lenv.break_vtx
           ret = Vertex.new(self)
           @changes.add_edge(genv, box.ret, ret)
-          @changes.add_edge(genv, @block_body.lenv.break_vtx, ret)
+          @changes.add_edge(genv, block_body.lenv.break_vtx, ret)
         else
           ret = box.ret
         end
