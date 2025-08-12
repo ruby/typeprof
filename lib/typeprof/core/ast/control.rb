@@ -403,8 +403,14 @@ module TypeProf::Core
 
         v1 = @e1.install(genv)
 
-        # Check if left side establishes type narrowing
+        # Check for type narrowing
         var, filter_class = AST.is_a_class(@e1)
+
+        # Check if left side is a simple variable that could be nil
+        nil_narrowing_var = nil
+        if @e1.is_a?(LocalVariableReadNode)
+          nil_narrowing_var = @e1.var
+        end
 
         if var && filter_class
           # Left side is is_a? check - apply narrowing to right side
@@ -418,6 +424,19 @@ module TypeProf::Core
 
           # Restore original type
           @lenv.set_var(var, original_vtx)
+        elsif nil_narrowing_var
+          # Left side is a variable - apply nil narrowing to right side
+          # For AND: if x && expr, then expr is executed when x is truthy (non-nil)
+          original_vtx = @lenv.get_var(nil_narrowing_var)
+          narrowed_vtx = original_vtx.new_vertex(genv, self)
+          narrowed_vtx = NilFilter.new(genv, self, narrowed_vtx, false).next_vtx  # false = exclude nil
+          @lenv.set_var(nil_narrowing_var, narrowed_vtx)
+
+          # Execute right side with non-nil type
+          v2 = @e2.install(genv)
+
+          # Restore original type
+          @lenv.set_var(nil_narrowing_var, original_vtx)
         else
           # No type narrowing from left side
           v2 = @e2.install(genv)
@@ -458,8 +477,14 @@ module TypeProf::Core
         v1 = @e1.install(genv)
         v1 = NilFilter.new(genv, self, v1, false).next_vtx
 
-        # Check if left side establishes type narrowing for OR (negation logic)
+        # Check for type narrowing in OR (negation logic)
         var, filter_class = AST.is_a_class(@e1)
+
+        # Check if left side is a simple variable that could be nil
+        nil_narrowing_var = nil
+        if @e1.is_a?(LocalVariableReadNode)
+          nil_narrowing_var = @e1.var
+        end
 
         if var && filter_class
           # Left side is is_a? check - apply negated narrowing to right side
@@ -474,6 +499,20 @@ module TypeProf::Core
 
           # Restore original type
           @lenv.set_var(var, original_vtx)
+        elsif nil_narrowing_var
+          # Left side is a variable - apply nil narrowing to right side
+          # For OR: if x || expr, then expr is executed when x is nil/false
+          # So we want to include only nil in the type that reaches expr
+          original_vtx = @lenv.get_var(nil_narrowing_var)
+          narrowed_vtx = original_vtx.new_vertex(genv, self)
+          narrowed_vtx = NilFilter.new(genv, self, narrowed_vtx, true).next_vtx  # true = allow only nil
+          @lenv.set_var(nil_narrowing_var, narrowed_vtx)
+
+          # Execute right side with nil-narrowed type
+          v2 = @e2.install(genv)
+
+          # Restore original type
+          @lenv.set_var(nil_narrowing_var, original_vtx)
         else
           # No type narrowing from left side
           v2 = @e2.install(genv)
