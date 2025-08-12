@@ -13,6 +13,51 @@ module TypeProf::Core
       return nil
     end
 
+    # Apply narrowing, execute block, then restore original type
+    def self.with_narrowing(genv, node, lenv, narrowing, negate: false)
+      var = narrowing[:var]
+      narrowing_type = narrowing[:type]
+      type_class = narrowing[:class]
+
+      # Apply type narrowing
+      original_vtx = lenv.get_var(var)
+      narrowed_vtx = original_vtx.new_vertex(genv, node)
+
+      case narrowing_type
+      when :is_a
+        narrowed_vtx = IsAFilter.new(genv, node, narrowed_vtx, negate, type_class).next_vtx
+      when :nil
+        narrowed_vtx = NilFilter.new(genv, node, narrowed_vtx, negate).next_vtx  # negate: false=exclude_nil, true=allow_only_nil
+      else
+        raise "Unknown narrowing type: #{narrowing_type}"
+      end
+
+      lenv.set_var(var, narrowed_vtx)
+
+      result = yield
+
+      lenv.set_var(var, original_vtx)
+      result
+    end
+
+    # Detect what kind of narrowing can be applied to a node
+    # @param node [Node] AST node to analyze
+    # @return [Hash] narrowing information or nil
+    def self.detect_narrowing(node)
+      # Check for is_a? pattern
+      var, filter_class = is_a_class(node)
+      if var && filter_class
+        return { type: :is_a, var: var, class: filter_class }
+      end
+
+      # Check for simple variable (nil narrowing candidate)
+      if node.is_a?(LocalVariableReadNode)
+        return { type: :nil, var: node.var }
+      end
+
+      nil
+    end
+
     class BranchNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
@@ -403,42 +448,14 @@ module TypeProf::Core
 
         v1 = @e1.install(genv)
 
-        # Check for type narrowing
-        var, filter_class = AST.is_a_class(@e1)
-
-        # Check if left side is a simple variable that could be nil
-        nil_narrowing_var = nil
-        if @e1.is_a?(LocalVariableReadNode)
-          nil_narrowing_var = @e1.var
-        end
-
-        if var && filter_class
-          # Left side is is_a? check - apply narrowing to right side
-          original_vtx = @lenv.get_var(var)
-          narrowed_vtx = original_vtx.new_vertex(genv, self)
-          narrowed_vtx = IsAFilter.new(genv, self, narrowed_vtx, false, filter_class).next_vtx
-          @lenv.set_var(var, narrowed_vtx)
-
-          # Execute right side with narrowed type
-          v2 = @e2.install(genv)
-
-          # Restore original type
-          @lenv.set_var(var, original_vtx)
-        elsif nil_narrowing_var
-          # Left side is a variable - apply nil narrowing to right side
-          # For AND: if x && expr, then expr is executed when x is truthy (non-nil)
-          original_vtx = @lenv.get_var(nil_narrowing_var)
-          narrowed_vtx = original_vtx.new_vertex(genv, self)
-          narrowed_vtx = NilFilter.new(genv, self, narrowed_vtx, false).next_vtx  # false = exclude nil
-          @lenv.set_var(nil_narrowing_var, narrowed_vtx)
-
-          # Execute right side with non-nil type
-          v2 = @e2.install(genv)
-
-          # Restore original type
-          @lenv.set_var(nil_narrowing_var, original_vtx)
+        # Apply type narrowing based on left side for AND
+        narrowing = AST.detect_narrowing(@e1)
+        if narrowing
+          # For AND: positive narrowing (negate: false)
+          v2 = AST.with_narrowing(genv, self, @lenv, narrowing, negate: false) do
+            @e2.install(genv)
+          end
         else
-          # No type narrowing from left side
           v2 = @e2.install(genv)
         end
 
@@ -477,44 +494,14 @@ module TypeProf::Core
         v1 = @e1.install(genv)
         v1 = NilFilter.new(genv, self, v1, false).next_vtx
 
-        # Check for type narrowing in OR (negation logic)
-        var, filter_class = AST.is_a_class(@e1)
-
-        # Check if left side is a simple variable that could be nil
-        nil_narrowing_var = nil
-        if @e1.is_a?(LocalVariableReadNode)
-          nil_narrowing_var = @e1.var
-        end
-
-        if var && filter_class
-          # Left side is is_a? check - apply negated narrowing to right side
-          # For OR: if x.is_a?(String) || expr, then expr is executed when x is NOT String
-          original_vtx = @lenv.get_var(var)
-          narrowed_vtx = original_vtx.new_vertex(genv, self)
-          narrowed_vtx = IsAFilter.new(genv, self, narrowed_vtx, true, filter_class).next_vtx  # true = negated
-          @lenv.set_var(var, narrowed_vtx)
-
-          # Execute right side with negated narrowed type
-          v2 = @e2.install(genv)
-
-          # Restore original type
-          @lenv.set_var(var, original_vtx)
-        elsif nil_narrowing_var
-          # Left side is a variable - apply nil narrowing to right side
-          # For OR: if x || expr, then expr is executed when x is nil/false
-          # So we want to include only nil in the type that reaches expr
-          original_vtx = @lenv.get_var(nil_narrowing_var)
-          narrowed_vtx = original_vtx.new_vertex(genv, self)
-          narrowed_vtx = NilFilter.new(genv, self, narrowed_vtx, true).next_vtx  # true = allow only nil
-          @lenv.set_var(nil_narrowing_var, narrowed_vtx)
-
-          # Execute right side with nil-narrowed type
-          v2 = @e2.install(genv)
-
-          # Restore original type
-          @lenv.set_var(nil_narrowing_var, original_vtx)
+        # Apply type narrowing based on left side for OR
+        narrowing = AST.detect_narrowing(@e1)
+        if narrowing
+          # For OR: negated narrowing (negate: true)
+          v2 = AST.with_narrowing(genv, self, @lenv, narrowing, negate: true) do
+            @e2.install(genv)
+          end
         else
-          # No type narrowing from left side
           v2 = @e2.install(genv)
         end
 
