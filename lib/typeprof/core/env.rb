@@ -330,7 +330,11 @@ module TypeProf::Core
 
     def apply_ivar_narrowing(genv, node, name, vtx)
       if @ivar_narrowings[name] && !@ivar_narrowings[name].empty?
-        return @ivar_narrowings[name].last.narrow(genv, node, vtx)
+        # Apply all accumulated narrowings in order
+        @ivar_narrowings[name].each do |narrowing|
+          vtx = narrowing.narrow(genv, node, vtx)
+        end
+        return vtx
       end
       vtx
     end
