@@ -17,27 +17,33 @@ module TypeProf::Core
     def self.with_narrowing(genv, node, lenv, narrowing)
       return yield if narrowing.map.empty?
 
-      # Store original vertices
+      # Store original vertices (only for local variables)
       original_vtxs = {}
       narrowing.map.each do |var, narrowing|
-        original_vtxs[var] = lenv.get_var(var)
+        original_vtxs[var] = var.start_with?("@") ? nil : lenv.get_var(var)
       end
 
       # Apply all narrowings
       narrowing.map.each do |var, narrowing|
-        original_vtx = original_vtxs[var]
-        narrowed_vtx = original_vtx.new_vertex(genv, node)
-
-        narrowed_vtx = narrowing.install(genv, node, narrowed_vtx)
-
-        lenv.set_var(var, narrowed_vtx)
+        if var.start_with?("@")
+          lenv.push_ivar_narrowing(var, narrowing)
+        else
+          original_vtx = original_vtxs[var]
+          narrowed_vtx = original_vtx.new_vertex(genv, node)
+          narrowed_vtx = narrowing.narrow(genv, node, narrowed_vtx)
+          lenv.set_var(var, narrowed_vtx)
+        end
       end
 
       result = yield
 
-      # Restore original vertices
+      # Restore original vertices and remove instance variable filters
       original_vtxs.each do |var, original_vtx|
-        lenv.set_var(var, original_vtx)
+        if var.start_with?("@")
+          lenv.pop_ivar_narrowing(var)
+        else
+          lenv.set_var(var, original_vtx)
+        end
       end
 
       result
@@ -97,11 +103,11 @@ module TypeProf::Core
             @lenv.set_var(var, nvtx_then)
           end
           if @cond.is_a?(InstanceVariableReadNode)
-            @lenv.push_read_filter(@cond.var, :non_nil)
+            @lenv.push_ivar_narrowing(@cond.var, Narrowing::NilConstraint.new(false))
           end
           then_val = @then.install(genv)
           if @cond.is_a?(InstanceVariableReadNode)
-            @lenv.pop_read_filter(@cond.var)
+            @lenv.pop_ivar_narrowing(@cond.var)
           end
           modified_vtxs.each do |var, ary|
             ary[0] = @lenv.get_var(var)

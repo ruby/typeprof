@@ -284,7 +284,7 @@ module TypeProf::Core
       @return_boxes = return_boxes
       @break_vtx = nil
       @next_boxes = []
-      @filters = {}
+      @ivar_narrowings = {}
       @strict_const_scope = false
     end
 
@@ -319,20 +319,18 @@ module TypeProf::Core
     end
 
 
-    def push_read_filter(name, type)
-      (@filters[name] ||= []) << type
+    def push_ivar_narrowing(name, narrowing)
+      raise unless narrowing.is_a?(Narrowing::Constraint)
+      (@ivar_narrowings[name] ||= []) << narrowing
     end
 
-    def pop_read_filter(name)
-      (@filters[name] ||= []).pop
+    def pop_ivar_narrowing(name)
+      (@ivar_narrowings[name] ||= []).pop
     end
 
-    def apply_read_filter(genv, node, name, vtx)
-      if @filters[name] && !@filters[name].empty?
-        case @filters[name].last
-        when :non_nil
-          return NilFilter.new(genv, node, vtx, false).next_vtx
-        end
+    def apply_ivar_narrowing(genv, node, name, vtx)
+      if @ivar_narrowings[name] && !@ivar_narrowings[name].empty?
+        return @ivar_narrowings[name].last.narrow(genv, node, vtx)
       end
       vtx
     end

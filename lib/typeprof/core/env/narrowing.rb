@@ -32,7 +32,7 @@ module TypeProf::Core
       end
 
       def or(other)
-        OrNarrowing.new(self, other)
+        OrConstraint.new(self, other)
       end
     end
 
@@ -48,7 +48,7 @@ module TypeProf::Core
         IsAConstraint.new(@arg, !@neg)
       end
 
-      def install(genv, node, vtx)
+      def narrow(genv, node, vtx)
         if @arg.static_ret
           IsAFilter.new(genv, node, vtx, @neg, @arg.static_ret).next_vtx
         else
@@ -68,7 +68,7 @@ module TypeProf::Core
         NilConstraint.new(!@neg)
       end
 
-      def install(genv, node, vtx)
+      def narrow(genv, node, vtx)
         NilFilter.new(genv, node, vtx, @neg).next_vtx
       end
     end
@@ -89,8 +89,8 @@ module TypeProf::Core
         OrConstraint.new(@left.negate, @right.negate)
       end
 
-      def install(genv, node, vtx)
-        @left.install(genv, node, @right.install(genv, node, vtx))
+      def narrow(genv, node, vtx)
+        @left.narrow(genv, node, @right.narrow(genv, node, vtx))
       end
     end
 
@@ -110,9 +110,9 @@ module TypeProf::Core
         AndConstraint.new(@left.negate, @right.negate)
       end
 
-      def install(genv, node, vtx)
-        @left.install(genv, node, vtx)
-        @right.install(genv, node, vtx)
+      def narrow(genv, node, vtx)
+        @left.narrow(genv, node, vtx)
+        @right.narrow(genv, node, vtx)
       end
     end
   end

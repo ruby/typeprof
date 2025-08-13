@@ -221,6 +221,11 @@ module TypeProf::Core
                 Narrowing.new({ @recv.var => Narrowing::IsAConstraint.new(args[0], false) }),
                 Narrowing.new({ @recv.var => Narrowing::IsAConstraint.new(args[0], true) })
               ]
+            elsif @recv.is_a?(InstanceVariableReadNode) && args && args.size == 1
+              [
+                Narrowing.new({ @recv.var => Narrowing::IsAConstraint.new(args[0], false) }),
+                Narrowing.new({ @recv.var => Narrowing::IsAConstraint.new(args[0], true) })
+              ]
             else
               super
             end

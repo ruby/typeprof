@@ -87,7 +87,7 @@ module TypeProf::Core
         case @lenv.cref.scope_level
         when :class, :instance
           box = @changes.add_ivar_read_box(genv, lenv.cref.cpath, lenv.cref.scope_level == :class, @var)
-          @lenv.apply_read_filter(genv, self, @var, box.ret)
+          @lenv.apply_ivar_narrowing(genv, self, @var, box.ret)
         else
           Source.new()
         end
@@ -95,6 +95,13 @@ module TypeProf::Core
 
       def retrieve_at(pos)
         yield self if code_range.include?(pos)
+      end
+
+      def narrowings
+        @narrowings ||= [
+          Narrowing.new({ @var => Narrowing::NilConstraint.new(false) }),
+          Narrowing.new({ @var => Narrowing::NilConstraint.new(true) }),
+        ]
       end
     end
 
@@ -312,7 +319,7 @@ module TypeProf::Core
 
       def install0(genv)
         box = @changes.add_cvar_read_box(genv, lenv.cref.cpath, @var)
-        @lenv.apply_read_filter(genv, self, @var, box.ret)
+        @lenv.apply_ivar_narrowing(genv, self, @var, box.ret)
       end
 
       def retrieve_at(pos)
