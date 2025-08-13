@@ -48,6 +48,10 @@ module TypeProf::Core
         IsAConstraint.new(@arg, !@neg)
       end
 
+      def inspect
+        @neg ? "!#{@arg}" : "#{@arg}"
+      end
+
       def narrow(genv, node, vtx)
         if @arg.static_ret
           IsAFilter.new(genv, node, vtx, @neg, @arg.static_ret).next_vtx
@@ -63,6 +67,10 @@ module TypeProf::Core
       end
 
       attr_reader :neg
+
+      def inspect
+        @neg ? "!nil" : "nil"
+      end
 
       def negate
         NilConstraint.new(!@neg)
@@ -82,7 +90,7 @@ module TypeProf::Core
       attr_reader :left, :right
 
       def inspect
-        "(#{@left} & #{@right})"
+        "(#{@left.inspect} & #{@right.inspect})"
       end
 
       def negate
@@ -103,7 +111,7 @@ module TypeProf::Core
       attr_reader :left, :right
 
       def inspect
-        "(#{@left} | #{@right})"
+        "(#{@left.inspect} | #{@right.inspect})"
       end
 
       def negate
@@ -111,8 +119,12 @@ module TypeProf::Core
       end
 
       def narrow(genv, node, vtx)
-        @left.narrow(genv, node, vtx)
-        @right.narrow(genv, node, vtx)
+        ret = Vertex.new(node)
+        vtx1 = @left.narrow(genv, node, vtx)
+        vtx2 = @right.narrow(genv, node, vtx)
+        vtx1.add_edge(genv, ret)
+        vtx2.add_edge(genv, ret)
+        ret
       end
     end
   end
