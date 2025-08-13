@@ -17,6 +17,13 @@ module TypeProf::Core
       def retrieve_at(pos)
         yield self if code_range.include?(pos)
       end
+
+      def narrowings
+        @narrowings ||= [
+          Narrowing.new({ @var => Narrowing::NilConstraint.new(false) }),
+          Narrowing.new({ @var => Narrowing::NilConstraint.new(true) }),
+        ]
+      end
     end
 
     class ItLocalVariableReadNode < Node

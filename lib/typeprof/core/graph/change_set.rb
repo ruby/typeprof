@@ -65,86 +65,72 @@ module TypeProf::Core
 
     def add_method_call_box(genv, recv, mid, a_args, subclasses)
       key = [:mcall, recv, mid, a_args, subclasses]
-      return if @new_boxes[key]
-      @new_boxes[key] = MethodCallBox.new(@node, genv, recv, mid, a_args, subclasses)
+      @new_boxes[key] ||= MethodCallBox.new(@node, genv, recv, mid, a_args, subclasses)
     end
 
     def add_escape_box(genv, a_ret, f_ret)
       key = [:return, a_ret]
-      return if @new_boxes[key]
-      @new_boxes[key] = EscapeBox.new(@node, genv, a_ret, f_ret)
+      @new_boxes[key] ||= EscapeBox.new(@node, genv, a_ret, f_ret)
     end
 
     def add_splat_box(genv, arg)
       key = [:splat, arg]
-      return if @new_boxes[key]
-      @new_boxes[key] = SplatBox.new(@node, genv, arg)
+      @new_boxes[key] ||= SplatBox.new(@node, genv, arg)
     end
 
     def add_hash_splat_box(genv, arg, unified_key, unified_val)
       key = [:hash_splat, arg, unified_key, unified_val]
-      return if @new_boxes[key]
-      @new_boxes[key] = HashSplatBox.new(@node, genv, arg, unified_key, unified_val)
+      @new_boxes[key] ||= HashSplatBox.new(@node, genv, arg, unified_key, unified_val)
     end
 
     def add_masgn_box(genv, value, lefts, rest_elem, rights)
       key = [:masgn, value, lefts, rest_elem, rights]
-      return if @new_boxes[key]
-      @new_boxes[key] = MAsgnBox.new(@node, genv, value, lefts, rest_elem, rights)
+      @new_boxes[key] ||= MAsgnBox.new(@node, genv, value, lefts, rest_elem, rights)
     end
 
     def add_method_def_box(genv, cpath, singleton, mid, f_args, ret_boxes)
       key = [:mdef, cpath, singleton, mid, f_args, ret_boxes]
-      return if @new_boxes[key]
-      @new_boxes[key] = MethodDefBox.new(@node, genv, cpath, singleton, mid, f_args, ret_boxes)
+      @new_boxes[key] ||= MethodDefBox.new(@node, genv, cpath, singleton, mid, f_args, ret_boxes)
     end
 
     def add_method_decl_box(genv, cpath, singleton, mid, method_types, overloading)
       key = [:mdecl, cpath, singleton, mid, method_types, overloading]
-      return if @new_boxes[key]
-      @new_boxes[key] = MethodDeclBox.new(@node, genv, cpath, singleton, mid, method_types, overloading)
+      @new_boxes[key] ||= MethodDeclBox.new(@node, genv, cpath, singleton, mid, method_types, overloading)
     end
 
     def add_method_alias_box(genv, cpath, singleton, new_mid, old_mid)
       key = [:mdecl, cpath, singleton, new_mid, old_mid]
-      return if @new_boxes[key]
-      @new_boxes[key] = MethodAliasBox.new(@node, genv, cpath, singleton, new_mid, old_mid)
+      @new_boxes[key] ||= MethodAliasBox.new(@node, genv, cpath, singleton, new_mid, old_mid)
     end
 
     def add_const_read_box(genv, static_ret)
       key = [:cread, static_ret]
-      return if @new_boxes[key]
-      @new_boxes[key] = ConstReadBox.new(@node, genv, static_ret)
+      @new_boxes[key] ||= ConstReadBox.new(@node, genv, static_ret)
     end
 
     def add_gvar_read_box(genv, var)
       key = [:gvar_read, var]
-      return if @new_boxes[key]
-      @new_boxes[key] = GVarReadBox.new(@node, genv, var)
+      @new_boxes[key] ||= GVarReadBox.new(@node, genv, var)
     end
 
     def add_ivar_read_box(genv, cpath, singleton, name)
       key = [:ivar_read, cpath, singleton, name]
-      return if @new_boxes[key]
-      @new_boxes[key] = IVarReadBox.new(@node, genv, cpath, singleton, name)
+      @new_boxes[key] ||= IVarReadBox.new(@node, genv, cpath, singleton, name)
     end
 
     def add_cvar_read_box(genv, cpath, name)
       key = [:cvar_read, cpath, name]
-      return if @new_boxes[key]
-      @new_boxes[key] = CVarReadBox.new(@node, genv, cpath, name)
+      @new_boxes[key] ||= CVarReadBox.new(@node, genv, cpath, name)
     end
 
     def add_type_read_box(genv, type)
       key = [:type_read, type]
-      return if @new_boxes[key]
-      @new_boxes[key] = TypeReadBox.new(@node, genv, type)
+      @new_boxes[key] ||= TypeReadBox.new(@node, genv, type)
     end
 
     def add_instance_type_box(genv, singleton_ty_vtx)
       key = [:instance_type, singleton_ty_vtx]
-      return if @new_boxes[key]
-      @new_boxes[key] = InstanceTypeBox.new(@node, genv, singleton_ty_vtx)
+      @new_boxes[key] ||= InstanceTypeBox.new(@node, genv, singleton_ty_vtx)
     end
 
     def add_diagnostic(meth, msg)

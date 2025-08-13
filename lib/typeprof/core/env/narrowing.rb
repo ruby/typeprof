@@ -1,0 +1,119 @@
+module TypeProf::Core
+  class Narrowing
+    def initialize(map)
+      raise unless map.is_a?(Hash)
+      @map = map
+    end
+
+    attr_reader :map
+
+    def and(other)
+      new_map = @map.dup
+      other.map.each do |var, constraint|
+        new_map[var] = new_map[var] ? new_map[var].and(constraint) : constraint
+      end
+      Narrowing.new(new_map)
+    end
+
+    def or(other)
+      new_map = {}
+      @map.each do |var, constraint|
+        new_map[var] = constraint.or(other.map[var]) if other.map[var]
+      end
+      Narrowing.new(new_map)
+    end
+
+    EmptyNarrowings = [Narrowing.new({}), Narrowing.new({})]
+
+    # Narrowing system for type refinement
+    class Constraint
+      def and(other)
+        AndConstraint.new(self, other)
+      end
+
+      def or(other)
+        OrNarrowing.new(self, other)
+      end
+    end
+
+    class IsAConstraint < Constraint
+      def initialize(arg, neg)
+        @arg = arg
+        @neg = neg
+      end
+
+      attr_reader :arg, :neg
+
+      def negate
+        IsAConstraint.new(@arg, !@neg)
+      end
+
+      def install(genv, node, vtx)
+        if @arg.static_ret
+          IsAFilter.new(genv, node, vtx, @neg, @arg.static_ret).next_vtx
+        else
+          vtx
+        end
+      end
+    end
+
+    class NilConstraint < Constraint
+      def initialize(neg)
+        @neg = neg
+      end
+
+      attr_reader :neg
+
+      def negate
+        NilConstraint.new(!@neg)
+      end
+
+      def install(genv, node, vtx)
+        NilFilter.new(genv, node, vtx, @neg).next_vtx
+      end
+    end
+
+    class AndConstraint < Constraint
+      def initialize(left, right)
+        @left = left
+        @right = right
+      end
+
+      attr_reader :left, :right
+
+      def inspect
+        "(#{@left} & #{@right})"
+      end
+
+      def negate
+        OrConstraint.new(@left.negate, @right.negate)
+      end
+
+      def install(genv, node, vtx)
+        @left.install(genv, node, @right.install(genv, node, vtx))
+      end
+    end
+
+    class OrConstraint < Constraint
+      def initialize(left, right)
+        @left = left
+        @right = right
+      end
+
+      attr_reader :left, :right
+
+      def inspect
+        "(#{@left} | #{@right})"
+      end
+
+      def negate
+        AndConstraint.new(@left.negate, @right.negate)
+      end
+
+      def install(genv, node, vtx)
+        @left.install(genv, node, vtx)
+        @right.install(genv, node, vtx)
+      end
+    end
+  end
+end

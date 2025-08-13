@@ -13,49 +13,34 @@ module TypeProf::Core
       return nil
     end
 
-    # Apply narrowing, execute block, then restore original type
-    def self.with_narrowing(genv, node, lenv, narrowing, negate: false)
-      var = narrowing[:var]
-      narrowing_type = narrowing[:type]
-      type_class = narrowing[:class]
+    # Apply multiple narrowings from the new narrowing system
+    def self.with_narrowing(genv, node, lenv, narrowing)
+      return yield if narrowing.map.empty?
 
-      # Apply type narrowing
-      original_vtx = lenv.get_var(var)
-      narrowed_vtx = original_vtx.new_vertex(genv, node)
-
-      case narrowing_type
-      when :is_a
-        narrowed_vtx = IsAFilter.new(genv, node, narrowed_vtx, negate, type_class).next_vtx
-      when :nil
-        narrowed_vtx = NilFilter.new(genv, node, narrowed_vtx, negate).next_vtx  # negate: false=exclude_nil, true=allow_only_nil
-      else
-        raise "Unknown narrowing type: #{narrowing_type}"
+      # Store original vertices
+      original_vtxs = {}
+      narrowing.map.each do |var, narrowing|
+        original_vtxs[var] = lenv.get_var(var)
       end
 
-      lenv.set_var(var, narrowed_vtx)
+      # Apply all narrowings
+      narrowing.map.each do |var, narrowing|
+        original_vtx = original_vtxs[var]
+        narrowed_vtx = original_vtx.new_vertex(genv, node)
+
+        narrowed_vtx = narrowing.install(genv, node, narrowed_vtx)
+
+        lenv.set_var(var, narrowed_vtx)
+      end
 
       result = yield
 
-      lenv.set_var(var, original_vtx)
+      # Restore original vertices
+      original_vtxs.each do |var, original_vtx|
+        lenv.set_var(var, original_vtx)
+      end
+
       result
-    end
-
-    # Detect what kind of narrowing can be applied to a node
-    # @param node [Node] AST node to analyze
-    # @return [Hash] narrowing information or nil
-    def self.detect_narrowing(node)
-      # Check for is_a? pattern
-      var, filter_class = is_a_class(node)
-      if var && filter_class
-        return { type: :is_a, var: var, class: filter_class }
-      end
-
-      # Check for simple variable (nil narrowing candidate)
-      if node.is_a?(LocalVariableReadNode)
-        return { type: :nil, var: node.var }
-      end
-
-      nil
     end
 
     class BranchNode < Node
@@ -425,18 +410,8 @@ module TypeProf::Core
       def initialize(raw_node, e1 = nil, raw_e2 = raw_node.right, lenv)
         super(raw_node, lenv)
 
-        if raw_node.type == :and_node && raw_node.left.type == :and_node
-          # Convert left-associative AND chain to right-associative for simpler processing
-          # (A && B) && C  →  A && (B && C)
-          @e1 = AST.create_node(raw_node.left.left, lenv)
-          e2_1 = AST.create_node(raw_node.left.right, lenv)
-          raw_e2_2 = raw_node.right
-          dummy_raw_node = raw_node.right
-          @e2 = AndNode.new(dummy_raw_node, e2_1, raw_e2_2, lenv)
-        else
-          @e1 = e1 || AST.create_node(raw_node.left, lenv)
-          @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
-        end
+        @e1 = e1 || AST.create_node(raw_node.left, lenv)
+        @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
       end
 
       attr_reader :e1, :e2
@@ -448,11 +423,11 @@ module TypeProf::Core
 
         v1 = @e1.install(genv)
 
-        # Apply type narrowing based on left side for AND
-        narrowing = AST.detect_narrowing(@e1)
-        if narrowing
-          # For AND: positive narrowing (negate: false)
-          v2 = AST.with_narrowing(genv, self, @lenv, narrowing, negate: false) do
+        # For AND: if left side is truthy, apply its narrowing to right side
+        # Use legacy detect_narrowing for now to maintain compatibility
+        then_narrowing, _else_narrowing = @e1.narrowings
+        if then_narrowing
+          v2 = AST.with_narrowing(genv, self, @lenv, then_narrowing) do
             @e2.install(genv)
           end
         else
@@ -464,24 +439,22 @@ module TypeProf::Core
 
         ret
       end
+
+      def narrowings
+        @narrowings ||= begin
+          e1_then_narrowing, e1_else_narrowing = @e1.narrowings
+          e2_then_narrowing, e2_else_narrowing = @e2.narrowings
+          [e1_then_narrowing.and(e2_then_narrowing), e1_else_narrowing.or(e2_else_narrowing)]
+        end
+      end
     end
 
     class OrNode < Node
       def initialize(raw_node, e1 = nil, raw_e2 = raw_node.right, lenv)
         super(raw_node, lenv)
 
-        if raw_node.type == :or_node && raw_node.left.type == :or_node
-          # Convert left-associative OR chain to right-associative for simpler processing
-          # (A || B) || C  →  A || (B || C)
-          @e1 = AST.create_node(raw_node.left.left, lenv)
-          e2_1 = AST.create_node(raw_node.left.right, lenv)
-          raw_e2_2 = raw_node.right
-          dummy_raw_node = raw_node.right # XXX: This is not correct
-          @e2 = OrNode.new(dummy_raw_node, e2_1, raw_e2_2, lenv)
-        else
-          @e1 = e1 || AST.create_node(raw_node.left, lenv)
-          @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
-        end
+        @e1 = e1 || AST.create_node(raw_node.left, lenv)
+        @e2 = AST.create_node(raw_e2 || raw_node.right, lenv)
       end
 
       attr_reader :e1, :e2
@@ -494,11 +467,12 @@ module TypeProf::Core
         v1 = @e1.install(genv)
         v1 = NilFilter.new(genv, self, v1, false).next_vtx
 
-        # Apply type narrowing based on left side for OR
-        narrowing = AST.detect_narrowing(@e1)
-        if narrowing
+        # For OR: if left side is falsy, apply negated narrowing to right side
+        # Use legacy detect_narrowing for now to maintain compatibility
+        _then_narrowing, else_narrowing = @e1.narrowings
+        if else_narrowing
           # For OR: negated narrowing (negate: true)
-          v2 = AST.with_narrowing(genv, self, @lenv, narrowing, negate: true) do
+          v2 = AST.with_narrowing(genv, self, @lenv, else_narrowing) do
             @e2.install(genv)
           end
         else
@@ -509,6 +483,14 @@ module TypeProf::Core
         @changes.add_edge(genv, v2, ret)
 
         ret
+      end
+
+      def narrowings
+        @narrowings ||= begin
+          e1_then_narrowing, e1_else_narrowing = @e1.narrowings
+          e2_then_narrowing, e2_else_narrowing = @e2.narrowings
+          [e1_then_narrowing.or(e2_then_narrowing), e1_else_narrowing.and(e2_else_narrowing)]
+        end
       end
     end
 

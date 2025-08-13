@@ -210,6 +210,28 @@ module TypeProf::Core
         raw_block = raw_node.block
         super(raw_node, recv, mid, mid_code_range, raw_args, nil, raw_block, lenv)
       end
+
+      def narrowings
+        @narrowings ||= begin
+          args = @positional_args
+          case @mid
+          when :is_a?
+            if @recv.is_a?(LocalVariableReadNode) && args && args.size == 1
+              [
+                Narrowing.new({ @recv.var => Narrowing::IsAConstraint.new(args[0], false) }),
+                Narrowing.new({ @recv.var => Narrowing::IsAConstraint.new(args[0], true) })
+              ]
+            else
+              super
+            end
+          when :!
+            then_narrowing, else_narrowing = @recv.narrowings
+            [else_narrowing, then_narrowing]
+          else
+            super
+          end
+        end
+      end
     end
 
     class SuperNode < CallBaseNode

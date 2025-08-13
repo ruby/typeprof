@@ -116,6 +116,10 @@ module TypeProf::Core
         end
       end
 
+      def narrowings
+        Narrowing::EmptyNarrowings
+      end
+
       def diff(prev_node)
         if prev_node.is_a?(self.class) && attrs.all? {|key, attr| attr == prev_node.send(key) }
           raise unless prev_node # annotation

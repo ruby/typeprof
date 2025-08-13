@@ -47,6 +47,10 @@ module TypeProf::Core
         end
       end
 
+      def narrowings
+        @stmts.size == 1 ? @stmts[0].narrowings : super
+      end
+
       def diff(prev_node)
         if prev_node.is_a?(StatementsNode)
           i = 0
