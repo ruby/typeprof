@@ -73,11 +73,11 @@ module TypeProf::Core
         @cond.install(genv)
 
         vars = []
-        vars << @cond.var if @cond.is_a?(LocalVariableReadNode)
-        var, filter_class = AST.is_a_class(@cond)
-        vars << var if var
         @then.modified_vars(@lenv.locals.keys, vars) if @then
         @else.modified_vars(@lenv.locals.keys, vars) if @else
+        then_narrowing, else_narrowing = @cond.narrowings
+        vars.concat(then_narrowing.map.keys.reject {|var| var.start_with?("@") })
+        vars.concat(else_narrowing.map.keys.reject {|var| var.start_with?("@") })
         modified_vtxs = {}
         vars.uniq.each do |var|
           vtx = @lenv.get_var(var)
@@ -85,48 +85,30 @@ module TypeProf::Core
           nvtx_else = vtx.new_vertex(genv, self)
           modified_vtxs[var] = [nvtx_then, nvtx_else]
         end
-        if @cond.is_a?(LocalVariableReadNode)
-          nvtx_then, nvtx_else = modified_vtxs[@cond.var]
-          nvtx_then = NilFilter.new(genv, self, nvtx_then, !self.is_a?(IfNode)).next_vtx
-          nvtx_else = NilFilter.new(genv, self, nvtx_else, self.is_a?(IfNode)).next_vtx
-          modified_vtxs[@cond.var] = [nvtx_then, nvtx_else]
-        end
-        if filter_class
-          nvtx_then, nvtx_else = modified_vtxs[var]
-          nvtx_then = IsAFilter.new(genv, self, nvtx_then, !self.is_a?(IfNode), filter_class).next_vtx
-          nvtx_else = IsAFilter.new(genv, self, nvtx_else, self.is_a?(IfNode), filter_class).next_vtx
-          modified_vtxs[var] = [nvtx_then, nvtx_else]
-        end
 
-        if @then
-          modified_vtxs.each do |var, (nvtx_then, _)|
-            @lenv.set_var(var, nvtx_then)
-          end
-          if @cond.is_a?(InstanceVariableReadNode)
-            @lenv.push_ivar_narrowing(@cond.var, Narrowing::NilConstraint.new(false))
-          end
-          then_val = @then.install(genv)
-          if @cond.is_a?(InstanceVariableReadNode)
-            @lenv.pop_ivar_narrowing(@cond.var)
-          end
+        narrowing = self.is_a?(IfNode) ? then_narrowing : else_narrowing
+        modified_vtxs.each do |var, (nvtx_then, _)|
+          @lenv.set_var(var, nvtx_then)
+        end
+        then_val = AST.with_narrowing(genv, self, @lenv, narrowing) do
+          val = @then ? @then.install(genv) : Source.new(genv.nil_type)
           modified_vtxs.each do |var, ary|
             ary[0] = @lenv.get_var(var)
           end
-        else
-          then_val = Source.new(genv.nil_type)
+          val
         end
         @changes.add_edge(genv, then_val, ret)
 
-        if @else
-          modified_vtxs.each do |var, (_, nvtx_else)|
-            @lenv.set_var(var, nvtx_else)
-          end
-          else_val = @else.install(genv)
+        narrowing = self.is_a?(IfNode) ? else_narrowing : then_narrowing
+        modified_vtxs.each do |var, (_, nvtx_else)|
+          @lenv.set_var(var, nvtx_else)
+        end
+        else_val = AST.with_narrowing(genv, self, @lenv, narrowing) do
+          val = @else ? @else.install(genv) : Source.new(genv.nil_type)
           modified_vtxs.each do |var, ary|
             ary[1] = @lenv.get_var(var)
           end
-        else
-          else_val = Source.new(genv.nil_type)
+          val
         end
         @changes.add_edge(genv, else_val, ret)
 
