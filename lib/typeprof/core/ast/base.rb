@@ -9,6 +9,7 @@ module TypeProf::Core
         @ret = nil
 
         @changes = ChangeSet.new(self, nil)
+        @diagnostics = Set[]
       end
 
       attr_reader :lenv
@@ -16,6 +17,7 @@ module TypeProf::Core
       attr_reader :static_ret
       attr_reader :ret
       attr_reader :changes
+      attr_reader :diagnostics
 
       def subnodes = {}
       def attrs = {}
@@ -99,6 +101,10 @@ module TypeProf::Core
       def install_copy(genv)
         @changes.copy_from((@prev_node || raise).changes)
         @changes.reuse(self)
+        (@prev_node || raise).diagnostics.each do |diag|
+          diag.reuse(self)
+          @diagnostics << diag
+        end
         each_subnode do |subnode|
           subnode.install_copy(genv)
         end
@@ -118,6 +124,14 @@ module TypeProf::Core
 
       def narrowings
         Narrowing::EmptyNarrowings
+      end
+
+      def add_diagnostic(diag)
+        @diagnostics << diag
+      end
+
+      def remove_diagnostic(diag)
+        @diagnostics.delete(diag)
       end
 
       def diff(prev_node)
@@ -163,13 +177,10 @@ module TypeProf::Core
         end
       end
 
-      def diagnostics(genv, &blk)
-        @changes.diagnostics.each(&blk)
-        @changes.boxes.each_value do |box|
-          box.diagnostics(genv, &blk)
-        end
+      def each_diagnostic(genv, &blk)
+        @diagnostics.each(&blk)
         each_subnode do |subnode|
-          subnode.diagnostics(genv, &blk)
+          subnode.each_diagnostic(genv, &blk)
         end
       end
 

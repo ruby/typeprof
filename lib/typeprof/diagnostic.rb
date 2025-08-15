@@ -11,7 +11,7 @@ module TypeProf
       @node = new_node
     end
 
-    attr_reader :msg, :tags
+    attr_reader :node, :msg, :tags
 
     def code_range
       @node.send(@meth)

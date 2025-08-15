@@ -11,7 +11,7 @@ end
 
 ## assert: test.rb
 class Foo
-  def foo: (var[X]) -> nil
+  def foo: (var[X]) -> Object?
 end
 
 ## update: test.rb
@@ -24,7 +24,7 @@ end
 
 ## assert: test.rb
 class Foo
-  def foo: (var[X]) -> nil
+  def foo: (var[X]) -> Object?
 end
 
 ## diagnostics

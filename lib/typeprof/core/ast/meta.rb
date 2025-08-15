@@ -79,8 +79,7 @@ module TypeProf::Core
         @args.each do |arg|
           ivar_name = :"@#{ arg }"
           ivar_box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, ivar_name)
-          e_ret = Vertex.new(self)
-          ret_box = @changes.add_escape_box(genv, ivar_box.ret, e_ret)
+          ret_box = @changes.add_escape_box(genv, ivar_box.ret)
           @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [ret_box])
         end
         Source.new
@@ -136,8 +135,7 @@ module TypeProf::Core
       def install0(genv)
         @args.zip(@static_ret) do |arg, ive|
           ivar_box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, :"@#{ arg }")
-          e_ret = Vertex.new(self)
-          ret_box = @changes.add_escape_box(genv, ivar_box.ret, e_ret)
+          ret_box = @changes.add_escape_box(genv, ivar_box.ret)
           @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [ret_box])
 
           vtx = Vertex.new(self)

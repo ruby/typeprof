@@ -6,4 +6,4 @@ end
 # TODO: support showing type parameters
 
 ## hover: test.rb:2:3
-Hash[Integer, Integer]#map : -> ::Array[...] | -> ::Enumerator[...]
+Hash[Integer, Integer]#map : -> Array[...] | -> Enumerator[...]

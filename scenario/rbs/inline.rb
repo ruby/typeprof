@@ -12,6 +12,6 @@ end
 
 ## assert
 class C
-  def foo: (Integer) -> bot
+  def foo: (Integer) -> Integer
   def bar: -> Integer
 end

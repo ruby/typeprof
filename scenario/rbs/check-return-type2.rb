@@ -9,6 +9,8 @@ class Foo
   end
 end
 
+## diagnostics: test0.rb
+
 ## update: test1.rb
 class Foo
   class Bar

@@ -28,26 +28,25 @@ optional_keywords
 rest_keywords
 
 ## hover: test.rb:1:1
-Object#required_positional_args : (::Integer) -> ::Integer
+Object#required_positional_args : (Integer) -> Integer
 
 ## hover: test.rb:2:1
-Object#optional_positional_args : (?::Integer) -> ::Integer
+Object#optional_positional_args : (?Integer) -> Integer
 
 ## hover: test.rb:3:1
-Object#post_required_positional_args : (?::Integer, ::Integer) -> ::Integer
+Object#post_required_positional_args : (?Integer, Integer) -> Integer
 
 ## hover: test.rb:4:1
-Object#rest_positional_args : (*::Integer) -> ::Integer
+Object#rest_positional_args : (*Integer) -> Integer
 
 ## hover: test.rb:5:1
-
-Object#rest_post_positional_args : (*::Integer, ::Integer) -> ::Integer
+Object#rest_post_positional_args : (*Integer, Integer) -> Integer
 
 ## hover: test.rb:6:1
-Object#required_keywords : (a: ::Integer) -> ::Integer
+Object#required_keywords : (a: Integer) -> Integer
 
 ## hover: test.rb:7:1
-Object#optional_keywords : (?a: ::Integer) -> ::Integer
+Object#optional_keywords : (?a: Integer) -> Integer
 
 ## hover: test.rb:8:1
-Object#rest_keywords : (**untyped) -> ::Integer
+Object#rest_keywords : (**untyped) -> Integer

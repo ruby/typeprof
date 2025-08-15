@@ -130,9 +130,9 @@ module TypeProf::Core
             block_body.lenv.set_var(var, nvtx)
           end
 
-          e_ret = @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new(self)
+          @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new(self)
           @block_body.install(genv)
-          @block_body.lenv.add_next_box(@changes.add_escape_box(genv, @block_body.ret, e_ret))
+          @block_body.lenv.add_next_box(@changes.add_escape_box(genv, @block_body.ret))
 
           vars.each do |var|
             @changes.add_edge(genv, block_body.lenv.get_var(var), @lenv.get_var(var))

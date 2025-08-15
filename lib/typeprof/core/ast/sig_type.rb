@@ -1,5 +1,83 @@
 module TypeProf::Core
   class AST
+    def self.typecheck_for_module(genv, changes, f_mod, f_args, a_vtx, subst)
+      changes.add_edge(genv, a_vtx, changes.target)
+      a_vtx.each_type do |ty|
+        ty = ty.base_type(genv)
+        while ty
+          if ty.mod == f_mod
+            args_all_match = true
+            f_args.zip(ty.args) do |f_arg_node, a_arg_ty|
+              unless f_arg_node.typecheck(genv, changes, a_arg_ty, subst)
+                args_all_match = false
+                break
+              end
+            end
+            return true if args_all_match
+          end
+          changes.add_depended_superclass(ty.mod)
+
+          if f_mod.module?
+            return true if typecheck_for_prepended_modules(genv, changes, ty, f_mod, f_args, subst)
+            return true if typecheck_for_included_modules(genv, changes, ty, f_mod, f_args, subst)
+          end
+
+          ty = genv.get_superclass_type(ty, changes, {})
+        end
+      end
+      return false
+    end
+
+    def self.typecheck_for_prepended_modules(genv, changes, a_ty, f_mod, f_args, subst)
+      a_ty.mod.prepended_modules.each do |prep_decl, prep_mod|
+        if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
+          prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, {}, a_ty)
+        else
+          type_params = prep_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+          prep_ty = Type::Instance.new(genv, prep_mod, type_params)
+        end
+        if prep_ty.mod == f_mod
+          args_all_match = true
+          f_args.zip(prep_ty.args) do |f_arg_node, a_arg_ty|
+            unless f_arg_node.typecheck(genv, changes, a_arg_ty, subst)
+              args_all_match = false
+              break
+            end
+          end
+          return true if args_all_match
+        end
+        changes.add_depended_superclass(prep_ty.mod)
+
+        return true if typecheck_for_prepended_modules(genv, changes, prep_ty, f_mod, f_args, subst)
+      end
+      return false
+    end
+
+    def self.typecheck_for_included_modules(genv, changes, a_ty, f_mod, f_args, subst)
+      a_ty.mod.included_modules.each do |inc_decl, inc_mod|
+        if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
+          inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, {}, a_ty)
+        else
+          type_params = inc_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+          inc_ty = Type::Instance.new(genv, inc_mod, type_params)
+        end
+        if inc_ty.mod == f_mod
+          args_all_match = true
+          f_args.zip(inc_ty.args) do |f_arg_node, a_arg_vtx|
+            unless f_arg_node.typecheck(genv, changes, a_arg_vtx, subst)
+              args_all_match = false
+              break
+            end
+          end
+          return true if args_all_match
+        end
+        changes.add_depended_superclass(inc_ty.mod)
+
+        return true if typecheck_for_included_modules(genv, changes, inc_ty, f_mod, f_args, subst)
+      end
+      return false
+    end
+
     class SigFuncType < Node
       def initialize(raw_decl, raw_type_params, raw_block, lenv)
         super(raw_decl, lenv)
@@ -101,6 +179,14 @@ module TypeProf::Core
         changes.add_edge(genv, Source.new(genv.true_type, genv.false_type), vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_edge(genv, vtx, changes.target)
+        vtx.each_type do |ty|
+          return false unless ty == genv.true_type || ty == genv.false_type
+        end
+        true
+      end
+
       def show
         "bool"
       end
@@ -113,6 +199,14 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, Source.new(genv.nil_type), vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_edge(genv, vtx, changes.target)
+        vtx.each_type do |ty|
+          return false unless ty == genv.nil_type
+        end
+        true
       end
 
       def show
@@ -129,6 +223,10 @@ module TypeProf::Core
         changes.add_edge(genv, subst[:"*self"], vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        true # TODO: check self type
+      end
+
       def show
         "self"
       end
@@ -143,6 +241,10 @@ module TypeProf::Core
         changes.add_edge(genv, Source.new(genv.obj_type), vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        true
+      end
+
       def show
         "void"
       end
@@ -154,6 +256,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         #Source.new(genv.obj_type).add_edge(genv, vtx) # TODO
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        true
       end
 
       def show
@@ -170,6 +276,10 @@ module TypeProf::Core
         # TODO
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        true
+      end
+
       def show
         "top"
       end
@@ -182,6 +292,11 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, Source.new(Type::Bot.new(genv)), vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_edge(genv, vtx, changes.target)
+        vtx.types.empty?
       end
 
       def show
@@ -198,6 +313,10 @@ module TypeProf::Core
         changes.add_edge(genv, subst[:"*instance"], vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        true # TODO: implement
+      end
+
       def show
         "instance"
       end
@@ -210,6 +329,10 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, subst[:"*class"], vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        true # TODO: implement
       end
 
       def show
@@ -314,6 +437,20 @@ module TypeProf::Core
         end
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
+        tae = @static_ret.last.type_alias_entity
+        if tae && tae.exist?
+          # TODO: check for recursive expansion
+          decl = tae.decls.each {|decl| break decl }
+          subst0 = subst.dup
+          decl.params.zip(@args) do |param, arg|
+            subst0[param] = arg.covariant_vertex(genv, changes, subst0)
+          end
+          tae.type.typecheck(genv, changes, vtx, subst0)
+        end
+      end
+
       def show
         "(...alias...)"
       end
@@ -341,6 +478,13 @@ module TypeProf::Core
         end
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        @types.each do |type|
+          return true if type.typecheck(genv, changes, vtx, subst)
+        end
+        false
+      end
+
       def show
         @types.map {|ty| ty.show }.join(" | ")
       end
@@ -353,6 +497,13 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         #raise NotImplementedError
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        @types.each do |type|
+          return false unless type.typecheck(genv, changes, vtx, subst)
+        end
+        true
       end
 
       def show
@@ -406,6 +557,30 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         changes.add_edge(genv, Source.new(Type::Singleton.new(genv, mod)), vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
+        cpath = @static_ret.last.cpath
+        return unless cpath
+        f_mod = genv.resolve_cpath(cpath)
+        changes.add_edge(genv, vtx, changes.target)
+        vtx.each_type do |ty|
+          case ty
+          when Type::Singleton
+            if f_mod.module?
+              # TODO: implement
+            else
+              a_mod = ty.mod
+              while a_mod
+                return true if a_mod == f_mod
+                changes.add_depended_superclass(a_mod)
+                a_mod = a_mod.superclass
+              end
+            end
+          end
+        end
+        false
       end
 
       def show
@@ -473,8 +648,17 @@ module TypeProf::Core
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
+        cpath = @static_ret.last.cpath
+        return unless cpath
+        f_mod = genv.resolve_cpath(cpath)
+        AST.typecheck_for_module(genv, changes, f_mod, @args, vtx, subst)
+      end
+
       def show
-        s = "::#{ @cpath.join("::") }"
+        cpath = @static_ret.last.cpath
+        s = "#{ cpath.join("::") }"
         if !@args.empty?
           s << "[...]"
         end
@@ -509,6 +693,26 @@ module TypeProf::Core
           nvtx
         end
         changes.add_edge(genv, Source.new(Type::Array.new(genv, elems, genv.gen_ary_type(unified_elem))), vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_edge(genv, vtx, changes.target)
+        vtx.each_type do |ty|
+          case ty
+          when Type::Array
+            next if ty.elems.size != @types.size
+            @types.zip(ty.elems) do |f_ty, a_ty|
+              return false unless f_ty.typecheck(genv, changes, a_ty, subst)
+            end
+            return true
+          when Type::Instance
+            @types.each do |f_ty|
+              return false unless f_ty.typecheck(genv, changes, ty, subst)
+            end
+            return true
+          end
+        end
+        false
       end
 
       def show
@@ -561,6 +765,21 @@ module TypeProf::Core
         changes.add_edge(genv, Source.new(Type::Record.new(genv, field_vertices, base_hash_type)), vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_edge(genv, vtx, changes.target)
+        vtx.each_type do |ty|
+          case ty
+          when Type::Hash
+            @fields.each do |key, field_node|
+              val_vtx = ty.get_value(key)
+              return false unless field_node.typecheck(genv, changes, val_vtx, subst)
+            end
+            return true
+          end
+        end
+        false
+      end
+
       def show
         field_strs = @fields.map do |key, field_node|
           "#{ key }: #{ field_node.show }"
@@ -589,6 +808,11 @@ module TypeProf::Core
         changes.add_edge(genv, Source.new(Type::Var.new(genv, @var, subst[@var])), vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_edge(genv, vtx, subst[@var]) unless vtx == subst[@var]
+        true
+      end
+
       def show
         "#{ @var }"
       end
@@ -611,6 +835,10 @@ module TypeProf::Core
       def contravariant_vertex0(genv, changes, vtx, subst)
         @type.contravariant_vertex0(genv, changes, vtx, subst)
         changes.add_edge(genv, Source.new(genv.nil_type), vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        @type.typecheck(genv, changes, vtx, subst)
       end
 
       def show
@@ -652,6 +880,21 @@ module TypeProf::Core
         changes.add_edge(genv, Source.new(get_type(genv)), vtx)
       end
 
+      def typecheck(genv, changes, vtx, subst)
+        if @lit.is_a?(::Symbol)
+          changes.add_edge(genv, vtx, changes.target)
+          vtx.each_type do |ty|
+            case ty
+            when Type::Symbol
+              return true if ty.sym == @lit
+            end
+          end
+          return false
+        end
+        f_mod = get_type(genv).mod
+        AST.typecheck_for_module(genv, changes, f_mod, [], vtx, subst)
+      end
+
       def show
         @lit.inspect
       end
@@ -687,6 +930,11 @@ module TypeProf::Core
         # For now, just return the base Proc type without the function signature details
         # TODO: Create a proper Type::Proc with the function signature
         changes.add_edge(genv, Source.new(genv.proc_type), vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        # TODO: proper check
+        AST.typecheck_for_module(genv, changes, genv.proc_type.mod, [], vtx, subst)
       end
 
       def show
@@ -745,6 +993,15 @@ module TypeProf::Core
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
+      end
+
+      def typecheck(genv, changes, vtx, subst)
+        changes.add_depended_static_read(@static_ret.last)
+        cpath = @static_ret.last.cpath
+        return unless cpath
+        f_mod = genv.resolve_cpath(cpath)
+        # self/f_mod: formal, vtx: actual
+        AST.typecheck_for_module(genv, changes, f_mod, @args, vtx, subst)
       end
 
       def show

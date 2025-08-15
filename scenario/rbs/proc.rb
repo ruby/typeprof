@@ -24,7 +24,7 @@ end
 ## assert
 class Foo
   def initialize: -> Proc
-  def set_proc: (Proc) -> Proc
+  def set_proc: (Proc) -> (Object | Proc)
   def get_proc: -> Proc
 end
 
@@ -45,8 +45,8 @@ end
 
 ## assert
 class Object
-  def take_proc: (Proc) -> untyped
-  def call_proc: (Proc) -> untyped
+  def take_proc: (Proc) -> Object
+  def call_proc: (Proc) -> Integer
 end
 
 ## update: test.rbs
@@ -68,6 +68,6 @@ end
 
 ## assert
 class Bar
-  def with_block: { () -> untyped } -> untyped
-  def proc_arg: (Proc) -> untyped
+  def with_block: { () -> untyped } -> Object
+  def proc_arg: (Proc) -> Integer
 end

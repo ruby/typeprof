@@ -3,6 +3,7 @@ module TypeProf::Core
     def initialize(node, target)
       @node = node
       @target = target
+      @new_vertexes = {}
       @covariant_types = {}
       @contravariant_types = {}
       @edges = []
@@ -21,15 +22,12 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :node, :covariant_types, :edges, :boxes, :diagnostics
+    attr_reader :node, :target, :covariant_types, :edges, :boxes, :diagnostics
 
     def reuse(new_node)
       @node = new_node
       @boxes.each_value do |box|
         box.reuse(new_node)
-      end
-      @diagnostics.each do |diag|
-        diag.reuse(new_node)
       end
     end
 
@@ -45,19 +43,22 @@ module TypeProf::Core
       other.diagnostics.clear
     end
 
+    def new_vertex(genv, origin, base_vtx)
+      new_vtx = @new_vertexes[base_vtx] ||= Vertex.new(origin)
+      add_edge(genv, base_vtx, new_vtx)
+      new_vtx
+    end
+
     def new_covariant_vertex(genv, sig_type_node)
       # This is used to avoid duplicated vertex generation for the same sig node
       @covariant_types[sig_type_node] ||= Vertex.new(sig_type_node)
     end
 
     def new_contravariant_vertex(genv, sig_type_node)
-      # This is used to avoid duplicated vertex generation for the same sig node
-      @contravariant_types[sig_type_node] ||= Vertex.new(sig_type_node)
+      Vertex.new(sig_type_node)
     end
 
     def add_edge(genv, src, dst)
-      raise src.class.to_s unless src.is_a?(BasicVertex)
-      src.add_edge(genv, dst) if !@edges.include?([src, dst]) && !@new_edges.include?([src, dst])
       @new_edges << [src, dst]
     end
 
@@ -68,14 +69,14 @@ module TypeProf::Core
       @new_boxes[key] ||= MethodCallBox.new(@node, genv, recv, mid, a_args, subclasses)
     end
 
-    def add_escape_box(genv, a_ret, f_ret)
+    def add_escape_box(genv, a_ret)
       key = [:return, a_ret]
-      @new_boxes[key] ||= EscapeBox.new(@node, genv, a_ret, f_ret)
+      @new_boxes[key] ||= EscapeBox.new(@node, genv, a_ret)
     end
 
-    def add_splat_box(genv, arg)
-      key = [:splat, arg]
-      @new_boxes[key] ||= SplatBox.new(@node, genv, arg)
+    def add_splat_box(genv, arg, idx = nil)
+      key = [:splat, arg, idx]
+      @new_boxes[key] ||= SplatBox.new(@node, genv, arg, idx)
     end
 
     def add_hash_splat_box(genv, arg, unified_key, unified_val)
@@ -133,8 +134,8 @@ module TypeProf::Core
       @new_boxes[key] ||= InstanceTypeBox.new(@node, genv, singleton_ty_vtx)
     end
 
-    def add_diagnostic(meth, msg)
-      @new_diagnostics << TypeProf::Diagnostic.new(@node, meth, msg)
+    def add_diagnostic(meth, msg, node = @node)
+      @new_diagnostics << TypeProf::Diagnostic.new(node, meth, msg)
     end
 
     def add_depended_value_entity(ve)
@@ -155,6 +156,9 @@ module TypeProf::Core
 
     def reinstall(genv)
       @new_edges.uniq!
+      @new_edges.each do |src, dst|
+        src.add_edge(genv, dst) unless @edges.include?([src, dst])
+      end
       @edges.each do |src, dst|
         src.remove_edge(genv, dst) unless @new_edges.include?([src, dst])
       end
@@ -167,6 +171,12 @@ module TypeProf::Core
       @boxes, @new_boxes = @new_boxes, @boxes
       @new_boxes.clear
 
+      @diagnostics.each do |diag|
+        diag.node.remove_diagnostic(diag)
+      end
+      @new_diagnostics.each do |diag|
+        diag.node.add_diagnostic(diag)
+      end
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
 

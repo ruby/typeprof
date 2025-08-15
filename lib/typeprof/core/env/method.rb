@@ -41,7 +41,7 @@ module TypeProf::Core
       ActualArguments.new(positionals, splat_flags, keywords, block)
     end
 
-    def get_rest_args(genv, start_rest, end_rest)
+    def get_rest_args(genv, changes, start_rest, end_rest)
       vtxs = []
 
       start_rest.upto(end_rest - 1) do |i|
@@ -50,7 +50,7 @@ module TypeProf::Core
           a_arg.each_type do |ty|
             ty = ty.base_type(genv)
             if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
-              vtxs << ty.args[0].new_vertex(genv, self)
+              vtxs << changes.new_vertex(genv, self, ty.args[0])
             else
               "???"
             end
@@ -89,24 +89,14 @@ module TypeProf::Core
       @next_boxes = next_boxes
     end
 
-    attr_reader :node, :f_args, :ret
+    attr_reader :node, :f_args, :next_boxes
 
-    def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
+    def accept_args(genv, changes, caller_positionals)
       if caller_positionals.size == 1 && @f_args.size >= 2
         single_arg = caller_positionals[0]
 
         @f_args.each_with_index do |f_arg, i|
-          elem_vtx = Vertex.new(@node)
-          single_arg.each_type do |ty|
-            case ty
-            when Type::Array
-              if ty.elems && i < ty.elems.size
-                changes.add_edge(genv, ty.elems[i], elem_vtx)
-              else
-                changes.add_edge(genv, ty.get_elem(genv, i), elem_vtx)
-              end
-            end
-          end
+          elem_vtx = changes.add_splat_box(genv, single_arg, i).ret
           changes.add_edge(genv, elem_vtx, f_arg)
         end
       else
@@ -114,14 +104,11 @@ module TypeProf::Core
           changes.add_edge(genv, a_arg, f_arg) if f_arg
         end
       end
-      if ret_check
-        @next_boxes.each do |box|
-          changes.add_edge(genv, caller_ret, box.f_ret)
-        end
-      else
-        @next_boxes.each do |box|
-          changes.add_edge(genv, box.a_ret, caller_ret)
-        end
+    end
+
+    def add_ret(genv, changes, ret)
+      @next_boxes.each do |box|
+        changes.add_edge(genv, box.a_ret, ret)
       end
     end
   end
@@ -140,12 +127,15 @@ module TypeProf::Core
 
     attr_reader :node, :f_args, :ret, :used
 
-    def accept_args(genv, changes, caller_positionals, caller_ret, ret_check)
+    def accept_args(genv, changes, caller_positionals)
       @used = true
       caller_positionals.each_with_index do |a_arg, i|
         changes.add_edge(genv, a_arg.new_vertex(genv, @node), get_f_arg(i))
       end
-      changes.add_edge(genv, caller_ret, @ret)
+    end
+
+    def add_ret(genv, changes, ret)
+      changes.add_edge(genv, ret, @ret)
     end
   end
 end

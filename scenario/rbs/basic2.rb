@@ -15,6 +15,6 @@ end
 
 ## assert: test.rb
 class C
-  def foo: (Integer) -> nil
+  def foo: (Integer) -> Integer
   def bar: (Integer) -> nil
 end

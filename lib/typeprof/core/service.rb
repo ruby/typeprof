@@ -139,7 +139,7 @@ module TypeProf::Core
     end
 
     def diagnostics(path, &blk)
-      @rb_text_nodes[path]&.diagnostics(@genv, &blk)
+      @rb_text_nodes[path]&.each_diagnostic(@genv, &blk)
     end
 
     def definitions(path, pos)

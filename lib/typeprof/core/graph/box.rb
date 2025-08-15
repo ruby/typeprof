@@ -39,15 +39,9 @@ module TypeProf::Core
       @changes.reinstall(genv)
     end
 
-    def diagnostics(genv, &blk)
-      raise self.to_s if !@changes
-      @changes.diagnostics.each(&blk)
-      @changes.boxes.each_value do |box|
-        box.diagnostics(genv, &blk)
-      end
+    def run0(genv, changes)
+      raise NotImplementedError
     end
-
-    #@@new_id = 0
 
     def to_s
       "#{ self.class.to_s.split("::").last[0] }#{ @id ||= $new_id += 1 }"
@@ -155,13 +149,11 @@ module TypeProf::Core
       end
 
       method_type.req_positionals.each_with_index do |ty, i|
-        f_arg = ty.contravariant_vertex(genv, changes, param_map)
-        return false unless a_args.positionals[i].check_match(genv, changes, f_arg)
+        return false unless ty.typecheck(genv, changes, a_args.positionals[i], param_map)
       end
       method_type.post_positionals.each_with_index do |ty, i|
-        f_arg = ty.contravariant_vertex(genv, changes, param_map)
         i -= method_type.post_positionals.size
-        return false unless a_args.positionals[i].check_match(genv, changes, f_arg)
+        return false unless ty.typecheck(genv, changes, a_args.positionals[i], param_map)
       end
 
       start_rest = method_type.req_positionals.size
@@ -170,22 +162,20 @@ module TypeProf::Core
       i = 0
       while i < method_type.opt_positionals.size && start_rest < end_rest
         break if a_args.splat_flags[start_rest]
-        f_arg = method_type.opt_positionals[i].contravariant_vertex(genv, changes, param_map)
-        return false unless a_args.positionals[start_rest].check_match(genv, changes, f_arg)
+        return false unless method_type.opt_positionals[i].typecheck(genv, changes, a_args.positionals[start_rest], param_map)
         i += 1
         start_rest += 1
       end
 
       if start_rest < end_rest
-        vtxs = a_args.get_rest_args(genv, start_rest, end_rest)
+        vtxs = a_args.get_rest_args(genv, changes, start_rest, end_rest)
         while i < method_type.opt_positionals.size
-          f_arg = method_type.opt_positionals[i].contravariant_vertex(genv, changes, param_map)
-          return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
+          ty = method_type.opt_positionals[i]
+          return false if vtxs.any? {|vtx| !ty.typecheck(genv, changes, vtx, param_map) }
           i += 1
         end
         if method_type.rest_positionals
-          f_arg = method_type.rest_positionals.contravariant_vertex(genv, changes, param_map)
-          return false if vtxs.any? {|vtx| !vtx.check_match(genv, changes, f_arg) }
+          return false if vtxs.any? {|vtx| !method_type.rest_positionals.typecheck(genv, changes, vtx, param_map) }
         end
       end
 
@@ -225,15 +215,21 @@ module TypeProf::Core
       end
       if rbs_blk && a_args.block
         # rbs_blk_func.optional_keywords, ...
+        blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
+          blk_a_arg.covariant_vertex(genv, changes, param_map0)
+        end
         a_args.block.each_type do |ty|
           case ty
           when Type::Proc
-            blk_f_ret = rbs_blk.return_type.contravariant_vertex(genv, changes, param_map0)
-            blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
-              blk_a_arg.covariant_vertex(genv, changes, param_map0)
-            end
+            ty.block.accept_args(genv, changes, blk_a_args)
 
-            ty.block.accept_args(genv, changes, blk_a_args, blk_f_ret, true)
+            if ty.block.is_a?(Block)
+              ty.block.next_boxes.each do |next_box|
+                unless rbs_blk.return_type.typecheck(genv, changes, next_box.a_ret, param_map0)
+                  next_box.wrong_return_type(rbs_blk.return_type.show, changes)
+                end
+              end
+            end
           end
         end
       end
@@ -300,55 +296,66 @@ module TypeProf::Core
   end
 
   class EscapeBox < Box
-    def initialize(node, genv, a_ret, f_ret)
+    def initialize(node, genv, a_ret)
       super(node)
       @a_ret = a_ret.new_vertex(genv, node)
-      @f_ret = f_ret
-      @f_ret.add_edge(genv, self)
     end
 
-    attr_reader :a_ret, :f_ret
+    attr_reader :a_ret
 
     def ret = @a_ret
 
     def run0(genv, changes)
-      unless @a_ret.check_match(genv, changes, @f_ret)
-        actual_ty = @a_ret.show
-        return if actual_ty == "untyped" # XXX: too ad-hoc?
-        msg = "expected: #{ @f_ret.show }; actual: #{ actual_ty }"
-        case @node
-        when AST::ReturnNode
-          changes.add_diagnostic(:code_range, msg)
-        when AST::DefNode
-          changes.add_diagnostic(:last_stmt_code_range, msg)
-        when AST::NextNode
-          changes.add_diagnostic(:code_range, msg)
-        when AST::CallNode
-          changes.add_diagnostic(:block_last_stmt_code_range, msg)
-        when AST::AttrReaderMetaNode, AST::AttrAccessorMetaNode
-          changes.add_diagnostic(:code_range, msg)
-        else
-          pp @node.class
-        end
+      return
+    end
+
+    def wrong_return_type(f_ret_show, changes)
+      actual_ty = @a_ret.show
+      return if actual_ty == "untyped" # XXX: too ad-hoc?
+      msg = "expected: #{ f_ret_show }; actual: #{ actual_ty }"
+      case @node
+      when AST::ReturnNode
+        changes.add_diagnostic(:code_range, msg, @node)
+      when AST::DefNode
+        changes.add_diagnostic(:last_stmt_code_range, msg, @node)
+      when AST::NextNode
+        changes.add_diagnostic(:code_range, msg, @node)
+      when AST::CallNode
+        changes.add_diagnostic(:block_last_stmt_code_range, msg, @node)
+      when AST::AttrReaderMetaNode, AST::AttrAccessorMetaNode
+        changes.add_diagnostic(:code_range, msg, @node)
+      else
+        pp @node.class
       end
     end
   end
 
   class SplatBox < Box
-    def initialize(node, genv, ary)
+    def initialize(node, genv, ary, idx)
       super(node)
       @ary = ary
+      @idx = idx
       @ary.add_edge(genv, self)
       @ret = Vertex.new(node)
     end
 
-    attr_reader :ary, :ret
+    attr_reader :ary, :idx, :ret
 
     def run0(genv, changes)
       @ary.each_type do |ty|
-        ty = ty.base_type(genv)
-        if ty.mod == genv.mod_ary
-          changes.add_edge(genv, ty.args[0], @ret)
+        case ty
+        when Type::Instance
+          if ty.mod == genv.mod_ary
+            changes.add_edge(genv, ty.args[0], @ret)
+          else
+            "???"
+          end
+        when Type::Array
+          if @idx && @idx < ty.elems.size
+            changes.add_edge(genv, ty.elems[@idx], @ret)
+          else
+            changes.add_edge(genv, ty.get_elem(genv, @idx), @ret)
+          end
         else
           "???"
         end
@@ -405,11 +412,8 @@ module TypeProf::Core
       end
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.add_def(self)
-      if me.decls.empty?
-        me.add_run_all_method_call_boxes(genv)
-      else
-        genv.add_run(self)
-      end
+      me.add_run_all_method_call_boxes(genv) if me.decls.empty?
+      genv.add_run(self)
     end
 
     attr_accessor :node
@@ -419,11 +423,8 @@ module TypeProf::Core
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.remove_def(self)
-      if me.decls.empty?
-        me.add_run_all_method_call_boxes(genv)
-      else
-        genv.add_run(self)
-      end
+      me.add_run_all_method_call_boxes(genv) if me.decls.empty?
+      genv.add_run(self)
       super(genv)
     end
 
@@ -480,8 +481,11 @@ module TypeProf::Core
       if pass_arguments(changes, genv, a_args)
         # TODO: block
         f_ret = method_type.return_type.contravariant_vertex(genv, changes, param_map0)
+        changes.add_edge(genv, f_ret, @ret)
         @ret_boxes.each do |ret_box|
-          changes.add_edge(genv, f_ret, ret_box.f_ret)
+          unless method_type.return_type.typecheck(genv, changes, ret_box.a_ret, param_map0)
+            ret_box.wrong_return_type(method_type.return_type.show, changes)
+          end
         end
       end
     end
@@ -501,7 +505,7 @@ module TypeProf::Core
 
         start_rest = [a_args.splat_flags.index(true), @f_args.req_positionals.size + @f_args.opt_positionals.size].min
         end_rest = [a_args.splat_flags.rindex(true) + 1, a_args.positionals.size - @f_args.post_positionals.size].max
-        rest_vtxs = a_args.get_rest_args(genv, start_rest, end_rest)
+        rest_vtxs = a_args.get_rest_args(genv, changes, start_rest, end_rest)
 
         @f_args.req_positionals.each_with_index do |f_vtx, i|
           if i < start_rest
@@ -676,11 +680,8 @@ module TypeProf::Core
 
       me = genv.resolve_method(@cpath, @singleton, @new_mid)
       me.add_alias(self, @old_mid)
-      if me.decls.empty?
-        me.add_run_all_method_call_boxes(genv)
-      else
-        genv.add_run(self)
-      end
+      me.add_run_all_method_call_boxes(genv) if me.decls.empty?
+      genv.add_run(self)
     end
 
     attr_accessor :node
@@ -690,11 +691,8 @@ module TypeProf::Core
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @new_mid)
       me.remove_alias(self)
-      if me.decls.empty?
-        me.add_run_all_method_call_boxes(genv)
-      else
-        genv.add_run(self)
-      end
+      me.add_run_all_method_call_boxes(genv) if me.decls.empty?
+      genv.add_run(self)
       super(genv)
     end
 
@@ -711,7 +709,6 @@ module TypeProf::Core
       @recv.add_edge(genv, self)
       @mid = mid
       @a_args = a_args.new_vertexes(genv, node)
-      @a_args.positionals.each {|arg| arg.add_edge(genv, self) }
       @a_args.keywords.add_edge(genv, self) if @a_args.keywords
       @a_args.block.add_edge(genv, self) if @a_args.block
       @ret = Vertex.new(node)

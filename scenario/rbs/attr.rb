@@ -26,13 +26,13 @@ class Object
 end
 
 ## hover: test.rb:3:4
-A#foo= : (::Integer | ::Float) -> ::Integer | ::Float
+A#foo= : (Integer | Float) -> Integer | Float
 
 ## hover: test.rb:4:4
-A#foo : -> ::Integer
+A#foo : -> Integer
 
 ## hover: test.rb:9:4
-A#bar= : (::String) -> ::String
+A#bar= : (String) -> String
 
 ## hover: test.rb:10:4
-A#bar : -> ::String
+A#bar : -> String
