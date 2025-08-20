@@ -54,29 +54,6 @@ module TypeProf::Core
         self
       end
 
-      def check_match(genv, changes, vtx)
-        vtx.each_type do |other_ty|
-          case other_ty
-          when Singleton
-            other_mod = other_ty.mod
-            if other_mod.module?
-              # TODO: implement
-            else
-              mod = @mod
-              while mod
-                return true if mod == other_mod
-                changes.add_depended_superclass(mod)
-                mod = mod.superclass
-              end
-            end
-          when Instance
-            base_ty = @mod.module? ? genv.mod_type : genv.cls_type
-            return true if base_ty.check_match(genv, changes, Source.new(other_ty))
-          end
-        end
-        return false
-      end
-
       def show
         "singleton(#{ @mod.show_cpath })"
       end
@@ -100,87 +77,6 @@ module TypeProf::Core
 
       def base_type(_)
         self
-      end
-
-      def check_match(genv, changes, vtx)
-        vtx.each_type do |other_ty|
-          case other_ty
-          when Instance
-            ty = self
-            while ty
-              if ty.mod == other_ty.mod
-                args_all_match = true
-                ty.args.zip(other_ty.args) do |arg, other_arg|
-                  unless arg.check_match(genv, changes, other_arg || Source.new)
-                    args_all_match = false
-                    break
-                  end
-                end
-                return true if args_all_match
-              end
-              changes.add_depended_superclass(ty.mod)
-
-              if other_ty.mod.module?
-                return true if check_match_prepended_modules(genv, changes, ty, other_ty)
-                return true if check_match_included_modules(genv, changes, ty, other_ty)
-              end
-
-              ty = genv.get_superclass_type(ty, changes, {})
-            end
-          end
-        end
-        return false
-      end
-
-      def check_match_prepended_modules(genv, changes, ty, other_ty)
-        ty.mod.prepended_modules.each do |prep_decl, prep_mod|
-          if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
-            prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, {}, ty)
-          else
-            type_params = prep_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
-            prep_ty = Type::Instance.new(genv, prep_mod, type_params)
-          end
-          if prep_ty.mod == other_ty.mod
-            args_all_match = true
-            prep_ty.args.zip(other_ty.args) do |arg, other_arg|
-              if other_arg && !arg.check_match(genv, changes, other_arg)
-                args_all_match = false
-                break
-              end
-            end
-            return true if args_all_match
-          end
-          changes.add_depended_superclass(prep_ty.mod)
-
-          return true if check_match_prepended_modules(genv, changes, prep_ty, other_ty)
-          return true if check_match_included_modules(genv, changes, prep_ty, other_ty)
-        end
-        return false
-      end
-
-      def check_match_included_modules(genv, changes, ty, other_ty)
-        ty.mod.included_modules.each do |inc_decl, inc_mod|
-          if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
-            inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, {}, ty)
-          else
-            type_params = inc_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
-            inc_ty = Type::Instance.new(genv, inc_mod, type_params)
-          end
-          if inc_ty.mod == other_ty.mod
-            args_all_match = true
-            inc_ty.args.zip(other_ty.args) do |arg, other_arg|
-              if other_arg && !arg.check_match(genv, changes, other_arg)
-                args_all_match = false
-                break
-              end
-            end
-            return true if args_all_match
-          end
-          changes.add_depended_superclass(inc_ty.mod)
-
-          return true if check_match_included_modules(genv, changes, inc_ty, other_ty)
-        end
-        return false
       end
 
       def show
@@ -245,24 +141,6 @@ module TypeProf::Core
         @base_type
       end
 
-      def check_match(genv, changes, vtx)
-        vtx.each_type do |other_ty|
-          if other_ty.is_a?(Array)
-            if @elems.size == other_ty.elems.size
-              match = true
-              @elems.zip(other_ty.elems) do |elem, other_elem|
-                unless elem.check_match(genv, changes, other_elem)
-                  match = false
-                  break
-                end
-              end
-              return true if match
-            end
-          end
-        end
-        @base_type.check_match(genv, changes, vtx)
-      end
-
       def show
         if @elems
           "[#{ @elems.map {|e| Type.strip_parens(e.show) }.join(", ") }]"
@@ -292,32 +170,6 @@ module TypeProf::Core
         @base_type
       end
 
-      def check_match(genv, changes, vtx)
-        vtx.each_type do |other_ty|
-          case other_ty
-          when Record
-            # Hash can match with Record if Hash has Symbol keys
-            # and Hash value type can accept all Record field values
-            key_ty = get_key
-            val_ty = get_value
-
-            # Check if this Hash has Symbol keys
-            return false unless key_ty && Source.new(genv.symbol_type).check_match(genv, changes, key_ty)
-
-            # Check if Hash value type contains all required types for Record fields
-            other_ty.fields.each do |_key, field_val_vtx|
-              # For each Record field, check if field type can match with Hash value type
-              return false unless val_ty && field_val_vtx.check_match(genv, changes, val_ty)
-            end
-
-            return true
-          end
-        end
-
-        # Fall back to base_type check for other cases
-        @base_type.check_match(genv, changes, vtx)
-      end
-
       def show
         @base_type.show
       end
@@ -332,10 +184,6 @@ module TypeProf::Core
 
       def base_type(genv)
         genv.proc_type
-      end
-
-      def check_match(genv, changes, vtx)
-        genv.proc_type.check_match(genv, changes, vtx)
       end
 
       def show
@@ -355,18 +203,6 @@ module TypeProf::Core
         genv.symbol_type
       end
 
-      def check_match(genv, changes, vtx)
-        vtx.each_type do |other_ty|
-          case other_ty
-          when Symbol
-            return true if @sym == other_ty.sym
-          when Instance
-            return true if genv.symbol_type.check_match(genv, changes, Source.new(other_ty))
-          end
-        end
-        return false
-      end
-
       def show
         @sym.inspect
       end
@@ -378,10 +214,6 @@ module TypeProf::Core
 
       def base_type(genv)
         genv.obj_type
-      end
-
-      def check_match(genv, changes, vtx)
-        return true
       end
 
       def show
@@ -400,10 +232,6 @@ module TypeProf::Core
 
       def base_type(genv)
         genv.obj_type # Is this ok?
-      end
-
-      def check_match(genv, changes, vtx)
-        true # should implement a better support...
       end
 
       def show
@@ -436,38 +264,6 @@ module TypeProf::Core
 
       def base_type(genv)
         @base_type
-      end
-
-      def check_match(genv, changes, vtx)
-        vtx.each_type do |other_ty|
-          case other_ty
-          when Record
-            # Check if all fields match
-            return false unless @fields.size == other_ty.fields.size
-            @fields.each do |key, val_vtx|
-              other_val_vtx = other_ty.fields[key]
-              return false unless other_val_vtx
-              return false unless val_vtx.check_match(genv, changes, other_val_vtx)
-            end
-            return true
-          when Hash
-            # Record can match with Hash only if the Hash has Symbol keys
-            # and all record values can match with the Hash value type
-            key_vtx = other_ty.get_key
-            val_vtx = other_ty.get_value
-
-            # Check if Hash key type is Symbol
-            return false unless key_vtx && Source.new(genv.symbol_type).check_match(genv, changes, key_vtx)
-
-            # Check if all record field values can match with Hash value type
-            @fields.each do |_key, field_val_vtx|
-              return false unless field_val_vtx.check_match(genv, changes, val_vtx)
-            end
-
-            return true
-          end
-        end
-        return false
       end
 
       def show

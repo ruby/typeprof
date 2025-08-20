@@ -20,26 +20,6 @@ module TypeProf::Core
       end
     end
 
-    def check_match(genv, changes, vtx)
-      vtx.each_type do |ty|
-        if ty.is_a?(Type::Var)
-          changes.add_edge(genv, self, ty.vtx) if self != ty.vtx
-          return true
-        end
-      end
-
-      return true if vtx.types.empty?
-
-      each_type do |ty|
-        return true if vtx.types.include?(ty) # fast path
-        if ty.check_match(genv, changes, vtx)
-          return true
-        end
-      end
-
-      return false
-    end
-
     def show
       Fiber[:show_rec] ||= Set[]
       if Fiber[:show_rec].include?(self)

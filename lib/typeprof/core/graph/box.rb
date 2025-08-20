@@ -182,7 +182,7 @@ module TypeProf::Core
       return true
     end
 
-    def check_match_overload(changes, genv, method_type, node, param_map, a_args, ret, force)
+    def resolve_overload(changes, genv, method_type, node, param_map, a_args, ret, force)
       param_map0 = param_map.dup
       if method_type.type_params
         method_type.type_params.zip(yield(method_type)) do |var, vtx|
@@ -247,13 +247,13 @@ module TypeProf::Core
     def resolve_overloads(changes, genv, node, param_map, a_args, ret, &blk)
       if @method_types.size == 1
         method_type = @method_types.first
-        check_match_overload(changes, genv, method_type, node, param_map, a_args, ret, true, &blk)
+        resolve_overload(changes, genv, method_type, node, param_map, a_args, ret, true, &blk)
         return
       end
 
       match_any_overload = false
       @method_types.each do |method_type|
-        if check_match_overload(changes, genv, method_type, node, param_map, a_args, ret, false, &blk)
+        if resolve_overload(changes, genv, method_type, node, param_map, a_args, ret, false, &blk)
           match_any_overload = true
         end
       end
