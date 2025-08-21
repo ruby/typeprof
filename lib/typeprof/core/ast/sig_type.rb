@@ -658,11 +658,15 @@ module TypeProf::Core
 
       def show
         cpath = @static_ret.last.cpath
-        s = "#{ cpath.join("::") }"
-        if !@args.empty?
-          s << "[...]"
+        if cpath
+          s = "#{ cpath.join("::") }"
+          if !@args.empty?
+            s << "[...]"
+          end
+          s
+        else
+          "(unknown instance)"
         end
-        s
       end
     end
 
