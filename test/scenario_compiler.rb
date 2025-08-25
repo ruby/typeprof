@@ -115,9 +115,9 @@ assert_equal(%q\0DATA\0.rstrip, output.rstrip)
     <<-END
 output = []
 core.diagnostics(#{ @file.dump }) {|diag|
-  output << (diag.code_range.to_s << ': ' << diag.msg)
+  output << [diag.code_range, diag.msg]
 }
-output = output.join(\"\\n\")
+output = output.sort.map {|cr, msg| cr.to_s + ": " + msg }.join(\"\\n\")
 assert_equal(%q\0DATA\0.rstrip, output)
     END
   end

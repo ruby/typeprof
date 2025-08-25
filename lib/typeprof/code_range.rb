@@ -105,5 +105,10 @@ module TypeProf
     def ==(other)
       @first == other.first && @last == other.last
     end
+
+    def <=>(other)
+      cmp = @first <=> other.first
+      cmp == 0 ? @last <=> other.last : cmp
+    end
   end
 end
