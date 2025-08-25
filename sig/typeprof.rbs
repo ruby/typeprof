@@ -21,6 +21,7 @@ module TypeProf
       def completion: (String, untyped, CodePosition) { (untyped) -> untyped } -> Array[untyped]
       def dump_declarations: (String) -> String
       def rename: (String, CodePosition) -> void
+      def process_diagnostic_paths: { (String) -> bool } -> void
     end
   end
 end

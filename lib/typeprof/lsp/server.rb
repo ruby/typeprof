@@ -47,7 +47,7 @@ module TypeProf::LSP
       end
     end
 
-    def initialize(core_options, reader, writer, url_schema: nil, publish_all_diagnostics: false)
+    def initialize(core_options, reader, writer, url_schema: nil)
       @core_options = core_options
       @cores = {}
       @reader = reader
@@ -59,7 +59,6 @@ module TypeProf::LSP
       @exit = false
       @signature_enabled = true
       @url_schema = url_schema || (File::ALT_SEPARATOR != "\\" ? "file://" : "file:///")
-      @publish_all_diagnostics = publish_all_diagnostics # TODO: implement more dedicated publish feature
       @diagnostic_severity = :error
     end
 
@@ -238,21 +237,22 @@ module TypeProf::LSP
       @exit = true
     end
 
-    def publish_diagnostics(uri)
-      (@publish_all_diagnostics ? @open_texts : [[uri, @open_texts[uri]]]).each do |uri, text|
+    def publish_updated_diagnostics
+      @cores.each do |_, core|
         diags = []
-        if text
-          @cores.each do |_, core|
-            core.diagnostics(text.path) do |diag|
-              diags << diag.to_lsp(severity: @diagnostic_severity)
-            end
+        core.process_diagnostic_paths do |path|
+          uri = path_to_uri(path)
+          next false unless @open_texts[uri]
+          core.diagnostics(path) do |diag|
+            diags << diag.to_lsp(severity: @diagnostic_severity)
           end
+          send_notification(
+            "textDocument/publishDiagnostics",
+            uri: uri,
+            diagnostics: diags
+          )
+          true
         end
-        send_notification(
-          "textDocument/publishDiagnostics",
-          uri: uri,
-          diagnostics: diags
-        )
       end
     end
   end

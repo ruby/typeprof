@@ -95,9 +95,6 @@ foo(1)
       )
 
       expect_request("workspace/codeLens/refresh") {|json| }
-      expect_notification("textDocument/publishDiagnostics") do |json|
-        assert_equal([], json[:diagnostics])
-      end
 
       notify(
         "textDocument/didClose",
@@ -120,9 +117,6 @@ foo(1)
       )
 
       expect_request("workspace/codeLens/refresh") {|json| }
-      expect_notification("textDocument/publishDiagnostics") do |json|
-        assert_equal([], json[:diagnostics])
-      end
 
       id = request(
         "textDocument/hover",
@@ -146,9 +140,6 @@ foo(1)
       )
 
       expect_request("workspace/codeLens/refresh") {|json| }
-      expect_notification("textDocument/publishDiagnostics") do |json|
-        assert_equal([], json[:diagnostics])
-      end
 
       id = request(
         "textDocument/hover",
@@ -176,17 +167,75 @@ foo(1, 2)
 
       expect_request("workspace/codeLens/refresh") {|json| }
       expect_notification("textDocument/publishDiagnostics") do |json|
-        assert_equal([
-          {
-            message: "wrong number of arguments (2 for 1)",
-            range: {
-              start: { line: 4, character: 0 },
-              end: { line: 4, character: 3 },
+        assert_equal({
+          uri: @folder + "basic.rb",
+          diagnostics: [
+            {
+              message: "wrong number of arguments (2 for 1)",
+              range: {
+                start: { line: 4, character: 0 },
+                end: { line: 4, character: 3 },
+              },
+              severity: 1,
+              source: "TypeProf",
+            }
+          ],
+        }, json)
+      end
+    end
+
+    def test_diagnostics2
+      init("basic")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic1.rb", version: 0, text: <<-END },
+def check(nnn)
+  nnn
+end
+        END
+      )
+      expect_request("workspace/codeLens/refresh") {|json| }
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic2.rb", version: 0, text: <<-END },
+check(1, 2)
+        END
+      )
+
+      expect_request("workspace/codeLens/refresh") {|json| }
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal({
+          uri: @folder + "basic2.rb",
+          diagnostics: [
+            {
+              message: "wrong number of arguments (2 for 1)",
+              range: {
+                start: { line: 0, character: 0 },
+                end: { line: 0, character: 5 },
+              },
+              severity: 1,
+              source: "TypeProf",
             },
-            severity: 1,
-            source: "TypeProf",
+          ],
+        }, json)
+      end
+
+      notify(
+        "textDocument/didChange",
+        textDocument: { uri: @folder + "basic1.rb", version: 1 },
+        contentChanges: [
+          {
+            range: { start: { line: 0, character: 13 }, end: { line: 0, character: 13 }},
+            text: ", mmm", # def check(nnn) => def check(nnn, mmm)
           }
-        ], json[:diagnostics])
+        ]
+      )
+
+      expect_request("workspace/codeLens/refresh") {|json| }
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal({ uri: @folder + "basic2.rb", diagnostics: [] }, json)
       end
     end
 
@@ -215,7 +264,6 @@ test(Foo.new)
       )
 
       expect_request("workspace/codeLens/refresh") {|json| }
-      expect_notification("textDocument/publishDiagnostics") {|json| }
 
       id = request(
         "textDocument/completion",

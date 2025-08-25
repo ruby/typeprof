@@ -8,6 +8,8 @@ module TypeProf::Core
       @run_queue = []
       @run_queue_set = Set[]
 
+      @pending_diagnostic_paths = Set[]
+
       @mod_object = ModuleEntity.new([])
       @mod_object.inner_modules[:Object] = @mod_object
 
@@ -177,6 +179,19 @@ module TypeProf::Core
         end
       end
       @run_count += run_count
+    end
+
+    def process_diagnostic_paths
+      processed_paths = []
+      @pending_diagnostic_paths.each do |path|
+        processed = yield path
+        processed_paths << path if processed
+      end
+      processed_paths.each {|path| @pending_diagnostic_paths.delete(path) }
+    end
+
+    def add_diagnostic_path(path)
+      @pending_diagnostic_paths << path unless @pending_diagnostic_paths.include?(path)
     end
 
     # just for validation

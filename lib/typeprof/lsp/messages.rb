@@ -138,7 +138,7 @@ module TypeProf::LSP
       @server.open_texts[uri] = text
       @server.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
-      @server.publish_diagnostics(uri)
+      @server.publish_updated_diagnostics
     end
   end
 
@@ -153,7 +153,7 @@ module TypeProf::LSP
       text.apply_changes(changes, version)
       @server.update_file(text.path, text.string)
       @server.send_request("workspace/codeLens/refresh")
-      @server.publish_diagnostics(uri)
+      @server.publish_updated_diagnostics
     end
   end
 

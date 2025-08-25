@@ -44,7 +44,7 @@ module TypeProf::Core
     end
 
     def to_s
-      "#{ self.class.to_s.split("::").last[0] }#{ @id ||= $new_id += 1 }"
+      "#{ self.class.to_s.split("::").last }#{ @id ||= $new_id += 1 }"
     end
 
     alias inspect to_s

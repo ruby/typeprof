@@ -172,9 +172,11 @@ module TypeProf::Core
       @new_boxes.clear
 
       @diagnostics.each do |diag|
+        genv.add_diagnostic_path(diag.node.lenv.path)
         diag.node.remove_diagnostic(diag)
       end
       @new_diagnostics.each do |diag|
+        genv.add_diagnostic_path(diag.node.lenv.path)
         diag.node.add_diagnostic(diag)
       end
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics

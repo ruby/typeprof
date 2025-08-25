@@ -138,6 +138,10 @@ module TypeProf::Core
       true
     end
 
+    def process_diagnostic_paths(&blk)
+      @genv.process_diagnostic_paths(&blk)
+    end
+
     def diagnostics(path, &blk)
       @rb_text_nodes[path]&.each_diagnostic(@genv, &blk)
     end
