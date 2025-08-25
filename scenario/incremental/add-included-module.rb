@@ -32,6 +32,6 @@ end
 ## assert: test1.rb
 module M
   class M::A
-    def initialize: (Integer) -> nil
+    def initialize: (Integer) -> void
   end
 end

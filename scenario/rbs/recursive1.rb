@@ -11,6 +11,6 @@ end
 
 ## assert
 class Foo
-  def initialize: -> []
+  def initialize: -> void
   def foo: -> Array[Integer]
 end

@@ -19,7 +19,7 @@ end
 class A
 end
 class B
-  def initialize: (Integer) -> Integer
+  def initialize: (Integer) -> void
 end
 class C
 end
@@ -31,4 +31,4 @@ end
 Integer
 
 ## hover: test.rb:14:6
-B#initialize : (Integer) -> Integer
+B#initialize : (Integer) -> void

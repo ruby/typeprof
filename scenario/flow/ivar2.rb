@@ -20,7 +20,7 @@ Foo.new("", "")
 
 ## assert
 class Foo
-  def initialize: (Integer | String, Integer | String) -> (Integer | String)
+  def initialize: (Integer | String, Integer | String) -> void
   def check: (String, Integer) -> nil
   def foo: -> bool?
 end

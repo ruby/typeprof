@@ -23,7 +23,7 @@ end
 
 ## assert
 class Foo
-  def initialize: -> Proc
+  def initialize: -> void
   def set_proc: (Proc) -> (Object | Proc)
   def get_proc: -> Proc
 end

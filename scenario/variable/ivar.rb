@@ -19,7 +19,7 @@ end
 
 ## assert
 class C
-  def initialize: (untyped) -> Integer
+  def initialize: (untyped) -> void
   def foo: (untyped) -> Integer
 end
 class D < C
@@ -45,7 +45,7 @@ end
 
 ## assert
 class C
-  def initialize: (untyped) -> String
+  def initialize: (untyped) -> void
   def foo: (untyped) -> String
 end
 class D < C

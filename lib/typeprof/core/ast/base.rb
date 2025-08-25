@@ -92,6 +92,7 @@ module TypeProf::Core
         end
       end
 
+      #: (TypeProf::Core::GlobalEnv) -> TypeProf::Core::BasicVertex
       def install(genv)
         @ret = install0(genv)
         @changes.reinstall(genv)
@@ -111,6 +112,7 @@ module TypeProf::Core
         @ret = (@prev_node || raise).ret
       end
 
+      #: (TypeProf::Core::GlobalEnv) -> untyped
       def install0(_)
         raise "should override"
       end

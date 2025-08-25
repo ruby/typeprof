@@ -11,5 +11,5 @@ Foo.new(1, 1.0, "String")
 
 ## assert
 class Foo
-  def initialize: (Integer, Float, String) -> String
+  def initialize: (Integer, Float, String) -> void
 end

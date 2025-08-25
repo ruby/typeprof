@@ -190,10 +190,12 @@ module TypeProf::Core
       def modified_vars(tbl, vars)
         subnodes.each do |key, subnode|
           next unless subnode
-          if key == :block_body
-            subnode.modified_vars(tbl - self.block_tbl, vars)
-          elsif subnode.is_a?(AST::Node)
-            subnode.modified_vars(tbl, vars)
+          if subnode.is_a?(AST::Node)
+            if key == :block_body
+              subnode.modified_vars(tbl - self.block_tbl, vars)
+            else
+              subnode.modified_vars(tbl, vars)
+            end
           else
             subnode.each {|n| n.modified_vars(tbl, vars) }
           end

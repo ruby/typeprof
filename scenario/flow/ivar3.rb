@@ -27,7 +27,7 @@ Foo.new(nil)
 
 ## assert
 class Foo
-  def initialize: ((Integer | String)?) -> (Integer | String)?
+  def initialize: ((Integer | String)?) -> void
   def accept_int: (Integer) -> nil
   def accept_str: (String) -> nil
   def accept_nil: (nil) -> nil

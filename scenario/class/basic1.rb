@@ -13,6 +13,6 @@ C.new(1).foo("str")
 
 ## assert
 class C
-  def initialize: (Integer) -> Integer
+  def initialize: (Integer) -> void
   def foo: (String) -> singleton(C)
 end

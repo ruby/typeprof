@@ -664,7 +664,7 @@ module TypeProf::Core
       args = args.join(", ")
       s = args.empty? ? [] : ["(#{ args })"]
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
-      s << "-> #{ @ret.show }"
+      s << "-> #{ @mid == :initialize ? "void" : @ret.show }"
       s.join(" ")
     end
   end

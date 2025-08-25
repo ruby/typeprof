@@ -16,5 +16,5 @@ end
 
 ## assert
 class Foo
-  def initialize: (Integer) { (String, Float) -> (Integer | String) } -> nil
+  def initialize: (Integer) { (String, Float) -> (Integer | String) } -> void
 end

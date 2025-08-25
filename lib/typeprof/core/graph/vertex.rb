@@ -63,6 +63,10 @@ module TypeProf::Core
         end
       end
     end
+
+    def new_vertex(genv, origin)
+      raise NotImplementedError
+    end
   end
 
   class Source < BasicVertex

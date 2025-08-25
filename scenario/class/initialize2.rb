@@ -18,10 +18,10 @@ my_new(Bar)
 
 ## assert
 class Foo
-  def initialize: (Integer) -> nil
+  def initialize: (Integer) -> void
 end
 class Bar
-  def initialize: (Integer) -> nil
+  def initialize: (Integer) -> void
 end
 class Object
   def my_new: (singleton(Bar) | singleton(Foo)) -> (Bar | Foo)

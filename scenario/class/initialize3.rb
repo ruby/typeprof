@@ -13,7 +13,7 @@ end
 
 ## assert
 class Foo
-  def initialize: (Integer) { (String) -> bot } -> bot
+  def initialize: (Integer) { (String) -> bot } -> void
 end
 class Object
   def test: -> (Foo | String)

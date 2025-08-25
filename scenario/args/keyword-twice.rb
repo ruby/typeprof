@@ -12,7 +12,7 @@ obj.new(k: 1)
 
 ## assert
 class Foo
-  def initialize: (k: Integer) -> nil
+  def initialize: (k: Integer) -> void
 end
 class Bar < Foo
 end
@@ -31,7 +31,7 @@ obj.new(k: 1)
 
 ## assert
 class Foo
-  def initialize: (?k: :default | Integer) -> nil
+  def initialize: (?k: :default | Integer) -> void
 end
 class Bar < Foo
 end

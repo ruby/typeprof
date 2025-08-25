@@ -14,7 +14,7 @@ end
 
 ## assert: test0.rb
 class Foo
-  def initialize: (untyped, untyped) -> untyped
+  def initialize: (untyped, untyped) -> void
   def foo: -> untyped
   def x: -> untyped
   def y: -> untyped
@@ -25,7 +25,7 @@ Foo.new(1, 1.0)
 
 ## assert: test0.rb
 class Foo
-  def initialize: (Integer, Float) -> Float
+  def initialize: (Integer, Float) -> void
   def foo: -> Integer
   def x: -> Integer
   def y: -> Float
@@ -36,7 +36,7 @@ Foo.new(1.0, 1)
 
 ## assert: test0.rb
 class Foo
-  def initialize: (Float, Integer) -> Integer
+  def initialize: (Float, Integer) -> void
   def foo: -> Float
   def x: -> Float
   def y: -> Integer

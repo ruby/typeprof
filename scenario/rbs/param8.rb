@@ -25,7 +25,7 @@ end
 
 ## assert
 class Foo
-  def initialize: (var[X]) -> (Object | var[X])
+  def initialize: (var[X]) -> void
   def get_x: -> var[X]
 end
 class Object
