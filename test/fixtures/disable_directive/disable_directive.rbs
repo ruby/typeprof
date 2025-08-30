@@ -1,0 +1,3 @@
+class Foo
+  def accept_int: (Integer) -> :ok
+end
