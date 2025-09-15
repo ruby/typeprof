@@ -491,12 +491,25 @@ module TypeProf::Core
     end
 
     class SigTyIntersectionNode < SigTyNode
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        @types = (raw_decl.types || []).map {|type| AST.create_rbs_type(type, lenv) }
+      end
+
+      attr_reader :types
+
+      def subnodes = { types: }
+
       def covariant_vertex0(genv, changes, vtx, subst)
-        #raise NotImplementedError
+        @types.each do |type|
+          type.covariant_vertex0(genv, changes, vtx, subst)
+        end
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        #raise NotImplementedError
+        @types.each do |type|
+          type.contravariant_vertex0(genv, changes, vtx, subst)
+        end
       end
 
       def typecheck(genv, changes, vtx, subst)
@@ -507,7 +520,7 @@ module TypeProf::Core
       end
 
       def show
-        "(...intersection...)"
+        @types.map {|ty| ty.show }.join(" & ")
       end
     end
 
