@@ -724,7 +724,7 @@ module TypeProf::Core
             return true
           when Type::Instance
             @types.each do |f_ty|
-              return false unless f_ty.typecheck(genv, changes, ty, subst)
+              return false unless f_ty.typecheck(genv, changes, vtx, subst)
             end
             return true
           end
