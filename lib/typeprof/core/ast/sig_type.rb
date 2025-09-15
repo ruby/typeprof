@@ -5,7 +5,7 @@ module TypeProf::Core
       a_vtx.each_type do |ty|
         ty = ty.base_type(genv)
         while ty
-          if ty.mod == f_mod
+          if ty.mod == f_mod && ty.is_a?(Type::Instance)
             args_all_match = true
             f_args.zip(ty.args) do |f_arg_node, a_arg_ty|
               unless f_arg_node.typecheck(genv, changes, a_arg_ty, subst)
