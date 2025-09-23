@@ -22,7 +22,7 @@ module TypeProf::Core
       @new_depended_superclasses = []
     end
 
-    attr_reader :node, :target, :covariant_types, :edges, :boxes, :diagnostics
+    attr_reader :node, :target, :covariant_types, :contravariant_types, :edges, :boxes, :diagnostics
 
     def reuse(new_node)
       @node = new_node
@@ -33,11 +33,13 @@ module TypeProf::Core
 
     def copy_from(other)
       @covariant_types = other.covariant_types.dup
+      @contravariant_types = other.contravariant_types.dup
       @edges = other.edges.dup
       @boxes = other.boxes.dup
       @diagnostics = other.diagnostics.dup
 
       other.covariant_types.clear
+      other.contravariant_types.clear
       other.edges.clear
       other.boxes.clear
       other.diagnostics.clear
@@ -55,7 +57,8 @@ module TypeProf::Core
     end
 
     def new_contravariant_vertex(genv, sig_type_node)
-      Vertex.new(sig_type_node)
+      # This is used to avoid duplicated vertex generation for the same sig node
+      @contravariant_types[sig_type_node] ||= Vertex.new(sig_type_node)
     end
 
     def add_edge(genv, src, dst)
