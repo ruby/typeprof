@@ -511,6 +511,9 @@ module TypeProf::Core
           output.puts "# failed to analyze: #{ file }"
           false
         end
+      rescue => e
+        output.puts "# error: #{ file }"
+        raise e
       end
       if @options[:display_indicator]
         $stderr << "\r\e[K"
