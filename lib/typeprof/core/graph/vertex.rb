@@ -188,12 +188,14 @@ module TypeProf::Core
     end
 
     def add_edge(genv, nvtx)
+      return if @next_vtxs.include?(nvtx)
       @next_vtxs << nvtx
       nvtx.on_type_added(genv, self, @types.keys) unless @types.empty?
     end
 
     def remove_edge(genv, nvtx)
-      @next_vtxs.delete(nvtx) || raise
+      return unless @next_vtxs.include?(nvtx)
+      @next_vtxs.delete(nvtx)
       nvtx.on_type_removed(genv, self, @types.keys) unless @types.empty?
     end
 
