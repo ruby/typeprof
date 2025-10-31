@@ -380,8 +380,8 @@ module TypeProf::Core
       @hsh.each_type do |ty|
         ty = ty.base_type(genv)
         if ty.mod == genv.mod_hash
-          changes.add_edge(genv, ty.args[0], @unified_key)
-          changes.add_edge(genv, ty.args[1], @unified_val)
+          changes.add_edge(genv, ty.args[0].new_vertex(genv, :__hash_splat), @unified_key)
+          changes.add_edge(genv, ty.args[1].new_vertex(genv, :__hash_splat), @unified_val)
         else
           "???"
         end
