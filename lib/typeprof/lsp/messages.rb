@@ -137,6 +137,7 @@ module TypeProf::LSP
       text = Text.new(path, text, version)
       @server.open_texts[uri] = text
       @server.update_file(text.path, text.string)
+      notify("typeprof.enableToggleButton")
       @server.send_request("workspace/codeLens/refresh")
       @server.publish_updated_diagnostics
     end
