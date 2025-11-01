@@ -184,7 +184,15 @@ module TypeProf::CLI
     end
 
     def generate_config_file
-      File.write('typeprof.conf.jsonc', File.read(File.join(__dir__, 'typeprof.conf.jsonc')), mode: "wx")
+      exist_dirs = ["app", "lib"].select { |dir| File.exist?(File.join(Dir.pwd, dir)) }
+      File.write('typeprof.conf.jsonc', <<~JSONC, mode: "wx")
+        {
+          "typeprof_version": "experimental",
+          "rbs_dir": "sig/",
+          "analysis_unit_dirs": #{exist_dirs.inspect}
+          // "diagnostic_severity": "warning"
+        }
+      JSONC
     end
   end
 end
