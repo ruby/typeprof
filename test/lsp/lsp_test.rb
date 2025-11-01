@@ -94,6 +94,7 @@ foo(1)
         END
       )
 
+      expect_notification("typeprof.enableToggleButton") {|json| }
       expect_request("workspace/codeLens/refresh") {|json| }
 
       notify(
@@ -116,6 +117,7 @@ foo(1)
         END
       )
 
+      expect_notification("typeprof.enableToggleButton") {|json| }
       expect_request("workspace/codeLens/refresh") {|json| }
 
       id = request(
@@ -165,6 +167,7 @@ foo(1, 2)
         END
       )
 
+      expect_notification("typeprof.enableToggleButton") {|json| }
       expect_request("workspace/codeLens/refresh") {|json| }
       expect_notification("textDocument/publishDiagnostics") do |json|
         assert_equal({
@@ -195,6 +198,7 @@ def check(nnn)
 end
         END
       )
+      expect_notification("typeprof.enableToggleButton") {|json| }
       expect_request("workspace/codeLens/refresh") {|json| }
 
       notify(
@@ -204,6 +208,7 @@ check(1, 2)
         END
       )
 
+      expect_notification("typeprof.enableToggleButton") {|json| }
       expect_request("workspace/codeLens/refresh") {|json| }
       expect_notification("textDocument/publishDiagnostics") do |json|
         assert_equal({
@@ -263,6 +268,7 @@ test(Foo.new)
         END
       )
 
+      expect_notification("typeprof.enableToggleButton") {|json| }
       expect_request("workspace/codeLens/refresh") {|json| }
 
       id = request(
