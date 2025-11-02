@@ -112,6 +112,7 @@ module TypeProf::Core
         edges = []
         state = :left
         j = nil
+        rights_size = rights ? rights.size : 0
         @elems.each_with_index do |elem, i|
           case state
           when :left
@@ -123,7 +124,7 @@ module TypeProf::Core
               redo
             end
           when :rest
-            if @elems.size - i > rights.size
+            if @elems.size - i > rights_size
               edges << [elem, rest_elem]
             else
               state = :right

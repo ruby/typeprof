@@ -270,6 +270,8 @@ module TypeProf::Core
         IndexWriteNode.new(raw_node, dummy_node, lenv)
       when :call_target_node
         CallWriteNode.new(raw_node, dummy_node, lenv)
+      when :multi_target_node
+        MultiTargetNode.new(raw_node, dummy_node, lenv)
       else
         pp raw_node
         raise "not supported yet: #{ raw_node.type }"

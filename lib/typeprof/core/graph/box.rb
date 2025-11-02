@@ -1073,7 +1073,7 @@ module TypeProf::Core
         else
           if @lefts.size >= 1
             edges << [Source.new(ty), @lefts[0]]
-          elsif @rights.size >= 1
+          elsif @rights && @rights.size >= 1
             edges << [Source.new(ty), @rights[0]]
           else
             edges << [Source.new(ty), @rest_elem]
