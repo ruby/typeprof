@@ -3,6 +3,7 @@ module TypeProf::Core
     def initialize
       @builtin = nil
       @decls = Set[]
+      @overloading_decls = Set[]
       @defs = Set[]
       @aliases = {}
       @method_call_boxes = Set[]
@@ -12,11 +13,19 @@ module TypeProf::Core
     attr_accessor :builtin
 
     def add_decl(decl)
-      @decls << decl
+      if decl.overloading
+        @overloading_decls << decl
+      else
+        @decls << decl
+      end
     end
 
     def remove_decl(decl)
-      @decls.delete(decl) || raise
+      if decl.overloading
+        @overloading_decls.delete(decl) || raise
+      else
+        @decls.delete(decl) || raise
+      end
     end
 
     def add_def(mdef)
