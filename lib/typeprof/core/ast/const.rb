@@ -112,9 +112,29 @@ module TypeProf::Core
         @cpath.install(genv) if @cpath
         val = @rhs.install(genv)
         if @static_cpath
-          @changes.add_edge(genv, val, @static_ret.vtx)
+          if detect_class_new?(@rhs)
+            # Create a module entity for the dynamically created class
+            mod = genv.resolve_cpath(@static_cpath)
+
+            # Create singleton type for the new class
+            singleton_ty = Type::Singleton.new(genv, mod)
+            vtx = Source.new(singleton_ty)
+            @changes.add_edge(genv, vtx, @static_ret.vtx)
+          else
+            @changes.add_edge(genv, val, @static_ret.vtx)
+          end
         end
         val
+      end
+
+      private
+
+      def detect_class_new?(node)
+        node.is_a?(CallBaseNode) &&
+          node.mid == :new &&
+          node.recv.is_a?(ConstantReadNode) &&
+          node.recv.cname == :Class &&
+          node.recv.cbase.nil?
       end
     end
   end
