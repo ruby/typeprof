@@ -826,7 +826,7 @@ module TypeProf::Core
       end
 
       def typecheck(genv, changes, vtx, subst)
-        changes.add_edge(genv, vtx, subst[@var]) unless vtx == subst[@var]
+        changes.add_edge(genv, vtx.new_vertex(genv, self), subst[@var]) unless vtx == subst[@var]
         true
       end
 
