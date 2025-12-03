@@ -1099,7 +1099,7 @@ module TypeProf::Core
     def run0(genv, changes)
       instance_tys = []
       @singleton_ty_vtx.each_type do |ty|
-        instance_tys << ty.get_instance_type(genv)
+        instance_tys << ty.get_instance_type(genv) if ty.is_a?(Type::Singleton)
       end
       source_vtx = Source.new(*instance_tys)
       changes.add_edge(genv, source_vtx, @ret)
