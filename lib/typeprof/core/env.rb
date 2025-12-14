@@ -116,6 +116,10 @@ module TypeProf::Core
         base_ty.mod.type_params.zip(base_ty.args) do |param, arg|
           ty_env[param] = arg || Source.new
         end
+      elsif base_ty.is_a?(Type::Singleton)
+        base_ty.mod.type_params&.each do |param|
+          ty_env[param] = Source.new
+        end
       end
       args = mod.type_params.zip(type_args).map do |param, arg|
         arg && changes ? arg.covariant_vertex(self, changes, ty_env) : Source.new
