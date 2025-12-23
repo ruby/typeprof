@@ -139,6 +139,63 @@ module TypeProf::Core
       end
     end
 
+    class MultiTargetNode < Node
+      def initialize(raw_node, rhs, lenv)
+        super(raw_node, lenv)
+        @rhs = rhs
+        @lefts = raw_node.lefts.map do |raw_lhs|
+          AST.create_target_node(raw_lhs, lenv)
+        end
+        if raw_node.rest
+          case raw_node.rest.type
+          when :splat_node
+            if raw_node.rest.expression
+              @rest = AST.create_target_node(raw_node.rest.expression, lenv)
+            end
+          when :implicit_rest_node
+            # no assignment target
+          else
+            raise "unexpected rest node in multi_target: #{raw_node.rest.type}"
+          end
+        end
+        @rights = raw_node.rights.map do |raw_rhs|
+          AST.create_target_node(raw_rhs, lenv)
+        end
+      end
+
+      attr_reader :rhs, :lefts, :rest, :rights
+
+      def subnodes = { rhs:, lefts:, rest:, rights: }
+
+      def install0(genv)
+        # The rhs should be installed by the parent MultiWriteNode
+        # Here we set up the multi-assignment box for nested destructuring
+        value = @rhs.install(genv)
+
+        @lefts.each {|lhs| lhs.install(genv) }
+        @lefts.each {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) }
+        lefts = @lefts.map {|lhs| lhs.rhs.ret }
+
+        rest_elem = nil
+        if @rest
+          rest_elem = Vertex.new(self)
+          @rest.install(genv)
+          @rest.rhs.ret || raise(@rest.rhs.inspect)
+          @changes.add_edge(genv, Source.new(Type::Instance.new(genv, genv.mod_ary, [rest_elem])), @rest.rhs.ret)
+        end
+
+        rights = nil
+        if @rights && !@rights.empty?
+          @rights.each {|rhs| rhs.install(genv) }
+          @rights.each {|rhs| rhs.rhs.ret || raise(rhs.rhs.inspect) }
+          rights = @rights.map {|rhs| rhs.rhs.ret }
+        end
+
+        box = @changes.add_masgn_box(genv, value, lefts, rest_elem, rights)
+        box.ret
+      end
+    end
+
     class MatchWriteNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
