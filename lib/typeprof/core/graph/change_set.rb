@@ -6,8 +6,8 @@ module TypeProf::Core
       @new_vertexes = {}
       @covariant_types = {}
       @contravariant_types = {}
-      @edges = []
-      @new_edges = []
+      @edges = {}
+      @new_edges = {}
       @boxes = {}
       @new_boxes = {}
       @diagnostics = []
@@ -62,7 +62,14 @@ module TypeProf::Core
     end
 
     def add_edge(genv, src, dst)
-      @new_edges << [src, dst]
+      key = [src, dst]
+      return if @new_edges[key]
+      @new_edges[key] = @edges[key] || begin
+        bridge = Vertex.new(@node)
+        src.add_edge(genv, bridge)
+        bridge.add_edge(genv, dst)
+        bridge
+      end
     end
 
     # TODO: if an edge is removed during one analysis, we may need to remove sub-boxes?
@@ -158,12 +165,12 @@ module TypeProf::Core
     end
 
     def reinstall(genv)
-      @new_edges.uniq!
-      @new_edges.each do |src, dst|
-        src.add_edge(genv, dst) unless @edges.include?([src, dst])
-      end
-      @edges.each do |src, dst|
-        src.remove_edge(genv, dst) unless @new_edges.include?([src, dst])
+      @edges.each do |key, bridge|
+        unless @new_edges.key?(key)
+          src, dst = key
+          src.remove_edge(genv, bridge)
+          bridge.remove_edge(genv, dst)
+        end
       end
       @edges, @new_edges = @new_edges, @edges
       @new_edges.clear
