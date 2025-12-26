@@ -203,11 +203,20 @@ module TypeProf::Core
         if node.ret
           ty_defs = []
           node.ret.types.map do |ty, _source|
-            if ty.is_a?(Type::Instance)
-              ty.mod.module_decls.each do |mdecl|
-                # TODO
+            mod = case ty
+                  when Type::Instance, Type::Singleton
+                    ty.mod
+                  else
+                    base = ty.base_type(@genv)
+                    base.mod if base.is_a?(Type::Instance)
+                  end
+
+            if mod
+              mod.module_decls.each do |mdecl|
+                decl_path = mdecl.lenv.path
+                ty_defs << [decl_path, mdecl.code_range] if decl_path
               end
-              ty.mod.module_defs.each do |mdef_node|
+              mod.module_defs.each do |mdef_node|
                 ty_defs << [mdef_node.lenv.path, mdef_node.code_range]
               end
             end
