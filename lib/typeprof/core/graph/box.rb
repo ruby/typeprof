@@ -87,7 +87,7 @@ module TypeProf::Core
         mod = genv.resolve_cpath(@node.cpath)
         if mod.type_params && !mod.type_params.empty?
           # Create a substitution map where each type parameter maps to a type variable vertex
-          subst = mod.type_params.to_h do |param|
+          subst = mod.type_params.to_h do |param, _default_ty|
             type_var_vtx = Vertex.new(@node)
             [param, type_var_vtx]
           end
@@ -185,8 +185,8 @@ module TypeProf::Core
     def resolve_overload(changes, genv, method_type, node, param_map, a_args, ret, force)
       param_map0 = param_map.dup
       if method_type.type_params
-        method_type.type_params.zip(yield(method_type)) do |var, vtx|
-          param_map0[var] = vtx
+        method_type.type_params.zip(yield(method_type)) do |(var, _default_ty), vtx|
+          param_map0[var] = vtx # TODO: default_ty?
         end
       end
 
@@ -443,17 +443,17 @@ module TypeProf::Core
         ty = Type::Singleton.new(genv, mod)
         param_map0 = Type.default_param_map(genv, ty)
       else
-        type_params = mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+        type_params = mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
         ty = Type::Instance.new(genv, mod, type_params)
         param_map0 = Type.default_param_map(genv, ty)
         if ty.is_a?(Type::Instance)
-          ty.mod.type_params.zip(ty.args) do |param, arg|
-            param_map0[param] = arg
+          ty.mod.type_params.zip(ty.args) do |(name, _default_ty), arg|
+            param_map0[name] = arg
           end
         end
       end
-      method_type.type_params.each do |param|
-        param_map0[param] = Source.new()
+      method_type.type_params.each do |name, _default_ty|
+        param_map0[name] = Source.new()
       end
 
       positional_args = []
@@ -739,12 +739,12 @@ module TypeProf::Core
             # TODO: add_depended_method_entity for types used to resolve overloads
             ty_env = Type.default_param_map(genv, orig_ty)
             if ty.is_a?(Type::Instance)
-              ty.mod.type_params.zip(ty.args) do |param, arg|
-                ty_env[param] = arg
+              ty.mod.type_params.zip(ty.args) do |(param, default_ty), arg|
+                ty_env[param] = arg || (default_ty ? default_ty.covariant_vertex(genv, changes, ty_env) : Source.new)
               end
             end
             mdecl.resolve_overloads(changes, genv, @node, ty_env, @a_args, @ret) do |method_type|
-              @generics[method_type] ||= method_type.type_params.map {|var| Vertex.new(@node) }
+              @generics[method_type] ||= method_type.type_params.map { Vertex.new(@node) }
             end
           end
         elsif !me.defs.empty?
@@ -846,7 +846,7 @@ module TypeProf::Core
         if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
           prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, base_ty_env, ty)
         else
-          type_params = prep_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+          type_params = prep_mod.type_params.map { Source.new() } # TODO: better support
           prep_ty = Type::Instance.new(genv, prep_mod, type_params)
         end
 
@@ -901,7 +901,7 @@ module TypeProf::Core
         if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
           inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, base_ty_env, ty)
         else
-          type_params = inc_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+          type_params = inc_mod.type_params.map { Source.new() } # TODO: better support
           inc_ty = Type::Instance.new(genv, inc_mod, type_params)
         end
 

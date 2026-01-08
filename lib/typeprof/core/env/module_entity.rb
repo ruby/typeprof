@@ -25,7 +25,7 @@ module TypeProf::Core
 
       # class Foo[X, Y, Z] < Bar[A, B, C]
       @superclass_type_args = nil # A, B, C
-      @type_params = [] # X, Y, Z
+      @type_params = {} # X, Y, Z
 
       @consts = {}
       @methods = { true => {}, false => {} }
@@ -115,9 +115,10 @@ module TypeProf::Core
       @module_decls << decl
 
       if @type_params
-        update_type_params if @type_params != decl.params
+        update_type_params
       else
-        @type_params = decl.params
+        @type_params = {}
+        decl.params.zip(decl.params_default_types) {|name, default_type| @type_params[name] = default_type }
       end
 
       if decl.is_a?(AST::SigClassNode) && !@superclass_type_args
@@ -133,7 +134,7 @@ module TypeProf::Core
       @outer_module.get_const(get_cname).remove_decl(decl)
       @module_decls.delete(decl) || raise
 
-      update_type_params if @type_params == decl.params
+      update_type_params
       if decl.is_a?(AST::SigClassNode) && @superclass_type_args == decl.superclass_args
         @superclass_type_args = nil
         @module_decls.each do |decl|
@@ -152,13 +153,12 @@ module TypeProf::Core
       @module_decls.each do |decl|
         params = decl.params
         next unless params
-        if @type_params
-          @type_params = params if (@type_params <=> params) > 0
-        else
-          @type_params = params
+        if !@type_params || @type_params.size < params.size
+          @type_params = {}
+          params.zip(decl.params_default_types) {|name, default_type| @type_params[name] = default_type }
         end
       end
-      @type_params ||= []
+      @type_params ||= {}
       # TODO: report an error if there are multiple inconsistent declarations
     end
 

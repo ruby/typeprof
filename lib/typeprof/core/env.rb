@@ -113,16 +113,20 @@ module TypeProf::Core
     def get_instance_type(mod, type_args, changes, base_ty_env, base_ty)
       ty_env = base_ty_env.dup
       if base_ty.is_a?(Type::Instance)
-        base_ty.mod.type_params.zip(base_ty.args) do |param, arg|
-          ty_env[param] = arg || Source.new
+        base_ty.mod.type_params.zip(base_ty.args) do |(param, default_ty), arg|
+          ty_env[param] = arg || (default_ty ? default_ty.covariant_vertex(self, changes, ty_env) : Source.new)
         end
       elsif base_ty.is_a?(Type::Singleton)
-        base_ty.mod.type_params&.each do |param|
-          ty_env[param] = Source.new
+        base_ty.mod.type_params&.each do |(param, default_ty)|
+          ty_env[param] = default_ty ? default_ty.covariant_vertex(self, changes, ty_env) : Source.new
         end
       end
-      args = mod.type_params.zip(type_args).map do |param, arg|
-        arg && changes ? arg.covariant_vertex(self, changes, ty_env) : Source.new
+      args = mod.type_params.zip(type_args).map do |(param, default_ty), arg|
+        if changes
+          (arg || default_ty)&.covariant_vertex(self, changes, ty_env) || Source.new
+        else
+          Source.new
+        end
       end
       Type::Instance.new(self, mod, args)
     end
@@ -380,7 +384,7 @@ module TypeProf::Core
       case @scope_level
       when :instance
         mod = genv.resolve_cpath(@cpath || [])
-        type_params = mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+        type_params = mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
         ty = Type::Instance.new(genv, mod, type_params)
         Source.new(ty)
       when :class
