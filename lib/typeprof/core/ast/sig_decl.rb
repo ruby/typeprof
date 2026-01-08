@@ -21,14 +21,21 @@ module TypeProf::Core
         end.compact
         # TODO?: param.variance, param.unchecked, param.upper_bound
         @params = raw_decl.type_params.map {|param| param.name }
+        @params_default_types = raw_decl.type_params.map do |param|
+          ty = param.default_type
+          ty ? AST.create_rbs_type(ty, lenv) : nil
+        end
       end
 
-      attr_reader :cpath, :members, :params
+      attr_reader :cpath, :members, :params, :params_default_types
 
-      def subnodes = { members: }
+      def subnodes = { members:, params_default_types: }
       def attrs = { cpath:, params: }
 
       def define0(genv)
+        @params_default_types.each do |ty|
+          ty&.define(genv)
+        end
         @members.each do |member|
           member.define(genv)
         end
@@ -46,6 +53,9 @@ module TypeProf::Core
       def undefine0(genv)
         mod = genv.resolve_cpath(@cpath)
         mod.remove_module_decl(genv, self)
+        @params_default_types.each do |ty|
+          ty&.undefine(genv)
+        end
         @members.each do |member|
           member.undefine(genv)
         end

@@ -33,7 +33,7 @@ module TypeProf::Core
         if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
           prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, {}, a_ty)
         else
-          type_params = prep_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+          type_params = prep_mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
           prep_ty = Type::Instance.new(genv, prep_mod, type_params)
         end
         if prep_ty.mod == f_mod
@@ -58,7 +58,7 @@ module TypeProf::Core
         if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
           inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, {}, a_ty)
         else
-          type_params = inc_mod.type_params.map {|ty_param| Source.new() } # TODO: better support
+          type_params = inc_mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
           inc_ty = Type::Instance.new(genv, inc_mod, type_params)
         end
         if inc_ty.mod == f_mod
