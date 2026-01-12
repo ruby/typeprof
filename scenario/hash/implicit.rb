@@ -7,5 +7,5 @@ end
 
 ## assert
 class Object
-  def create: -> Hash[:x | :y, Integer | String]
+  def create: -> { x: Integer, y: String }
 end

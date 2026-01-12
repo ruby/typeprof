@@ -139,6 +139,15 @@ module TypeProf::Core
           end
           changes.add_edge(@genv, val, ret)
           true
+        when Type::Record
+          val = a_args.positionals[1]
+          idx = node.positional_args[0]
+          if idx.is_a?(AST::SymbolNode)
+            field_vtx = ty.get_value(idx.lit)
+            changes.add_edge(@genv, val, field_vtx) if field_vtx
+          end
+          changes.add_edge(@genv, val, ret)
+          true
         else
           false
         end

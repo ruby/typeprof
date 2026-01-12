@@ -11,5 +11,5 @@ foo({ b: "str" })
 
 ## assert
 class Object
-  def foo: (Hash[:a, Integer] | Hash[:b, String]) -> (Integer | String)?
+  def foo: ({ a: Integer } | { b: String }) -> (Integer | String)?
 end
