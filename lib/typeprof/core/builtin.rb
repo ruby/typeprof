@@ -90,7 +90,7 @@ module TypeProf::Core
     def hash_aref(changes, node, ty, a_args, ret)
       if a_args.positionals.size == 1
         case ty
-        when Type::Hash, Type::Record
+        when Type::Hash
           idx = node.positional_args[0]
           idx = idx.is_a?(AST::SymbolNode) ? idx.lit : nil
           value = ty.get_value(idx)
@@ -99,6 +99,20 @@ module TypeProf::Core
           else
             # Return untyped for unknown fields
             changes.add_edge(@genv, Source.new(), ret)
+          end
+          true
+        when Type::Record
+          idx = node.positional_args[0]
+          idx = idx.is_a?(AST::SymbolNode) ? idx.lit : nil
+          value = ty.get_value(idx)
+          if value
+            changes.add_edge(@genv, value, ret)
+          else
+            changes.add_edge(@genv, Source.new(@genv.nil_type), ret)
+          end
+          # Symbol variable access - add nil possibility
+          if idx.nil?
+            changes.add_edge(@genv, Source.new(@genv.nil_type), ret)
           end
           true
         else

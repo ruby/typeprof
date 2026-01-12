@@ -13,5 +13,5 @@ end
 
 ## assert: test.rb
 class RecordFieldError
-  def get_unknown_field: -> untyped
+  def get_unknown_field: -> nil
 end
