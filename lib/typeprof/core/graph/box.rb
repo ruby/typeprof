@@ -1105,4 +1105,74 @@ module TypeProf::Core
       changes.add_edge(genv, source_vtx, @ret)
     end
   end
+
+  class HashAsetBox < Box
+    def initialize(node, genv, recv, key_sym, val_vtx, out_vtx)
+      super(node)
+      @recv = recv
+      @key_sym = key_sym
+      @val_vtx = val_vtx
+      @out_vtx = out_vtx
+      @recv.add_edge(genv, self)
+      @val_vtx.add_edge(genv, self)
+    end
+
+    attr_reader :recv, :key_sym, :val_vtx, :out_vtx
+
+    def ret = @out_vtx
+
+    def destroy(genv)
+      @recv.remove_edge(genv, self)
+      @val_vtx.remove_edge(genv, self)
+      super(genv)
+    end
+
+    def run0(genv, changes)
+      @recv.each_type do |ty|
+        case ty
+        when Type::Record
+          new_fields = {}
+          ty.fields.each do |key, field_vtx|
+            new_vtx = Vertex.new(@node)
+            changes.add_edge(genv, field_vtx, new_vtx)
+            new_fields[key] = new_vtx
+          end
+          new_fields[@key_sym] ||= Vertex.new(@node)
+          changes.add_edge(genv, @val_vtx, new_fields[@key_sym])
+          unified_key = Vertex.new(@node)
+          unified_val = Vertex.new(@node)
+          new_fields.each do |key, vtx|
+            changes.add_edge(genv, Source.new(Type::Symbol.new(genv, key)), unified_key)
+            changes.add_edge(genv, vtx, unified_val)
+          end
+          base_type = genv.gen_hash_type(unified_key, unified_val)
+          new_record = Type::Record.new(genv, new_fields, base_type)
+          changes.add_edge(genv, Source.new(new_record), @out_vtx)
+        when Type::Hash
+          build_merged_hash_type(genv, changes, ty.get_key, ty.get_value)
+        when Type::Instance
+          if ty.mod == genv.mod_hash
+            build_merged_hash_type(genv, changes, ty.args[0], ty.args[1])
+          else
+            changes.add_edge(genv, Source.new(ty), @out_vtx)
+          end
+        else
+          changes.add_edge(genv, Source.new(ty), @out_vtx)
+        end
+      end
+    end
+
+    private
+
+    def build_merged_hash_type(genv, changes, old_key_vtx, old_val_vtx)
+      new_key = Vertex.new(@node)
+      new_val = Vertex.new(@node)
+      changes.add_edge(genv, old_key_vtx, new_key)
+      changes.add_edge(genv, Source.new(Type::Symbol.new(genv, @key_sym)), new_key)
+      changes.add_edge(genv, old_val_vtx, new_val)
+      changes.add_edge(genv, @val_vtx, new_val)
+      new_hash_type = genv.gen_hash_type(new_key, new_val)
+      changes.add_edge(genv, Source.new(new_hash_type), @out_vtx)
+    end
+  end
 end

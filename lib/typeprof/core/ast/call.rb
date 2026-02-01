@@ -164,6 +164,15 @@ module TypeProf::Core
           @changes.add_edge(genv, allow_nil, ret)
         end
 
+        if @mid == :[]= && @recv.is_a?(LocalVariableReadNode)
+          key_node = @positional_args[0]
+          if key_node.is_a?(SymbolNode)
+            recv_vtx = @lenv.get_var(@recv.var)
+            nvtx = @lenv.new_var(@recv.var, self)
+            @changes.add_hash_aset_box(genv, recv_vtx, key_node.lit, ret, nvtx)
+          end
+        end
+
         ret
       end
 
@@ -188,6 +197,10 @@ module TypeProf::Core
       end
 
       def modified_vars(tbl, vars)
+        if @mid == :[]= && @recv.is_a?(LocalVariableReadNode) && tbl.include?(@recv.var)
+          key_node = @positional_args[0]
+          vars << @recv.var if key_node.is_a?(SymbolNode)
+        end
         subnodes.each do |key, subnode|
           next unless subnode
           if subnode.is_a?(AST::Node)

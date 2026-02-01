@@ -137,6 +137,11 @@ module TypeProf::Core
       @new_boxes[key] ||= InstanceTypeBox.new(@node, genv, singleton_ty_vtx)
     end
 
+    def add_hash_aset_box(genv, recv, key_sym, val_vtx, out_vtx)
+      key = [:hash_aset, recv, key_sym, val_vtx, out_vtx]
+      @new_boxes[key] ||= HashAsetBox.new(@node, genv, recv, key_sym, val_vtx, out_vtx)
+    end
+
     def add_diagnostic(meth, msg, node = @node)
       @new_diagnostics << TypeProf::Diagnostic.new(node, meth, msg)
     end

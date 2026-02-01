@@ -111,9 +111,16 @@ module TypeProf::Core
 
     def hash_aset(changes, node, ty, a_args, ret)
       if a_args.positionals.size == 2
+        val = a_args.positionals[1]
+
+        # Skip backflow for local variable receivers (handled by HashAsetBox)
+        if node.recv.is_a?(AST::LocalVariableReadNode)
+          changes.add_edge(@genv, val, ret)
+          return true
+        end
+
         case ty
         when Type::Hash
-          val = a_args.positionals[1]
           idx = node.positional_args[0]
           if idx.is_a?(AST::SymbolNode) && ty.get_value(idx.lit)
             # TODO: how to handle new key?
