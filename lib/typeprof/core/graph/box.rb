@@ -1115,6 +1115,14 @@ module TypeProf::Core
       @out_vtx = out_vtx
       @recv.add_edge(genv, self)
       @val_vtx.add_edge(genv, self)
+      # Cache vertices to ensure convergence in loops.
+      # Without caching, run0 creates new Vertex objects each time,
+      # producing new Type objects that prevent the fixed-point from being reached.
+      @field_cache = {}
+      @unified_key = Vertex.new(node)
+      @unified_val = Vertex.new(node)
+      @merged_key = Vertex.new(node)
+      @merged_val = Vertex.new(node)
     end
 
     attr_reader :recv, :key_sym, :val_vtx, :out_vtx
@@ -1133,19 +1141,18 @@ module TypeProf::Core
         when Type::Record
           new_fields = {}
           ty.fields.each do |key, field_vtx|
-            new_vtx = Vertex.new(@node)
-            changes.add_edge(genv, field_vtx, new_vtx)
-            new_fields[key] = new_vtx
+            @field_cache[key] ||= Vertex.new(@node)
+            changes.add_edge(genv, field_vtx, @field_cache[key]) unless field_vtx.equal?(@field_cache[key])
+            new_fields[key] = @field_cache[key]
           end
-          new_fields[@key_sym] ||= Vertex.new(@node)
-          changes.add_edge(genv, @val_vtx, new_fields[@key_sym])
-          unified_key = Vertex.new(@node)
-          unified_val = Vertex.new(@node)
+          @field_cache[@key_sym] ||= Vertex.new(@node)
+          new_fields[@key_sym] = @field_cache[@key_sym]
+          changes.add_edge(genv, @val_vtx, @field_cache[@key_sym])
           new_fields.each do |key, vtx|
-            changes.add_edge(genv, Source.new(Type::Symbol.new(genv, key)), unified_key)
-            changes.add_edge(genv, vtx, unified_val)
+            changes.add_edge(genv, Source.new(Type::Symbol.new(genv, key)), @unified_key)
+            changes.add_edge(genv, vtx, @unified_val)
           end
-          base_type = genv.gen_hash_type(unified_key, unified_val)
+          base_type = genv.gen_hash_type(@unified_key, @unified_val)
           new_record = Type::Record.new(genv, new_fields, base_type)
           changes.add_edge(genv, Source.new(new_record), @out_vtx)
         when Type::Hash
@@ -1165,13 +1172,11 @@ module TypeProf::Core
     private
 
     def build_merged_hash_type(genv, changes, old_key_vtx, old_val_vtx)
-      new_key = Vertex.new(@node)
-      new_val = Vertex.new(@node)
-      changes.add_edge(genv, old_key_vtx, new_key)
-      changes.add_edge(genv, Source.new(Type::Symbol.new(genv, @key_sym)), new_key)
-      changes.add_edge(genv, old_val_vtx, new_val)
-      changes.add_edge(genv, @val_vtx, new_val)
-      new_hash_type = genv.gen_hash_type(new_key, new_val)
+      changes.add_edge(genv, old_key_vtx, @merged_key) unless old_key_vtx.equal?(@merged_key)
+      changes.add_edge(genv, Source.new(Type::Symbol.new(genv, @key_sym)), @merged_key)
+      changes.add_edge(genv, old_val_vtx, @merged_val) unless old_val_vtx.equal?(@merged_val)
+      changes.add_edge(genv, @val_vtx, @merged_val)
+      new_hash_type = genv.gen_hash_type(@merged_key, @merged_val)
       changes.add_edge(genv, Source.new(new_hash_type), @out_vtx)
     end
   end
