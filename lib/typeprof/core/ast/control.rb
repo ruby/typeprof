@@ -203,7 +203,7 @@ module TypeProf::Core
 
       def install0(genv)
         arg = @arg.install(genv)
-        @changes.add_edge(genv, arg, @lenv.get_break_vtx)
+        @changes.add_edge(genv, arg.new_vertex(genv, self), @lenv.get_break_vtx)
         Source.new()
       end
     end
