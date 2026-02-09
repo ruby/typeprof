@@ -188,7 +188,7 @@ module TypeProf::Core
       end
 
       def show
-        "<Proc>"
+        "Proc"
       end
     end
 
