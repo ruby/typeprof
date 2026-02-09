@@ -69,6 +69,9 @@ module TypeProf::Core
         case ty
         when Type::Hash
           changes.add_edge(genv, ty.get_value(name), vtx)
+        when Type::Record
+          field_vtx = ty.get_value(name)
+          changes.add_edge(genv, field_vtx, vtx) if field_vtx
         when Type::Instance
           if ty.mod == genv.mod_hash
             changes.add_edge(genv, ty.args[1], vtx)

@@ -10,5 +10,5 @@ end
 ## assert
 class Object
   def foo: -> Hash[:a | :b, Integer]
-  def bar: -> Hash[:a, Integer]
+  def bar: -> { a: Integer }
 end

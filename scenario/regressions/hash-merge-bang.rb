@@ -15,8 +15,8 @@ def bar = {}
 
 ## assert
 class Object
-  def option: -> Hash[:a, Integer]
+  def option: -> { a: Integer }
   def foo1: -> Hash[:a, Integer]
   def foo2: -> Hash[:a, Integer]
-  def bar: -> Hash[untyped, untyped]
+  def bar: -> {  }
 end

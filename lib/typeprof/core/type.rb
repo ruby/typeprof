@@ -16,16 +16,33 @@ module TypeProf::Core
     end
 
     def self.extract_hash_value_type(s)
-      if s.start_with?("Hash[") && s.end_with?("]")
+      begin
         type = RBS::Parser.parse_type(s)
-
-        if type.is_a?(RBS::Types::Union)
-          type.types.map {|t| t.args[1].to_s }.join(" | ")
-        else
-          type.args[1].to_s
-        end
-      else
+        collect_hash_value_types(type).uniq.join(" | ")
+      rescue
         s
+      end
+    end
+
+    # Returns an array of value type strings from hash-like types
+    def self.collect_hash_value_types(type)
+      case type
+      when RBS::Types::Record
+        # Extract value types from record fields
+        # all_fields returns { key => [type, required] }
+        type.all_fields.values.map { |t, _required| t.to_s }
+      when RBS::Types::ClassInstance
+        # Handle Hash[K, V]
+        if type.name.name == :Hash && type.args.size == 2
+          [type.args[1].to_s]
+        else
+          [type.to_s]
+        end
+      when RBS::Types::Union
+        # Handle union of types - extract value types from all hash-like types
+        type.types.flat_map { |t| collect_hash_value_types(t) }
+      else
+        [type.to_s]
       end
     end
 
