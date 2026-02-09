@@ -26,6 +26,7 @@ jobs:
           - ruby: "3.3"
             rubyopt: "--enable-frozen-string-literal"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
     - name: Set up Ruby
