@@ -108,13 +108,19 @@ module TypeProf::Core
           param = raw_decl.type.rest_positionals
           @rest_positionals = param ? AST.create_rbs_type(param.type, lenv) : nil
 
-          @req_keywords = raw_decl.type.required_keywords.to_h do |key, ty|
+          @req_keyword_keys = []
+          @req_keyword_values = []
+          raw_decl.type.required_keywords.each do |key, ty|
             raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
-            [key, AST.create_rbs_type(ty.type, lenv)]
+            @req_keyword_keys << key
+            @req_keyword_values << AST.create_rbs_type(ty.type, lenv)
           end
-          @opt_keywords = raw_decl.type.optional_keywords.to_h do |key, ty|
+          @opt_keyword_keys = []
+          @opt_keyword_values = []
+          raw_decl.type.optional_keywords.each do |key, ty|
             raise "unsupported argument type: #{ ty.class }" if !ty.is_a?(RBS::Types::Function::Param)
-            [key, AST.create_rbs_type(ty.type, lenv)]
+            @opt_keyword_keys << key
+            @opt_keyword_values << AST.create_rbs_type(ty.type, lenv)
           end
           param = raw_decl.type.rest_keywords
           @rest_keywords = param ? AST.create_rbs_type(param.type, lenv) : nil
@@ -124,8 +130,10 @@ module TypeProf::Core
           @post_positionals = []
           @opt_positionals = []
           @rest_positionals = SigTyBaseAnyNode.new(raw_decl, lenv)
-          @req_keywords = {}
-          @opt_keywords = {}
+          @req_keyword_keys = []
+          @req_keyword_values = []
+          @opt_keyword_keys = []
+          @opt_keyword_values = []
           @rest_keywords = nil
         end
 
@@ -137,8 +145,10 @@ module TypeProf::Core
       attr_reader :post_positionals
       attr_reader :opt_positionals
       attr_reader :rest_positionals
-      attr_reader :req_keywords
-      attr_reader :opt_keywords
+      attr_reader :req_keyword_keys
+      attr_reader :req_keyword_values
+      attr_reader :opt_keyword_keys
+      attr_reader :opt_keyword_values
       attr_reader :rest_keywords
       attr_reader :return_type
 
@@ -148,12 +158,17 @@ module TypeProf::Core
         post_positionals:,
         opt_positionals:,
         rest_positionals:,
-        req_keywords:,
-        opt_keywords:,
+        req_keyword_values:,
+        opt_keyword_values:,
         rest_keywords:,
         return_type:,
       }
-      def attrs = { type_params:, block_required: }
+      def attrs = {
+        type_params:,
+        req_keyword_keys:,
+        opt_keyword_keys:,
+        block_required:,
+      }
     end
 
     class SigTyNode < Node
