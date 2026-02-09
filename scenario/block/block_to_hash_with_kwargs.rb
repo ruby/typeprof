@@ -8,5 +8,5 @@ foo(key: 1) {}
 
 ## assert
 class Object
-  def foo: (**Integer | Proc) -> Hash[:key, Integer | Proc]
+  def foo: (**Integer) -> { key: Integer }
 end
