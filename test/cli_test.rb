@@ -47,6 +47,17 @@ module TypeProf
       END
     end
 
+    def test_e2e_disable_directive
+      assert_equal(<<~END, test_run("disable_directive", ["--show-error", "."]))
+        # TypeProf #{ TypeProf::VERSION }
+
+        # ./disable_directive.rb
+        class Object
+          def check: -> :ok
+        end
+      END
+    end
+
     def test_e2e_syntax_error
       assert_equal(<<~END, test_run("syntax_error", ["."]))
         # TypeProf #{ TypeProf::VERSION }
