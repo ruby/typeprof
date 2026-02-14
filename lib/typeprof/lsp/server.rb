@@ -104,6 +104,7 @@ module TypeProf::LSP
                 puts "unknown severity: #{ severity }"
               end
             end
+            @core_options[:exclude_patterns] = conf[:exclude] if conf[:exclude]
             conf[:analysis_unit_dirs].each do |dir|
               dir = File.expand_path(dir, path)
               core = @cores[dir] = TypeProf::Core::Service.new(@core_options)

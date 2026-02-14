@@ -39,10 +39,10 @@ module TypeProf::Core
 
     def add_workspace(rb_folder, rbs_folder)
       Dir.glob(File.expand_path(rb_folder + "/**/*.{rb,rbs}")) do |path|
-        update_file(path, nil)
+        update_file(path, nil) unless exclude_files.include?(path)
       end
       Dir.glob(File.expand_path(rbs_folder + "/**/*.{rb,rbs}")) do |path|
-        update_file(path, nil)
+        update_file(path, nil) unless exclude_files.include?(path)
       end
     end
 
@@ -512,6 +512,7 @@ module TypeProf::Core
           i += 1
         end
 
+        next if exclude_files.include?(File.expand_path(file))
         res = update_file(file, File.read(file))
 
         if res
@@ -541,6 +542,14 @@ module TypeProf::Core
         end
         output.puts dump_declarations(file)
       end
+    end
+
+    private
+
+    def exclude_files
+      @exclude_files ||= (@options[:exclude_patterns] || []).each_with_object(::Set.new) { |pattern, set|
+        Dir.glob(File.expand_path(pattern)) { |path| set << path }
+      }
     end
   end
 end

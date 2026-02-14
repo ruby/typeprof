@@ -12,6 +12,7 @@ module TypeProf::CLI
       output = nil
       rbs_collection_path = nil
       initialize_config_file = false
+      exclude_patterns = []
 
       opt.separator ""
       opt.separator "Options:"
@@ -25,6 +26,7 @@ module TypeProf::CLI
       opt.on("--version", "Display typeprof version") { cli_options[:display_version] = true }
       opt.on("--collection PATH", "File path of collection configuration") { |v| rbs_collection_path = v }
       opt.on("--no-collection", "Ignore collection configuration") { rbs_collection_path = :no }
+      opt.on("--exclude PATTERN", "Exclude files matching glob PATTERN (can be specified multiple times)") { |v| exclude_patterns << v }
       opt.on("--lsp", "LSP server mode") do |v|
         core_options[:display_indicator] = false
         cli_options[:lsp] = true
@@ -65,6 +67,7 @@ module TypeProf::CLI
         output_errors: false,
         output_parameter_names: false,
         output_source_locations: false,
+        exclude_patterns: exclude_patterns,
       }.merge(core_options)
 
       @lsp_options = {
@@ -189,7 +192,8 @@ module TypeProf::CLI
         {
           "typeprof_version": "experimental",
           "rbs_dir": "sig/",
-          "analysis_unit_dirs": #{exist_dirs.inspect}
+          "analysis_unit_dirs": #{exist_dirs.inspect},
+          // "exclude": ["**/templates/**/*.rb"],
           // "diagnostic_severity": "warning"
         }
       JSONC
