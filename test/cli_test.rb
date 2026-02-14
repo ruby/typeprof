@@ -111,6 +111,17 @@ module TypeProf
       end)
     end
 
+    def test_e2e_exclude
+      assert_equal(<<~END, test_run("exclude_test", ["--exclude", "**/templates/**", "."]))
+        # TypeProf #{ TypeProf::VERSION }
+
+        # ./lib/main.rb
+        class Object
+          def foo: (String) -> String
+        end
+      END
+    end
+
     def test_lsp_options_with_lsp_mode
       assert_nothing_raised { TypeProf::CLI::CLI.new(["--lsp", "--stdio"]) }
     end
