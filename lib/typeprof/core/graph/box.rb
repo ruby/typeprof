@@ -1136,25 +1136,16 @@ module TypeProf::Core
     end
 
     def run0(genv, changes)
+      has_record = false
+
       @recv.each_type do |ty|
         case ty
         when Type::Record
-          new_fields = {}
+          has_record = true
           ty.fields.each do |key, field_vtx|
             @field_cache[key] ||= Vertex.new(@node)
             changes.add_edge(genv, field_vtx, @field_cache[key]) unless field_vtx.equal?(@field_cache[key])
-            new_fields[key] = @field_cache[key]
           end
-          @field_cache[@key_sym] ||= Vertex.new(@node)
-          new_fields[@key_sym] = @field_cache[@key_sym]
-          changes.add_edge(genv, @val_vtx, @field_cache[@key_sym])
-          new_fields.each do |key, vtx|
-            changes.add_edge(genv, Source.new(Type::Symbol.new(genv, key)), @unified_key)
-            changes.add_edge(genv, vtx, @unified_val)
-          end
-          base_type = genv.gen_hash_type(@unified_key, @unified_val)
-          new_record = Type::Record.new(genv, new_fields, base_type)
-          changes.add_edge(genv, Source.new(new_record), @out_vtx)
         when Type::Hash
           build_merged_hash_type(genv, changes, ty.get_key, ty.get_value)
         when Type::Instance
@@ -1166,6 +1157,22 @@ module TypeProf::Core
         else
           changes.add_edge(genv, Source.new(ty), @out_vtx)
         end
+      end
+
+      if has_record
+        @field_cache[@key_sym] ||= Vertex.new(@node)
+        changes.add_edge(genv, @val_vtx, @field_cache[@key_sym])
+
+        new_fields = {}
+        @field_cache.each do |key, vtx|
+          changes.add_edge(genv, Source.new(Type::Symbol.new(genv, key)), @unified_key)
+          changes.add_edge(genv, vtx, @unified_val)
+          new_fields[key] = vtx
+        end
+
+        base_type = genv.gen_hash_type(@unified_key, @unified_val)
+        new_record = Type::Record.new(genv, new_fields, base_type)
+        changes.add_edge(genv, Source.new(new_record), @out_vtx)
       end
     end
 
