@@ -270,7 +270,7 @@ module TypeProf::Core
         @ret = ret
       end
 
-      attr_reader :lenv, :prev_node, :ret
+      attr_reader :lenv, :prev_node, :code_range, :ret
 
       def boxes(_)
         []

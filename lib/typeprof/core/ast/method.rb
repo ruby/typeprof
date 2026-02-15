@@ -12,7 +12,7 @@ module TypeProf::Core
         comment_loc = comment.location
         comment_text = comment_loc.slice
         if comment_loc.start_line == lineno && comment_text.start_with?("#:")
-          rbs_comments[comment_loc.start_line] = " " * (comment_loc.start_column + 2) + comment_text[2..]
+          rbs_comments[comment_loc.start_line - 1] = " " * (comment_loc.start_column + 2) + comment_text[2..]
         else
           break
         end
