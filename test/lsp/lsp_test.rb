@@ -285,6 +285,78 @@ test(Foo.new)
       end
     end
 
-    # TODO: add a test for definition (for crossing files)
+    def test_type_definition_for_class_constant
+      init("type_definition")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "test.rb", version: 0, text: <<-END },
+class Foo
+end
+
+foo = Foo.new
+foo
+        END
+      )
+
+      expect_notification("typeprof.enableToggleButton") {|json| }
+      expect_request("workspace/codeLens/refresh") {|json| }
+
+      id = request(
+        "textDocument/typeDefinition",
+        textDocument: { uri: @folder + "test.rb" },
+        position: { line: 3, character: 6 },
+      )
+
+      expect_response(id) do |json|
+        assert_equal(2, json.size)
+
+        rbs_result = json.find { |r| r[:uri].end_with?(".rbs") }
+        rb_result = json.find { |r| r[:uri].end_with?(".rb") }
+
+        assert_not_nil(rbs_result, "RBS definition should be found")
+        assert_not_nil(rb_result, "Ruby definition should be found")
+
+        assert(rbs_result[:uri].end_with?("sig/test.rbs"))
+        assert(rb_result[:uri].end_with?("test.rb"))
+      end
+    end
+
+    def test_type_definition_for_local_variable
+      init("type_definition")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "test.rb", version: 0, text: <<-END },
+class Foo
+end
+
+foo = Foo.new
+foo
+        END
+      )
+
+      expect_notification("typeprof.enableToggleButton") {|json| }
+      expect_request("workspace/codeLens/refresh") {|json| }
+
+      id = request(
+        "textDocument/typeDefinition",
+        textDocument: { uri: @folder + "test.rb" },
+        position: { line: 4, character: 0 },
+      )
+
+      expect_response(id) do |json|
+        assert_equal(2, json.size)
+
+        rbs_result = json.find { |r| r[:uri].end_with?(".rbs") }
+        rb_result = json.find { |r| r[:uri].end_with?(".rb") }
+
+        assert_not_nil(rbs_result, "RBS definition should be found")
+        assert_not_nil(rb_result, "Ruby definition should be found")
+
+        assert(rbs_result[:uri].end_with?("sig/test.rbs"))
+        assert(rb_result[:uri].end_with?("test.rb"))
+      end
+    end
   end
 end

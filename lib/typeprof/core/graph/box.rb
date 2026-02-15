@@ -279,10 +279,10 @@ module TypeProf::Core
           args << arg.show
         end
 
-        method_type.req_keywords.each do |key, arg|
+        method_type.req_keyword_keys.zip(method_type.req_keyword_values) do |key, arg|
           args << "#{ key }: #{arg.show}"
         end
-        method_type.opt_keywords.each do |key, arg|
+        method_type.opt_keyword_keys.zip(method_type.opt_keyword_values) do |key, arg|
           args << "?#{ key }: #{arg.show}"
         end
         if method_type.rest_keywords

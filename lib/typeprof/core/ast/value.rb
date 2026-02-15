@@ -293,13 +293,18 @@ module TypeProf::Core
         unified_key = Vertex.new(self)
         unified_val = Vertex.new(self)
         literal_pairs = {}
+        all_symbol_keys = true
         @keys.zip(@vals) do |key, val|
           if key
             k = key.install(genv).new_vertex(genv, self)
             v = val.install(genv).new_vertex(genv, self)
             @changes.add_edge(genv, k, unified_key)
             @changes.add_edge(genv, v, unified_val)
-            literal_pairs[key.lit] = v if key.is_a?(SymbolNode)
+            if key.is_a?(SymbolNode)
+              literal_pairs[key.lit] = v
+            else
+              all_symbol_keys = false
+            end
           else
             if val.is_a?(DummyNilNode)
               h = @lenv.get_var(:"**anonymous_keyword")
@@ -310,10 +315,13 @@ module TypeProf::Core
             @changes.add_hash_splat_box(genv, h, unified_key, unified_val)
           end
         end
+        base_hash_type = genv.gen_hash_type(unified_key, unified_val)
         if @splat
-          Source.new(genv.gen_hash_type(unified_key, unified_val))
+          Source.new(base_hash_type)
+        elsif all_symbol_keys
+          Source.new(Type::Record.new(genv, literal_pairs, base_hash_type))
         else
-          Source.new(Type::Hash.new(genv, literal_pairs, genv.gen_hash_type(unified_key, unified_val)))
+          Source.new(Type::Hash.new(genv, literal_pairs, base_hash_type))
         end
       end
     end

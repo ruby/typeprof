@@ -139,7 +139,11 @@ module TypeProf::Core
           end
 
           blk_f_ary_arg = Vertex.new(self)
-          @changes.add_masgn_box(genv, blk_f_ary_arg, blk_f_args, nil, nil) # TODO: support splat "do |a, *b, c|"
+          # TODO: support splat "do |a, *b, c|"
+          blk_f_args.each_with_index do |f_arg, i|
+            elem_vtx = @changes.add_splat_box(genv, blk_f_ary_arg, i).ret
+            @changes.add_edge(genv, elem_vtx, f_arg)
+          end
           block = Block.new(self, blk_f_ary_arg, blk_f_args, @block_body.lenv.next_boxes)
           blk_ty = Source.new(Type::Proc.new(genv, block))
         elsif @block_pass

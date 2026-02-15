@@ -69,6 +69,9 @@ module TypeProf::Core
         case ty
         when Type::Hash
           changes.add_edge(genv, ty.get_value(name), vtx)
+        when Type::Record
+          field_vtx = ty.get_value(name)
+          changes.add_edge(genv, field_vtx, vtx) if field_vtx
         when Type::Instance
           if ty.mod == genv.mod_hash
             changes.add_edge(genv, ty.args[1], vtx)
@@ -94,12 +97,7 @@ module TypeProf::Core
 
     def accept_args(genv, changes, caller_positionals)
       if caller_positionals.size == 1 && @f_args.size >= 2
-        single_arg = caller_positionals[0]
-
-        @f_args.each_with_index do |f_arg, i|
-          elem_vtx = changes.add_splat_box(genv, single_arg, i).ret
-          changes.add_edge(genv, elem_vtx, f_arg)
-        end
+        changes.add_edge(genv, caller_positionals[0], @f_ary_arg)
       else
         caller_positionals.zip(@f_args) do |a_arg, f_arg|
           changes.add_edge(genv, a_arg, f_arg) if f_arg

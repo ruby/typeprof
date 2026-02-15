@@ -1,0 +1,5 @@
+{
+  "typeprof_version": "experimental",
+  "analysis_unit_dirs": ["."],
+  "sig_dirs": ["sig"]
+}

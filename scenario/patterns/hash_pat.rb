@@ -23,5 +23,5 @@ check({ a: 42 })
 class MyHash
 end
 class Object
-  def check: (Hash[:a, Integer]) -> (:bar | :baz | :foo | :qux | :zzz)
+  def check: ({ a: Integer }) -> (:bar | :baz | :foo | :qux | :zzz)
 end
