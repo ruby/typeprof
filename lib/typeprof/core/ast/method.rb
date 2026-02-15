@@ -2,28 +2,23 @@ module TypeProf::Core
   class AST
     def self.get_rbs_comment_before(raw_node, lenv)
       comments = Fiber[:comments]
-      i = comments.bsearch_index {|comment| comment.location.start_line >= raw_node.location.start_line } || comments.size
-      lineno = raw_node.location.start_line
+      node_line = raw_node.location.start_line
+      last_comment_index = comments.bsearch_index {|c| c.location.start_line >= node_line } || comments.size
       rbs_comments = []
-      while i > 0
-        i -= 1
-        lineno -= 1
+      expected_line = node_line - 1
+      (last_comment_index - 1).downto(0) do |i|
         comment = comments[i]
+        break unless comment.location.start_line == expected_line && comment.location.slice.start_with?("#:")
         comment_loc = comment.location
         comment_text = comment_loc.slice
-        if comment_loc.start_line == lineno && comment_text.start_with?("#:")
-          rbs_comments[comment_loc.start_line - 1] = " " * (comment_loc.start_column + 2) + comment_text[2..]
-        else
-          break
-        end
+        rbs_comments[comment_loc.start_line - 1] = " " * (comment_loc.start_column + 2) + comment_text[2..]
+        expected_line -= 1
       end
       return nil if rbs_comments.empty?
       rbs_comments = rbs_comments.map {|line| line || "" }.join("\n")
       method_type = RBS::Parser.parse_method_type(rbs_comments)
       if method_type
         AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
-      else
-        nil
       end
     rescue RBS::ParsingError
       # TODO: report the error
