@@ -414,6 +414,21 @@ module TypeProf::Core
       end
     end
 
+    def format_declared_const_path(cpath, stack)
+      scope_cpath =
+        stack.reverse_each.find do |entry|
+          (entry.is_a?(AST::ClassNode) || entry.is_a?(AST::ModuleNode)) &&
+            entry.static_cpath &&
+            !entry.static_cpath.empty?
+        end&.static_cpath
+
+      return cpath.join("::") unless scope_cpath
+      return cpath.join("::") unless cpath[0, scope_cpath.size] == scope_cpath
+
+      rel_cpath = cpath.drop(scope_cpath.size)
+      rel_cpath.empty? ? cpath.join("::") : rel_cpath.join("::")
+    end
+
     def dump_declarations(path)
       stack = []
       out = []
@@ -465,7 +480,7 @@ module TypeProf::Core
         when AST::ConstantWriteNode
           if node.static_cpath
             if event == :enter
-              out << "  " * stack.size + "#{ node.static_cpath.join("::") }: #{ node.ret.show }"
+              out << "  " * stack.size + "#{ format_declared_const_path(node.static_cpath, stack) }: #{ node.ret.show }"
             end
           end
         else

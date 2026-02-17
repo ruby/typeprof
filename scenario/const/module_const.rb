@@ -14,7 +14,7 @@ end
 ## diagnostics
 ## assert
 module M
-  M::C: :test
+  C: :test
 end
 class C
   include M

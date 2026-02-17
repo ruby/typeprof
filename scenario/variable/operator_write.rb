@@ -42,8 +42,8 @@ C::E += 1
 ## diagnostics
 ## assert
 class C
-  C::D: Integer
-  C::D: Integer
+  D: Integer
+  D: Integer
   def get_lv: -> Integer
   def set_iv: -> Integer
   def get_iv: -> Integer

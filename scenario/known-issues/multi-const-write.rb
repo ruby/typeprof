@@ -6,5 +6,5 @@ end
 
 ## assert
 class C
-  C::D: (Integer | String)
+  D: (Integer | String)
 end
