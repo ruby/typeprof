@@ -18,8 +18,8 @@ module TypeProf::Core
       ProgramNode.new(raw_scope, lenv)
     end
 
-    #: (untyped, TypeProf::Core::LocalEnv, ?bool) -> TypeProf::Core::AST::Node
-    def self.create_node(raw_node, lenv, use_result = true)
+    #: (untyped, TypeProf::Core::LocalEnv, ?bool, ?bool) -> TypeProf::Core::AST::Node
+    def self.create_node(raw_node, lenv, use_result = true, allow_meta = false)
       while true
         case raw_node.type
         when :parentheses_node
@@ -233,8 +233,7 @@ module TypeProf::Core
       when :forwarding_super_node then ForwardingSuperNode.new(raw_node, lenv)
       when :yield_node then YieldNode.new(raw_node, lenv)
       when :call_node
-        if !raw_node.receiver
-          # TODO: handle them only when it is directly under class or module
+        if allow_meta && !raw_node.receiver && !lenv.cref.mid && [:class, :metaclass].include?(lenv.cref.scope_level)
           case raw_node.name
           when :include
             return IncludeMetaNode.new(raw_node, lenv)
