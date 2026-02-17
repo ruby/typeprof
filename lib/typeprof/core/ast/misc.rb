@@ -6,7 +6,7 @@ module TypeProf::Core
         stmts = raw_node.body
         @stmts = stmts.map.with_index do |n, i|
           if n
-            AST.create_node(n, lenv, i == stmts.length - 1 ? use_result : false)
+            AST.create_node(n, lenv, i == stmts.length - 1 ? use_result : false, true)
           else
             last = code_range.last
             DummyNilNode.new(TypeProf::CodeRange.new(last, last), lenv)
