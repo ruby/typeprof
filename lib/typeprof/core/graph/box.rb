@@ -491,6 +491,8 @@ module TypeProf::Core
     end
 
     def pass_arguments(changes, genv, a_args)
+      a_args = normalize_keyword_hash_argument_for_def(a_args)
+
       if a_args.splat_flags.any?
         # there is at least one splat actual argument
 
@@ -605,6 +607,15 @@ module TypeProf::Core
       end
 
       return true
+    end
+
+    def normalize_keyword_hash_argument_for_def(a_args)
+      return a_args unless a_args.keywords
+      return a_args if @node.no_keywords
+      return a_args if @node.rest_keywords
+      return a_args unless @node.req_keywords.empty? && @node.opt_keywords.empty?
+
+      a_args.with_keywords_as_last_positional_hash
     end
 
     def call(changes, genv, a_args, ret)

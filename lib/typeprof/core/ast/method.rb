@@ -37,6 +37,7 @@ module TypeProf::Core
           opt_keywords: [],
           opt_keyword_defaults: [],
           rest_keywords: nil,
+          no_keywords: false,
           block: nil,
         }
       end
@@ -64,6 +65,7 @@ module TypeProf::Core
       req_keywords = []
       opt_keywords = []
       opt_keyword_defaults = []
+      no_keywords = false
 
       raw_args.keywords.each do |kw|
         case kw.type
@@ -83,7 +85,7 @@ module TypeProf::Core
         rest_positionals = :"..."
         rest_keywords = :"..."
       when Prism::NoKeywordsParameterNode
-        # what to do?
+        no_keywords = true
       when nil
         # nothing to do
       else
@@ -102,6 +104,7 @@ module TypeProf::Core
         opt_keywords:,
         opt_keyword_defaults:,
         rest_keywords:,
+        no_keywords:,
         block:,
         args_code_ranges:
       }
@@ -144,6 +147,7 @@ module TypeProf::Core
         @opt_keywords = h[:opt_keywords]
         @opt_keyword_defaults = h[:opt_keyword_defaults]
         @rest_keywords = h[:rest_keywords]
+        @no_keywords = h[:no_keywords]
         @block = h[:block]
         @args_code_ranges = h[:args_code_ranges] || []
 
@@ -163,6 +167,7 @@ module TypeProf::Core
       attr_reader :opt_keywords
       attr_reader :opt_keyword_defaults
       attr_reader :rest_keywords
+      attr_reader :no_keywords
       attr_reader :block
       attr_reader :body
       attr_reader :rbs_method_type
@@ -186,6 +191,7 @@ module TypeProf::Core
         req_keywords:,
         opt_keywords:,
         rest_keywords:,
+        no_keywords:,
         block:,
         reusable:,
       }

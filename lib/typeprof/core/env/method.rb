@@ -41,6 +41,17 @@ module TypeProf::Core
       ActualArguments.new(positionals, splat_flags, keywords, block)
     end
 
+    def with_keywords_as_last_positional_hash
+      return self unless @keywords
+
+      ActualArguments.new(
+        @positionals + [@keywords],
+        @splat_flags + [false],
+        nil,
+        @block
+      )
+    end
+
     def get_rest_args(genv, changes, start_rest, end_rest)
       vtxs = []
 
