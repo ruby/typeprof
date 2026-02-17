@@ -36,7 +36,7 @@ C::E ||= :ConstE
 ## diagnostics
 ## assert
 class C
-  C::D: :ConstD
+  D: :ConstD
   def get_lv: -> :LVar
   def set_iv: -> :IVar
   def get_iv: -> :IVar

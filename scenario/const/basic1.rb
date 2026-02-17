@@ -12,7 +12,7 @@ end
 
 ## assert
 class C
-  C::X: Integer
+  X: Integer
 end
 class D < C
 end
