@@ -4,9 +4,11 @@ module TypeProf::Core
       @name = name
       @followers = Set[]
       @source_modules = Set[]
+      @exclude_cpath = nil
     end
 
     attr_reader :name, :followers
+    attr_accessor :exclude_cpath
 
     def propagate(genv)
       @followers.each do |follower|
@@ -68,6 +70,10 @@ module TypeProf::Core
     def on_scope_updated(genv)
       resolve(genv, @cref, @search_ancestors, false)
     end
+
+    def refresh(genv)
+      on_scope_updated(genv)
+    end
   end
 
   class ScopedStaticRead < StaticRead
@@ -85,6 +91,10 @@ module TypeProf::Core
         resolution_failed(genv)
       end
     end
+
+    def refresh(genv)
+      on_cbase_updated(genv)
+    end
   end
 
   module ConstRead
@@ -93,6 +103,7 @@ module TypeProf::Core
       if cdef && cdef.exist?
         inner_mod = genv.resolve_cpath(mod.cpath + [@name]) # TODO
         cpath = inner_mod.exist? ? inner_mod.cpath : nil
+        return false if @exclude_cpath && cpath == @exclude_cpath
         update_module(genv, cpath, cdef)
         return true
       end
