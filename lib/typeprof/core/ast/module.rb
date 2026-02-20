@@ -101,7 +101,11 @@ module TypeProf::Core
       def define0(genv)
         if @static_cpath && @superclass_cpath
           const = @superclass_cpath.define(genv)
-          const.followers << genv.resolve_cpath(@static_cpath) if const
+          if const
+            const.exclude_cpath = @static_cpath
+            const.refresh(genv)
+            const.followers << genv.resolve_cpath(@static_cpath)
+          end
         end
         super(genv)
       end
