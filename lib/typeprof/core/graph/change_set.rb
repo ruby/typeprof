@@ -12,14 +12,16 @@ module TypeProf::Core
       @new_boxes = {}
       @diagnostics = []
       @new_diagnostics = []
-      @depended_value_entities = []
-      @new_depended_value_entities = []
-      @depended_method_entities = []
-      @new_depended_method_entities = []
-      @depended_static_reads = []
-      @new_depended_static_reads = []
-      @depended_superclasses = []
-      @new_depended_superclasses = []
+      if target
+        @depended_value_entities = []
+        @new_depended_value_entities = []
+        @depended_method_entities = []
+        @new_depended_method_entities = []
+        @depended_static_reads = []
+        @new_depended_static_reads = []
+        @depended_superclasses = []
+        @new_depended_superclasses = []
+      end
     end
 
     attr_reader :node, :target, :covariant_types, :contravariant_types, :edges, :boxes, :diagnostics
@@ -184,6 +186,8 @@ module TypeProf::Core
       end
       @diagnostics, @new_diagnostics = @new_diagnostics, @diagnostics
       @new_diagnostics.clear
+
+      return unless @target
 
       @depended_value_entities.each do |ve|
         ve.read_boxes.delete(@target) || raise
