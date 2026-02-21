@@ -38,12 +38,12 @@ module TypeProf::Core
     end
 
     def add_workspace(rb_folder, rbs_folder)
-      Dir.glob(File.expand_path(rb_folder + "/**/*.{rb,rbs}")) do |path|
-        update_file(path, nil) unless exclude_files.include?(path)
-      end
-      Dir.glob(File.expand_path(rbs_folder + "/**/*.{rb,rbs}")) do |path|
-        update_file(path, nil) unless exclude_files.include?(path)
-      end
+      # Analyze RBS files first so that type declarations are available during RB type inference
+      all_files = [rb_folder, rbs_folder].flat_map { |folder| Dir.glob(File.expand_path(folder + "/**/*.{rb,rbs}")) }
+      rbs_files, rb_files = separate_rbs_and_rb(all_files.uniq)
+
+      rbs_files.each { |path| update_rbs_file(path, nil) }
+      rb_files.each { |path| update_rb_file(path, nil) }
     end
 
     def update_file(path, code)
@@ -520,14 +520,17 @@ module TypeProf::Core
         output.puts
       end
 
+      # Analyze RBS files first so that type declarations are available during RB type inference
+      rbs_files, rb_files = separate_rbs_and_rb(files)
+      sorted_files = rbs_files + rb_files
+
       i = 0
-      show_files = files.select do |file|
+      show_files = sorted_files.select do |file|
         if @options[:display_indicator]
-          $stderr << "\r[%d/%d] %s\e[K" % [i, files.size, file]
+          $stderr << "\r[%d/%d] %s\e[K" % [i, sorted_files.size, file]
           i += 1
         end
 
-        next if exclude_files.include?(File.expand_path(file))
         res = update_file(file, File.read(file))
 
         if res
@@ -560,6 +563,20 @@ module TypeProf::Core
     end
 
     private
+
+    def separate_rbs_and_rb(files)
+      rbs_files = []
+      rb_files = []
+      files.each do |file|
+        next if exclude_files.include?(File.expand_path(file))
+        if File.extname(file) == ".rbs"
+          rbs_files << file
+        else
+          rb_files << file
+        end
+      end
+      [rbs_files, rb_files]
+    end
 
     def exclude_files
       @exclude_files ||= (@options[:exclude_patterns] || []).each_with_object(::Set.new) { |pattern, set|

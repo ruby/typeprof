@@ -51,8 +51,8 @@ module TypeProf
       assert_equal(<<~END, test_run("syntax_error", ["."]))
         # TypeProf #{ TypeProf::VERSION }
 
-        # failed to analyze: ./syntax_error.rb
         # failed to analyze: ./syntax_error.rbs
+        # failed to analyze: ./syntax_error.rb
       END
     end
 
