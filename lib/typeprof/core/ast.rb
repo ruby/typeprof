@@ -15,7 +15,8 @@ module TypeProf::Core
       cref = CRef::Toplevel
       lenv = LocalEnv.new(path, cref, {}, [])
 
-      ProgramNode.new(raw_scope, lenv)
+      disable_ranges = TypeProf::Diagnostic::DisableDirective::Scanner.collect(result, src)
+      ProgramNode.new(raw_scope, lenv, disable_ranges: disable_ranges)
     end
 
     #: (untyped, TypeProf::Core::LocalEnv, ?bool, ?bool) -> TypeProf::Core::AST::Node
