@@ -519,7 +519,7 @@ module TypeProf::Core
           end
         end
         @f_args.opt_positionals.each_with_index do |f_vtx, i|
-          i += @f_args.opt_positionals.size
+          i += @f_args.req_positionals.size
           if i < start_rest
             changes.add_edge(genv, a_args.positionals[i], f_vtx)
           else
