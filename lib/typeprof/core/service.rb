@@ -76,13 +76,13 @@ module TypeProf::Core
       if prev_node
         live_vtxs = []
         node.get_vertexes(live_vtxs)
-        set = Set[]
+        set = Set.empty
         live_vtxs.uniq.each {|vtx| set << vtx }
         live_vtxs = set
 
         dead_vtxs = []
         prev_node.get_vertexes(dead_vtxs)
-        set = Set[]
+        set = Set.empty
         dead_vtxs.uniq.each {|vtx| set << vtx }
         dead_vtxs = set
 
@@ -93,7 +93,7 @@ module TypeProf::Core
 
         global_vtxs = []
         @genv.get_vertexes(global_vtxs)
-        set = Set[]
+        set = Set.empty
         global_vtxs.uniq.each {|vtx| set << vtx }
         global_vtxs = set
 
@@ -572,11 +572,11 @@ module TypeProf::Core
       files.each do |path|
         methods = []
         constants = []
-        seen_ivars = Set[]
+        seen_ivars = Set.empty
         ivars = []
-        seen_cvars = Set[]
+        seen_cvars = Set.empty
         cvars = []
-        seen_gvars = Set[]
+        seen_gvars = Set.empty
         gvars = []
 
         @rb_text_nodes[path]&.traverse do |event, node|

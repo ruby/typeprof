@@ -2,11 +2,11 @@ module TypeProf::Core
   class MethodEntity
     def initialize
       @builtin = nil
-      @decls = Set[]
-      @overloading_decls = Set[]
-      @defs = Set[]
+      @decls = Set.empty
+      @overloading_decls = Set.empty
+      @defs = Set.empty
       @aliases = {}
-      @method_call_boxes = Set[]
+      @method_call_boxes = Set.empty
     end
 
     attr_reader :decls, :defs, :aliases, :method_call_boxes

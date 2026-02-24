@@ -39,7 +39,7 @@ module TypeProf::Core
   class IsAFilter < Filter
     def initialize(genv, node, prev_vtx, neg, const_read)
       @node = node
-      @types = Set[]
+      @types = Set.empty
       @const_read = const_read
       @const_read.followers << self
       @next_vtx = Vertex.new(node)

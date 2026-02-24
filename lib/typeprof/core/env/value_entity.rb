@@ -1,9 +1,9 @@
 module TypeProf::Core
   class ValueEntity
     def initialize
-      @decls = Set[]
-      @defs = Set[]
-      @read_boxes = Set[]
+      @decls = Set.empty
+      @defs = Set.empty
+      @read_boxes = Set.empty
       @vtx = Vertex.new(self)
     end
 

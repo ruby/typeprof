@@ -6,9 +6,9 @@ module TypeProf::Core
       @static_eval_queue = []
 
       @run_queue = []
-      @run_queue_set = Set[]
+      @run_queue_set = Set.empty
 
-      @pending_diagnostic_paths = Set[]
+      @pending_diagnostic_paths = Set.empty
 
       @mod_object = ModuleEntity.new([])
       @mod_object.inner_modules[:Object] = @mod_object

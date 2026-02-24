@@ -730,8 +730,8 @@ module TypeProf::Core
     attr_reader :recv, :mid, :ret
 
     def run0(genv, changes)
-      edges = Set[]
-      called_mdefs = Set[]
+      edges = Set.empty
+      called_mdefs = Set.empty
       error_count = 0
       resolve(genv, changes) do |me, ty, mid, orig_ty|
         if !me
