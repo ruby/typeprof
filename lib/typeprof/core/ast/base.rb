@@ -9,7 +9,7 @@ module TypeProf::Core
         @ret = nil
 
         @changes = ChangeSet.new(self, nil)
-        @diagnostics = Set.empty
+        @diagnostics = Set::EMPTY
       end
 
       attr_reader :lenv
@@ -104,6 +104,7 @@ module TypeProf::Core
         @changes.reuse(self)
         (@prev_node || raise).diagnostics.each do |diag|
           diag.reuse(self)
+          @diagnostics = Set.empty if @diagnostics.equal?(Set::EMPTY)
           @diagnostics << diag
         end
         each_subnode do |subnode|
@@ -129,11 +130,12 @@ module TypeProf::Core
       end
 
       def add_diagnostic(diag)
+        @diagnostics = Set.empty if @diagnostics.equal?(Set::EMPTY)
         @diagnostics << diag
       end
 
       def remove_diagnostic(diag)
-        @diagnostics.delete(diag)
+        @diagnostics.delete(diag) unless @diagnostics.equal?(Set::EMPTY)
       end
 
       def diff(prev_node)

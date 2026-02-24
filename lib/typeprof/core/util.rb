@@ -81,5 +81,7 @@ module TypeProf::Core
       end
       q.text "]"
     end
+
+    EMPTY = empty.freeze
   end
 end
