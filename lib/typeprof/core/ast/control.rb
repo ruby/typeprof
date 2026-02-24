@@ -236,7 +236,7 @@ module TypeProf::Core
         if @lenv.exist_var?(:"*expected_block_ret")
           @lenv.add_next_box(@changes.add_escape_box(genv, @arg.ret))
         end
-        Source.new(Type::Bot.new(genv))
+        Source.new(genv.bot_type)
       end
     end
 
@@ -496,7 +496,7 @@ module TypeProf::Core
         @arg.install(genv)
         e_ret = @lenv.locals[:"*expected_method_ret"]
         @lenv.add_return_box(@changes.add_escape_box(genv, @arg.ret)) if e_ret
-        Source.new(Type::Bot.new(genv))
+        Source.new(genv.bot_type)
       end
     end
 
@@ -681,7 +681,7 @@ module TypeProf::Core
       end
 
       def install0(genv)
-        Source.new(Type::Bot.new(genv))
+        Source.new(genv.bot_type)
       end
     end
 

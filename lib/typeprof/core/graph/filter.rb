@@ -112,14 +112,14 @@ module TypeProf::Core
 
     def on_type_added(genv, src_var, added_types)
       if src_var == @base_vtx
-        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new(genv))
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(genv.bot_type)
           @next_vtx.on_type_removed(genv, self, @types.keys & @next_vtx.types.keys) # XXX: smoke/control/bot2.rb
         end
       else
         added_types.each do |ty|
           @types[ty] = true
         end
-        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new(genv))
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(genv.bot_type)
           # ignore
         else
           @next_vtx.on_type_added(genv, self, added_types - @next_vtx.types.keys) # XXX: smoke/control/bot4.rb
@@ -129,7 +129,7 @@ module TypeProf::Core
 
     def on_type_removed(genv, src_var, removed_types)
       if src_var == @base_vtx
-        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new(genv))
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(genv.bot_type)
           # ignore
         else
           @next_vtx.on_type_added(genv, self, @types.keys - @next_vtx.types.keys) # XXX: smoke/control/bot4.rb
@@ -138,7 +138,7 @@ module TypeProf::Core
         removed_types.each do |ty|
           @types.delete(ty) || raise
         end
-        if @base_vtx.types.size == 1 && @base_vtx.types.include?(Type::Bot.new(genv))
+        if @base_vtx.types.size == 1 && @base_vtx.types.include?(genv.bot_type)
           # ignore
         else
           @next_vtx.on_type_removed(genv, self, removed_types & @next_vtx.types.keys) # XXX: smoke/control/bot2.rb

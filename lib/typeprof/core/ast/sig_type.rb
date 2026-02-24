@@ -304,11 +304,11 @@ module TypeProf::Core
 
     class SigTyBaseBottomNode < SigTyNode
       def covariant_vertex0(genv, changes, vtx, subst)
-        changes.add_edge(genv, Source.new(Type::Bot.new(genv)), vtx)
+        changes.add_edge(genv, Source.new(genv.bot_type), vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        changes.add_edge(genv, Source.new(Type::Bot.new(genv)), vtx)
+        changes.add_edge(genv, Source.new(genv.bot_type), vtx)
       end
 
       def typecheck(genv, changes, vtx, subst)

@@ -791,7 +791,7 @@ module TypeProf::Core
 
     def resolve(genv, changes, &blk)
       @recv.each_type do |orig_ty|
-        next if orig_ty == Type::Bot.new(genv)
+        next if orig_ty == genv.bot_type
         if @mid == :"*super"
           mid = @node.lenv.cref.mid
           skip = true
@@ -936,7 +936,7 @@ module TypeProf::Core
     def resolve_subclasses(genv, changes)
       # TODO: This does not follow new subclasses
       @recv.each_type do |ty|
-        next if ty == Type::Bot.new(genv)
+        next if ty == genv.bot_type
         base_ty = ty.base_type(genv)
         singleton = base_ty.is_a?(Type::Singleton)
         mod = base_ty.mod
