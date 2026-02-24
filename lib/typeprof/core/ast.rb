@@ -11,7 +11,7 @@ module TypeProf::Core
       raise unless raw_scope.type == :program_node
 
       prism_source = result.source
-      file_context = FileContext.new(path, prism_source.code_units_cache(Encoding::UTF_16LE), result.comments)
+      file_context = FileContext.new(path, prism_source, result.comments)
 
       cref = CRef::Toplevel
       lenv = LocalEnv.new(file_context, cref, {}, [])
