@@ -1,7 +1,6 @@
 ## update
 def foo
   for i in 1..100
-    # currently, TypeProf does not initialize i
     return 1
   end
 end

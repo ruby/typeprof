@@ -265,19 +265,39 @@ module TypeProf::Core
     class ForNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        # XXX: tentative implementation
-        # raw_node.index
+        @index = AST.create_target_node(raw_node.index, lenv)
         @expr = AST.create_node(raw_node.collection, lenv)
         @body = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : DummyNilNode.new(TypeProf::CodeRange.new(code_range.last, code_range.last), lenv)
       end
 
-      attr_reader :expr, :body
+      attr_reader :index, :expr, :body
 
-      def subnodes = { expr:, body: }
+      def subnodes = { index:, expr:, body: }
 
       def install0(genv)
         @expr.install(genv)
+
+        vars = []
+        @index.modified_vars(@lenv.locals.keys, vars)
+        @body.modified_vars(@lenv.locals.keys, vars)
+        vars.uniq!
+
+        old_vtxs = {}
+        vars.each do |var|
+          vtx = @lenv.get_var(var)
+          nvtx = vtx.new_vertex(genv, self)
+          old_vtxs[var] = nvtx
+          @lenv.set_var(var, nvtx)
+        end
+
+        @index.install(genv)
         @body.install(genv)
+
+        vars.each do |var|
+          @changes.add_edge(genv, @lenv.get_var(var), old_vtxs[var])
+          @lenv.set_var(var, old_vtxs[var])
+        end
+
         Source.new(genv.nil_type)
       end
     end
