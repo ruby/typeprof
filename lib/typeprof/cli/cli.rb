@@ -38,6 +38,7 @@ module TypeProf::CLI
       opt.on("--[no-]show-errors", "Display possible errors found during the analysis") {|v| core_options[:output_diagnostics] = v }
       opt.on("--[no-]show-parameter-names", "Display parameter names for methods") {|v| core_options[:output_parameter_names] = v }
       opt.on("--[no-]show-source-locations", "Display definition source locations for methods") {|v| core_options[:output_source_locations] = v }
+      opt.on("--[no-]show-stats", "Display type inference statistics after analysis (for debugging purpose)") {|v| core_options[:output_stats] = v }
 
       opt.separator ""
       opt.separator "Advanced options:"
@@ -67,6 +68,7 @@ module TypeProf::CLI
         output_errors: false,
         output_parameter_names: false,
         output_source_locations: false,
+        output_stats: false,
         exclude_patterns: exclude_patterns,
       }.merge(core_options)
 

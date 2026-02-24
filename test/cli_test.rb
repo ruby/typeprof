@@ -122,6 +122,58 @@ module TypeProf
       END
     end
 
+    def test_e2e_show_stats
+      result = test_run("show_stats", ["--no-show-typeprof-version", "--show-stats", "."])
+      stats = result[/# TypeProf Evaluation Statistics.*/m]
+      assert(stats, "--show-stats should output statistics section")
+
+      # Method summary: 6 methods total
+      #   initialize (no slots) → fully typed
+      #   typed_method (param typed, ret typed) → fully typed
+      #   with_typed_block (ret typed, block_param typed, block_ret typed) → fully typed
+      #   untyped_params (2 params untyped, ret typed) → partially typed
+      #   with_untyped_block (ret untyped, block_param untyped, block_ret untyped) → fully untyped
+      #   uncalled_writer (param untyped, ret untyped) → fully untyped
+      assert_include(stats, "# Total methods: 6")
+      assert_include(stats, "#   Fully typed:     3")
+      assert_include(stats, "#   Partially typed: 1")
+      assert_include(stats, "#   Fully untyped:   2")
+
+      # Parameter slots: typed_method(1 typed) + untyped_params(2 untyped) + uncalled_writer(1 untyped)
+      assert_include(stats, "# Parameter slots: 4\n#   Typed:   1 (25.0%)\n#   Untyped: 3 (75.0%)")
+
+      # Return slots: typed_method(typed) + untyped_params(typed nil) + with_typed_block(typed)
+      #               + with_untyped_block(untyped) + uncalled_writer(untyped)
+      assert_include(stats, "# Return slots: 5\n#   Typed:   3 (60.0%)\n#   Untyped: 2 (40.0%)")
+
+      # Block parameter slots: with_typed_block(1 typed) + with_untyped_block(1 untyped)
+      assert_include(stats, "# Block parameter slots: 2\n#   Typed:   1 (50.0%)\n#   Untyped: 1 (50.0%)")
+
+      # Block return slots: with_typed_block(1 typed) + with_untyped_block(1 untyped)
+      assert_include(stats, "# Block return slots: 2\n#   Typed:   1 (50.0%)\n#   Untyped: 1 (50.0%)")
+
+      # Constants: TYPED_CONST(typed) + Foo::UNTYPED_CONST(untyped)
+      assert_include(stats, "# Constants: 2\n#   Typed:   1 (50.0%)\n#   Untyped: 1 (50.0%)")
+
+      # Instance variables: @typed_ivar(typed) + @untyped_ivar(untyped)
+      assert_include(stats, "# Instance variables: 2\n#   Typed:   1 (50.0%)\n#   Untyped: 1 (50.0%)")
+
+      # Class variables: @@typed_cvar(typed) + @@untyped_cvar(untyped)
+      assert_include(stats, "# Class variables: 2\n#   Typed:   1 (50.0%)\n#   Untyped: 1 (50.0%)")
+
+      # Global variables: $typed_gvar(typed) + $untyped_gvar(untyped)
+      assert_include(stats, "# Global variables: 2\n#   Typed:   1 (50.0%)\n#   Untyped: 1 (50.0%)")
+
+      # Overall: 10 typed out of 21
+      assert_include(stats, "# Overall: 10/21 typed (47.6%)")
+      assert_include(stats, "#          11/21 untyped (52.4%)")
+    end
+
+    def test_e2e_no_show_stats
+      result = test_run("basic", ["--no-show-typeprof-version", "."])
+      assert_not_include(result, "TypeProf Evaluation Statistics")
+    end
+
     def test_lsp_options_with_lsp_mode
       assert_nothing_raised { TypeProf::CLI::CLI.new(["--lsp", "--stdio"]) }
     end
