@@ -15,7 +15,7 @@ module TypeProf::Core
         # TODO: decl.type_params
         # TODO: decl.super_class.args
         ncref = CRef.new(@cpath, :class, nil, lenv.cref)
-        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
+        nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, [])
         @members = raw_decl.members.map do |member|
           AST.create_rbs_member(member, nlenv)
         end.compact
@@ -190,7 +190,7 @@ module TypeProf::Core
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @mid = raw_decl.name
-        @mid_code_range = TypeProf::CodeRange.from_node(raw_decl.location[:name])
+        @mid_code_range = lenv.code_range_from_node(raw_decl.location[:name])
         @singleton = raw_decl.singleton?
         @instance = raw_decl.instance?
         @method_types = raw_decl.overloads.map do |overload|

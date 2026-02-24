@@ -1,7 +1,8 @@
 module TypeProf::Core
   class AST
     def self.get_rbs_comment_before(raw_node, lenv)
-      comments = Fiber[:comments]
+      comments = lenv.file_context.comments
+      return nil unless comments
       node_line = raw_node.location.start_line
       last_comment_index = comments.bsearch_index {|c| c.location.start_line >= node_line } || comments.size
       rbs_comments = []
@@ -45,7 +46,7 @@ module TypeProf::Core
       args_code_ranges = []
       req_positionals = []
       raw_args.requireds.each do |n|
-        args_code_ranges << TypeProf::CodeRange.from_node(n.location)
+        args_code_ranges << lenv.code_range_from_node(n.location)
         req_positionals << (n.is_a?(Prism::MultiTargetNode) ? nil : n.name)
       end
 
@@ -116,7 +117,7 @@ module TypeProf::Core
         # TODO: warn "def self.foo" in a metaclass
         singleton = !!raw_node.receiver || lenv.cref.scope_level == :metaclass
         mid = raw_node.name
-        mid_code_range = TypeProf::CodeRange.from_node(raw_node.name_loc)
+        mid_code_range = lenv.code_range_from_node(raw_node.name_loc)
         @tbl = raw_node.locals
         raw_args = raw_node.parameters
         raw_body = raw_node.body
@@ -128,7 +129,7 @@ module TypeProf::Core
         @mid_code_range = mid_code_range
 
         ncref = CRef.new(lenv.cref.cpath, @singleton ? :class : :instance, @mid, lenv.cref)
-        nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
+        nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, [])
         if raw_body
           @body = AST.create_node(raw_body, nlenv)
         else

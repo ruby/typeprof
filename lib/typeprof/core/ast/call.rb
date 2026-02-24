@@ -69,7 +69,7 @@ module TypeProf::Core
                               raise "not supported yet: #{ raw_block.parameters.class }"
                             end
             ncref = CRef.new(lenv.cref.cpath, :instance, @mid, lenv.cref)
-            nlenv = LocalEnv.new(@lenv.path, ncref, {}, @lenv.return_boxes)
+            nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, @lenv.return_boxes)
             @block_body = raw_block.body ? AST.create_node(raw_block.body, nlenv) : DummyNilNode.new(code_range, lenv)
           end
         end
@@ -211,7 +211,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         recv = raw_node.receiver ? AST.create_node(raw_node.receiver, lenv) : nil
         mid = raw_node.name
-        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc) if raw_node.message_loc
+        mid_code_range = lenv.code_range_from_node(raw_node.message_loc) if raw_node.message_loc
         raw_args = raw_node.arguments
         raw_block = raw_node.block
         super(raw_node, recv, mid, mid_code_range, raw_args, nil, raw_block, lenv)
@@ -271,7 +271,7 @@ module TypeProf::Core
     class OperatorNode < CallBaseNode
       def initialize(raw_node, recv, lenv)
         mid = raw_node.binary_operator
-        mid_code_range = TypeProf::CodeRange.from_node(raw_node.binary_operator_loc)
+        mid_code_range = lenv.code_range_from_node(raw_node.binary_operator_loc)
         last_arg = AST.create_node(raw_node.value, lenv)
         super(raw_node, recv, mid, mid_code_range, nil, last_arg, nil, lenv)
       end
@@ -304,7 +304,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         recv = AST.create_node(raw_node.receiver, lenv)
         mid = raw_node.read_name
-        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc)
+        mid_code_range = lenv.code_range_from_node(raw_node.message_loc)
         super(raw_node, recv, mid, mid_code_range, nil, nil, nil, lenv)
       end
     end
@@ -313,7 +313,7 @@ module TypeProf::Core
       def initialize(raw_node, rhs, lenv)
         recv = AST.create_node(raw_node.receiver, lenv)
         mid = raw_node.is_a?(Prism::CallTargetNode) ? raw_node.name : raw_node.write_name
-        mid_code_range = TypeProf::CodeRange.from_node(raw_node.message_loc)
+        mid_code_range = lenv.code_range_from_node(raw_node.message_loc)
         @rhs = rhs
         super(raw_node, recv, mid, mid_code_range, nil, rhs, nil, lenv)
       end

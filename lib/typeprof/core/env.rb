@@ -257,7 +257,8 @@ module TypeProf::Core
     end
 
     def load_core_rbs(raw_decls)
-      lenv = LocalEnv.new(nil, CRef::Toplevel, {}, [])
+      file_context = FileContext.new(nil)
+      lenv = LocalEnv.new(file_context, CRef::Toplevel, {}, [])
       decls = raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
@@ -300,9 +301,18 @@ module TypeProf::Core
     end
   end
 
-  class LocalEnv
-    def initialize(path, cref, locals, return_boxes)
+  class FileContext
+    attr_reader :path, :code_units_cache, :comments
+    def initialize(path, code_units_cache = nil, comments = nil)
       @path = path
+      @code_units_cache = code_units_cache
+      @comments = comments
+    end
+  end
+
+  class LocalEnv
+    def initialize(file_context, cref, locals, return_boxes)
+      @file_context = file_context
       @cref = cref
       @locals = locals
       @return_boxes = return_boxes
@@ -312,7 +322,14 @@ module TypeProf::Core
       @strict_const_scope = false
     end
 
-    attr_reader :path, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope
+    attr_reader :file_context, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope
+
+    def path = @file_context&.path
+    def code_units_cache = @file_context&.code_units_cache
+
+    def code_range_from_node(node)
+      TypeProf::CodeRange.from_node(node, @file_context&.code_units_cache)
+    end
 
     def new_var(name, node)
       @locals[name] = Vertex.new(node)

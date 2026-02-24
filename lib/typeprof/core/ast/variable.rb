@@ -46,7 +46,7 @@ module TypeProf::Core
       def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)
         @var = raw_node.name
-        @var_code_range = TypeProf::CodeRange.from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
+        @var_code_range = lenv.code_range_from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
         @rhs = rhs
       end
 
@@ -109,7 +109,7 @@ module TypeProf::Core
       def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)
         @var = raw_node.name
-        @var_code_range = TypeProf::CodeRange.from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
+        @var_code_range = lenv.code_range_from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
         @rhs = rhs
       end
 
@@ -191,7 +191,7 @@ module TypeProf::Core
       def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)
         @var = raw_node.name
-        @var_code_range = TypeProf::CodeRange.from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
+        @var_code_range = lenv.code_range_from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
         @rhs = rhs
       end
 
@@ -264,7 +264,7 @@ module TypeProf::Core
       def initialize(raw_node, rhs, lenv)
         super(raw_node, lenv)
         @var = raw_node.name
-        @var_code_range = TypeProf::CodeRange.from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
+        @var_code_range = lenv.code_range_from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
         @rhs = rhs
       end
 

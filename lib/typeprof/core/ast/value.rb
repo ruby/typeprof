@@ -5,7 +5,7 @@ module TypeProf::Core
       when :string_node
         AST.create_node(raw_part, lenv)
       when :embedded_statements_node
-        raw_part.statements ? AST.create_node(raw_part.statements, lenv) : DummyNilNode.new(TypeProf::CodeRange.from_node(raw_part), lenv)
+        raw_part.statements ? AST.create_node(raw_part.statements, lenv) : DummyNilNode.new(lenv.code_range_from_node(raw_part), lenv)
       when :embedded_variable_node
         AST.create_node(raw_part.variable, lenv)
       else

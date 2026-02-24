@@ -10,10 +10,11 @@ module TypeProf::Core
 
       raise unless raw_scope.type == :program_node
 
-      Fiber[:comments] = result.comments
+      prism_source = result.source
+      file_context = FileContext.new(path, prism_source.code_units_cache(Encoding::UTF_16LE), result.comments)
 
       cref = CRef::Toplevel
-      lenv = LocalEnv.new(path, cref, {}, [])
+      lenv = LocalEnv.new(file_context, cref, {}, [])
 
       ProgramNode.new(raw_scope, lenv)
     end
@@ -252,7 +253,7 @@ module TypeProf::Core
     end
 
     def self.create_target_node(raw_node, lenv)
-      dummy_node = DummyRHSNode.new(TypeProf::CodeRange.from_node(raw_node.location), lenv)
+      dummy_node = DummyRHSNode.new(lenv.code_range_from_node(raw_node.location), lenv)
       case raw_node.type
       when :local_variable_target_node
         LocalVariableWriteNode.new(raw_node, dummy_node, lenv)
@@ -305,7 +306,7 @@ module TypeProf::Core
       when :pinned_expression_node then PinnedPatternNode.new(raw_node, lenv)
 
       when :local_variable_target_node
-        dummy_node = DummyRHSNode.new(TypeProf::CodeRange.from_node(raw_node.location), lenv)
+        dummy_node = DummyRHSNode.new(lenv.code_range_from_node(raw_node.location), lenv)
         LocalVariableWriteNode.new(raw_node, dummy_node, lenv)
 
       when :constant_read_node, :constant_path_node
@@ -368,7 +369,8 @@ module TypeProf::Core
       _buffer, _directives, raw_decls = RBS::Parser.parse_signature(src)
 
       cref = CRef::Toplevel
-      lenv = LocalEnv.new(path, cref, {}, [])
+      file_context = FileContext.new(path)
+      lenv = LocalEnv.new(file_context, cref, {}, [])
 
       raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
