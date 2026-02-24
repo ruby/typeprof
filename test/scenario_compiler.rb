@@ -40,7 +40,7 @@ class ScenarioCompiler
     end
     close_str = ""
     need_comment_removal = false
-    File.foreach(scenario, chomp: true) do |line|
+    File.foreach(scenario, chomp: true, encoding: "UTF-8") do |line|
       if line =~ /\A##\s*/
         out << close_str
         if line =~ /\A##\s*(\w+)(?::\s*(.*?)(?::(\d+)(?::(\d+))?)?)?\z/
