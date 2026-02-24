@@ -72,7 +72,7 @@ module TypeProf::Core
       def mname_code_range(name)
         idx = @args.index(name.to_sym) # TODO: support string args
         node = @raw_node.arguments.arguments[idx].location
-        TypeProf::CodeRange.from_node(node)
+        @lenv.code_range_from_node(node)
       end
 
       def install0(genv)
@@ -104,7 +104,7 @@ module TypeProf::Core
       def mname_code_range(name)
         idx = @args.index(name.to_sym) # TODO: support string args
         node = @raw_node.arguments.arguments[idx].location
-        TypeProf::CodeRange.from_node(node)
+        @lenv.code_range_from_node(node)
       end
 
       def define0(genv)

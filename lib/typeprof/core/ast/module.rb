@@ -12,13 +12,13 @@ module TypeProf::Core
 
         if @static_cpath
           ncref = CRef.new(@static_cpath, meta ? :metaclass : :class, nil, lenv.cref)
-          nlenv = LocalEnv.new(@lenv.path, ncref, {}, [])
+          nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, [])
           @body = raw_scope ? AST.create_node(raw_scope, nlenv, use_result) : DummyNilNode.new(code_range, lenv)
         else
           @body = nil
         end
 
-        @cname_code_range = meta ? nil : TypeProf::CodeRange.from_node(raw_node.constant_path)
+        @cname_code_range = meta ? nil : lenv.code_range_from_node(raw_node.constant_path)
         @mod_cdef = nil
       end
 

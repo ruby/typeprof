@@ -53,7 +53,7 @@ module TypeProf::Core
 
       def code_range
         if @raw_node
-          TypeProf::CodeRange.from_node(@raw_node)
+          @lenv.code_range_from_node(@raw_node)
         else
           pp self
           raise

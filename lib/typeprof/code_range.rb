@@ -55,11 +55,11 @@ module TypeProf
       raise unless first
     end
 
-    def self.from_node(node, encoding = Encoding::UTF_16LE)
+    def self.from_node(node, code_units_cache)
       node = node.location if node.respond_to?(:location)
       if node.is_a?(Prism::Location)
-        pos1 = CodePosition.new(node.start_line, node.start_code_units_column(encoding))
-        pos2 = CodePosition.new(node.end_line, node.end_code_units_column(encoding))
+        pos1 = CodePosition.new(node.start_line, node.cached_start_code_units_column(code_units_cache))
+        pos2 = CodePosition.new(node.end_line, node.cached_end_code_units_column(code_units_cache))
       elsif node.is_a?(RBS::Location)
         pos1 = CodePosition.new(*node.start_loc)
         pos2 = CodePosition.new(*node.end_loc)
