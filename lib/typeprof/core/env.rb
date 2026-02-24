@@ -333,8 +333,6 @@ module TypeProf::Core
     attr_reader :file_context, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope
 
     def path = @file_context&.path
-    def code_units_cache = @file_context&.code_units_cache
-
     def code_range_from_node(node)
       TypeProf::CodeRange.from_node(node, @file_context&.code_units_cache)
     end
