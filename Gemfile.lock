@@ -1,10 +1,10 @@
 GIT
   remote: https://github.com/ruby/rbs.git
-  revision: d86ab02eb7e41343b8391bc38e349b40c7e72b15
+  revision: 927ca592755d74bf6267b3c3183872e40f08be09
   specs:
-    rbs (4.0.0.dev.4)
+    rbs (4.0.0.dev.5)
       logger
-      prism (>= 1.3.0)
+      prism (>= 1.6.0)
       tsort
 
 PATH
@@ -20,8 +20,8 @@ GEM
     coverage-helpers (1.0.0)
     docile (1.4.1)
     logger (1.7.0)
-    power_assert (3.0.0)
-    prism (1.6.0)
+    power_assert (3.0.1)
+    prism (1.9.0)
     rake (13.3.1)
     simplecov (0.22.0)
       docile (~> 1.1)
@@ -29,8 +29,8 @@ GEM
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.13.2)
     simplecov_json_formatter (0.1.4)
-    stackprof (0.2.27)
-    test-unit (3.7.1)
+    stackprof (0.2.28)
+    test-unit (3.7.7)
       power_assert
     tsort (0.2.0)
 
