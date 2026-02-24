@@ -557,6 +557,230 @@ module TypeProf::Core
         end
         output.puts dump_declarations(file)
       end
+
+      if @options[:output_stats]
+        rb_files = show_files.reject {|f| File.extname(f) == ".rbs" }
+        stats = collect_stats(rb_files)
+        output.puts
+        output.puts format_stats(stats)
+      end
+    end
+
+    def collect_stats(files)
+      file_stats = []
+
+      files.each do |path|
+        methods = []
+        constants = []
+        seen_ivars = Set[]
+        ivars = []
+        seen_cvars = Set[]
+        cvars = []
+        seen_gvars = Set[]
+        gvars = []
+
+        @rb_text_nodes[path]&.traverse do |event, node|
+          next unless event == :enter
+
+          node.boxes(:mdef) do |mdef|
+            param_slots = []
+            f = mdef.f_args
+            [f.req_positionals, f.opt_positionals, f.post_positionals, f.req_keywords, f.opt_keywords].each do |ary|
+              ary.each {|vtx| param_slots << classify_vertex(vtx) }
+            end
+            [f.rest_positionals, f.rest_keywords].each do |vtx|
+              param_slots << classify_vertex(vtx) if vtx
+            end
+
+            is_initialize = mdef.mid == :initialize
+            ret_slots = is_initialize ? [] : [classify_vertex(mdef.ret)]
+
+            blk = mdef.record_block
+            block_param_slots = []
+            block_ret_slots = []
+            if blk.used
+              blk.f_args.each {|vtx| block_param_slots << classify_vertex(vtx) }
+              block_ret_slots << classify_vertex(blk.ret)
+            end
+
+            methods << {
+              mid: mdef.mid,
+              singleton: mdef.singleton,
+              param_slots: param_slots,
+              ret_slots: ret_slots,
+              block_param_slots: block_param_slots,
+              block_ret_slots: block_ret_slots,
+            }
+          end
+
+          if node.is_a?(AST::ConstantWriteNode) && node.static_cpath
+            constants << classify_vertex(node.ret)
+          end
+
+          if node.is_a?(AST::InstanceVariableWriteNode)
+            scope = node.lenv.cref.scope_level
+            if scope == :class || scope == :instance
+              key = [node.lenv.cref.cpath, scope == :class, node.var]
+              unless seen_ivars.include?(key)
+                seen_ivars << key
+                ve = @genv.resolve_ivar(key[0], key[1], key[2])
+                ivars << classify_vertex(ve.vtx)
+              end
+            end
+          end
+
+          if node.is_a?(AST::ClassVariableWriteNode)
+            key = [node.lenv.cref.cpath, node.var]
+            unless seen_cvars.include?(key)
+              seen_cvars << key
+              ve = @genv.resolve_cvar(key[0], key[1])
+              cvars << classify_vertex(ve.vtx)
+            end
+          end
+
+          if node.is_a?(AST::GlobalVariableWriteNode)
+            unless seen_gvars.include?(node.var)
+              seen_gvars << node.var
+              ve = @genv.resolve_gvar(node.var)
+              gvars << classify_vertex(ve.vtx)
+            end
+          end
+        end
+
+        file_stats << {
+          path: path,
+          methods: methods,
+          constants: constants,
+          ivars: ivars,
+          cvars: cvars,
+          gvars: gvars,
+        }
+      end
+
+      file_stats
+    end
+
+    def classify_vertex(vtx)
+      vtx.types.empty? ? :untyped : :typed
+    end
+
+    def format_stats(stats)
+      total_methods = 0
+      fully_typed = 0
+      partially_typed = 0
+      fully_untyped = 0
+
+      slot_categories = %i[param ret blk_param blk_ret const ivar cvar gvar]
+      typed = Hash.new(0)
+      untyped = Hash.new(0)
+
+      file_summaries = []
+
+      stats.each do |file|
+        f_typed = 0
+        f_total = 0
+
+        file[:methods].each do |m|
+          total_methods += 1
+
+          method_slot_keys = %i[param_slots ret_slots block_param_slots block_ret_slots]
+          category_keys = %i[param ret blk_param blk_ret]
+
+          all_slots = method_slot_keys.flat_map {|k| m[k] }
+
+          method_slot_keys.zip(category_keys) do |slot_key, cat|
+            m[slot_key].each do |s|
+              if s == :typed
+                typed[cat] += 1
+              else
+                untyped[cat] += 1
+              end
+            end
+          end
+
+          if all_slots.empty? || all_slots.all? {|s| s == :typed }
+            fully_typed += 1
+          elsif all_slots.none? {|s| s == :typed }
+            fully_untyped += 1
+          else
+            partially_typed += 1
+          end
+
+          f_typed += all_slots.count(:typed)
+          f_total += all_slots.size
+        end
+
+        %i[constants ivars cvars gvars].zip(%i[const ivar cvar gvar]) do |data_key, cat|
+          file[data_key].each do |s|
+            f_total += 1
+            if s == :typed
+              typed[cat] += 1
+              f_typed += 1
+            else
+              untyped[cat] += 1
+            end
+          end
+        end
+
+        if f_total > 0
+          file_summaries << {
+            path: file[:path],
+            methods: file[:methods].size,
+            typed: f_typed,
+            total: f_total,
+          }
+        end
+      end
+
+      overall_typed = slot_categories.sum {|c| typed[c] }
+      overall_untyped = slot_categories.sum {|c| untyped[c] }
+      overall_total = overall_typed + overall_untyped
+
+      labels = {
+        param: "Parameter slots",
+        ret: "Return slots",
+        blk_param: "Block parameter slots",
+        blk_ret: "Block return slots",
+        const: "Constants",
+        ivar: "Instance variables",
+        cvar: "Class variables",
+        gvar: "Global variables",
+      }
+
+      lines = []
+      lines << "# TypeProf Evaluation Statistics"
+      lines << "#"
+      lines << "# Total methods: #{ total_methods }"
+      lines << "#   Fully typed:     #{ fully_typed }"
+      lines << "#   Partially typed: #{ partially_typed }"
+      lines << "#   Fully untyped:   #{ fully_untyped }"
+
+      slot_categories.each do |cat|
+        total = typed[cat] + untyped[cat]
+        lines << "#"
+        lines << "# #{ labels[cat] }: #{ total }"
+        lines << "#   Typed:   #{ typed[cat] } (#{ pct(typed[cat], total) })"
+        lines << "#   Untyped: #{ untyped[cat] } (#{ pct(untyped[cat], total) })"
+      end
+
+      lines << "#"
+      lines << "# Overall: #{ overall_typed }/#{ overall_total } typed (#{ pct(overall_typed, overall_total) })"
+      lines << "#          #{ overall_untyped }/#{ overall_total } untyped (#{ pct(overall_untyped, overall_total) })"
+
+      if file_summaries.size > 1
+        lines << "#"
+        lines << "# Per-file breakdown:"
+        file_summaries.each do |fs|
+          lines << "#   #{ fs[:path] }: #{ fs[:methods] } methods, #{ fs[:typed] }/#{ fs[:total] } typed (#{ pct(fs[:typed], fs[:total]) })"
+        end
+      end
+
+      lines.join("\n")
+    end
+
+    def pct(n, total)
+      return "0.0%" if total == 0
+      "#{ (n * 100.0 / total).round(1) }%"
     end
 
     private

@@ -418,7 +418,7 @@ module TypeProf::Core
 
     attr_accessor :node
 
-    attr_reader :cpath, :singleton, :mid, :f_args, :ret
+    attr_reader :cpath, :singleton, :mid, :f_args, :ret, :record_block
 
     def destroy(genv)
       me = genv.resolve_method(@cpath, @singleton, @mid)
