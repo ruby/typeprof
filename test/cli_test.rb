@@ -76,6 +76,18 @@ module TypeProf
       END
     end
 
+    def test_e2e_output_param_names_rest
+      assert_equal(<<~END, test_run("rest_params", ["--show-parameter-names", "."]))
+        # TypeProf #{ TypeProf::VERSION }
+
+        # ./rest_params.rb
+        class Object
+          def foo: (*Integer args) -> Array[Integer]
+          def bar: (**String kwargs) -> { x: String }
+        end
+      END
+    end
+
     def test_e2e_output_source_location
       assert_equal(<<~END, test_run("basic", ["--show-source-location", "."]))
         # TypeProf #{ TypeProf::VERSION }
