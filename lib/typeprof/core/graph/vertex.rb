@@ -142,7 +142,7 @@ module TypeProf::Core
     attr_reader :next_vtxs, :types
 
     def on_type_added(genv, src_var, added_types)
-      new_added_types = []
+      new_added_types = nil
       added_types.each do |ty|
         if @types[ty]
           @types[ty] << src_var
@@ -154,10 +154,10 @@ module TypeProf::Core
             @types_to_be_added[ty] = set
           end
           set << src_var
-          new_added_types << ty
+          (new_added_types ||= []) << ty
         end
       end
-      unless new_added_types.empty?
+      if new_added_types
         @next_vtxs.each do |nvtx|
           nvtx.on_type_added(genv, self, new_added_types)
         end
@@ -165,16 +165,16 @@ module TypeProf::Core
     end
 
     def on_type_removed(genv, src_var, removed_types)
-      new_removed_types = []
+      new_removed_types = nil
       removed_types.each do |ty|
         raise "!!! not implemented" if @types_to_be_added[ty]
         @types[ty].delete(src_var) || raise
         if @types[ty].empty?
           @types.delete(ty) || raise
-          new_removed_types << ty
+          (new_removed_types ||= []) << ty
         end
       end
-      unless new_removed_types.empty?
+      if new_removed_types
         @next_vtxs.each do |nvtx|
           nvtx.on_type_removed(genv, self, new_removed_types)
         end
