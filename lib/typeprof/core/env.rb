@@ -40,6 +40,8 @@ module TypeProf::Core
       @set_type = Type::Instance.new(self, resolve_cpath([:Set]), [])
       @regexp_type = Type::Instance.new(self, resolve_cpath([:Regexp]), [])
 
+      @bot_type = Type::Bot.new(self)
+
       @run_count = 0
     end
 
@@ -50,6 +52,7 @@ module TypeProf::Core
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type
     attr_reader :int_type, :float_type, :rational_type, :complex_type
     attr_reader :proc_type, :symbol_type, :method_type, :set_type, :regexp_type
+    attr_reader :bot_type
 
     def gen_ary_type(elem_vtx)
       Type::Instance.new(self, @mod_ary, [elem_vtx])
