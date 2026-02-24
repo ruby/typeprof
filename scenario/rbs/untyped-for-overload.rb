@@ -11,5 +11,5 @@ end
 
 ## assert
 class Object
-  def check: -> untyped
+  def check: -> (:A | :B)
 end

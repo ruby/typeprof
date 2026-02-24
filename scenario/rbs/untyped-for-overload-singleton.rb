@@ -1,0 +1,17 @@
+## update: test.rbs
+class C
+  def foo: (singleton(String)) -> :str
+         | (singleton(Integer)) -> :int
+end
+
+## update: test.rb
+def check(unknown)
+  C.new.foo(unknown)
+end
+
+## diagnostics: test.rb
+
+## assert
+class Object
+  def check: (untyped) -> (:int | :str)
+end
