@@ -2,7 +2,9 @@ module TypeProf::Core
   class AST
     def self.typecheck_for_module(genv, changes, f_mod, f_args, a_vtx, subst)
       changes.add_edge(genv, a_vtx, changes.target)
+      found_any = false
       a_vtx.each_type do |ty|
+        found_any = true
         ty = ty.base_type(genv)
         while ty
           if ty.mod == f_mod && ty.is_a?(Type::Instance)
@@ -25,7 +27,7 @@ module TypeProf::Core
           ty = genv.get_superclass_type(ty, changes, {})
         end
       end
-      return false
+      return !found_any
     end
 
     def self.typecheck_for_prepended_modules(genv, changes, a_ty, f_mod, f_args, subst)
@@ -593,7 +595,9 @@ module TypeProf::Core
         return unless cpath
         f_mod = genv.resolve_cpath(cpath)
         changes.add_edge(genv, vtx, changes.target)
+        found_any = false
         vtx.each_type do |ty|
+          found_any = true
           case ty
           when Type::Singleton
             if f_mod.module?
@@ -608,7 +612,7 @@ module TypeProf::Core
             end
           end
         end
-        false
+        !found_any
       end
 
       def show
@@ -729,7 +733,9 @@ module TypeProf::Core
 
       def typecheck(genv, changes, vtx, subst)
         changes.add_edge(genv, vtx, changes.target)
+        found_any = false
         vtx.each_type do |ty|
+          found_any = true
           case ty
           when Type::Array
             next if ty.elems.size != @types.size
@@ -744,7 +750,7 @@ module TypeProf::Core
             return true
           end
         end
-        false
+        !found_any
       end
 
       def show
@@ -799,7 +805,9 @@ module TypeProf::Core
 
       def typecheck(genv, changes, vtx, subst)
         changes.add_edge(genv, vtx, changes.target)
+        found_any = false
         vtx.each_type do |ty|
+          found_any = true
           case ty
           when Type::Hash
             @fields.each do |key, field_node|
@@ -809,7 +817,7 @@ module TypeProf::Core
             return true
           end
         end
-        false
+        !found_any
       end
 
       def show
@@ -915,13 +923,15 @@ module TypeProf::Core
       def typecheck(genv, changes, vtx, subst)
         if @lit.is_a?(::Symbol)
           changes.add_edge(genv, vtx, changes.target)
+          found_any = false
           vtx.each_type do |ty|
+            found_any = true
             case ty
             when Type::Symbol
               return true if ty.sym == @lit
             end
           end
-          return false
+          return !found_any
         end
         f_mod = get_type(genv).mod
         AST.typecheck_for_module(genv, changes, f_mod, [], vtx, subst)

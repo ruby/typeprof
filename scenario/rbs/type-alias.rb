@@ -26,7 +26,6 @@ class Object
 end
 
 ## diagnostics: test.rb
-(10,10)-(10,13): wrong type of arguments
 
 ## update: test.rbs
 type a = Integer
@@ -44,7 +43,6 @@ end
 
 ## diagnostics: test.rb
 (6,10)-(6,13): wrong type of arguments
-(10,10)-(10,13): wrong type of arguments
 
 ## update: test.rbs
 type a = Integer
@@ -61,7 +59,6 @@ end
 
 ## diagnostics: test.rb
 (6,10)-(6,13): wrong type of arguments
-(10,10)-(10,13): wrong type of arguments
 
 ## update: test.rbs
 class Bar
@@ -80,4 +77,3 @@ end
 
 ## diagnostics: test.rb
 (6,10)-(6,13): wrong type of arguments
-(10,10)-(10,13): wrong type of arguments
