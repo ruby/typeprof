@@ -156,6 +156,30 @@ module TypeProf::Core
       end
     end
 
+    def object_method(changes, node, ty, a_args, ret)
+      if a_args.positionals.size == 1
+        sym_node = node.positional_args[0]
+        if sym_node.is_a?(AST::SymbolNode)
+          method_ty = Type::Method.new(@genv, ty, sym_node.lit)
+          changes.add_edge(@genv, Source.new(method_ty), ret)
+          return true
+        end
+      end
+      false
+    end
+
+    def method_call(changes, node, ty, a_args, ret)
+      case ty
+      when Type::Method
+        recv = Source.new(ty.recv_ty)
+        box = changes.add_method_call_box(@genv, recv, ty.mid, a_args, false)
+        changes.add_edge(@genv, box.ret, ret)
+        true
+      else
+        false
+      end
+    end
+
     def deploy
       {
         class_new: [[:Class], false, :new],
@@ -166,6 +190,8 @@ module TypeProf::Core
         array_push: [[:Array], false, :<<],
         hash_aref: [[:Hash], false, :[]],
         hash_aset: [[:Hash], false, :[]=],
+        object_method: [[:Kernel], false, :method],
+        method_call: [[:Method], false, :call],
       }.each do |key, (cpath, singleton, mid)|
         me = @genv.resolve_method(cpath, singleton, mid)
         me.builtin = method(key)
