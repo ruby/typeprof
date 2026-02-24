@@ -209,6 +209,23 @@ module TypeProf::Core
       end
     end
 
+    class Method < Type
+      def initialize(genv, recv_ty, mid)
+        @recv_ty = recv_ty
+        @mid = mid
+      end
+
+      attr_reader :recv_ty, :mid
+
+      def base_type(genv)
+        genv.method_type
+      end
+
+      def show
+        "Method"
+      end
+    end
+
     class Symbol < Type
       #: (GlobalEnv, ::Symbol) -> void
       def initialize(genv, sym)
