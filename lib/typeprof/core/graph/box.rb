@@ -662,11 +662,11 @@ module TypeProf::Core
         names = []
         names.concat(@node.req_positionals)
         names.concat(@node.opt_positionals)
-        names.concat(@node.rest_positionals) if @node.rest_positionals
+        names << @node.rest_positionals if @node.rest_positionals
         names.concat(@node.post_positionals)
         names.concat(@node.req_keywords)
         names.concat(@node.opt_keywords)
-        names.concat(@node.rest_keywords) if @node.rest_keywords
+        names << @node.rest_keywords if @node.rest_keywords
         args = args.zip(names).map do |arg, name|
           name ? "#{ arg } #{ name }" : arg
         end
