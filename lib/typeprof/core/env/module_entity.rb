@@ -3,10 +3,10 @@ module TypeProf::Core
     def initialize(cpath, outer_module = self)
       @cpath = cpath
 
-      @module_decls = Set[]
-      @module_defs = Set[]
-      @include_decls = Set[]
-      @include_defs = Set[]
+      @module_decls = Set.empty
+      @module_defs = Set.empty
+      @include_decls = Set.empty
+      @include_defs = Set.empty
       @prepend_decls = []
       @prepend_defs = []
 
@@ -34,9 +34,9 @@ module TypeProf::Core
       @type_aliases = {}
 
       @static_reads = {}
-      @subclass_checks = Set[]
-      @ivar_reads = Set[] # should be handled in @ivars ??
-      @cvar_reads = Set[]
+      @subclass_checks = Set.empty
+      @ivar_reads = Set.empty # should be handled in @ivars ??
+      @cvar_reads = Set.empty
     end
 
     attr_reader :cpath
@@ -237,7 +237,7 @@ module TypeProf::Core
             old_parent.child_modules.delete(self) if set.empty?
           end
           if new_parent
-            set = new_parent.child_modules[self] ||= Set[]
+            set = new_parent.child_modules[self] ||= Set.empty
             set << origin
           end
           return [new_parent, true]

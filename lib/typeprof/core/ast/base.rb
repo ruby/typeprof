@@ -9,7 +9,7 @@ module TypeProf::Core
         @ret = nil
 
         @changes = ChangeSet.new(self, nil)
-        @diagnostics = Set[]
+        @diagnostics = Set.empty
       end
 
       attr_reader :lenv

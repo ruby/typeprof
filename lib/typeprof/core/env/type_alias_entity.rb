@@ -1,7 +1,7 @@
 module TypeProf::Core
   class TypeAliasEntity
     def initialize
-      @decls = Set[]
+      @decls = Set.empty
       @type = nil
     end
 

@@ -6,6 +6,10 @@ module TypeProf::Core
       new(h)
     end
 
+    def self.empty
+      new(Hash.new(false))
+    end
+
     def initialize(hash)
       @hash = hash
     end

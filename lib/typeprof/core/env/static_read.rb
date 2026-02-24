@@ -2,8 +2,8 @@ module TypeProf::Core
   class StaticRead
     def initialize(name)
       @name = name
-      @followers = Set[]
-      @source_modules = Set[]
+      @followers = Set.empty
+      @source_modules = Set.empty
     end
 
     attr_reader :name, :followers
@@ -41,7 +41,7 @@ module TypeProf::Core
 
           unless @source_modules.include?(mod)
             @source_modules << mod
-            (mod.static_reads[@name] ||= Set[]) << self
+            (mod.static_reads[@name] ||= Set.empty) << self
           end
 
           return if check_module(genv, mod)

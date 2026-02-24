@@ -21,7 +21,7 @@ module TypeProf::Core
     end
 
     def show
-      Fiber[:show_rec] ||= Set[]
+      Fiber[:show_rec] ||= Set.empty
       if Fiber[:show_rec].include?(self)
         "untyped"
       else
@@ -101,7 +101,7 @@ module TypeProf::Core
     end
 
     def show
-      Fiber[:show_rec] ||= Set[]
+      Fiber[:show_rec] ||= Set.empty
       if Fiber[:show_rec].include?(self)
         "...(recursive)..."
       else
@@ -135,7 +135,7 @@ module TypeProf::Core
       else
         raise "unknown class: #{ origin.class }"
       end
-      @next_vtxs = Set[]
+      @next_vtxs = Set.empty
       super({})
     end
 
@@ -147,7 +147,7 @@ module TypeProf::Core
         if @types[ty]
           @types[ty] << src_var
         else
-          set = Set[]
+          set = Set.empty
           begin
             @types[ty] = set
           rescue
