@@ -789,17 +789,9 @@ module TypeProf::Core
     private
 
     def separate_rbs_and_rb(files)
-      rbs_files = []
-      rb_files = []
-      files.each do |file|
-        next if exclude_files.include?(File.expand_path(file))
-        if File.extname(file) == ".rbs"
-          rbs_files << file
-        else
-          rb_files << file
-        end
-      end
-      [rbs_files, rb_files]
+      files
+        .reject { |file| exclude_files.include?(File.expand_path(file)) }
+        .partition { |file| File.extname(file) == ".rbs" }
     end
 
     def exclude_files
