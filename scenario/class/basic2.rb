@@ -11,7 +11,7 @@ C::D.new(1).foo("str")
 
 ## assert
 class C
-  class C::D
+  class D
     def foo: (String) -> singleton(C)
   end
 end

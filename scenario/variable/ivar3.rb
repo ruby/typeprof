@@ -19,7 +19,7 @@ class C
   def x: -> (:C | :E)
 end
 class X
-  class X::D < C
+  class D < C
   end
 end
 class E < X::D
@@ -40,7 +40,7 @@ class C
   def x: -> :C
 end
 class X
-  class X::D < X::C
+  class D < X::C
   end
 end
 class E < X::D
@@ -49,7 +49,7 @@ end
 
 ## assert: test1.rb
 class X
-  class X::C
+  class C
     def foo: -> :XC
     def x: -> (:E | :XC)
   end

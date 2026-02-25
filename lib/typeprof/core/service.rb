@@ -437,7 +437,7 @@ module TypeProf::Core
         when AST::ModuleNode
           if node.static_cpath
             if event == :enter
-              out << "  " * stack.size + "module #{ node.static_cpath.join("::") }"
+              out << "  " * stack.size + "module #{ format_declared_const_path(node.static_cpath, stack) }"
               if stack == [:toplevel]
                 out << "end"
                 stack.pop
@@ -453,7 +453,7 @@ module TypeProf::Core
             next if stack.any? { node.is_a?(AST::SingletonClassNode) && (_1.is_a?(AST::ClassNode) || _1.is_a?(AST::ModuleNode)) && node.static_cpath == _1.static_cpath }
 
             if event == :enter
-              s = "class #{ node.static_cpath.join("::") }"
+              s = "class #{ format_declared_const_path(node.static_cpath, stack) }"
               mod = @genv.resolve_cpath(node.static_cpath)
               superclass = mod.superclass
               if superclass == nil

@@ -11,11 +11,11 @@ end
 
 ## assert: test0.rb
 class A
-  class A::B
+  class B
   end
 end
 class X
-  class X::C < A::B
+  class C < A::B
   end
 end
 
@@ -28,11 +28,11 @@ end
 
 ## assert: test0.rb
 class A
-  class A::B
+  class B
   end
 end
 class X
-  class X::C # failed to identify its superclass
+  class C # failed to identify its superclass
   end
 end
 
@@ -47,10 +47,10 @@ end
 
 ## assert: test0.rb
 class A
-  class A::B
+  class B
   end
 end
 class X
-  class X::C < X::A::B
+  class C < X::A::B
   end
 end

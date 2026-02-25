@@ -13,9 +13,9 @@ end
 class Foo
 end
 class Bar
-  class Bar::Baz < Bar::Foo
+  class Baz < Bar::Foo
   end
-  class Bar::Foo # failed to identify its superclass
+  class Foo # failed to identify its superclass
   end
 end
 
