@@ -37,7 +37,7 @@ module TypeProf::Core
         scope = cref.cpath
         mod = genv.resolve_cpath(scope)
         genv.each_superclass(mod, false) do |mod, _singleton|
-          break if mod == genv.mod_object && break_object
+          break if mod == genv.mod_object && (break_object || cref.outer)
 
           unless @source_modules.include?(mod)
             @source_modules << mod
