@@ -16,3 +16,6 @@ class B # failed to identify its superclass
 end
 module M
 end
+
+## diagnostics
+(4,10)-(4,11): circular inheritance
