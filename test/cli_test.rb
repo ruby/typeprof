@@ -186,6 +186,32 @@ module TypeProf
       assert_not_include(result, "TypeProf Evaluation Statistics")
     end
 
+    def test_lsp_port_option
+      # Find an available port from OS
+      tmp_server = TCPServer.new("localhost", 0)
+      port = tmp_server.addr[1]
+      tmp_server.close
+
+      read_pipe, write_pipe = IO.pipe
+      original_stdout = $stdout
+      $stdout = write_pipe
+
+      cli = TypeProf::CLI::CLI.new(["--lsp", "--port", port.to_s])
+      th = Thread.new { cli.run }
+
+      IO.select([read_pipe], nil, nil, 5)
+      output = read_pipe.read_nonblock(4096)
+      json = JSON.parse(output, symbolize_names: true)
+
+      assert_equal(port, json[:port])
+    ensure
+      th&.kill
+      th&.join(1)
+      $stdout = original_stdout
+      write_pipe&.close unless write_pipe&.closed?
+      read_pipe&.close unless read_pipe&.closed?
+    end
+
     def test_lsp_options_with_lsp_mode
       assert_nothing_raised { TypeProf::CLI::CLI.new(["--lsp", "--stdio"]) }
     end

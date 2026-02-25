@@ -21,8 +21,8 @@ module TypeProf::LSP
       new(core_options, reader, writer).run
     end
 
-    def self.start_socket(core_options)
-      Socket.tcp_server_sockets("localhost", nil) do |servs|
+    def self.start_socket(core_options, port = 0)
+      Socket.tcp_server_sockets("localhost", port) do |servs|
         serv = servs[0].local_address
         $stdout << JSON.generate({
           host: serv.ip_address,
