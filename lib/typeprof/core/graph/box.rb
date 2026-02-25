@@ -213,6 +213,7 @@ module TypeProf::Core
         end
         return false
       end
+
       if rbs_blk && a_args.block
         # rbs_blk_func.optional_keywords, ...
         blk_a_args = rbs_blk.req_positionals.map do |blk_a_arg|
@@ -248,6 +249,20 @@ module TypeProf::Core
       if @method_types.size == 1
         method_type = @method_types.first
         resolve_overload(changes, genv, method_type, node, param_map, a_args, ret, true, &blk)
+        return
+      end
+
+      # If any positional argument has no type information, we cannot
+      # determine which overload to select. Return silently (untyped)
+      # rather than attempting to match. This prevents oscillation in
+      # cyclic cases like @x = Foo.transform(@x), and avoids false
+      # "failed to resolve overloads" diagnostics for untyped arguments.
+      # We still set up dependency edges so the box re-runs when the
+      # empty arguments later receive types.
+      if a_args.positionals.any? {|vtx| vtx.types.empty? }
+        a_args.positionals.each do |vtx|
+          changes.add_edge(genv, vtx, changes.target)
+        end
         return
       end
 
