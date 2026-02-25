@@ -311,7 +311,6 @@ module TypeProf::Core
 
     def wrong_return_type(f_ret_show, changes)
       actual_ty = @a_ret.show
-      return if actual_ty == "untyped" # XXX: too ad-hoc?
       msg = "expected: #{ f_ret_show }; actual: #{ actual_ty }"
       case @node
       when AST::ReturnNode
