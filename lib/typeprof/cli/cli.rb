@@ -125,7 +125,7 @@ module TypeProf::CLI
       if @lsp_options[:stdio]
         TypeProf::LSP::Server.start_stdio(@core_options)
       else
-        TypeProf::LSP::Server.start_socket(@core_options)
+        TypeProf::LSP::Server.start_socket(@core_options, @lsp_options[:port])
       end
     rescue Exception
       puts $!.detailed_message(highlight: false).gsub(/^/, "---")
