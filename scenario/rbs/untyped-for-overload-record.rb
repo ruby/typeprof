@@ -13,5 +13,5 @@ end
 
 ## assert
 class Object
-  def check: (untyped) -> (:record | :str)
+  def check: (untyped) -> untyped
 end
