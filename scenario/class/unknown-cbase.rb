@@ -14,7 +14,7 @@ end
 
 ## assert: test.rb
 class Foo::Bar
-  class Foo::Bar::C
+  class C
     def foo: -> Integer
   end
 end
@@ -28,7 +28,7 @@ end
 
 ## assert: test.rb
 class Foo::Bar
-  class Foo::Bar::C
+  class C
     def foo: -> Integer
   end
 end

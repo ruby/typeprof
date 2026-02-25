@@ -22,7 +22,7 @@ end
 
 ## assert
 class C
-  class C::C
+  class C
   end
   def foo: (untyped) -> singleton(C::C)
 end
@@ -39,7 +39,7 @@ end
 
 ## assert
 class C
-  class C::D
+  class D
   end
   def foo: (untyped) -> singleton(C)
 end

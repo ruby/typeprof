@@ -11,7 +11,7 @@ end
 
 ## assert
 module Foo
-  module Foo::Bar
+  module Bar
   end
 end
 module Baz

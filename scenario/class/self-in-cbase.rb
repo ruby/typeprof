@@ -6,7 +6,7 @@ end
 
 ## assert
 class Foo
-  class Foo::Bar::Baz
+  class Bar::Baz
   end
 end
 

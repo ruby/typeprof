@@ -21,7 +21,7 @@ class C2
   def target: (untyped) -> untyped
 end
 class X
-  class X::D < C
+  class D < C
     def foo: -> Integer
   end
 end
@@ -42,7 +42,7 @@ class C2
   def target: (Integer) -> Integer
 end
 class X
-  class X::D < X::C
+  class D < X::C
     def foo: -> Integer
   end
 end

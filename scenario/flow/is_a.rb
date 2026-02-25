@@ -33,7 +33,7 @@ C.new.foo(1)
 
 ## assert
 class C
-  class C::D
+  class D
   end
   def foo: (C::D | Integer) -> (C::D | String)
 end

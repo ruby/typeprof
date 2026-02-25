@@ -11,7 +11,7 @@ end
 class C
 end
 class D
-  class D::E < C
+  class E < C
   end
 end
 
@@ -25,7 +25,7 @@ end
 class C
 end
 class D
-  class D::E < D::C
+  class E < D::C
   end
 end
 
@@ -38,7 +38,7 @@ end
 class C
 end
 class D
-  class D::E < C
+  class E < C
   end
 end
 
