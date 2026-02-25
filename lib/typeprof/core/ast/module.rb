@@ -89,7 +89,22 @@ module TypeProf::Core
       def initialize(raw_node, lenv, use_result)
         super(raw_node, lenv, raw_node.constant_path, false, raw_node.body, use_result)
         raw_superclass = raw_node.superclass
-        @superclass_cpath = raw_superclass ? AST.create_node(raw_superclass, lenv) : nil
+        if raw_superclass
+          # In Ruby, the superclass expression is evaluated before the class constant
+          # is created. When the superclass is a bare constant with the same name as
+          # the class being defined (e.g., `class Foo < Foo` inside a module), use the
+          # outer scope to avoid resolving to the class itself.
+          if @static_cpath && lenv.cref.outer &&
+             raw_superclass.type == :constant_read_node &&
+             raw_superclass.name == @static_cpath.last
+            slenv = LocalEnv.new(lenv.file_context, lenv.cref.outer, {}, [])
+            @superclass_cpath = AST.create_node(raw_superclass, slenv)
+          else
+            @superclass_cpath = AST.create_node(raw_superclass, lenv)
+          end
+        else
+          @superclass_cpath = nil
+        end
       end
 
       attr_reader :superclass_cpath
@@ -113,6 +128,21 @@ module TypeProf::Core
 
       def install0(genv)
         @superclass_cpath.install(genv) if @superclass_cpath
+        if @static_cpath && @superclass_cpath
+          const_read = @superclass_cpath.static_ret
+          if const_read && const_read.cpath
+            super_mod = genv.resolve_cpath(const_read.cpath)
+            self_mod = genv.resolve_cpath(@static_cpath)
+            mod = super_mod
+            while mod
+              if mod == self_mod
+                @changes.add_diagnostic(:code_range, "circular inheritance", @superclass_cpath)
+                break
+              end
+              mod = mod.superclass
+            end
+          end
+        end
         super(genv)
       end
     end
