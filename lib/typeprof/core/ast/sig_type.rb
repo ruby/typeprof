@@ -4,6 +4,7 @@ module TypeProf::Core
       changes.add_edge(genv, a_vtx, changes.target)
       found_any = false
       a_vtx.each_type do |ty|
+        next if ty.is_a?(Type::Bot)
         found_any = true
         ty = ty.base_type(genv)
         while ty
@@ -199,6 +200,7 @@ module TypeProf::Core
       def typecheck(genv, changes, vtx, subst)
         changes.add_edge(genv, vtx, changes.target)
         vtx.each_type do |ty|
+          next if ty.is_a?(Type::Bot)
           return false unless ty == genv.true_type || ty == genv.false_type
         end
         true
@@ -221,6 +223,7 @@ module TypeProf::Core
       def typecheck(genv, changes, vtx, subst)
         changes.add_edge(genv, vtx, changes.target)
         vtx.each_type do |ty|
+          next if ty.is_a?(Type::Bot)
           return false unless ty == genv.nil_type
         end
         true
@@ -597,6 +600,7 @@ module TypeProf::Core
         changes.add_edge(genv, vtx, changes.target)
         found_any = false
         vtx.each_type do |ty|
+          next if ty.is_a?(Type::Bot)
           found_any = true
           case ty
           when Type::Singleton
@@ -735,6 +739,7 @@ module TypeProf::Core
         changes.add_edge(genv, vtx, changes.target)
         found_any = false
         vtx.each_type do |ty|
+          next if ty.is_a?(Type::Bot)
           found_any = true
           case ty
           when Type::Array
@@ -807,6 +812,7 @@ module TypeProf::Core
         changes.add_edge(genv, vtx, changes.target)
         found_any = false
         vtx.each_type do |ty|
+          next if ty.is_a?(Type::Bot)
           found_any = true
           case ty
           when Type::Hash
@@ -925,6 +931,7 @@ module TypeProf::Core
           changes.add_edge(genv, vtx, changes.target)
           found_any = false
           vtx.each_type do |ty|
+            next if ty.is_a?(Type::Bot)
             found_any = true
             case ty
             when Type::Symbol
