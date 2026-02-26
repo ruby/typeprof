@@ -6,8 +6,8 @@ module TypeProf::Core
       @new_vertexes = {}
       @covariant_types = {}
       @contravariant_types = {}
-      @edges = []
-      @new_edges = []
+      @edges = {}
+      @new_edges = {}
       @boxes = {}
       @new_boxes = {}
       @diagnostics = []
@@ -64,7 +64,7 @@ module TypeProf::Core
     end
 
     def add_edge(genv, src, dst)
-      @new_edges << [src, dst]
+      (@new_edges[src] ||= {})[dst] = true
     end
 
     # TODO: if an edge is removed during one analysis, we may need to remove sub-boxes?
@@ -160,14 +160,21 @@ module TypeProf::Core
     end
 
     def reinstall(genv)
-      @new_edges.uniq!
-      @new_edges.each do |src, dst|
-        src.add_edge(genv, dst) unless @edges.include?([src, dst])
+      # Edges stored as nested hashes: {src => {dst => true}}
+      @new_edges.each do |src, new_dsts|
+        old_dsts = @edges[src]
+        new_dsts.each_key do |dst|
+          src.add_edge(genv, dst) unless old_dsts&.key?(dst)
+        end
       end
-      @edges.each do |src, dst|
-        src.remove_edge(genv, dst) unless @new_edges.include?([src, dst])
+      @edges.each do |src, old_dsts|
+        new_dsts = @new_edges[src]
+        old_dsts.each_key do |dst|
+          src.remove_edge(genv, dst) unless new_dsts&.key?(dst)
+        end
       end
       @edges, @new_edges = @new_edges, @edges
+      @new_edges.each_value(&:clear)
       @new_edges.clear
 
       @boxes.each do |key, box|
