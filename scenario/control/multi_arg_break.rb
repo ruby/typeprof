@@ -10,3 +10,6 @@ end
 # retry
 
 ## assert
+class Object
+  def check: -> (Integer | [:a, :b, :c])
+end
