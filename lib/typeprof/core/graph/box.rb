@@ -255,29 +255,21 @@ module TypeProf::Core
       # If any positional argument has no type information, we cannot
       # determine which overload to select. Return silently (untyped)
       # rather than attempting to match. This prevents oscillation in
-      # cyclic cases like @x = Foo.transform(@x), and avoids false
-      # "failed to resolve overloads" diagnostics for untyped arguments.
-      # We still set up dependency edges so the box re-runs when the
-      # empty arguments later receive types.
+      # cyclic cases and avoids false "failed to resolve overloads"
+      # diagnostics for untyped arguments.
       #
-      # For splat arguments, the positional vertex itself holds Array
-      # types (non-empty), but the array *element* vertex may be empty.
-      # The same oscillation occurs when match_arguments? extracts
-      # elements via get_rest_args and the universal typecheck on the
-      # flattened element list fails due to conflicting array sources.
-      # We detect this by checking element vertices of splatted arrays.
-      has_uninformative_args = a_args.positionals.any? {|vtx| vtx.types.empty? }
-      unless has_uninformative_args
-        a_args.positionals.each_with_index do |vtx, i|
-          next unless a_args.splat_flags[i]
-          vtx.each_type do |ty|
-            base = ty.base_type(genv)
-            if base.is_a?(Type::Instance) && base.mod == genv.mod_ary && base.args[0]
-              has_uninformative_args = true if base.args[0].types.empty?
-            end
-          end
-          break if has_uninformative_args
-        end
+      # Top-level empty vertices are always uninformative. For type
+      # parameter vertices (e.g., Array[T], Hash[K,V], tuples), we
+      # only recurse when overloads differ in their positional parameter
+      # types -- otherwise empty type params (like those of `{}`) cannot
+      # cause oscillation and should not trigger bail-out.
+      overloads_differ_in_positionals = !@method_types.each_cons(2).all? {|mt1, mt2|
+        positionals_match?(mt1, mt2)
+      }
+      has_uninformative_args = if overloads_differ_in_positionals
+        a_args.positionals.any? {|vtx| vertex_uninformative?(genv, vtx) }
+      else
+        a_args.positionals.any? {|vtx| vtx.types.empty? }
       end
       if has_uninformative_args
         a_args.positionals.each do |vtx|
@@ -295,6 +287,61 @@ module TypeProf::Core
       unless match_any_overload
         meth = node.mid_code_range ? :mid_code_range : :code_range
         changes.add_diagnostic(meth, "failed to resolve overloads")
+      end
+    end
+
+    def vertex_uninformative?(genv, vtx, depth = 0)
+      return true if vtx.types.empty?
+      return false if depth > 3
+      vtx.each_type do |ty|
+        base = ty.base_type(genv)
+        next unless base.is_a?(Type::Instance) && !base.args.empty?
+        base.args.each do |arg_vtx|
+          return true if arg_vtx && vertex_uninformative?(genv, arg_vtx, depth + 1)
+        end
+      end
+      false
+    end
+
+    # Check if two method types have structurally identical positional
+    # parameter types (req, opt, rest).
+    def positionals_match?(mt1, mt2)
+      return false unless mt1.req_positionals.size == mt2.req_positionals.size
+      return false unless mt1.opt_positionals.size == mt2.opt_positionals.size
+      return false unless mt1.rest_positionals.nil? == mt2.rest_positionals.nil?
+      mt1.req_positionals.zip(mt2.req_positionals).all? {|a, b| sig_types_match?(a, b) } &&
+        mt1.opt_positionals.zip(mt2.opt_positionals).all? {|a, b| sig_types_match?(a, b) } &&
+        (mt1.rest_positionals.nil? || sig_types_match?(mt1.rest_positionals, mt2.rest_positionals))
+    end
+
+    # Structural equality check for two SigTyNode objects.
+    def sig_types_match?(a, b)
+      return false unless a.class == b.class
+      case a
+      when AST::SigTyInstanceNode, AST::SigTyInterfaceNode
+        a.cpath == b.cpath &&
+          a.args.size == b.args.size &&
+          a.args.zip(b.args).all? {|x, y| sig_types_match?(x, y) }
+      when AST::SigTySingletonNode
+        a.cpath == b.cpath
+      when AST::SigTyTupleNode, AST::SigTyUnionNode, AST::SigTyIntersectionNode
+        a.types.size == b.types.size &&
+          a.types.zip(b.types).all? {|x, y| sig_types_match?(x, y) }
+      when AST::SigTyRecordNode
+        a.fields.size == b.fields.size &&
+          a.fields.all? {|k, v| b.fields[k] && sig_types_match?(v, b.fields[k]) }
+      when AST::SigTyOptionalNode, AST::SigTyProcNode
+        sig_types_match?(a.type, b.type)
+      when AST::SigTyVarNode
+        a.var == b.var
+      when AST::SigTyLiteralNode
+        a.lit == b.lit
+      when AST::SigTyAliasNode
+        a.cpath == b.cpath && a.name == b.name &&
+          a.args.size == b.args.size &&
+          a.args.zip(b.args).all? {|x, y| sig_types_match?(x, y) }
+      else
+        true # Leaf types (bool, nil, self, void, untyped, etc.)
       end
     end
 
