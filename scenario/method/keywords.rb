@@ -71,5 +71,5 @@ foo(a: '', b: 1, c: true)
 
 ## assert
 class Object
-  def foo: (a: String, ?b: Integer, **String | Integer | true) -> { a: String, b: Integer, c: true }
+  def foo: (a: String, ?b: Integer, **true) -> { c: true }
 end
