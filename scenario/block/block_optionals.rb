@@ -23,6 +23,6 @@ end
 ## assert
 class Object
   def test_yield: { (Integer, Integer) -> bot } -> bot
-  def check1: -> [Integer, Integer]?
+  def check1: -> [Integer, :y | Integer]?
   def check2: -> [Integer, Integer, :z]?
 end

@@ -16,6 +16,7 @@ module TypeProf::Core
         @block_pass = nil
         @block_tbl = nil
         @block_f_args = nil
+        @block_opt_positional_defaults = nil
         @block_body = nil
         @safe_navigation = raw_node.respond_to?(:safe_navigation?) && raw_node.safe_navigation?
         @anonymous_block_forwarding = false
@@ -55,10 +56,12 @@ module TypeProf::Core
           else
             @block_pass = nil
             @block_tbl = raw_block.locals
-            # TODO: optional args, etc.
             @block_f_args = case raw_block.parameters
                             when Prism::BlockParametersNode
-                              raw_block.parameters.parameters.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name }
+                              params = raw_block.parameters.parameters
+                              req = params.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name }
+                              opt = params.optionals.map {|n| n.name }
+                              req + opt
                             when Prism::NumberedParametersNode
                               1.upto(raw_block.parameters.maximum).map { |n| :"_#{n}" }
                             when Prism::ItParametersNode
@@ -70,6 +73,12 @@ module TypeProf::Core
                             end
             ncref = CRef.new(lenv.cref.cpath, :instance, @mid, lenv.cref)
             nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, @lenv.return_boxes)
+            @block_opt_positional_defaults = []
+            if raw_block.parameters.is_a?(Prism::BlockParametersNode)
+              raw_block.parameters.parameters.optionals.each do |n|
+                @block_opt_positional_defaults << AST.create_node(n.value, nlenv)
+              end
+            end
             @block_body = raw_block.body ? AST.create_node(raw_block.body, nlenv) : DummyNilNode.new(code_range, lenv)
           end
         end
@@ -79,10 +88,10 @@ module TypeProf::Core
 
       attr_reader :recv, :mid, :mid_code_range, :yield
       attr_reader :positional_args, :splat_flags, :keyword_args
-      attr_reader :block_tbl, :block_f_args, :block_body, :block_pass, :anonymous_block_forwarding
+      attr_reader :block_tbl, :block_f_args, :block_opt_positional_defaults, :block_body, :block_pass, :anonymous_block_forwarding
       attr_reader :safe_navigation
 
-      def subnodes = { recv:, positional_args:, keyword_args:, block_body:, block_pass: }
+      def subnodes = { recv:, positional_args:, keyword_args:, block_opt_positional_defaults:, block_body:, block_pass: }
       def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield:, safe_navigation:, anonymous_block_forwarding: }
 
       def install0(genv)
@@ -114,6 +123,13 @@ module TypeProf::Core
           if @block_f_args
             @block_f_args.each do |arg|
               blk_f_args << block_body.lenv.new_var(arg, self)
+            end
+          end
+
+          if @block_opt_positional_defaults && !@block_opt_positional_defaults.empty?
+            req_count = blk_f_args.size - @block_opt_positional_defaults.size
+            @block_opt_positional_defaults.each_with_index do |expr, i|
+              @changes.add_edge(genv, expr.install(genv), blk_f_args[req_count + i])
             end
           end
 
