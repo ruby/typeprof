@@ -30,10 +30,12 @@ module TypeProf::Core
       unless raw_args
         return {
           req_positionals: [],
+          req_multi_targets: {},
           opt_positionals: [],
           opt_positional_defaults: [],
           rest_positionals: nil,
           post_positionals: [],
+          post_multi_targets: {},
           req_keywords: [],
           opt_keywords: [],
           opt_keyword_defaults: [],
@@ -45,9 +47,15 @@ module TypeProf::Core
 
       args_code_ranges = []
       req_positionals = []
-      raw_args.requireds.each do |n|
+      req_multi_targets = {}
+      raw_args.requireds.each_with_index do |n, i|
         args_code_ranges << lenv.code_range_from_node(n.location)
-        req_positionals << (n.is_a?(Prism::MultiTargetNode) ? nil : n.name)
+        if n.is_a?(Prism::MultiTargetNode)
+          req_positionals << nil
+          req_multi_targets[i] = n
+        else
+          req_positionals << n.name
+        end
       end
 
       # pre_init = args[1]
@@ -59,7 +67,15 @@ module TypeProf::Core
         opt_positional_defaults << AST.create_node(n.value, lenv)
       end
 
-      post_positionals = raw_args.posts.map {|n| (n.is_a?(Prism::MultiTargetNode) ? nil : n.name) }
+      post_multi_targets = {}
+      post_positionals = raw_args.posts.each_with_index.map do |n, i|
+        if n.is_a?(Prism::MultiTargetNode)
+          post_multi_targets[i] = n
+          nil
+        else
+          n.name
+        end
+      end
 
       rest_positionals = raw_args.rest ? (raw_args.rest.name || :"*anonymous_rest") : nil
 
@@ -97,10 +113,12 @@ module TypeProf::Core
 
       {
         req_positionals:,
+        req_multi_targets:,
         opt_positionals:,
         opt_positional_defaults:,
         rest_positionals:,
         post_positionals:,
+        post_multi_targets:,
         req_keywords:,
         opt_keywords:,
         opt_keyword_defaults:,
@@ -140,10 +158,12 @@ module TypeProf::Core
 
         h = AST.parse_params(@tbl, raw_args, nlenv)
         @req_positionals = h[:req_positionals]
+        @req_multi_targets = h[:req_multi_targets]
         @opt_positionals = h[:opt_positionals]
         @opt_positional_defaults = h[:opt_positional_defaults]
         @rest_positionals = h[:rest_positionals]
         @post_positionals = h[:post_positionals]
+        @post_multi_targets = h[:post_multi_targets]
         @req_keywords = h[:req_keywords]
         @opt_keywords = h[:opt_keywords]
         @opt_keyword_defaults = h[:opt_keyword_defaults]
@@ -221,6 +241,8 @@ module TypeProf::Core
         opt_positionals = @opt_positionals.map {|var| @body.lenv.new_var(var, self) }
         rest_positionals = @rest_positionals ? @body.lenv.new_var(@rest_positionals, self) : nil
         post_positionals = @post_positionals.map {|var| @body.lenv.new_var(var, self) }
+        install_multi_targets(genv, @req_multi_targets, req_positionals)
+        install_multi_targets(genv, @post_multi_targets, post_positionals)
         req_keywords = @req_keywords.map {|var| @body.lenv.new_var(var, self) }
         opt_keywords = @opt_keywords.map {|var| @body.lenv.new_var(var, self) }
         rest_keywords = @rest_keywords ? @body.lenv.new_var(@rest_keywords, self) : nil
@@ -269,6 +291,16 @@ module TypeProf::Core
         @changes.add_method_def_box(genv, @lenv.cref.cpath, @singleton, @mid, f_args, @body.lenv.return_boxes)
 
         Source.new(Type::Symbol.new(genv, @mid))
+      end
+
+      def install_multi_targets(genv, multi_targets, positionals)
+        multi_targets.each do |idx, raw_multi_target|
+          param_vtx = positionals[idx]
+          lefts = raw_multi_target.lefts.map do |n|
+            @body.lenv.new_var(n.is_a?(Prism::MultiTargetNode) ? nil : n.name, self)
+          end
+          @changes.add_masgn_box(genv, param_vtx, lefts, nil, nil)
+        end
       end
 
       def last_stmt_code_range
