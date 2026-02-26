@@ -35,6 +35,10 @@ module TypeProf::Core
         case entry
         when RBS::AST::Ruby::Members::DefMember
           lookup[entry.node.object_id] = entry unless entry.method_type.empty?
+        when RBS::AST::Ruby::Members::AttrReaderMember,
+             RBS::AST::Ruby::Members::AttrWriterMember,
+             RBS::AST::Ruby::Members::AttrAccessorMember
+          lookup[entry.node.object_id] = entry if entry.type
         end
         if entry.respond_to?(:members)
           collect_def_members(entry.members, lookup)
