@@ -1,5 +1,23 @@
 module TypeProf::Core
   class AST
+    def self.get_rbs_method_type(raw_node, lenv)
+      # Try InlineParser lookup first
+      inline_members = lenv.file_context.inline_members
+      if inline_members
+        member = inline_members[raw_node.object_id]
+        if member
+          overload = member.overloads.first
+          if overload
+            method_type = overload.method_type
+            return AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
+          end
+        end
+      end
+
+      # Fallback for top-level methods (not supported by InlineParser)
+      get_rbs_comment_before(raw_node, lenv)
+    end
+
     def self.get_rbs_comment_before(raw_node, lenv)
       comments = lenv.file_context.comments
       return nil unless comments
@@ -140,7 +158,7 @@ module TypeProf::Core
         raw_args = raw_node.parameters
         raw_body = raw_node.body
 
-        @rbs_method_type = AST.get_rbs_comment_before(raw_node, lenv)
+        @rbs_method_type = AST.get_rbs_method_type(raw_node, lenv)
 
         @singleton = singleton
         @mid = mid

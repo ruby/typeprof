@@ -305,12 +305,13 @@ module TypeProf::Core
   end
 
   class FileContext
-    attr_reader :path, :comments
-    def initialize(path, prism_source = nil, comments = nil)
+    attr_reader :path, :comments, :inline_members
+    def initialize(path, prism_source = nil, comments = nil, inline_members = nil)
       @path = path
       @prism_source = prism_source
       @code_units_cache = nil
       @comments = comments
+      @inline_members = inline_members
     end
 
     def code_units_cache
