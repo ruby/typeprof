@@ -8,12 +8,13 @@ module A動物
 end
 
 A動物::B猫.new.🐱🐱🐱
+#^[A] ^[B]   ^[C]
 
-## definition: test.rb:9:1
+## definition: [A]
 test.rb:(1,7)-(1,10)
 
-## definition: test.rb:9:6
+## definition: [B]
 test.rb:(2,8)-(2,10)
 
-## definition: test.rb:9:13
+## definition: [C]
 test.rb:(3,8)-(3,14)

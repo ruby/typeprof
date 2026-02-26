@@ -1,26 +1,29 @@
 ## update
 def foo(variable)
+#         ^[A]
   variable + 1
+#  ^[B]
 end
 
 def main(_)
   foo(2)
 end
 
-## hover: test.rb:1:10
+## hover: [A]
 Integer
 
-## hover: test.rb:2:3
+## hover: [B]
 Integer
 
 ## update
 def foo(nnn)
   nnn.times do |var|
     var
+#   ^[C]
   end
 end
 
 foo(42)
 
-## hover: test.rb:3:4
+## hover: [C]
 Integer

@@ -1,25 +1,29 @@
 ## update: test.rb
 #: (Integer) -> void
 def check(var)
+#          ^[A]
   var
+#  ^[B]
 end
 
-## hover: test.rb:2:11
+## hover: [A]
 Integer
 
-## hover: test.rb:3:3
+## hover: [B]
 Integer
 
 ## update: test2.rb
 class Foo
   #: (String) -> void
   def bar(x)
+#         ^[C]
     x
+#   ^[D]
   end
 end
 
-## hover: test2.rb:3:10
+## hover: [C]
 String
 
-## hover: test2.rb:4:4
+## hover: [D]
 String

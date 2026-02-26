@@ -19,34 +19,42 @@ end
 
 ## update: test.rb
 required_positional_args
+#^[A]
 optional_positional_args
+#^[B]
 post_required_positional_args
+#^[C]
 rest_positional_args
+#^[D]
 rest_post_positional_args
+#^[E]
 required_keywords
+#^[F]
 optional_keywords
+#^[G]
 rest_keywords
+#^[H]
 
-## hover: test.rb:1:1
+## hover: [A]
 Object#required_positional_args : (Integer) -> Integer
 
-## hover: test.rb:2:1
+## hover: [B]
 Object#optional_positional_args : (?Integer) -> Integer
 
-## hover: test.rb:3:1
+## hover: [C]
 Object#post_required_positional_args : (?Integer, Integer) -> Integer
 
-## hover: test.rb:4:1
+## hover: [D]
 Object#rest_positional_args : (*Integer) -> Integer
 
-## hover: test.rb:5:1
+## hover: [E]
 Object#rest_post_positional_args : (*Integer, Integer) -> Integer
 
-## hover: test.rb:6:1
+## hover: [F]
 Object#required_keywords : (a: Integer) -> Integer
 
-## hover: test.rb:7:1
+## hover: [G]
 Object#optional_keywords : (?a: Integer) -> Integer
 
-## hover: test.rb:8:1
+## hover: [H]
 Object#rest_keywords : (**untyped) -> Integer

@@ -5,8 +5,10 @@ def foo
 end
 
 foo
+#\
+^[A]
 
-## hover: test.rb:6:0
+## hover: [A]
 Object#foo : -> Integer
 
 ## diagnostics
@@ -19,8 +21,10 @@ def foo
 end
 
 foo
+#\
+^[B]
 
-## hover: test.rb:6:0
+## hover: [B]
 Object#foo : -> Integer?
 
 ## update: test.rb
@@ -30,8 +34,10 @@ def foo
 end
 
 foo
+#\
+^[C]
 
 # TODO: The above test is mainly for SIG_TYPE#show
 
-## hover: test.rb:6:0
+## hover: [C]
 Object#foo : -> (Integer | String)?

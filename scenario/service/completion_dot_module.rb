@@ -11,8 +11,10 @@ class C < P
 end
 x = C.new
 x
+#\
+^[A]
 
-## completion: test.rb:12:0
+## completion: [A]
 C#foo : -> :FOO
 M#bar : -> :BAR
 P#baz : -> :BAZ

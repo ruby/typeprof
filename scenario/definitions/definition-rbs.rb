@@ -16,11 +16,13 @@ module Animal
 end
 
 Animal::Cat.new.call_1
+#                ^[A]
 Animal::Cat.new.call_2
+#                ^[B]
 
-## definition: test.rb:9:17
+## definition: [A]
 test.rbs:(3,8)-(3,14)
 test.rb:(3,8)-(3,14)
 
-## definition: test.rb:10:17
+## definition: [B]
 test.rbs:(4,8)-(4,14)

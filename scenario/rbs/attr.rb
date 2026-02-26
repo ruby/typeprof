@@ -10,13 +10,17 @@ end
 def test1
   a = A.new
   a.foo = 42.0
+#   ^[A]
   a.foo
+#   ^[B]
 end
 
 def test2
   a = A.new
   a.bar = "foo"
+#   ^[C]
   a.bar
+#   ^[D]
 end
 
 ## assert: test.rb
@@ -25,14 +29,14 @@ class Object
   def test2: -> String
 end
 
-## hover: test.rb:3:4
+## hover: [A]
 A#foo= : (Integer | Float) -> Integer | Float
 
-## hover: test.rb:4:4
+## hover: [B]
 A#foo : -> Integer
 
-## hover: test.rb:9:4
+## hover: [C]
 A#bar= : (String) -> String
 
-## hover: test.rb:10:4
+## hover: [D]
 A#bar : -> String

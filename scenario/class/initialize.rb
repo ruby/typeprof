@@ -4,6 +4,7 @@ end
 
 class B
   def initialize(xxx) # 5
+#                  ^[A]
     @xxx = xxx
   end
 end
@@ -13,6 +14,7 @@ end
 
 def foo
   B.new(1) # 14
+#     ^[B]
 end
 
 ## assert
@@ -27,8 +29,8 @@ class Object
   def foo: -> B
 end
 
-## hover: test.rb:5:19
+## hover: [A]
 Integer
 
-## hover: test.rb:14:6
+## hover: [B]
 B#initialize : (Integer) -> void
