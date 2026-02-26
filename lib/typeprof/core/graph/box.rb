@@ -1130,4 +1130,86 @@ module TypeProf::Core
       changes.add_edge(genv, source_vtx, @ret)
     end
   end
+
+  class HashAsetBox < Box
+    def initialize(node, genv, recv, key_sym, val_vtx, out_vtx)
+      super(node)
+      @recv = recv
+      @key_sym = key_sym
+      @val_vtx = val_vtx
+      @out_vtx = out_vtx
+      @recv.add_edge(genv, self)
+      @val_vtx.add_edge(genv, self)
+      # Cache vertices to ensure convergence in loops.
+      # Without caching, run0 creates new Vertex objects each time,
+      # producing new Type objects that prevent the fixed-point from being reached.
+      @field_cache = {}
+      @unified_key = Vertex.new(node)
+      @unified_val = Vertex.new(node)
+      @merged_key = Vertex.new(node)
+      @merged_val = Vertex.new(node)
+    end
+
+    attr_reader :recv, :key_sym, :val_vtx, :out_vtx
+
+    def ret = @out_vtx
+
+    def destroy(genv)
+      @recv.remove_edge(genv, self)
+      @val_vtx.remove_edge(genv, self)
+      super(genv)
+    end
+
+    def run0(genv, changes)
+      has_record = false
+
+      @recv.each_type do |ty|
+        case ty
+        when Type::Record
+          has_record = true
+          ty.fields.each do |key, field_vtx|
+            @field_cache[key] ||= Vertex.new(@node)
+            changes.add_edge(genv, field_vtx, @field_cache[key]) unless field_vtx.equal?(@field_cache[key])
+          end
+        when Type::Hash
+          build_merged_hash_type(genv, changes, ty.get_key, ty.get_value)
+        when Type::Instance
+          if ty.mod == genv.mod_hash
+            build_merged_hash_type(genv, changes, ty.args[0], ty.args[1])
+          else
+            changes.add_edge(genv, Source.new(ty), @out_vtx)
+          end
+        else
+          changes.add_edge(genv, Source.new(ty), @out_vtx)
+        end
+      end
+
+      if has_record
+        @field_cache[@key_sym] ||= Vertex.new(@node)
+        changes.add_edge(genv, @val_vtx, @field_cache[@key_sym])
+
+        new_fields = {}
+        @field_cache.each do |key, vtx|
+          changes.add_edge(genv, Source.new(Type::Symbol.new(genv, key)), @unified_key)
+          changes.add_edge(genv, vtx, @unified_val)
+          new_fields[key] = vtx
+        end
+
+        base_type = genv.gen_hash_type(@unified_key, @unified_val)
+        new_record = Type::Record.new(genv, new_fields, base_type)
+        changes.add_edge(genv, Source.new(new_record), @out_vtx)
+      end
+    end
+
+    private
+
+    def build_merged_hash_type(genv, changes, old_key_vtx, old_val_vtx)
+      changes.add_edge(genv, old_key_vtx, @merged_key) unless old_key_vtx.equal?(@merged_key)
+      changes.add_edge(genv, Source.new(Type::Symbol.new(genv, @key_sym)), @merged_key)
+      changes.add_edge(genv, old_val_vtx, @merged_val) unless old_val_vtx.equal?(@merged_val)
+      changes.add_edge(genv, @val_vtx, @merged_val)
+      new_hash_type = genv.gen_hash_type(@merged_key, @merged_val)
+      changes.add_edge(genv, Source.new(new_hash_type), @out_vtx)
+    end
+  end
 end

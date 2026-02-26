@@ -8,5 +8,5 @@ foo(key: 1) {}
 
 ## assert
 class Object
-  def foo: (**Integer) -> { key: Integer }
+  def foo: (**Integer) -> { key: Integer, callback: Proc }
 end
