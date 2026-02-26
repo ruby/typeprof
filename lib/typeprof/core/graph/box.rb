@@ -179,6 +179,19 @@ module TypeProf::Core
         end
       end
 
+      # Check keyword arguments by inspecting the keywords vertex types
+      # directly. We avoid get_keyword_arg here because it creates a fresh
+      # Vertex each call, which would destabilize the change-set edges and
+      # cause oscillation when match_arguments? runs on every box re-eval.
+      if a_args.keywords
+        method_type.req_keyword_keys.zip(method_type.req_keyword_values) do |key, ty|
+          return false unless keyword_arg_typecheck?(genv, changes, a_args.keywords, key, ty, param_map)
+        end
+        method_type.opt_keyword_keys.zip(method_type.opt_keyword_values) do |key, ty|
+          return false unless keyword_arg_typecheck?(genv, changes, a_args.keywords, key, ty, param_map)
+        end
+      end
+
       return true
     end
 
@@ -260,21 +273,25 @@ module TypeProf::Core
       #
       # Top-level empty vertices are always uninformative. For type
       # parameter vertices (e.g., Array[T], Hash[K,V], tuples), we
-      # only recurse when overloads differ in their positional parameter
-      # types -- otherwise empty type params (like those of `{}`) cannot
-      # cause oscillation and should not trigger bail-out.
-      overloads_differ_in_positionals = !@method_types.each_cons(2).all? {|mt1, mt2|
-        positionals_match?(mt1, mt2)
+      # only recurse when overloads differ in their positional or keyword
+      # parameter types -- otherwise empty type params (like those of
+      # `{}`) cannot cause oscillation and should not trigger bail-out.
+      overloads_differ = !@method_types.each_cons(2).all? {|mt1, mt2|
+        positionals_match?(mt1, mt2) && keywords_match?(mt1, mt2)
       }
-      has_uninformative_args = if overloads_differ_in_positionals
-        a_args.positionals.any? {|vtx| vertex_uninformative?(genv, vtx) }
+      has_uninformative_args = if overloads_differ
+        a_args.positionals.any? {|vtx| vertex_uninformative?(genv, vtx) } ||
+          (a_args.keywords && vertex_uninformative?(genv, a_args.keywords))
       else
-        a_args.positionals.any? {|vtx| vtx.types.empty? }
+        a_args.positionals.any? {|vtx| vtx.types.empty? } ||
+          (a_args.keywords && a_args.keywords.types.empty?)
       end
       if has_uninformative_args
         a_args.positionals.each do |vtx|
           changes.add_edge(genv, vtx, changes.target)
         end
+        # Note: keywords already have a permanent edge to the box
+        # (established in MethodCallBox#initialize), so no extra edge needed.
         return
       end
 
@@ -303,6 +320,22 @@ module TypeProf::Core
       false
     end
 
+    # Typecheck a single keyword argument value against the expected type
+    # by directly inspecting the pre-existing value vertices in the
+    # keywords vertex's types (Record, Hash, Instance).
+    def keyword_arg_typecheck?(genv, changes, keywords_vtx, key, expected_ty, param_map)
+      keywords_vtx.each_type do |kw_ty|
+        val_vtx = case kw_ty
+        when Type::Hash then kw_ty.get_value(key)
+        when Type::Record then kw_ty.get_value(key)
+        when Type::Instance then kw_ty.mod == genv.mod_hash ? kw_ty.args[1] : nil
+        else nil
+        end
+        return false if val_vtx && !expected_ty.typecheck(genv, changes, val_vtx, param_map)
+      end
+      true
+    end
+
     # Check if two method types have structurally identical positional
     # parameter types (req, opt, rest).
     def positionals_match?(mt1, mt2)
@@ -312,6 +345,17 @@ module TypeProf::Core
       mt1.req_positionals.zip(mt2.req_positionals).all? {|a, b| sig_types_match?(a, b) } &&
         mt1.opt_positionals.zip(mt2.opt_positionals).all? {|a, b| sig_types_match?(a, b) } &&
         (mt1.rest_positionals.nil? || sig_types_match?(mt1.rest_positionals, mt2.rest_positionals))
+    end
+
+    # Check if two method types have structurally identical keyword
+    # parameter types (req, opt, rest).
+    def keywords_match?(mt1, mt2)
+      return false unless mt1.req_keyword_keys == mt2.req_keyword_keys
+      return false unless mt1.opt_keyword_keys == mt2.opt_keyword_keys
+      return false unless mt1.rest_keywords.nil? == mt2.rest_keywords.nil?
+      mt1.req_keyword_values.zip(mt2.req_keyword_values).all? {|a, b| sig_types_match?(a, b) } &&
+        mt1.opt_keyword_values.zip(mt2.opt_keyword_values).all? {|a, b| sig_types_match?(a, b) } &&
+        (mt1.rest_keywords.nil? || sig_types_match?(mt1.rest_keywords, mt2.rest_keywords))
     end
 
     # Structural equality check for two SigTyNode objects.
