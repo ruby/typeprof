@@ -190,6 +190,9 @@ module TypeProf::Core
         method_type.opt_keyword_keys.zip(method_type.opt_keyword_values) do |key, ty|
           return false unless keyword_arg_typecheck?(genv, changes, a_args.keywords, key, ty, param_map)
         end
+        if method_type.rest_keywords
+          return false unless rest_keyword_args_typecheck?(genv, changes, a_args.keywords, method_type, param_map)
+        end
       end
 
       return true
@@ -332,6 +335,30 @@ module TypeProf::Core
         else nil
         end
         return false if val_vtx && !expected_ty.typecheck(genv, changes, val_vtx, param_map)
+      end
+      true
+    end
+
+    # Typecheck rest keyword argument values (those not consumed by named
+    # keywords) against the method type's rest_keywords type.
+    def rest_keyword_args_typecheck?(genv, changes, keywords_vtx, method_type, param_map)
+      named_keys = method_type.req_keyword_keys + method_type.opt_keyword_keys
+      rest_ty = method_type.rest_keywords
+      keywords_vtx.each_type do |kw_ty|
+        case kw_ty
+        when Type::Record
+          kw_ty.fields.each do |key, val_vtx|
+            next if named_keys.include?(key)
+            return false unless rest_ty.typecheck(genv, changes, val_vtx, param_map)
+          end
+        when Type::Hash
+          val_vtx = kw_ty.base_type(genv).args[1]
+          return false if val_vtx && !rest_ty.typecheck(genv, changes, val_vtx, param_map)
+        when Type::Instance
+          if kw_ty.mod == genv.mod_hash && kw_ty.args[1]
+            return false unless rest_ty.typecheck(genv, changes, kw_ty.args[1], param_map)
+          end
+        end
       end
       true
     end
@@ -726,8 +753,18 @@ module TypeProf::Core
         end
 
         if @node.rest_keywords
-          # FIXME: Extract the rest keywords excluding req_keywords and opt_keywords.
-          changes.add_edge(genv, a_args.keywords, @f_args.rest_keywords)
+          named_keys = @node.req_keywords + @node.opt_keywords
+          a_args.keywords.each_type do |kw_ty|
+            case kw_ty
+            when Type::Record
+              rest_fields = kw_ty.fields.reject {|key, _| named_keys.include?(key) }
+              base = kw_ty.base_type(genv)
+              rest_record = Type::Record.new(genv, rest_fields, base)
+              changes.add_edge(genv, Source.new(rest_record), @f_args.rest_keywords)
+            when Type::Hash, Type::Instance
+              changes.add_edge(genv, Source.new(kw_ty), @f_args.rest_keywords)
+            end
+          end
         end
       end
 
