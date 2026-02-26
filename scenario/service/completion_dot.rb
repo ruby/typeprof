@@ -14,21 +14,23 @@ end
 
 def test1(x)
   x
+# ^[A]
 end
 
 def test2
   test1(Foo.new)
+#              ^[B]
 end
 
 Foo.new.foo(1.0)
 test(Foo.new)
 
-## completion: test.rb:15:2
+## completion: [A]
 Foo#foo : (Float) -> Integer
 Foo#bar : (untyped) -> String
 Foo#baz : (Foo) -> Foo
 
-## completion: test.rb:19:15
+## completion: [B]
 Foo#foo : (Float) -> Integer
 Foo#bar : (untyped) -> String
 Foo#baz : (Foo) -> Foo

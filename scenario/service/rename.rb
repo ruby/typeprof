@@ -4,6 +4,7 @@ class Foo
   end
 
   def foo(n)
+#      ^[A]
   end
 end
 
@@ -11,7 +12,7 @@ Foo.new(1).foo(1.0)
 Foo.new(1).foo(1.0)
 Foo.new(1).foo(1.0)
 
-## rename: test.rb:5:7
+## rename: [A]
 test.rb:(5,6)-(5,9)
 test.rb:(9,11)-(9,14)
 test.rb:(10,11)-(10,14)

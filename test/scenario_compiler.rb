@@ -30,7 +30,52 @@ class ScenarioCompiler
     END
   end
 
+  def scan_markers(line, markers, file, line_count, scenario)
+    pos = 0
+    while md = line.match(/(\^+)\[(\w+)\]/, pos)
+      carets = md[1]
+      name = md[2]
+      raise "duplicate marker: [#{name}] in #{scenario}" if markers[name]
+      col_start = md.begin(1)
+      col_end = col_start + carets.length
+      markers[name] = {
+        file: file,
+        line: line_count,
+        col_start: col_start,
+        col_end: col_end,
+        point: carets.length == 1,
+      }
+      pos = md.end(0)
+    end
+  end
+
+  def resolve_marker_for_directive(markers, marker_name)
+    marker = markers[marker_name]
+    raise "undefined marker: [#{marker_name}]" unless marker
+    @file = marker[:file]
+    @pos = [marker[:line], marker[:col_start]]
+  end
+
+  def substitute_markers_in_output(line, markers)
+    line.gsub(/\[(\w+)\]/) do
+      name = $1
+      marker = markers[name]
+      if marker
+        if marker[:point]
+          "(#{marker[:line]},#{marker[:col_start]})"
+        else
+          "(#{marker[:line]},#{marker[:col_start]})-(#{marker[:line]},#{marker[:col_end]})"
+        end
+      else
+        $&
+      end
+    end
+  end
+
   def compile_scenario(scenario)
+    markers = {}
+    marker_file = "test.rb"
+    content_line_count = 0
     @file = "test.rb"
     @pos = [0, 0]
     out = %(eval(<<'TYPEPROF_SCENARIO_END', nil, #{ scenario.dump }, 1)\n)
@@ -40,28 +85,48 @@ class ScenarioCompiler
     end
     close_str = ""
     need_comment_removal = false
+    current_command = nil
+    marker_continuation = false
     File.foreach(scenario, chomp: true, encoding: "UTF-8") do |line|
+      if marker_continuation
+        marker_continuation = false
+        scan_markers(line, markers, marker_file, content_line_count, scenario)
+        next
+      end
       if line =~ /\A##\s*/
         out << close_str
-        if line =~ /\A##\s*(\w+)(?::\s*(.*?)(?::(\d+)(?::(\d+))?)?)?\z/
+        content_line_count = 0
+        if line =~ /\A##\s*(\w+)(?::\s*(?:\[(\w+)\]|(.*?)(?::(\d+)(?::(\d+))?)?))?\z/
+          current_command = $1
           if $2
-            @file = $2
-            @pos = [$3.to_i, $4.to_i]
+            resolve_marker_for_directive(markers, $2)
+          elsif $3
+            marker_file = $3
+            @file = $3
+            @pos = [$4.to_i, $5.to_i]
           end
-          ary = send("handle_#{ $1 }").lines.map {|s| s.strip }.join(";").split("DATA")
+          ary = send("handle_#{ current_command }").lines.map {|s| s.strip }.join(";").split("DATA")
           raise if ary.size != 2
           open_str, close_str = ary
           out << open_str.chomp
           close_str += "\n"
-          need_comment_removal = true if $1 == "definition"
+          need_comment_removal = true if current_command == "definition"
         else
           raise "unknown directive: #{ line.inspect }"
         end
+      elsif line =~ /\A#\\\s*\z/
+        marker_continuation = true
+      elsif line =~ /\A#[\s\^]*(?:\^+\[\w+\][\s\^]*)+\z/
+        scan_markers(line, markers, marker_file, content_line_count, scenario)
       else
+        content_line_count += 1
         raise "NUL found" if line.include?("\0")
         if need_comment_removal
           line = line.gsub(/#\s*.*\Z/, "")
           need_comment_removal = false
+        end
+        if current_command && !%w[update assert assert_without_validation].include?(current_command) && !markers.empty?
+          line = substitute_markers_in_output(line, markers)
         end
         out << line.gsub("\\") { "\\\\" } << "\n"
       end

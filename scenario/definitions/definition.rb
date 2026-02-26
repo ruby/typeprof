@@ -8,12 +8,13 @@ module Animal
 end
 
 Animal::Cat.new.call
+#^[A]    ^[B]    ^[C]
 
-## definition: test.rb:9:1
+## definition: [A]
 test.rb:(1,7)-(1,13)
 
-## definition: test.rb:9:9
+## definition: [B]
 test.rb:(2,8)-(2,11)
 
-## definition: test.rb:9:17
+## definition: [C]
 test.rb:(3,8)-(3,12)
