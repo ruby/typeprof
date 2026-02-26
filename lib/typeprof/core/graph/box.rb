@@ -259,7 +259,27 @@ module TypeProf::Core
       # "failed to resolve overloads" diagnostics for untyped arguments.
       # We still set up dependency edges so the box re-runs when the
       # empty arguments later receive types.
-      if a_args.positionals.any? {|vtx| vtx.types.empty? }
+      #
+      # For splat arguments, the positional vertex itself holds Array
+      # types (non-empty), but the array *element* vertex may be empty.
+      # The same oscillation occurs when match_arguments? extracts
+      # elements via get_rest_args and the universal typecheck on the
+      # flattened element list fails due to conflicting array sources.
+      # We detect this by checking element vertices of splatted arrays.
+      has_uninformative_args = a_args.positionals.any? {|vtx| vtx.types.empty? }
+      unless has_uninformative_args
+        a_args.positionals.each_with_index do |vtx, i|
+          next unless a_args.splat_flags[i]
+          vtx.each_type do |ty|
+            base = ty.base_type(genv)
+            if base.is_a?(Type::Instance) && base.mod == genv.mod_ary && base.args[0]
+              has_uninformative_args = true if base.args[0].types.empty?
+            end
+          end
+          break if has_uninformative_args
+        end
+      end
+      if has_uninformative_args
         a_args.positionals.each do |vtx|
           changes.add_edge(genv, vtx, changes.target)
         end
