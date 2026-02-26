@@ -28,5 +28,19 @@ module TypeProf::Core
     def exist?
       !@decls.empty? || !@defs.empty?
     end
+
+    def on_const_added(genv, cpath)
+      unless exist?
+        parent_mod = genv.resolve_cpath(cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, [parent_mod, cpath[-1]])
+      end
+    end
+
+    def on_const_removed(genv, cpath)
+      unless exist?
+        parent_mod = genv.resolve_cpath(cpath[0..-2])
+        genv.add_static_eval_queue(:inner_modules_changed, [parent_mod, cpath[-1]])
+      end
+    end
   end
 end
