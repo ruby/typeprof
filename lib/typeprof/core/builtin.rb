@@ -182,19 +182,66 @@ module TypeProf::Core
 
     def kernel_send(changes, node, ty, a_args, ret)
       return false if a_args.positionals.empty?
-      # Re-run this box when the first positional argument's types change
-      changes.add_edge(@genv, a_args.positionals[0], changes.target)
-      send_a_args = ActualArguments.new(
-        a_args.positionals[1..],
-        a_args.splat_flags[1..],
-        a_args.keywords,
-        a_args.block,
-      )
-      a_args.positionals[0].each_type do |sym_ty|
-        if sym_ty.is_a?(Type::Symbol)
-          recv = Source.new(ty)
-          box = changes.add_method_call_box(@genv, recv, sym_ty.sym, send_a_args, false)
-          changes.add_edge(@genv, box.ret, ret)
+
+      if a_args.splat_flags[0]
+        # send(*array) case: extract method name and args from array elements
+        splat_vtx = a_args.positionals[0]
+        changes.add_edge(@genv, splat_vtx, changes.target)
+
+        rest_positionals = a_args.positionals[1..]
+        rest_splat_flags = a_args.splat_flags[1..]
+
+        splat_vtx.each_type do |ary_ty|
+          next unless ary_ty.is_a?(Type::Array)
+
+          if ary_ty.elems && ary_ty.elems.size >= 1
+            # Tuple: use per-element precision
+            method_name_vtx = ary_ty.elems[0]
+            changes.add_edge(@genv, method_name_vtx, changes.target)
+
+            elem_args = ary_ty.elems[1..] + rest_positionals
+            elem_flags = ::Array.new(ary_ty.elems.size - 1, false) + rest_splat_flags
+            send_a_args = ActualArguments.new(elem_args, elem_flags, a_args.keywords, a_args.block)
+
+            method_name_vtx.each_type do |sym_ty|
+              if sym_ty.is_a?(Type::Symbol)
+                recv = Source.new(ty)
+                box = changes.add_method_call_box(@genv, recv, sym_ty.sym, send_a_args, false)
+                changes.add_edge(@genv, box.ret, ret)
+              end
+            end
+          else
+            # Non-tuple array: use unified element type for method name
+            elem_vtx = ary_ty.get_elem(@genv)
+            next unless elem_vtx
+            changes.add_edge(@genv, elem_vtx, changes.target)
+
+            send_a_args = ActualArguments.new(rest_positionals, rest_splat_flags, a_args.keywords, a_args.block)
+
+            elem_vtx.each_type do |sym_ty|
+              if sym_ty.is_a?(Type::Symbol)
+                recv = Source.new(ty)
+                box = changes.add_method_call_box(@genv, recv, sym_ty.sym, send_a_args, false)
+                changes.add_edge(@genv, box.ret, ret)
+              end
+            end
+          end
+        end
+      else
+        # send(:sym, ...) case
+        changes.add_edge(@genv, a_args.positionals[0], changes.target)
+        send_a_args = ActualArguments.new(
+          a_args.positionals[1..],
+          a_args.splat_flags[1..],
+          a_args.keywords,
+          a_args.block,
+        )
+        a_args.positionals[0].each_type do |sym_ty|
+          if sym_ty.is_a?(Type::Symbol)
+            recv = Source.new(ty)
+            box = changes.add_method_call_box(@genv, recv, sym_ty.sym, send_a_args, false)
+            changes.add_edge(@genv, box.ret, ret)
+          end
         end
       end
       true
