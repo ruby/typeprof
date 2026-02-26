@@ -12,7 +12,7 @@ module TypeProf::Core
 
       prism_source = result.source
       inline_members = build_inline_member_lookup(path, src, result)
-      file_context = FileContext.new(path, prism_source, result.comments, inline_members)
+      file_context = FileContext.new(path, prism_source, inline_members)
 
       cref = CRef::Toplevel
       lenv = LocalEnv.new(file_context, cref, {}, [])

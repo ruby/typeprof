@@ -1,47 +1,17 @@
 module TypeProf::Core
   class AST
     def self.get_rbs_method_type(raw_node, lenv)
-      # Try InlineParser lookup first
       inline_members = lenv.file_context.inline_members
-      if inline_members
-        member = inline_members[raw_node.object_id]
-        if member
-          overload = member.overloads.first
-          if overload
-            method_type = overload.method_type
-            return AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
-          end
-        end
-      end
+      return nil unless inline_members
 
-      # Fallback for top-level methods (not supported by InlineParser)
-      get_rbs_comment_before(raw_node, lenv)
-    end
+      member = inline_members[raw_node.object_id]
+      return nil unless member
 
-    def self.get_rbs_comment_before(raw_node, lenv)
-      comments = lenv.file_context.comments
-      return nil unless comments
-      node_line = raw_node.location.start_line
-      last_comment_index = comments.bsearch_index {|c| c.location.start_line >= node_line } || comments.size
-      rbs_comments = []
-      expected_line = node_line - 1
-      (last_comment_index - 1).downto(0) do |i|
-        comment = comments[i]
-        break unless comment.location.start_line == expected_line && comment.location.slice.start_with?("#:")
-        comment_loc = comment.location
-        comment_text = comment_loc.slice
-        rbs_comments[comment_loc.start_line - 1] = " " * (comment_loc.start_column + 2) + comment_text[2..]
-        expected_line -= 1
-      end
-      return nil if rbs_comments.empty?
-      rbs_comments = rbs_comments.map {|line| line || "" }.join("\n")
-      method_type = RBS::Parser.parse_method_type(rbs_comments)
-      if method_type
-        AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
-      end
-    rescue RBS::ParsingError
-      # TODO: report the error
-      nil
+      overload = member.overloads.first
+      return nil unless overload
+
+      method_type = overload.method_type
+      AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
     end
 
     def self.parse_params(tbl, raw_args, lenv)

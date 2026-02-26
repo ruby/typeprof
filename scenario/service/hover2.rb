@@ -1,43 +1,55 @@
 ## update: test.rb
-#: () -> Integer
-def foo
-  "string"
-end
+class C
+  #: () -> Integer
+  def foo
+    "string"
+  end
 
-foo
+  def bar
+    foo
 #\
-^[A]
+    ^[A]
+  end
+end
 
 ## hover: [A]
-Object#foo : -> Integer
+C#foo : -> Integer
 
 ## diagnostics
-(3,2)-(3,10): expected: Integer; actual: String
+(4,4)-(4,12): expected: Integer; actual: String
 
 ## update: test.rb
-#: () -> Integer?
-def foo
-  "string"
-end
+class C
+  #: () -> Integer?
+  def foo
+    "string"
+  end
 
-foo
+  def bar
+    foo
 #\
-^[B]
+    ^[B]
+  end
+end
 
 ## hover: [B]
-Object#foo : -> Integer?
+C#foo : -> Integer?
 
 ## update: test.rb
-#: () -> (Integer | String)?
-def foo
-  "string"
-end
+class C
+  #: () -> (Integer | String)?
+  def foo
+    "string"
+  end
 
-foo
+  def bar
+    foo
 #\
-^[C]
+    ^[C]
+  end
+end
 
 # TODO: The above test is mainly for SIG_TYPE#show
 
 ## hover: [C]
-Object#foo : -> (Integer | String)?
+C#foo : -> (Integer | String)?
