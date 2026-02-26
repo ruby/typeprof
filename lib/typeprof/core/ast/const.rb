@@ -83,9 +83,10 @@ module TypeProf::Core
         @cpath.define(genv) if @cpath
         @rhs.define(genv) if @rhs
         if @static_cpath
-          mod = genv.resolve_const(@static_cpath)
-          mod.add_def(self)
-          mod
+          cdef = genv.resolve_const(@static_cpath)
+          cdef.on_const_added(genv, @static_cpath)
+          cdef.add_def(self)
+          cdef
         else
           nil
         end
@@ -102,7 +103,9 @@ module TypeProf::Core
 
       def undefine0(genv)
         if @static_cpath
-          genv.resolve_const(@static_cpath).remove_def(self)
+          cdef = genv.resolve_const(@static_cpath)
+          cdef.remove_def(self)
+          cdef.on_const_removed(genv, @static_cpath)
         end
         @rhs.undefine(genv) if @rhs
         @cpath.undefine(genv) if @cpath

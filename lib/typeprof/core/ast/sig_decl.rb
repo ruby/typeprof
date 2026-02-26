@@ -425,9 +425,10 @@ module TypeProf::Core
 
       def define0(genv)
         @type.define(genv)
-        mod = genv.resolve_const(@cpath)
-        mod.add_decl(self)
-        mod
+        cdef = genv.resolve_const(@cpath)
+        cdef.on_const_added(genv, @cpath)
+        cdef.add_decl(self)
+        cdef
       end
 
       def define_copy(genv)
@@ -438,7 +439,9 @@ module TypeProf::Core
       end
 
       def undefine0(genv)
-        genv.resolve_const(@cpath).remove_decl(self)
+        cdef = genv.resolve_const(@cpath)
+        cdef.remove_decl(self)
+        cdef.on_const_removed(genv, @cpath)
         @type.undefine(genv)
       end
 
