@@ -180,21 +180,44 @@ module TypeProf::Core
       end
     end
 
+    def kernel_send(changes, node, ty, a_args, ret)
+      return false if a_args.positionals.empty?
+      # Re-run this box when the first positional argument's types change
+      changes.add_edge(@genv, a_args.positionals[0], changes.target)
+      send_a_args = ActualArguments.new(
+        a_args.positionals[1..],
+        a_args.splat_flags[1..],
+        a_args.keywords,
+        a_args.block,
+      )
+      a_args.positionals[0].each_type do |sym_ty|
+        if sym_ty.is_a?(Type::Symbol)
+          recv = Source.new(ty)
+          box = changes.add_method_call_box(@genv, recv, sym_ty.sym, send_a_args, false)
+          changes.add_edge(@genv, box.ret, ret)
+        end
+      end
+      true
+    end
+
     def deploy
-      {
-        class_new: [[:Class], false, :new],
-        object_class: [[:Object], false, :class],
-        proc_call: [[:Proc], false, :call],
-        array_aref: [[:Array], false, :[]],
-        array_aset: [[:Array], false, :[]=],
-        array_push: [[:Array], false, :<<],
-        hash_aref: [[:Hash], false, :[]],
-        hash_aset: [[:Hash], false, :[]=],
-        object_method: [[:Kernel], false, :method],
-        method_call: [[:Method], false, :call],
-      }.each do |key, (cpath, singleton, mid)|
+      [
+        [method(:class_new), [:Class], false, :new],
+        [method(:object_class), [:Object], false, :class],
+        [method(:proc_call), [:Proc], false, :call],
+        [method(:array_aref), [:Array], false, :[]],
+        [method(:array_aset), [:Array], false, :[]=],
+        [method(:array_push), [:Array], false, :<<],
+        [method(:hash_aref), [:Hash], false, :[]],
+        [method(:hash_aset), [:Hash], false, :[]=],
+        [method(:object_method), [:Kernel], false, :method],
+        [method(:method_call), [:Method], false, :call],
+        [method(:kernel_send), [:BasicObject], false, :__send__],
+        [method(:kernel_send), [:Kernel], false, :public_send],
+        [method(:kernel_send), [:Kernel], false, :send],
+      ].each do |builtin, cpath, singleton, mid|
         me = @genv.resolve_method(cpath, singleton, mid)
-        me.builtin = method(key)
+        me.builtin = builtin
       end
     end
   end
