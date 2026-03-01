@@ -1156,24 +1156,26 @@ module TypeProf::Core
     def ret = @rhs
 
     def run0(genv, changes)
-      edges = []
       @value.each_type do |ty|
         # TODO: call to_ary?
         case ty
         when Type::Array
-          edges.concat(ty.splat_assign(genv, @lefts, @rest_elem, @rights))
-        else
-          if @lefts.size >= 1
-            edges << [Source.new(ty), @lefts[0]]
-          elsif @rights && @rights.size >= 1
-            edges << [Source.new(ty), @rights[0]]
-          else
-            edges << [Source.new(ty), @rest_elem]
+          ty.splat_assign(genv, @lefts, @rest_elem, @rights).each do |src, dst|
+            changes.add_edge(genv, src, dst)
           end
+        when Type::Instance
+          if ty.mod == genv.mod_ary && (elem_vtx = ty.args[0])
+            @lefts.each {|lhs| changes.add_edge(genv, elem_vtx, lhs) }
+            changes.add_edge(genv, elem_vtx, @rest_elem) if @rest_elem
+            @rights&.each {|rhs| changes.add_edge(genv, elem_vtx, rhs) }
+          else
+            lhs = @lefts[0] || (@rights && @rights[0]) || @rest_elem
+            changes.add_edge(genv, Source.new(ty), lhs) if lhs
+          end
+        else
+          lhs = @lefts[0] || (@rights && @rights[0]) || @rest_elem
+          changes.add_edge(genv, Source.new(ty), lhs) if lhs
         end
-      end
-      edges.each do |src, dst|
-        changes.add_edge(genv, src, dst)
       end
     end
   end
