@@ -1,3 +1,6 @@
+require_relative "./diagnostic/disable_directive/scanner"
+require_relative "./diagnostic/disable_directive/filter"
+
 module TypeProf
   class Diagnostic
     def initialize(node, meth, msg, tags: nil)
