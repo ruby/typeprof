@@ -193,16 +193,16 @@ module TypeProf::Core
         @mid_code_range = lenv.code_range_from_node(raw_decl.location[:name])
         @singleton = raw_decl.singleton?
         @instance = raw_decl.instance?
-        @method_types = raw_decl.overloads.map do |overload|
+        @method_types = OverloadSet.new(raw_decl.overloads.map do |overload|
           method_type = overload.method_type
           AST.create_rbs_func_type(method_type, method_type.type_params, method_type.block, lenv)
-        end
+        end)
         @overloading = raw_decl.overloading
       end
 
       attr_reader :mid, :singleton, :instance, :method_types, :overloading, :mid_code_range
 
-      def subnodes = { method_types: }
+      def subnodes = { method_types: @method_types.to_a }
       def attrs = { mid:, mid_code_range:, singleton:, instance:, overloading: }
 
       def mname_code_range(_name) = @mid_code_range
@@ -346,6 +346,7 @@ module TypeProf::Core
           location: raw_decl.type.location
         )
         @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+        @method_types = OverloadSet.new([@method_type])
       end
 
       attr_reader :mid, :method_type
@@ -354,7 +355,7 @@ module TypeProf::Core
       def attrs = { mid: }
 
       def install0(genv)
-        @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, @mid, [@method_type], false)
+        @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, @mid, @method_types, false)
         Source.new
       end
     end
@@ -381,6 +382,7 @@ module TypeProf::Core
           location: raw_decl.type.location
         )
         @method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+        @method_types = OverloadSet.new([@method_type])
       end
 
       attr_reader :mid, :method_type
@@ -389,7 +391,7 @@ module TypeProf::Core
       def attrs = { mid: }
 
       def install0(genv)
-        @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, @mid, [@method_type], false)
+        @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, @mid, @method_types, false)
         Source.new
       end
     end
