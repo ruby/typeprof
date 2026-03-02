@@ -11,3 +11,7 @@ def check
 end
 
 ## assert
+class Object
+  def yield_values: { (Integer, [Float, String]) -> bot } -> bot
+  def check: -> [Integer, Float, String]?
+end
