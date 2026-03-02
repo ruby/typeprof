@@ -99,6 +99,141 @@ module TypeProf::Core
     end
   end
 
+  class OverloadSet
+    include Enumerable
+
+    def initialize(method_types)
+      @method_types = method_types
+    end
+
+    def each(&blk) = @method_types.each(&blk)
+    def map(&blk)  = @method_types.map(&blk)
+    def first      = @method_types.first
+    def size       = @method_types.size
+    def to_a       = @method_types
+
+    # lazy cache: combination(2) for all-pair comparison
+    def overloads_differ_in_args?
+      return @overloads_differ_in_args if defined?(@overloads_differ_in_args)
+      @overloads_differ_in_args = !@method_types.combination(2).all? { |a, b|
+        positionals_match?(a, b) && keywords_match?(a, b)
+      }
+    end
+
+    def overloads_differ_at_top_level?
+      return @overloads_differ_at_top_level if defined?(@overloads_differ_at_top_level)
+      @overloads_differ_at_top_level = !@method_types.combination(2).all? { |a, b|
+        positionals_match_shallow?(a, b) && keywords_match_shallow?(a, b)
+      }
+    end
+
+    private
+
+    # Check if two method types have structurally identical positional
+    # parameter types (req, opt, rest).
+    def positionals_match?(mt1, mt2)
+      return false unless mt1.req_positionals.size == mt2.req_positionals.size
+      return false unless mt1.opt_positionals.size == mt2.opt_positionals.size
+      return false unless mt1.rest_positionals.nil? == mt2.rest_positionals.nil?
+      mt1.req_positionals.zip(mt2.req_positionals).all? {|a, b| sig_types_match?(a, b) } &&
+        mt1.opt_positionals.zip(mt2.opt_positionals).all? {|a, b| sig_types_match?(a, b) } &&
+        (mt1.rest_positionals.nil? || sig_types_match?(mt1.rest_positionals, mt2.rest_positionals))
+    end
+
+    # Check if two method types have identical positional parameter
+    # types at the top level (ignoring type parameter contents).
+    def positionals_match_shallow?(mt1, mt2)
+      return false unless mt1.req_positionals.size == mt2.req_positionals.size
+      return false unless mt1.opt_positionals.size == mt2.opt_positionals.size
+      return false unless mt1.rest_positionals.nil? == mt2.rest_positionals.nil?
+      mt1.req_positionals.zip(mt2.req_positionals).all? {|a, b| sig_types_match_shallow?(a, b) } &&
+        mt1.opt_positionals.zip(mt2.opt_positionals).all? {|a, b| sig_types_match_shallow?(a, b) } &&
+        (mt1.rest_positionals.nil? || sig_types_match_shallow?(mt1.rest_positionals, mt2.rest_positionals))
+    end
+
+    # Check if two method types have structurally identical keyword
+    # parameter types (req, opt, rest).
+    def keywords_match?(mt1, mt2)
+      return false unless mt1.req_keyword_keys == mt2.req_keyword_keys
+      return false unless mt1.opt_keyword_keys == mt2.opt_keyword_keys
+      return false unless mt1.rest_keywords.nil? == mt2.rest_keywords.nil?
+      mt1.req_keyword_values.zip(mt2.req_keyword_values).all? {|a, b| sig_types_match?(a, b) } &&
+        mt1.opt_keyword_values.zip(mt2.opt_keyword_values).all? {|a, b| sig_types_match?(a, b) } &&
+        (mt1.rest_keywords.nil? || sig_types_match?(mt1.rest_keywords, mt2.rest_keywords))
+    end
+
+    # Shallow version: compare keyword keys and structure, but use
+    # shallow type comparison for values.
+    def keywords_match_shallow?(mt1, mt2)
+      return false unless mt1.req_keyword_keys == mt2.req_keyword_keys
+      return false unless mt1.opt_keyword_keys == mt2.opt_keyword_keys
+      return false unless mt1.rest_keywords.nil? == mt2.rest_keywords.nil?
+      mt1.req_keyword_values.zip(mt2.req_keyword_values).all? {|a, b| sig_types_match_shallow?(a, b) } &&
+        mt1.opt_keyword_values.zip(mt2.opt_keyword_values).all? {|a, b| sig_types_match_shallow?(a, b) } &&
+        (mt1.rest_keywords.nil? || sig_types_match_shallow?(mt1.rest_keywords, mt2.rest_keywords))
+    end
+
+    # Structural equality check for two SigTyNode objects.
+    def sig_types_match?(a, b)
+      return false unless a.class == b.class
+      case a
+      when AST::SigTyInstanceNode, AST::SigTyInterfaceNode
+        a.cpath == b.cpath &&
+          a.args.size == b.args.size &&
+          a.args.zip(b.args).all? {|x, y| sig_types_match?(x, y) }
+      when AST::SigTySingletonNode
+        a.cpath == b.cpath
+      when AST::SigTyTupleNode, AST::SigTyUnionNode, AST::SigTyIntersectionNode
+        a.types.size == b.types.size &&
+          a.types.zip(b.types).all? {|x, y| sig_types_match?(x, y) }
+      when AST::SigTyRecordNode
+        a.fields.size == b.fields.size &&
+          a.fields.all? {|k, v| b.fields[k] && sig_types_match?(v, b.fields[k]) }
+      when AST::SigTyOptionalNode, AST::SigTyProcNode
+        sig_types_match?(a.type, b.type)
+      when AST::SigTyVarNode
+        a.var == b.var
+      when AST::SigTyLiteralNode
+        a.lit == b.lit
+      when AST::SigTyAliasNode
+        a.cpath == b.cpath && a.name == b.name &&
+          a.args.size == b.args.size &&
+          a.args.zip(b.args).all? {|x, y| sig_types_match?(x, y) }
+      else
+        true # Leaf types (bool, nil, self, void, untyped, etc.)
+      end
+    end
+
+    # Shallow structural equality: compare only the top-level type
+    # identity without recursing into type parameters.
+    def sig_types_match_shallow?(a, b)
+      return false unless a.class == b.class
+      case a
+      when AST::SigTyInstanceNode, AST::SigTyInterfaceNode
+        a.cpath == b.cpath
+      when AST::SigTySingletonNode
+        a.cpath == b.cpath
+      when AST::SigTyTupleNode
+        a.types.size == b.types.size
+      when AST::SigTyUnionNode, AST::SigTyIntersectionNode
+        a.types.size == b.types.size &&
+          a.types.zip(b.types).all? {|x, y| sig_types_match_shallow?(x, y) }
+      when AST::SigTyRecordNode
+        a.fields.keys.sort == b.fields.keys.sort
+      when AST::SigTyOptionalNode, AST::SigTyProcNode
+        true
+      when AST::SigTyVarNode
+        a.var == b.var
+      when AST::SigTyLiteralNode
+        a.lit == b.lit
+      when AST::SigTyAliasNode
+        a.cpath == b.cpath && a.name == b.name
+      else
+        true
+      end
+    end
+  end
+
   class MethodDeclBox < Box
     def initialize(node, genv, cpath, singleton, mid, method_types, overloading)
       super(node)
@@ -274,17 +409,35 @@ module TypeProf::Core
       # cyclic cases and avoids false "failed to resolve overloads"
       # diagnostics for untyped arguments.
       #
-      # Top-level empty vertices are always uninformative. For type
-      # parameter vertices (e.g., Array[T], Hash[K,V], tuples), we
-      # only recurse when overloads differ in their positional or keyword
-      # parameter types -- otherwise empty type params (like those of
-      # `{}`) cannot cause oscillation and should not trigger bail-out.
-      overloads_differ = !@method_types.each_cons(2).all? {|mt1, mt2|
-        positionals_match?(mt1, mt2) && keywords_match?(mt1, mt2)
-      }
-      has_uninformative_args = if overloads_differ
-        a_args.positionals.any? {|vtx| vertex_uninformative?(genv, vtx) } ||
-          (a_args.keywords && vertex_uninformative?(genv, a_args.keywords))
+      # We check at two levels:
+      # 1. Top-level empty vertices are always uninformative.
+      # 2. Empty type parameter vertices (e.g., Array[T] where T is
+      #    empty) are only uninformative when overloads differ solely
+      #    in their type parameters (e.g., Array[Integer] vs
+      #    Array[String]). When overloads differ at the top level
+      #    (e.g., Integer vs Float), the type parameter contents are
+      #    irrelevant for overload selection and should not trigger
+      #    bail-out.
+      has_uninformative_args = if @method_types.overloads_differ_in_args?
+        # Check whether overloads also differ at the top level (e.g.,
+        # Integer vs Float) or only in their type parameters (e.g.,
+        # Array[Integer] vs Array[String]).
+        if @method_types.overloads_differ_at_top_level?
+          # Overloads are distinguished by top-level types.
+          # Only top-level empty vertices matter; empty type parameters
+          # are irrelevant for overload selection.
+          # However, splatted arguments have their elements extracted
+          # during matching, so also check splat element vertices.
+          a_args.positionals.any? {|vtx| vtx.types.empty? } ||
+            splat_elements_uninformative?(genv, a_args) ||
+            (a_args.keywords && a_args.keywords.types.empty?)
+        else
+          # Overloads differ only in type parameters (e.g.,
+          # Array[Integer] vs Array[String]). Empty type parameter
+          # vertices can cause oscillation, so check recursively.
+          a_args.positionals.any? {|vtx| vertex_uninformative?(genv, vtx) } ||
+            (a_args.keywords && vertex_uninformative?(genv, a_args.keywords))
+        end
       else
         a_args.positionals.any? {|vtx| vtx.types.empty? } ||
           (a_args.keywords && a_args.keywords.types.empty?)
@@ -308,6 +461,23 @@ module TypeProf::Core
         meth = node.mid_code_range ? :mid_code_range : :code_range
         changes.add_diagnostic(meth, "failed to resolve overloads")
       end
+    end
+
+    # Check if any splatted argument has an Array element vertex
+    # that is empty. Splat expansion extracts elements during
+    # overload matching, so empty element types can cause oscillation
+    # even when the top-level Array type is present.
+    def splat_elements_uninformative?(genv, a_args)
+      a_args.positionals.each_with_index do |vtx, i|
+        next unless a_args.splat_flags[i]
+        vtx.each_type do |ty|
+          base = ty.base_type(genv)
+          if base.is_a?(Type::Instance) && base.mod == genv.mod_ary && base.args[0]
+            return true if base.args[0].types.empty?
+          end
+        end
+      end
+      false
     end
 
     def vertex_uninformative?(genv, vtx, depth = 0)
@@ -361,59 +531,6 @@ module TypeProf::Core
         end
       end
       true
-    end
-
-    # Check if two method types have structurally identical positional
-    # parameter types (req, opt, rest).
-    def positionals_match?(mt1, mt2)
-      return false unless mt1.req_positionals.size == mt2.req_positionals.size
-      return false unless mt1.opt_positionals.size == mt2.opt_positionals.size
-      return false unless mt1.rest_positionals.nil? == mt2.rest_positionals.nil?
-      mt1.req_positionals.zip(mt2.req_positionals).all? {|a, b| sig_types_match?(a, b) } &&
-        mt1.opt_positionals.zip(mt2.opt_positionals).all? {|a, b| sig_types_match?(a, b) } &&
-        (mt1.rest_positionals.nil? || sig_types_match?(mt1.rest_positionals, mt2.rest_positionals))
-    end
-
-    # Check if two method types have structurally identical keyword
-    # parameter types (req, opt, rest).
-    def keywords_match?(mt1, mt2)
-      return false unless mt1.req_keyword_keys == mt2.req_keyword_keys
-      return false unless mt1.opt_keyword_keys == mt2.opt_keyword_keys
-      return false unless mt1.rest_keywords.nil? == mt2.rest_keywords.nil?
-      mt1.req_keyword_values.zip(mt2.req_keyword_values).all? {|a, b| sig_types_match?(a, b) } &&
-        mt1.opt_keyword_values.zip(mt2.opt_keyword_values).all? {|a, b| sig_types_match?(a, b) } &&
-        (mt1.rest_keywords.nil? || sig_types_match?(mt1.rest_keywords, mt2.rest_keywords))
-    end
-
-    # Structural equality check for two SigTyNode objects.
-    def sig_types_match?(a, b)
-      return false unless a.class == b.class
-      case a
-      when AST::SigTyInstanceNode, AST::SigTyInterfaceNode
-        a.cpath == b.cpath &&
-          a.args.size == b.args.size &&
-          a.args.zip(b.args).all? {|x, y| sig_types_match?(x, y) }
-      when AST::SigTySingletonNode
-        a.cpath == b.cpath
-      when AST::SigTyTupleNode, AST::SigTyUnionNode, AST::SigTyIntersectionNode
-        a.types.size == b.types.size &&
-          a.types.zip(b.types).all? {|x, y| sig_types_match?(x, y) }
-      when AST::SigTyRecordNode
-        a.fields.size == b.fields.size &&
-          a.fields.all? {|k, v| b.fields[k] && sig_types_match?(v, b.fields[k]) }
-      when AST::SigTyOptionalNode, AST::SigTyProcNode
-        sig_types_match?(a.type, b.type)
-      when AST::SigTyVarNode
-        a.var == b.var
-      when AST::SigTyLiteralNode
-        a.lit == b.lit
-      when AST::SigTyAliasNode
-        a.cpath == b.cpath && a.name == b.name &&
-          a.args.size == b.args.size &&
-          a.args.zip(b.args).all? {|x, y| sig_types_match?(x, y) }
-      else
-        true # Leaf types (bool, nil, self, void, untyped, etc.)
-      end
     end
 
     def show
