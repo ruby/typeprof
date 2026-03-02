@@ -56,10 +56,18 @@ module TypeProf::Core
           else
             @block_pass = nil
             @block_tbl = raw_block.locals
+            @block_multi_targets = {}
             @block_f_args = case raw_block.parameters
                             when Prism::BlockParametersNode
                               params = raw_block.parameters.parameters
-                              req = params.requireds.map {|n| n.is_a?(Prism::MultiTargetNode) ? nil : n.name }
+                              req = params.requireds.each_with_index.map do |n, i|
+                                if n.is_a?(Prism::MultiTargetNode)
+                                  @block_multi_targets[i] = n
+                                  nil
+                                else
+                                  n.name
+                                end
+                              end
                               opt = params.optionals.map {|n| n.name }
                               req + opt
                             when Prism::NumberedParametersNode
@@ -89,6 +97,7 @@ module TypeProf::Core
       attr_reader :recv, :mid, :mid_code_range, :yield
       attr_reader :positional_args, :splat_flags, :keyword_args
       attr_reader :block_tbl, :block_f_args, :block_opt_positional_defaults, :block_body, :block_pass, :anonymous_block_forwarding
+      attr_reader :block_multi_targets
       attr_reader :safe_navigation
 
       def subnodes = { recv:, positional_args:, keyword_args:, block_opt_positional_defaults:, block_body:, block_pass: }
@@ -130,6 +139,16 @@ module TypeProf::Core
             req_count = blk_f_args.size - @block_opt_positional_defaults.size
             @block_opt_positional_defaults.each_with_index do |expr, i|
               @changes.add_edge(genv, expr.install(genv), blk_f_args[req_count + i])
+            end
+          end
+
+          if @block_multi_targets
+            @block_multi_targets.each do |idx, raw_multi_target|
+              param_vtx = blk_f_args[idx]
+              lefts = raw_multi_target.lefts.map do |n|
+                block_body.lenv.new_var(n.is_a?(Prism::MultiTargetNode) ? nil : n.name, self)
+              end
+              @changes.add_masgn_box(genv, param_vtx, lefts, nil, nil)
             end
           end
 
