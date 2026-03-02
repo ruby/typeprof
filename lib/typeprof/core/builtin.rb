@@ -247,6 +247,44 @@ module TypeProf::Core
       true
     end
 
+    def kernel_array(changes, node, ty, a_args, ret)
+      return false unless a_args.positionals.size == 1
+
+      arg_vtx = a_args.positionals[0]
+      elem_vtx = Vertex.new(node)
+      handled = false
+      needs_elem_wrap = false
+
+      arg_vtx.each_type do |arg_ty|
+        handled = true
+        case arg_ty
+        when Type::Instance
+          if arg_ty.mod == @genv.mod_range && arg_ty.args && !arg_ty.args.empty?
+            changes.add_edge(@genv, arg_ty.args[0], elem_vtx)
+            needs_elem_wrap = true
+          elsif arg_ty.mod == @genv.mod_ary
+            changes.add_edge(@genv, Source.new(arg_ty), ret)
+          else
+            changes.add_edge(@genv, Source.new(arg_ty), elem_vtx)
+            needs_elem_wrap = true
+          end
+        when Type::Array
+          changes.add_edge(@genv, Source.new(arg_ty), ret)
+        else
+          changes.add_edge(@genv, Source.new(arg_ty), elem_vtx)
+          needs_elem_wrap = true
+        end
+      end
+
+      return false unless handled
+
+      if needs_elem_wrap
+        ary_ty = @genv.gen_ary_type(elem_vtx)
+        changes.add_edge(@genv, Source.new(ary_ty), ret)
+      end
+      true
+    end
+
     def deploy
       [
         [method(:class_new), [:Class], false, :new],
@@ -262,6 +300,7 @@ module TypeProf::Core
         [method(:kernel_send), [:BasicObject], false, :__send__],
         [method(:kernel_send), [:Kernel], false, :public_send],
         [method(:kernel_send), [:Kernel], false, :send],
+        [method(:kernel_array), [:Kernel], false, :Array],
       ].each do |builtin, cpath, singleton, mid|
         me = @genv.resolve_method(cpath, singleton, mid)
         me.builtin = builtin
