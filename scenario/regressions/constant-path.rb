@@ -18,7 +18,6 @@ module Baz
     end
   end
 end
-
 module Foo
   class Bar
   end
@@ -36,7 +35,6 @@ end
 ## assert: test.rb
 class Foo
 end
-
 module Bar
   class Foo < ::Foo
   end
