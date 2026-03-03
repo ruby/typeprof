@@ -1,14 +1,16 @@
 ## update
-#: -> Integer
-def foo
-  return
+class C
+  #: -> Integer
+  def foo
+    return
 
-  return "str"
+    return "str"
 
-  1.0
+    1.0
+  end
 end
 
 ## diagnostics
-(3,2)-(3,8): expected: Integer; actual: nil
-(5,2)-(5,14): expected: Integer; actual: String
-(7,2)-(7,5): expected: Integer; actual: Float
+(4,4)-(4,10): expected: Integer; actual: nil
+(6,4)-(6,16): expected: Integer; actual: String
+(8,4)-(8,7): expected: Integer; actual: Float
