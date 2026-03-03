@@ -429,6 +429,30 @@ module TypeProf::Core
       rel_cpath.empty? ? cpath.join("::") : rel_cpath.join("::")
     end
 
+    def format_superclass_path(node, superclass)
+      sc_path = superclass.show_cpath
+
+      if node.is_a?(AST::ClassNode) && node.superclass_cpath
+        sc_node = node.superclass_cpath
+        if superclass_source_is_toplevel?(sc_node)
+          return "::#{ sc_path }"
+        end
+
+        if node.static_cpath && node.static_cpath.size > 1 &&
+           superclass.cpath == [node.static_cpath.last]
+          return "::#{ sc_path }"
+        end
+      end
+
+      sc_path
+    end
+
+    def superclass_source_is_toplevel?(const_node)
+      return false unless const_node.is_a?(AST::ConstantReadNode)
+      return true if const_node.toplevel
+      const_node.cbase ? superclass_source_is_toplevel?(const_node.cbase) : false
+    end
+
     def dump_declarations(path)
       stack = []
       out = []
@@ -459,7 +483,7 @@ module TypeProf::Core
               if superclass == nil
                 s << " # failed to identify its superclass"
               elsif superclass.cpath != []
-                s << " < #{ superclass.show_cpath }"
+                s << " < #{ format_superclass_path(node, superclass) }"
               end
               if stack == [:toplevel]
                 out << "end"
