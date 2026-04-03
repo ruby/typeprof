@@ -760,8 +760,6 @@ module TypeProf::Core
     end
 
     def pass_arguments(changes, genv, a_args)
-      a_args = normalize_keyword_hash_argument_for_def(a_args)
-
       if a_args.splat_flags.any?
         # there is at least one splat actual argument
 
@@ -898,7 +896,11 @@ module TypeProf::Core
     end
 
     def call(changes, genv, a_args, ret)
+      a_args = normalize_keyword_hash_argument_for_def(a_args)
       if pass_arguments(changes, genv, a_args)
+        if @node.is_a?(AST::DefNode)
+          @node.body.lenv.forward_args&.accept_actual_arguments(genv, changes, a_args)
+        end
         changes.add_edge(genv, a_args.block, @f_args.block) if @f_args.block && a_args.block
 
         changes.add_edge(genv, @ret, ret)
