@@ -331,6 +331,7 @@ module TypeProf::Core
     end
 
     attr_reader :file_context, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope
+    attr_accessor :module_function
 
     def path = @file_context&.path
     def code_range_from_node(node)
