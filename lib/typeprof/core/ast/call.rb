@@ -1,7 +1,7 @@
 module TypeProf::Core
   class AST
     class CallBaseNode < Node
-      def initialize(raw_node, recv, mid, mid_code_range, raw_args, last_arg, raw_block, lenv)
+      def initialize(raw_node, recv, mid, mid_code_range, raw_args, last_arg, raw_block, lenv, forwarding_arguments: false)
         super(raw_node, lenv)
 
         @recv = recv
@@ -20,6 +20,7 @@ module TypeProf::Core
         @block_body = nil
         @safe_navigation = raw_node.respond_to?(:safe_navigation?) && raw_node.safe_navigation?
         @anonymous_block_forwarding = false
+        @forwarding_arguments = forwarding_arguments
 
         if raw_args
           args = []
@@ -30,7 +31,7 @@ module TypeProf::Core
               args << raw_arg.expression
               @splat_flags << true
             when Prism::ForwardingArgumentsNode
-              # TODO: Support forwarding arguments
+              @forwarding_arguments = true
             else
               args << raw_arg
               @splat_flags << false
@@ -98,10 +99,10 @@ module TypeProf::Core
       attr_reader :positional_args, :splat_flags, :keyword_args
       attr_reader :block_tbl, :block_f_args, :block_opt_positional_defaults, :block_body, :block_pass, :anonymous_block_forwarding
       attr_reader :block_multi_targets
-      attr_reader :safe_navigation
+      attr_reader :safe_navigation, :forwarding_arguments
 
       def subnodes = { recv:, positional_args:, keyword_args:, block_opt_positional_defaults:, block_body:, block_pass: }
-      def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield:, safe_navigation:, anonymous_block_forwarding: }
+      def attrs = { mid:, splat_flags:, block_tbl:, block_f_args:, yield:, safe_navigation:, anonymous_block_forwarding:, forwarding_arguments: }
 
       def install0(genv)
         recv = @recv ? @recv.install(genv) : @yield ? @lenv.get_var(:"*given_block") : @lenv.get_var(:"*self")
@@ -111,22 +112,29 @@ module TypeProf::Core
           recv = NilFilter.new(genv, self, recv, false).next_vtx
         end
 
-        positional_args = @positional_args.map do |arg|
-          if arg.is_a?(DummyNilNode)
-            @lenv.get_var(:"*anonymous_rest")
-          else
-            arg.install(genv)
+        if @forwarding_arguments
+          forward_a_args = (@lenv.forward_args || raise).to_actual_arguments(genv, @changes, self)
+          positional_args = forward_a_args.positionals
+          splat_flags = forward_a_args.splat_flags
+          keyword_args = forward_a_args.keywords
+        else
+          positional_args = @positional_args.map do |arg|
+            if arg.is_a?(DummyNilNode)
+              @lenv.get_var(:"*anonymous_rest")
+            else
+              arg.install(genv)
+            end
           end
+          splat_flags = @splat_flags
+          keyword_args = @keyword_args ? @keyword_args.install(genv) : nil
         end
-
-        keyword_args = @keyword_args ? @keyword_args.install(genv) : nil
 
         if @block_body
           block_body = @block_body # kinda type annotationty
           block_tbl = @block_tbl || raise
           @lenv.locals.each {|var, vtx| block_body.lenv.locals[var] = vtx }
           block_tbl.each {|var| block_body.lenv.locals[var] = Source.new(genv.nil_type) }
-          @block_body.lenv.locals[:"*self"] = @block_body.lenv.cref.get_self(genv)
+          block_body.lenv.locals[:"*self"] = block_body.lenv.cref.get_self(genv)
 
           blk_f_args = []
           if @block_f_args
@@ -156,7 +164,7 @@ module TypeProf::Core
             block_body.lenv.set_var(var, vtx)
           end
           vars = []
-          @block_body.modified_vars(@lenv.locals.keys - block_tbl, vars)
+          block_body.modified_vars(@lenv.locals.keys - block_tbl, vars)
           vars.uniq!
           vars.each do |var|
             vtx = @lenv.get_var(var)
@@ -165,9 +173,9 @@ module TypeProf::Core
             block_body.lenv.set_var(var, nvtx)
           end
 
-          @block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new(self)
-          @block_body.install(genv)
-          @block_body.lenv.add_next_box(@changes.add_escape_box(genv, @block_body.ret))
+          block_body.lenv.locals[:"*expected_block_ret"] = Vertex.new(self)
+          block_body.install(genv)
+          block_body.lenv.add_next_box(@changes.add_escape_box(genv, block_body.ret))
 
           vars.each do |var|
             @changes.add_edge(genv, block_body.lenv.get_var(var), @lenv.get_var(var))
@@ -179,15 +187,17 @@ module TypeProf::Core
             elem_vtx = @changes.add_splat_box(genv, blk_f_ary_arg, i).ret
             @changes.add_edge(genv, elem_vtx, f_arg)
           end
-          block = Block.new(self, blk_f_ary_arg, blk_f_args, @block_body.lenv.next_boxes)
+          block = Block.new(self, blk_f_ary_arg, blk_f_args, block_body.lenv.next_boxes)
           blk_ty = Source.new(Type::Proc.new(genv, block))
         elsif @block_pass
           blk_ty = @block_pass.install(genv)
         elsif @anonymous_block_forwarding
           blk_ty = @lenv.get_var(:"*anonymous_block")
+        elsif @forwarding_arguments
+          blk_ty = forward_a_args.block
         end
 
-        a_args = ActualArguments.new(positional_args, @splat_flags, keyword_args, blk_ty)
+        a_args = ActualArguments.new(positional_args, splat_flags, keyword_args, blk_ty)
         box = @changes.add_method_call_box(genv, recv, @mid, a_args, !@recv)
 
         block_body = @block_body

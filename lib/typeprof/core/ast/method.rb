@@ -271,6 +271,23 @@ module TypeProf::Core
           block = @body.lenv.new_var(:"*given_block", self)
         end
 
+        forward_opt_positionals = @opt_positionals.map do
+          elem_vtx = Vertex.new(self)
+          [Source.new(genv.gen_ary_type(elem_vtx)), elem_vtx]
+        end
+        forward_opt_keywords = @opt_keywords.map {|_name| Vertex.new(self) }
+        @body.lenv.forward_args = ForwardingArguments.new(
+          req_positionals,
+          forward_opt_positionals.map(&:first),
+          forward_opt_positionals.map(&:last),
+          rest_positionals,
+          post_positionals,
+          @req_keywords.zip(req_keywords),
+          @opt_keywords.zip(forward_opt_keywords),
+          rest_keywords,
+          block,
+        )
+
         if @body
           @body.lenv.locals[:"*expected_method_ret"] = Vertex.new(self)
           @body.install(genv)

@@ -319,7 +319,7 @@ module TypeProf::Core
   end
 
   class LocalEnv
-    def initialize(file_context, cref, locals, return_boxes)
+    def initialize(file_context, cref, locals, return_boxes, forward_args = nil)
       @file_context = file_context
       @cref = cref
       @locals = locals
@@ -328,10 +328,11 @@ module TypeProf::Core
       @next_boxes = []
       @ivar_narrowings = {}
       @strict_const_scope = false
+      @forward_args = forward_args
     end
 
     attr_reader :file_context, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope
-    attr_accessor :module_function
+    attr_accessor :module_function, :forward_args
 
     def path = @file_context&.path
     def code_range_from_node(node)
@@ -365,7 +366,6 @@ module TypeProf::Core
     def get_break_vtx
       @break_vtx ||= Vertex.new(:break_vtx)
     end
-
 
     def push_ivar_narrowing(name, narrowing)
       raise unless narrowing.is_a?(Narrowing::Constraint)

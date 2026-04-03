@@ -95,6 +95,162 @@ module TypeProf::Core
     end
   end
 
+  class ForwardingArguments
+    def initialize(req_positionals, opt_positionals, opt_positional_elems, rest_positionals, post_positionals, req_keyword_pairs, opt_keyword_pairs, rest_keywords, block)
+      @req_positionals = req_positionals
+      @opt_positionals = opt_positionals
+      @opt_positional_elems = opt_positional_elems
+      @rest_positionals = rest_positionals
+      @post_positionals = post_positionals
+      @req_keyword_pairs = req_keyword_pairs
+      @opt_keyword_pairs = opt_keyword_pairs
+      @rest_keywords = rest_keywords
+      @block = block
+    end
+
+    attr_reader :block
+
+    def to_actual_arguments(genv, changes, node)
+      positionals = @req_positionals.dup
+      splat_flags = ::Array.new(positionals.size, false)
+
+      @opt_positionals.each do |arg|
+        positionals << arg
+        splat_flags << true
+      end
+
+      if @rest_positionals
+        positionals << @rest_positionals
+        splat_flags << true
+      end
+
+      @post_positionals.each do |arg|
+        positionals << arg
+        splat_flags << false
+      end
+
+      keywords = build_keyword_args(genv, changes, node)
+      ActualArguments.new(positionals, splat_flags, keywords, @block)
+    end
+
+    def accept_actual_arguments(genv, changes, a_args)
+      if a_args.splat_flags.any?
+        start_rest = [a_args.splat_flags.index(true), @req_positionals.size + @opt_positionals.size].min
+        end_rest = [a_args.splat_flags.rindex(true) + 1, a_args.positionals.size - @post_positionals.size].max
+        rest_vtxs = a_args.get_rest_args(genv, changes, start_rest, end_rest)
+
+        @req_positionals.each_with_index do |f_vtx, i|
+          if i < start_rest
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(genv, vtx, f_vtx)
+            end
+          end
+        end
+
+        @opt_positional_elems.each_with_index do |elem_vtx, i|
+          i += @req_positionals.size
+          if i < start_rest
+            changes.add_edge(genv, a_args.positionals[i], elem_vtx)
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(genv, vtx, elem_vtx)
+            end
+          end
+        end
+
+        @post_positionals.each_with_index do |f_vtx, i|
+          i += a_args.positionals.size - @post_positionals.size
+          if end_rest <= i
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(genv, vtx, f_vtx)
+            end
+          end
+        end
+
+      else
+        @req_positionals.each_with_index do |f_vtx, i|
+          changes.add_edge(genv, a_args.positionals[i], f_vtx)
+        end
+
+        @post_positionals.each_with_index do |f_vtx, i|
+          i -= @post_positionals.size
+          changes.add_edge(genv, a_args.positionals[i], f_vtx)
+        end
+
+        start_rest = @req_positionals.size
+        end_rest = a_args.positionals.size - @post_positionals.size
+        i = 0
+        while i < @opt_positional_elems.size && start_rest < end_rest
+          changes.add_edge(genv, a_args.positionals[start_rest], @opt_positional_elems[i])
+          i += 1
+          start_rest += 1
+        end
+      end
+
+      changes.add_edge(genv, a_args.block, @block) if @block && a_args.block
+
+      return unless a_args.keywords
+
+      @req_keyword_pairs.each do |name, f_vtx|
+        changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
+      end
+
+      @opt_keyword_pairs.each do |name, f_vtx|
+        changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
+      end
+
+      if @rest_keywords
+        named_keys = @req_keyword_pairs.map(&:first) + @opt_keyword_pairs.map(&:first)
+        a_args.keywords.each_type do |kw_ty|
+          case kw_ty
+          when Type::Record
+            rest_fields = kw_ty.fields.reject {|key, _| named_keys.include?(key) }
+            base = kw_ty.base_type(genv)
+            rest_record = Type::Record.new(genv, rest_fields, base)
+            changes.add_edge(genv, Source.new(rest_record), @rest_keywords)
+          when Type::Hash, Type::Instance
+            changes.add_edge(genv, Source.new(kw_ty), @rest_keywords)
+          end
+        end
+      end
+    end
+
+    private
+
+    def build_keyword_args(genv, changes, node)
+      return nil if @req_keyword_pairs.empty? && @opt_keyword_pairs.empty? && !@rest_keywords
+      return @rest_keywords if @req_keyword_pairs.empty? && @opt_keyword_pairs.empty?
+
+      unified_key = Vertex.new(node)
+      unified_val = Vertex.new(node)
+      literal_pairs = {}
+
+      @req_keyword_pairs.each do |name, vtx|
+        changes.add_edge(genv, Source.new(Type::Symbol.new(genv, name)), unified_key)
+        changes.add_edge(genv, vtx, unified_val)
+        literal_pairs[name] = vtx
+      end
+
+      @opt_keyword_pairs.each do |name, vtx|
+        changes.add_edge(genv, Source.new(Type::Symbol.new(genv, name)), unified_key)
+        changes.add_edge(genv, vtx, unified_val)
+      end
+
+      base_hash_type = genv.gen_hash_type(unified_key, unified_val)
+      changes.add_hash_splat_box(genv, @rest_keywords, unified_key, unified_val) if @rest_keywords
+
+      if literal_pairs.empty?
+        Source.new(base_hash_type)
+      else
+        Source.new(Type::Record.new(genv, literal_pairs, base_hash_type))
+      end
+    end
+  end
+
   class Block
     #: (AST::CallBaseNode, Vertex, Array[Vertex], Array[EscapeBox]) -> void
     def initialize(node, f_ary_arg, f_args, next_boxes)
