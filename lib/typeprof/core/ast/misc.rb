@@ -12,23 +12,51 @@ module TypeProf::Core
             DummyNilNode.new(TypeProf::CodeRange.new(last, last), lenv)
           end
         end
+        @type_var_assertions = {}
+        stmts.each_with_index do |n, i|
+          next unless n
+          result = AST.parse_type_var_comment(n, lenv)
+          if result
+            @type_var_assertions[i] = result
+          end
+        end
       end
 
       attr_reader :stmts
 
       def subnodes = { stmts: }
 
+      def define0(genv)
+        @type_var_assertions.each_value do |_var_name, rbs_type_node|
+          rbs_type_node.define(genv)
+        end
+        super(genv)
+      end
+
+      def undefine0(genv)
+        super(genv)
+        @type_var_assertions.each_value do |_var_name, rbs_type_node|
+          rbs_type_node.undefine(genv) if rbs_type_node.static_ret
+        end
+      end
+
       def install0(genv)
         ret = nil
 
         post_stmts = []
 
-        @stmts.each do |stmt|
+        @stmts.each_with_index do |stmt, i|
           next if stmt.nil?
 
           if stmt.is_a?(PostExecutionNode)
             post_stmts << stmt
             next
+          end
+
+          if (assertion = @type_var_assertions[i])
+            var_name, rbs_type_node = assertion
+            box = @changes.add_type_read_box(genv, rbs_type_node)
+            @lenv.set_var(var_name, box.ret)
           end
 
           ret = stmt.install(genv)
