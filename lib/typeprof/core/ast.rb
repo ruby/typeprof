@@ -278,6 +278,8 @@ module TypeProf::Core
             return IncludeMetaNode.new(raw_node, lenv)
           when :attr_reader
             return AttrReaderMetaNode.new(raw_node, lenv)
+          when :attr_writer
+            return AttrWriterMetaNode.new(raw_node, lenv)
           when :attr_accessor
             return AttrAccessorMetaNode.new(raw_node, lenv)
           when :module_function
