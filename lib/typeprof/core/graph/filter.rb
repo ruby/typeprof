@@ -114,6 +114,9 @@ module TypeProf::Core
       if src_var == @base_vtx
         if @base_vtx.types.size == 1 && @base_vtx.types.include?(genv.bot_type)
           @next_vtx.on_type_removed(genv, self, @types.keys & @next_vtx.types.keys) # XXX: smoke/control/bot2.rb
+        else
+          # base_vtx is no longer bot-only; restore any previously suppressed types
+          @next_vtx.on_type_added(genv, self, @types.keys - @next_vtx.types.keys)
         end
       else
         added_types.each do |ty|
