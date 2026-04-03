@@ -86,6 +86,62 @@ module TypeProf::Core
       end
     end
 
+    class AttrWriterMetaNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        @args = []
+        raw_node.arguments.arguments.each do |raw_arg|
+          @args << raw_arg.value.to_sym if raw_arg.type == :symbol_node
+        end
+      end
+
+      attr_reader :args
+
+      def attrs = { args: }
+
+      def mname_code_range(name)
+        idx = @args.index(name.to_sym)
+        node = @raw_node.arguments.arguments[idx].location
+        @lenv.code_range_from_node(node)
+      end
+
+      def define0(genv)
+        @args.map do |arg|
+          mod = genv.resolve_ivar(lenv.cref.cpath, false, :"@#{ arg }")
+          mod.add_def(self)
+          mod
+        end
+      end
+
+      def define_copy(genv)
+        @args.map do |arg|
+          mod = genv.resolve_ivar(lenv.cref.cpath, false, :"@#{ arg }")
+          mod.add_def(self)
+          mod.remove_def(@prev_node)
+          mod
+        end
+        super(genv)
+      end
+
+      def undefine0(genv)
+        @args.each do |arg|
+          mod = genv.resolve_ivar(lenv.cref.cpath, false, :"@#{ arg }")
+          mod.remove_def(self)
+        end
+      end
+
+      def install0(genv)
+        @args.zip(@static_ret) do |arg, ive|
+          vtx = Vertex.new(self)
+          @changes.add_edge(genv, vtx, ive.vtx)
+          ret_box = @changes.add_escape_box(genv, vtx)
+          f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, false, :"#{ arg }=", f_args, [ret_box])
+        end
+        Source.new
+      end
+    end
+
     class AttrAccessorMetaNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
