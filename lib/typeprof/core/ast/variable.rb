@@ -68,6 +68,13 @@ module TypeProf::Core
         super(pos, &blk)
       end
 
+      def narrowings
+        @narrowings ||= [
+          Narrowing.new({ @var => Narrowing::NilConstraint.new(false) }),
+          Narrowing.new({ @var => Narrowing::NilConstraint.new(true) }),
+        ]
+      end
+
       def modified_vars(tbl, vars)
         vars << self.var if tbl.include?(self.var)
       end
