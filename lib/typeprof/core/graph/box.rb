@@ -935,7 +935,9 @@ module TypeProf::Core
       @f_args.post_positionals.each do |var|
         args << Type.strip_parens(var.show)
       end
-      if @node.is_a?(AST::DefNode)
+      if @node.respond_to?(:req_keywords) &&
+         @node.req_keywords.size == @f_args.req_keywords.size &&
+         @node.opt_keywords.size == @f_args.opt_keywords.size
         @node.req_keywords.zip(@f_args.req_keywords) do |name, f_vtx|
           args << "#{ name }: #{Type.strip_parens(f_vtx.show)}"
         end

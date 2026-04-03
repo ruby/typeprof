@@ -208,5 +208,135 @@ module TypeProf::Core
         Source.new
       end
     end
+
+    class StructNewNode < Node
+      def initialize(raw_node, members, kind, lenv)
+        super(raw_node, lenv)
+        case raw_node.type
+        when :constant_write_node
+          @static_cpath = lenv.cref.cpath + [raw_node.name]
+        when :constant_path_write_node
+          @static_cpath = AST.parse_cpath(raw_node.target, lenv.cref)
+        else
+          raise
+        end
+        @members = members
+        @kind = kind # :struct or :data
+
+        # Parse block body if present (Struct.new(:foo) do ... end)
+        raw_value = raw_node.value
+        if raw_value.block && raw_value.block.type == :block_node && raw_value.block.body
+          ncref = CRef.new(@static_cpath, :instance, nil, lenv.cref)
+          nlenv = LocalEnv.new(lenv.file_context, ncref, {}, [])
+          @block_body = AST.create_node(raw_value.block.body, nlenv)
+        end
+      end
+
+      attr_reader :static_cpath, :members, :kind, :block_body
+
+      def subnodes = { block_body: }
+      def attrs = { static_cpath:, members:, kind: }
+
+      # Interface expected by MethodDefBox
+      def req_positionals = @kind == :struct ? @members : []
+      def opt_positionals = []
+      def rest_positionals = nil
+      def post_positionals = []
+      def req_keywords = @kind == :data ? @members : []
+      def opt_keywords = []
+      def rest_keywords = nil
+      def no_keywords = @kind == :struct
+
+      def define0(genv)
+        mod = genv.resolve_cpath(@static_cpath)
+        # add_module_def internally calls get_const(name).add_def(self)
+        cdef = mod.add_module_def(genv, self)
+        @members.each do |member|
+          ive = genv.resolve_ivar(@static_cpath, false, member)
+          ive.add_def(self)
+        end
+        @block_body.define(genv) if @block_body
+        cdef
+      end
+
+      def define_copy(genv)
+        mod = genv.resolve_cpath(@static_cpath)
+        mod.add_module_def(genv, self)
+        mod.remove_module_def(genv, @prev_node)
+        @members.each do |member|
+          ive = genv.resolve_ivar(@static_cpath, false, member)
+          ive.add_def(self)
+          ive.remove_def(@prev_node)
+        end
+        super(genv)
+      end
+
+      def undefine0(genv)
+        mod = genv.resolve_cpath(@static_cpath)
+        mod.remove_module_def(genv, self)
+        @members.each do |member|
+          ive = genv.resolve_ivar(@static_cpath, false, member)
+          ive.remove_def(self)
+        end
+        @block_body.undefine(genv) if @block_body
+      end
+
+      def install0(genv)
+        # Register the class singleton type as the constant value
+        mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@static_cpath)))
+        if @static_cpath
+          @changes.add_edge(genv, mod_val, @static_ret.vtx)
+        end
+
+        cpath = @static_cpath
+        @members.each do |member|
+          # Use bare `:member` (not `:@member`) so the slot can't collide with a
+          # user-written @member ivar — Struct/Data fields are not real ivars.
+          ivar_box = @changes.add_ivar_read_box(genv, cpath, false, member)
+          ret_box = @changes.add_escape_box(genv, ivar_box.ret)
+          @changes.add_method_def_box(genv, cpath, false, member, FormalArguments::Empty, [ret_box])
+
+          if @kind == :struct
+            # attr_writer (Struct only, Data is frozen)
+            ive = genv.resolve_ivar(cpath, false, member)
+            vtx = Vertex.new(self)
+            @changes.add_edge(genv, vtx, ive.vtx)
+            writer_ret = @changes.add_escape_box(genv, vtx)
+            f_args = FormalArguments.new([vtx], [], nil, [], [], [], nil, nil)
+            @changes.add_method_def_box(genv, cpath, false, :"#{ member }=", f_args, [writer_ret])
+          end
+        end
+
+        # initialize
+        init_vtxs = @members.map do |member|
+          ive = genv.resolve_ivar(cpath, false, member)
+          vtx = Vertex.new(self)
+          @changes.add_edge(genv, vtx, ive.vtx)
+          vtx
+        end
+        init_ret = @changes.add_escape_box(genv, Source.new(genv.nil_type))
+        if @kind == :struct
+          init_f_args = FormalArguments.new(init_vtxs, [], nil, [], [], [], nil, nil)
+        else
+          # Data.define uses keyword arguments
+          init_f_args = FormalArguments.new([], [], nil, [], init_vtxs, [], nil, nil)
+        end
+        @changes.add_method_def_box(genv, cpath, false, :initialize, init_f_args, [init_ret])
+
+        # Struct.[] is an alias for Struct.new
+        if @kind == :struct
+          self_ret = @changes.add_escape_box(genv, Source.new(Type::Instance.new(genv, genv.resolve_cpath(cpath), [])))
+          @changes.add_method_def_box(genv, cpath, true, :[], init_f_args, [self_ret])
+        end
+
+        # Install block body (additional method definitions)
+        if @block_body
+          @block_body.lenv.locals[:"*self"] = @block_body.lenv.cref.get_self(genv)
+          @block_body.install(genv)
+        end
+
+        mod_val
+      end
+    end
   end
 end

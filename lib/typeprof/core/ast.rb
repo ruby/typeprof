@@ -102,7 +102,13 @@ module TypeProf::Core
       when :constant_read_node, :constant_path_node
         ConstantReadNode.new(raw_node, lenv)
       when :constant_write_node, :constant_path_write_node
-        ConstantWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+        if (members = detect_struct_new(raw_node.value))
+          StructNewNode.new(raw_node, members, :struct, lenv)
+        elsif (members = detect_data_define(raw_node.value))
+          StructNewNode.new(raw_node, members, :data, lenv)
+        else
+          ConstantWriteNode.new(raw_node, AST.create_node(raw_node.value, lenv), lenv)
+        end
       when :constant_operator_write_node
         read = ConstantReadNode.new(raw_node, lenv)
         rhs = OperatorNode.new(raw_node, read, lenv)
@@ -525,6 +531,32 @@ module TypeProf::Core
       else
         raise "unknown RBS type: #{ raw_decl.class }"
       end
+    end
+
+    def self.detect_struct_new(raw_value)
+      return nil unless raw_value.type == :call_node
+      return nil unless raw_value.name == :new
+      recv = raw_value.receiver
+      return nil unless recv&.type == :constant_read_node && recv.name == :Struct
+      extract_symbol_args(raw_value)
+    end
+
+    def self.detect_data_define(raw_value)
+      return nil unless raw_value.type == :call_node
+      return nil unless raw_value.name == :define
+      recv = raw_value.receiver
+      return nil unless recv&.type == :constant_read_node && recv.name == :Data
+      extract_symbol_args(raw_value)
+    end
+
+    def self.extract_symbol_args(raw_call)
+      return nil unless raw_call.arguments
+      members = []
+      raw_call.arguments.arguments.each do |arg|
+        return nil unless arg.type == :symbol_node
+        members << arg.value.to_sym
+      end
+      members
     end
   end
 end
