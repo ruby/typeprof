@@ -472,7 +472,7 @@ module TypeProf::Core
               out << "  " * stack.size + "end"
             end
           end
-        when AST::ClassNode, AST::SingletonClassNode
+        when AST::ClassNode, AST::SingletonClassNode, AST::StructNewNode
           if node.static_cpath
             next if stack.any? { node.is_a?(AST::SingletonClassNode) && (_1.is_a?(AST::ClassNode) || _1.is_a?(AST::ModuleNode)) && node.static_cpath == _1.static_cpath }
 
@@ -495,6 +495,10 @@ module TypeProf::Core
                 if inc_def.is_a?(AST::ConstantReadNode) && inc_def.lenv.path == path
                   out << "  " * stack.size + "include #{ inc_mod.show_cpath }"
                 end
+              end
+              # Output method definitions from meta nodes (StructNewNode etc.)
+              node.boxes(:mdef) do |mdef|
+                out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show(@options[:output_parameter_names])
               end
             else
               stack.pop

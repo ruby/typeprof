@@ -261,6 +261,8 @@ module TypeProf::Core
             next
           when AST::ModuleNode
             return nil
+          when AST::StructNewNode
+            return []  # inherits from Object (Struct < Object)
           else
             raise
           end
