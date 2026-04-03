@@ -270,6 +270,20 @@ module TypeProf::Core
             else
               super
             end
+          when :nil?
+            if @recv.is_a?(LocalVariableReadNode)
+              [
+                Narrowing.new({ @recv.var => Narrowing::NilConstraint.new(true) }),
+                Narrowing.new({ @recv.var => Narrowing::NilConstraint.new(false) })
+              ]
+            elsif @recv.is_a?(InstanceVariableReadNode)
+              [
+                Narrowing.new({ @recv.var => Narrowing::NilConstraint.new(true) }),
+                Narrowing.new({ @recv.var => Narrowing::NilConstraint.new(false) })
+              ]
+            else
+              super
+            end
           when :!
             then_narrowing, else_narrowing = @recv.narrowings
             [else_narrowing, then_narrowing]
