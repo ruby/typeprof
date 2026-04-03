@@ -69,9 +69,9 @@ module TypeProf::Core
 
     # TODO: if an edge is removed during one analysis, we may need to remove sub-boxes?
 
-    def add_method_call_box(genv, recv, mid, a_args, subclasses)
-      key = [:mcall, recv, mid, a_args, subclasses]
-      @new_boxes[key] ||= MethodCallBox.new(@node, genv, recv, mid, a_args, subclasses)
+    def add_method_call_box(genv, recv, mid, a_args, subclasses, suppress_errors: false)
+      key = [:mcall, recv, mid, a_args, subclasses, suppress_errors]
+      @new_boxes[key] ||= MethodCallBox.new(@node, genv, recv, mid, a_args, subclasses, suppress_errors: suppress_errors)
     end
 
     def add_escape_box(genv, a_ret)
@@ -79,9 +79,9 @@ module TypeProf::Core
       @new_boxes[key] ||= EscapeBox.new(@node, genv, a_ret)
     end
 
-    def add_splat_box(genv, arg, idx = nil)
-      key = [:splat, arg, idx]
-      @new_boxes[key] ||= SplatBox.new(@node, genv, arg, idx)
+    def add_splat_box(genv, arg, idx = nil, orig = nil)
+      key = [:splat, arg, idx, orig]
+      @new_boxes[key] ||= SplatBox.new(@node, genv, arg, idx, orig)
     end
 
     def add_hash_splat_box(genv, arg, unified_key, unified_val)

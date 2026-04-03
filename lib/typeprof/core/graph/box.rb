@@ -600,11 +600,13 @@ module TypeProf::Core
   end
 
   class SplatBox < Box
-    def initialize(node, genv, ary, idx)
+    def initialize(node, genv, ary, idx, orig = nil)
       super(node)
       @ary = ary
       @idx = idx
+      @orig = orig
       @ary.add_edge(genv, self)
+      @orig.add_edge(genv, self) if @orig
       @ret = Vertex.new(node)
     end
 
@@ -627,6 +629,12 @@ module TypeProf::Core
           end
         else
           "???"
+        end
+      end
+      # For types where to_a is not defined, [*x] wraps x as [x]
+      if @orig && @ary.types.empty?
+        @orig.each_type do |ty|
+          changes.add_edge(genv, Source.new(ty), @ret)
         end
       end
     end
@@ -992,7 +1000,7 @@ module TypeProf::Core
   end
 
   class MethodCallBox < Box
-    def initialize(node, genv, recv, mid, a_args, subclasses)
+    def initialize(node, genv, recv, mid, a_args, subclasses, suppress_errors: false)
       raise mid.to_s unless mid
       super(node)
       @recv = recv.new_vertex(genv, node)
@@ -1003,6 +1011,7 @@ module TypeProf::Core
       @a_args.block.add_edge(genv, self) if @a_args.block
       @ret = Vertex.new(node)
       @subclasses = subclasses
+      @suppress_errors = suppress_errors
       @generics = {}
     end
 
@@ -1014,10 +1023,11 @@ module TypeProf::Core
       error_count = 0
       resolve(genv, changes) do |me, ty, mid, orig_ty|
         if !me
-          # TODO: undefined method error
-          if error_count < 3
-            meth = @node.mid_code_range ? :mid_code_range : :code_range
-            changes.add_diagnostic(meth, "undefined method: #{ orig_ty.show }##{ mid }")
+          unless @suppress_errors
+            if error_count < 3
+              meth = @node.mid_code_range ? :mid_code_range : :code_range
+              changes.add_diagnostic(meth, "undefined method: #{ orig_ty.show }##{ mid }")
+            end
           end
           error_count += 1
         elsif me.builtin && me.builtin[changes, @node, orig_ty, @a_args, @ret]
@@ -1062,7 +1072,7 @@ module TypeProf::Core
       edges.each do |src, dst|
         changes.add_edge(genv, src, dst)
       end
-      if error_count > 3
+      if error_count > 3 && !@suppress_errors
         meth = @node.mid_code_range ? :mid_code_range : :code_range
         changes.add_diagnostic(meth, "... and other #{ error_count - 3 } errors")
       end

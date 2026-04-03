@@ -256,9 +256,9 @@ module TypeProf::Core
         vtx = @expr.install(genv)
 
         a_args = ActualArguments.new([], [], nil, nil)
-        vtx = @changes.add_method_call_box(genv, vtx, :to_a, a_args, false).ret
+        to_a_vtx = @changes.add_method_call_box(genv, vtx, :to_a, a_args, false, suppress_errors: true).ret
 
-        @changes.add_splat_box(genv, vtx).ret
+        @changes.add_splat_box(genv, to_a_vtx, nil, vtx).ret
       end
     end
 
