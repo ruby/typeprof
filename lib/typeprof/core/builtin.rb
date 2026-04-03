@@ -69,6 +69,20 @@ module TypeProf::Core
         else
           false
         end
+      elsif a_args.positionals.size == 3
+        # ary[start, len] = val
+        # Use SplatBox to extract element types from the assigned value
+        elem_vtx = case ty
+        when Type::Array
+          ty.get_elem(@genv)
+        when Type::Instance
+          ty.mod == @genv.mod_ary ? ty.args[0] : nil
+        end
+        return false unless elem_vtx
+        val = a_args.positionals[2]
+        splat_ret = changes.add_splat_box(@genv, val).ret
+        changes.add_edge(@genv, splat_ret, elem_vtx)
+        true
       else
         false
       end
