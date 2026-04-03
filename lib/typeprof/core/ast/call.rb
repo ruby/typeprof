@@ -132,6 +132,7 @@ module TypeProf::Core
         if @block_body
           block_body = @block_body # kinda type annotationty
           block_tbl = @block_tbl || raise
+          block_body.lenv.forward_args = @lenv.forward_args
           @lenv.locals.each {|var, vtx| block_body.lenv.locals[var] = vtx }
           block_tbl.each {|var| block_body.lenv.locals[var] = Source.new(genv.nil_type) }
           block_body.lenv.locals[:"*self"] = block_body.lenv.cref.get_self(genv)
@@ -300,9 +301,9 @@ module TypeProf::Core
 
     class ForwardingSuperNode < CallBaseNode
       def initialize(raw_node,  lenv)
-        raw_args = nil # TODO: forward args properly
+        raw_args = nil
         raw_block = raw_node.block
-        super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv)
+        super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv, forwarding_arguments: true)
       end
     end
 

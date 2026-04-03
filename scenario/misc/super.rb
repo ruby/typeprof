@@ -36,3 +36,26 @@ end
 class StringifyKeyHash < Hash
   def []: (untyped) -> untyped
 end
+
+## update
+class SuperBase
+  def foo(*a, **b)
+    [a, b]
+  end
+end
+
+class SuperChild < SuperBase
+  def foo(...)
+    super(...)
+  end
+end
+
+SuperChild.new.foo(1, x: 4, y: 5)
+
+## assert
+class SuperBase
+  def foo: (*Integer, **Integer) -> [Array[Integer], { x: Integer, y: Integer }]
+end
+class SuperChild < SuperBase
+  def foo: (*Integer, **Integer) -> [Array[Integer], { x: Integer, y: Integer }]
+end
