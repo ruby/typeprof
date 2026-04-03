@@ -289,6 +289,9 @@ module TypeProf::Core
         )
 
         @changes.add_method_def_box(genv, @lenv.cref.cpath, @singleton, @mid, f_args, @body.lenv.return_boxes)
+        if @lenv.module_function && !@singleton
+          @changes.add_method_def_box(genv, @lenv.cref.cpath, true, @mid, f_args, @body.lenv.return_boxes)
+        end
 
         Source.new(Type::Symbol.new(genv, @mid))
       end

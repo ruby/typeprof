@@ -146,5 +146,11 @@ module TypeProf::Core
         Source.new
       end
     end
+    class ModuleFunctionMetaNode < Node
+      def install0(genv)
+        @lenv.module_function = true
+        Source.new
+      end
+    end
   end
 end

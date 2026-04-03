@@ -280,6 +280,10 @@ module TypeProf::Core
             return AttrReaderMetaNode.new(raw_node, lenv)
           when :attr_accessor
             return AttrAccessorMetaNode.new(raw_node, lenv)
+          when :module_function
+            if raw_node.arguments.nil?
+              return ModuleFunctionMetaNode.new(raw_node, lenv)
+            end
           end
         end
         CallNode.new(raw_node, lenv)
