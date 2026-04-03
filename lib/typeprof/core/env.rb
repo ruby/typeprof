@@ -281,6 +281,9 @@ module TypeProf::Core
         class Hash[K, V]
           include _Each[[K, V]]
         end
+        class Object
+          include Hash::_Key
+        end
       RBS
 
       # Loading frequently used modules first will reduces constant resolution
