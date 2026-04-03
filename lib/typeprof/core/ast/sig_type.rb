@@ -884,6 +884,16 @@ module TypeProf::Core
       end
 
       def typecheck(genv, changes, vtx, subst)
+        # For optional type T?, check if all non-nil types match T.
+        # nil is always acceptable.
+        changes.add_edge(genv, vtx, changes.target)
+        has_non_nil = false
+        vtx.each_type do |ty|
+          next if ty.is_a?(Type::Bot)
+          next if ty == genv.nil_type
+          has_non_nil = true
+        end
+        return true unless has_non_nil
         @type.typecheck(genv, changes, vtx, subst)
       end
 
