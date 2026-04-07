@@ -232,6 +232,44 @@ foo(1, 2)
       end
     end
 
+    def test_diagnostics_ignore_directive_block
+      init("basic")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic.rb", version: 0, text: <<-END },
+def foo(nnn)
+  nnn
+end
+
+# typeprof:ignore:start
+foo(1, 2)
+foo(1, 2)
+# typeprof:ignore:end
+foo(1, 2)
+        END
+      )
+
+      expect_notification("typeprof.enableToggleButton") {|json| }
+      expect_request("workspace/codeLens/refresh") {|json| }
+      expect_notification("textDocument/publishDiagnostics") do |json|
+        assert_equal({
+          uri: @folder + "basic.rb",
+          diagnostics: [
+            {
+              message: "wrong number of arguments (2 for 1)",
+              range: {
+                start: { line: 8, character: 0 },
+                end: { line: 8, character: 3 },
+              },
+              severity: 1,
+              source: "TypeProf",
+            }
+          ],
+        }, json)
+      end
+    end
+
     def test_diagnostics2
       init("basic")
 
