@@ -16,7 +16,21 @@ module TypeProf::Core
       cref = CRef::Toplevel
       lenv = LocalEnv.new(file_context, cref, {}, [])
 
-      ProgramNode.new(raw_scope, lenv)
+      ignore_ranges = collect_ignore_ranges(result)
+      ProgramNode.new(raw_scope, lenv, ignore_ranges: ignore_ranges)
+    end
+
+    # Collect line ranges marked with `# typeprof:ignore` comments.
+    # Each range is suppressed in ProgramNode#each_diagnostic.
+    IGNORE_RE = /\A#\s*typeprof:ignore\s*\z/
+    def self.collect_ignore_ranges(prism_result)
+      ranges = []
+      prism_result.comments.each do |c|
+        next unless c.location.slice.match?(IGNORE_RE)
+        line = c.location.start_line
+        ranges << (line..line)
+      end
+      ranges
     end
 
     #: (untyped, TypeProf::Core::LocalEnv, ?bool, ?bool) -> TypeProf::Core::AST::Node

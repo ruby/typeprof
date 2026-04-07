@@ -211,19 +211,29 @@ module TypeProf::Core
     end
 
     class ProgramNode < Node
-      def initialize(raw_node, lenv)
+      def initialize(raw_node, lenv, ignore_ranges: [])
         super(raw_node, lenv)
 
         @tbl = raw_node.locals
+        @ignore_ranges = ignore_ranges
         raw_body = raw_node.statements
 
         @body = AST.create_node(raw_body, lenv, false)
       end
 
-      attr_reader :tbl, :body
+      attr_reader :tbl, :ignore_ranges, :body
 
       def subnodes = { body: }
       def attrs = { tbl: }
+
+      def each_diagnostic(genv, &blk)
+        return super if @ignore_ranges.empty?
+        super(genv) do |diag|
+          line = diag.code_range&.first&.lineno
+          next if line && @ignore_ranges.any? { |r| r.cover?(line) }
+          blk.call(diag)
+        end
+      end
 
       def install0(genv)
         @tbl.each {|var| @lenv.locals[var] = Source.new(genv.nil_type) }
