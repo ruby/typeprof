@@ -1280,23 +1280,44 @@ module TypeProf::Core
       singleton = @singleton
       cur_ive = mod.get_ivar(singleton, @name)
       target_vtx = nil
+      target_decls = nil
       genv.each_direct_superclass(mod, singleton) do |mod, singleton|
         ive = mod.get_ivar(singleton, @name)
+        # Subscribe to every visited ive so that, if one later acquires an
+        # RBS declaration, this box is re-run and switches to the declared
+        # type instead of the inferred one.
+        changes.add_depended_value_entity(ive)
         if ive.exist?
           target_vtx = ive.vtx
+          target_decls = ive.decls unless ive.decls.empty?
+          break if target_decls
         end
       end
-      edges = []
-      if target_vtx
+
+      if target_decls
+        # When declarations exist, return declared types instead of assigned types
+        target_decls.each do |decl|
+          subst = {}
+          if decl.cpath
+            decl_mod = genv.resolve_cpath(decl.cpath)
+            if decl_mod.type_params && !decl_mod.type_params.empty?
+              subst = decl_mod.type_params.to_h do |param, _default_ty|
+                [param, Vertex.new(@node)]
+              end
+            end
+          end
+          vtx = decl.type.covariant_vertex(genv, changes, subst)
+          changes.add_edge(genv, vtx, @ret)
+        end
+      elsif target_vtx
+        edges = []
         if target_vtx != cur_ive.vtx
           edges << [cur_ive.vtx, @proxy] << [@proxy, target_vtx]
         end
         edges << [target_vtx, @ret]
-      else
-        # TODO: error?
-      end
-      edges.each do |src, dst|
-        changes.add_edge(genv, src, dst)
+        edges.each do |src, dst|
+          changes.add_edge(genv, src, dst)
+        end
       end
     end
   end

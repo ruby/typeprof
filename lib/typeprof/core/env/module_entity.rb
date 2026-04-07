@@ -436,6 +436,19 @@ module TypeProf::Core
       @ivars[singleton][name] ||= ValueEntity.new
     end
 
+    def add_ivar_decl(genv, singleton, name, decl)
+      ive = get_ivar(singleton, name)
+      ive.add_decl(decl)
+      ive.on_decl_changed(genv)
+      ive
+    end
+
+    def remove_ivar_decl(genv, singleton, name, decl)
+      ive = get_ivar(singleton, name)
+      ive.remove_decl(decl)
+      ive.on_decl_changed(genv)
+    end
+
     def get_cvar(name)
       @cvars[name] ||= ValueEntity.new
     end
