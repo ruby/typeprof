@@ -17,6 +17,14 @@ module TypeProf::Core
       @decls.delete(decl) || raise
     end
 
+    # Re-run all read boxes that depend on this entity. Used when a
+    # declaration is added or removed so that dependents (e.g. an
+    # IVarReadBox that previously fell back to the inferred type) can
+    # observe the new state.
+    def on_decl_changed(genv)
+      @read_boxes.each {|box| genv.add_run(box) }
+    end
+
     def add_def(def_)
       @defs << def_
     end

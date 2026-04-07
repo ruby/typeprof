@@ -505,20 +505,20 @@ module TypeProf::Core
 
       def define0(genv)
         @type.define(genv)
-        mod = genv.resolve_ivar(cpath, @class_scope, @var)
-        mod.add_decl(self)
-        mod
+        mod = genv.resolve_cpath(cpath)
+        mod.add_ivar_decl(genv, @class_scope, @var, self)
       end
 
       def define_copy(genv)
-        mod = genv.resolve_ivar(cpath, @class_scope, @var)
-        mod.add_decl(self)
-        mod.remove_decl(@prev_node)
+        mod = genv.resolve_cpath(cpath)
+        mod.add_ivar_decl(genv, @class_scope, @var, self)
+        mod.remove_ivar_decl(genv, @class_scope, @var, @prev_node)
         super(genv)
       end
 
       def undefine0(genv)
-        genv.resolve_ivar(cpath, @class_scope, @var).remove_decl(self)
+        mod = genv.resolve_cpath(cpath)
+        mod.remove_ivar_decl(genv, @class_scope, @var, self)
         @type.undefine(genv)
       end
 
