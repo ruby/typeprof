@@ -22,14 +22,37 @@ module TypeProf::Core
 
     # Collect line ranges marked with `# typeprof:ignore` comments.
     # Each range is suppressed in ProgramNode#each_diagnostic.
-    IGNORE_RE = /\A#\s*typeprof:ignore\s*\z/
+    #
+    # Inline form (suppresses the line containing the comment):
+    #     foo(1, 2) # typeprof:ignore
+    #
+    # Block form (suppresses lines between :start and :end):
+    #     # typeprof:ignore:start
+    #     foo(1, 2)
+    #     # typeprof:ignore:end
+    #
+    # An unmatched `:start` extends to the end of the file.
+    IGNORE_RE       = /\A#\s*typeprof:ignore\s*\z/
+    IGNORE_START_RE = /\A#\s*typeprof:ignore:start\s*\z/
+    IGNORE_END_RE   = /\A#\s*typeprof:ignore:end\s*\z/
     def self.collect_ignore_ranges(prism_result)
       ranges = []
+      start_line = nil
       prism_result.comments.each do |c|
-        next unless c.location.slice.match?(IGNORE_RE)
+        text = c.location.slice
         line = c.location.start_line
-        ranges << (line..line)
+        if text.match?(IGNORE_START_RE)
+          start_line ||= line
+        elsif text.match?(IGNORE_END_RE)
+          if start_line
+            ranges << (start_line..line)
+            start_line = nil
+          end
+        elsif text.match?(IGNORE_RE)
+          ranges << (line..line)
+        end
       end
+      ranges << (start_line..Float::INFINITY) if start_line
       ranges
     end
 
