@@ -1,12 +1,16 @@
 ## update
-#: (b: untyped) -> nil
-def a(b:); end
+class C
+  #: (b: untyped) -> nil
+  def a(b:); end
+end
 
 ## update
-#: (b: untyped) -> nil
-def a(b:); end
+class C
+  #: (b: untyped) -> nil
+  def a(b:); end
+end
 
 ## assert
-class Object
+class C
   def a: (b: untyped) -> nil
 end

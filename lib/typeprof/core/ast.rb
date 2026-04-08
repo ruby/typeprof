@@ -11,7 +11,8 @@ module TypeProf::Core
       raise unless raw_scope.type == :program_node
 
       prism_source = result.source
-      file_context = FileContext.new(path, prism_source, result.comments)
+      inline_members = build_inline_member_lookup(path, src, result)
+      file_context = FileContext.new(path, prism_source, inline_members)
 
       cref = CRef::Toplevel
       lenv = LocalEnv.new(file_context, cref, {}, [])
@@ -54,6 +55,32 @@ module TypeProf::Core
       end
       ranges << (start_line..Float::INFINITY) if start_line
       ranges
+    end
+
+    def self.build_inline_member_lookup(path, src, prism_result)
+      buffer = RBS::Buffer.new(name: Pathname(path), content: src)
+      inline_result = RBS::InlineParser.parse(buffer, prism_result)
+      lookup = {}
+      collect_def_members(inline_result.declarations, lookup)
+      lookup
+    rescue => _e
+      nil
+    end
+
+    def self.collect_def_members(decls_or_members, lookup)
+      decls_or_members.each do |entry|
+        case entry
+        when RBS::AST::Ruby::Members::DefMember
+          lookup[entry.node.object_id] = entry unless entry.method_type.empty?
+        when RBS::AST::Ruby::Members::AttrReaderMember,
+             RBS::AST::Ruby::Members::AttrWriterMember,
+             RBS::AST::Ruby::Members::AttrAccessorMember
+          lookup[entry.node.object_id] = entry if entry.type
+        end
+        if entry.respond_to?(:members)
+          collect_def_members(entry.members, lookup)
+        end
+      end
     end
 
     #: (untyped, TypeProf::Core::LocalEnv, ?bool, ?bool) -> TypeProf::Core::AST::Node

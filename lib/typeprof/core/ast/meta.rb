@@ -53,12 +53,26 @@ module TypeProf::Core
         raw_node.arguments.arguments.each do |raw_arg|
           @args << raw_arg.value.to_sym if raw_arg.type == :symbol_node
         end
-        # TODO: error for non-LIT
-        # TODO: fine-grained hover
+
+        @rbs_method_type = nil
+        inline_members = lenv.file_context.inline_members
+        if inline_members
+          member = inline_members[raw_node.object_id]
+          if member.is_a?(RBS::AST::Ruby::Members::AttrReaderMember) && member.type
+            rbs_method_type = RBS::MethodType.new(
+              type: RBS::Types::Function.empty(member.type),
+              type_params: [],
+              block: nil,
+              location: member.type.location
+            )
+            @rbs_method_type = AST.create_rbs_func_type(rbs_method_type, [], nil, lenv)
+          end
+        end
       end
 
-      attr_reader :args
+      attr_reader :args, :rbs_method_type
 
+      def subnodes = { rbs_method_type: }
       def attrs = { args: }
 
       def req_positionals = []
@@ -77,6 +91,9 @@ module TypeProf::Core
 
       def install0(genv)
         @args.each do |arg|
+          if @rbs_method_type
+            @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, arg, [@rbs_method_type], false)
+          end
           ivar_name = :"@#{ arg }"
           ivar_box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, ivar_name)
           ret_box = @changes.add_escape_box(genv, ivar_box.ret)
@@ -149,12 +166,43 @@ module TypeProf::Core
         raw_node.arguments.arguments.each do |raw_arg|
           @args << raw_arg.value.to_sym if raw_arg.type == :symbol_node
         end
-        # TODO: error for non-LIT
-        # TODO: fine-grained hover
+
+        @rbs_reader_method_type = nil
+        @rbs_writer_method_type = nil
+        inline_members = lenv.file_context.inline_members
+        if inline_members
+          member = inline_members[raw_node.object_id]
+          if member.is_a?(RBS::AST::Ruby::Members::AttrAccessorMember) && member.type
+            reader_rbs = RBS::MethodType.new(
+              type: RBS::Types::Function.empty(member.type),
+              type_params: [],
+              block: nil,
+              location: member.type.location
+            )
+            @rbs_reader_method_type = AST.create_rbs_func_type(reader_rbs, [], nil, lenv)
+            writer_rbs = RBS::MethodType.new(
+              type: RBS::Types::Function.new(
+                required_positionals: [RBS::Types::Function::Param.new(name: nil, type: member.type, location: member.type.location)],
+                optional_positionals: [],
+                rest_positionals: nil,
+                trailing_positionals: [],
+                required_keywords: {},
+                optional_keywords: {},
+                rest_keywords: nil,
+                return_type: member.type
+              ),
+              type_params: [],
+              block: nil,
+              location: member.type.location
+            )
+            @rbs_writer_method_type = AST.create_rbs_func_type(writer_rbs, [], nil, lenv)
+          end
+        end
       end
 
-      attr_reader :args
+      attr_reader :args, :rbs_reader_method_type, :rbs_writer_method_type
 
+      def subnodes = { rbs_reader_method_type:, rbs_writer_method_type: }
       def attrs = { args: }
 
       def mname_code_range(name)
@@ -190,6 +238,13 @@ module TypeProf::Core
 
       def install0(genv)
         @args.zip(@static_ret) do |arg, ive|
+          if @rbs_reader_method_type
+            @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, arg, [@rbs_reader_method_type], false)
+          end
+          if @rbs_writer_method_type
+            @changes.add_method_decl_box(genv, @lenv.cref.cpath, false, :"#{ arg }=", [@rbs_writer_method_type], false)
+          end
+
           ivar_box = @changes.add_ivar_read_box(genv, @lenv.cref.cpath, false, :"@#{ arg }")
           ret_box = @changes.add_escape_box(genv, ivar_box.ret)
           @changes.add_method_def_box(genv, @lenv.cref.cpath, false, arg, FormalArguments::Empty, [ret_box])
