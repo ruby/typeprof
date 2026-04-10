@@ -550,6 +550,7 @@ module TypeProf::Core
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
+        @args = raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) }
       end
 
       attr_reader :cpath, :toplevel
