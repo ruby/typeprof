@@ -766,16 +766,18 @@ module TypeProf::Core
     class SigTyRecordNode < SigTyNode
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
-        @fields = raw_decl.fields.transform_values { |val| AST.create_rbs_type(val, lenv) }
+        @keys = raw_decl.fields.keys
+        @vals = raw_decl.fields.values.map { |val| AST.create_rbs_type(val, lenv) }
       end
 
-      attr_reader :fields
-      def subnodes = { fields: }
+      attr_reader :keys, :vals
+      def subnodes = { vals: }
+      def attrs = { keys: }
 
       def covariant_vertex0(genv, changes, vtx, subst)
         field_vertices = {}
-        @fields.each do |key, field_node|
-          field_vertices[key] = field_node.covariant_vertex(genv, changes, subst)
+        @keys.zip(@vals) do |key, val_node|
+          field_vertices[key] = val_node.covariant_vertex(genv, changes, subst)
         end
 
         # Create base Hash type for Record
@@ -792,8 +794,8 @@ module TypeProf::Core
 
       def contravariant_vertex0(genv, changes, vtx, subst)
         field_vertices = {}
-        @fields.each do |key, field_node|
-          field_vertices[key] = field_node.contravariant_vertex(genv, changes, subst)
+        @keys.zip(@vals) do |key, val_node|
+          field_vertices[key] = val_node.contravariant_vertex(genv, changes, subst)
         end
 
         # Create base Hash type for Record
@@ -816,9 +818,9 @@ module TypeProf::Core
           found_any = true
           case ty
           when Type::Hash
-            @fields.each do |key, field_node|
+            @keys.zip(@vals) do |key, val_node|
               val_vtx = ty.get_value(key)
-              return false unless field_node.typecheck(genv, changes, val_vtx, subst)
+              return false unless val_node.typecheck(genv, changes, val_vtx, subst)
             end
             return true
           end
@@ -827,8 +829,8 @@ module TypeProf::Core
       end
 
       def show
-        field_strs = @fields.map do |key, field_node|
-          "#{ key }: #{ field_node.show }"
+        field_strs = @keys.zip(@vals).map do |key, val_node|
+          "#{ key }: #{ val_node.show }"
         end
         "{ #{ field_strs.join(", ") } }"
       end
