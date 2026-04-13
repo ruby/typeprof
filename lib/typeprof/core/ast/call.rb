@@ -1,12 +1,12 @@
 module TypeProf::Core
   class AST
     class CallBaseNode < Node
-      def initialize(raw_node, recv, mid, mid_code_range, raw_args, last_arg, raw_block, lenv, forwarding_arguments: false)
+      def initialize(raw_node, recv, mid, mid_code_range_loc, raw_args, last_arg, raw_block, lenv, forwarding_arguments: false)
         super(raw_node, lenv)
 
         @recv = recv
         @mid = mid
-        @mid_code_range = mid_code_range
+        @mid_code_range_loc = mid_code_range_loc
 
         # args
         @positional_args = []
@@ -95,7 +95,11 @@ module TypeProf::Core
         @yield = raw_node.type == :yield_node
       end
 
-      attr_reader :recv, :mid, :mid_code_range, :yield
+      attr_reader :recv, :mid, :yield
+
+      def mid_code_range
+        @mid_code_range ||= @lenv.code_range_from_node(@mid_code_range_loc) if @mid_code_range_loc
+      end
       attr_reader :positional_args, :splat_flags, :keyword_args
       attr_reader :block_tbl, :block_f_args, :block_opt_positional_defaults, :block_body, :block_pass, :anonymous_block_forwarding
       attr_reader :block_multi_targets
@@ -230,7 +234,7 @@ module TypeProf::Core
       end
 
       def retrieve_at(pos, &blk)
-        yield self if @mid_code_range && @mid_code_range.include?(pos)
+        yield self if mid_code_range&.include?(pos)
         each_subnode do |subnode|
           next unless subnode
           subnode.retrieve_at(pos, &blk)
@@ -257,10 +261,9 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         recv = raw_node.receiver ? AST.create_node(raw_node.receiver, lenv) : nil
         mid = raw_node.name
-        mid_code_range = lenv.code_range_from_node(raw_node.message_loc) if raw_node.message_loc
         raw_args = raw_node.arguments
         raw_block = raw_node.block
-        super(raw_node, recv, mid, mid_code_range, raw_args, nil, raw_block, lenv)
+        super(raw_node, recv, mid, raw_node.message_loc, raw_args, nil, raw_block, lenv)
       end
 
       def narrowings
@@ -331,9 +334,8 @@ module TypeProf::Core
     class OperatorNode < CallBaseNode
       def initialize(raw_node, recv, lenv)
         mid = raw_node.binary_operator
-        mid_code_range = lenv.code_range_from_node(raw_node.binary_operator_loc)
         last_arg = AST.create_node(raw_node.value, lenv)
-        super(raw_node, recv, mid, mid_code_range, nil, last_arg, nil, lenv)
+        super(raw_node, recv, mid, raw_node.binary_operator_loc, nil, last_arg, nil, lenv)
       end
     end
 
@@ -364,8 +366,7 @@ module TypeProf::Core
       def initialize(raw_node, lenv)
         recv = AST.create_node(raw_node.receiver, lenv)
         mid = raw_node.read_name
-        mid_code_range = lenv.code_range_from_node(raw_node.message_loc)
-        super(raw_node, recv, mid, mid_code_range, nil, nil, nil, lenv)
+        super(raw_node, recv, mid, raw_node.message_loc, nil, nil, nil, lenv)
       end
     end
 
@@ -373,9 +374,8 @@ module TypeProf::Core
       def initialize(raw_node, rhs, lenv)
         recv = AST.create_node(raw_node.receiver, lenv)
         mid = raw_node.is_a?(Prism::CallTargetNode) ? raw_node.name : raw_node.write_name
-        mid_code_range = lenv.code_range_from_node(raw_node.message_loc)
         @rhs = rhs
-        super(raw_node, recv, mid, mid_code_range, nil, rhs, nil, lenv)
+        super(raw_node, recv, mid, raw_node.message_loc, nil, rhs, nil, lenv)
       end
 
       attr_reader :rhs
