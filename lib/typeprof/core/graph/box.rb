@@ -1009,8 +1009,7 @@ module TypeProf::Core
       @recv.add_edge(genv, self)
       @mid = mid
       @a_args = a_args.new_vertexes(genv, node)
-      @a_args.keywords.add_edge(genv, self) if @a_args.keywords
-      @a_args.block.add_edge(genv, self) if @a_args.block
+      @a_args.add_box_edges(genv, self)
       @ret = Vertex.new(node)
       @subclasses = subclasses
       @suppress_errors = suppress_errors
@@ -1020,6 +1019,9 @@ module TypeProf::Core
     attr_reader :recv, :mid, :ret
 
     def run0(genv, changes)
+      a_args = @a_args.normalize_for_method_call(genv)
+      return unless a_args
+
       edges = Set.empty
       called_mdefs = Set.empty
       error_count = 0
@@ -1032,7 +1034,7 @@ module TypeProf::Core
             end
           end
           error_count += 1
-        elsif me.builtin && me.builtin[changes, @node, orig_ty, @a_args, @ret]
+        elsif me.builtin && me.builtin[changes, @node, orig_ty, a_args, @ret]
           # do nothing
         elsif !me.decls.empty?
           # TODO: support "| ..."
@@ -1045,7 +1047,7 @@ module TypeProf::Core
                 ty_env[param] = arg || (default_ty ? default_ty.covariant_vertex(genv, changes, ty_env) : Source.new)
               end
             end
-            mdecl.resolve_overloads(changes, genv, @node, ty_env, @a_args, @ret) do |method_type|
+            mdecl.resolve_overloads(changes, genv, @node, ty_env, a_args, @ret) do |method_type|
               @generics[method_type] ||= method_type.type_params.map { Vertex.new(@node) }
             end
           end
@@ -1053,7 +1055,7 @@ module TypeProf::Core
           me.defs.each do |mdef|
             next if called_mdefs.include?(mdef)
             called_mdefs << mdef
-            mdef.call(changes, genv, @a_args, @ret)
+            mdef.call(changes, genv, a_args, @ret)
           end
         else
           pp me
@@ -1066,7 +1068,7 @@ module TypeProf::Core
             me.defs.each do |mdef|
               next if called_mdefs.include?(mdef)
               called_mdefs << mdef
-              mdef.call(changes, genv, @a_args, @ret)
+              mdef.call(changes, genv, a_args, @ret)
             end
           end
         end

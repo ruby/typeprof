@@ -31,7 +31,7 @@ module TypeProf::Core
               args << raw_arg.expression
               @splat_flags << true
             when Prism::ForwardingArgumentsNode
-              @forwarding_arguments = true
+              @forwarding_arguments = :rest
             else
               args << raw_arg
               @splat_flags << false
@@ -113,10 +113,22 @@ module TypeProf::Core
         end
 
         if @forwarding_arguments
-          forward_a_args = (@lenv.forward_args || raise).to_actual_arguments(genv, @changes, self)
-          positional_args = forward_a_args.positionals
-          splat_flags = forward_a_args.splat_flags
-          keyword_args = forward_a_args.keywords
+          forward_a_args = (@lenv.forward_args || raise).to_actual_arguments(
+            genv,
+            @changes,
+            self,
+            include_leading_positionals: @forwarding_arguments != :rest,
+            activation_required: @forwarding_arguments == :rest,
+          )
+          leading_args = @positional_args.map do |arg|
+            if arg.is_a?(DummyNilNode)
+              @lenv.get_var(:"*anonymous_rest")
+            else
+              arg.install(genv)
+            end
+          end
+          a_args = forward_a_args.prepend_positionals(leading_args, @splat_flags)
+          a_args = a_args.with_keywords(@keyword_args.install(genv)) if @keyword_args
         else
           positional_args = @positional_args.map do |arg|
             if arg.is_a?(DummyNilNode)
@@ -125,8 +137,7 @@ module TypeProf::Core
               arg.install(genv)
             end
           end
-          splat_flags = @splat_flags
-          keyword_args = @keyword_args ? @keyword_args.install(genv) : nil
+          a_args = ActualArguments.new(positional_args, @splat_flags, @keyword_args ? @keyword_args.install(genv) : nil, nil)
         end
 
         if @block_body
@@ -198,7 +209,11 @@ module TypeProf::Core
           blk_ty = forward_a_args.block
         end
 
-        a_args = ActualArguments.new(positional_args, splat_flags, keyword_args, blk_ty)
+        if @forwarding_arguments
+          a_args = a_args.with_block(blk_ty, omittable: !@block_body && !@block_pass && !@anonymous_block_forwarding)
+        else
+          a_args = a_args.with_block(blk_ty)
+        end
         box = @changes.add_method_call_box(genv, recv, @mid, a_args, !@recv)
 
         block_body = @block_body
@@ -317,7 +332,7 @@ module TypeProf::Core
       def initialize(raw_node,  lenv)
         raw_args = nil
         raw_block = raw_node.block
-        super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv, forwarding_arguments: true)
+        super(raw_node, nil, :"*super", nil, raw_args, nil, raw_block, lenv, forwarding_arguments: :all)
       end
     end
 
