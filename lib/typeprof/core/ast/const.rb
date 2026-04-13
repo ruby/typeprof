@@ -8,7 +8,7 @@ module TypeProf::Core
           @cbase = nil
           @toplevel = false
           @cname = raw_node.name
-          @cname_code_range = lenv.code_range_from_node(raw_node.location)
+          @cname_code_range_loc = raw_node.location
         when :constant_path_node, :constant_path_target_node
           if raw_node.parent
             @cbase = AST.create_node(raw_node.parent, lenv)
@@ -18,14 +18,18 @@ module TypeProf::Core
             @toplevel = true
           end
           @cname = raw_node.name
-          @cname_code_range = lenv.code_range_from_node(raw_node.name_loc)
+          @cname_code_range_loc = raw_node.name_loc
         else
           raise raw_node.type.to_s
         end
         @strict_const_scope = lenv.strict_const_scope
       end
 
-      attr_reader :cname, :cbase, :toplevel, :cname_code_range, :strict_const_scope
+      attr_reader :cname, :cbase, :toplevel, :strict_const_scope
+
+      def cname_code_range
+        @cname_code_range ||= @lenv.code_range_from_node(@cname_code_range_loc) if @cname_code_range_loc
+      end
 
       def attrs = { cname:, toplevel:, strict_const_scope: }
       def subnodes = { cbase: }
@@ -57,24 +61,28 @@ module TypeProf::Core
           # C = expr
           @cpath = nil
           @static_cpath = lenv.cref.cpath + [raw_node.name]
-          @cname_code_range = lenv.code_range_from_node(raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node)
+          @cname_code_range_loc = raw_node.respond_to?(:name_loc) ? raw_node.name_loc : raw_node.location
         when :constant_path_write_node, :constant_path_operator_write_node, :constant_path_or_write_node, :constant_path_and_write_node
           # expr::C = expr
           @cpath = AST.create_node(raw_node.target, lenv)
           @static_cpath = AST.parse_cpath(raw_node.target, lenv.cref)
-          @cname_code_range = lenv.code_range_from_node(raw_node.target)
+          @cname_code_range_loc = raw_node.target.location
         when :constant_path_target_node
           # expr::C, * = ary
           @cpath = ConstantReadNode.new(raw_node, lenv)
           @static_cpath = AST.parse_cpath(raw_node, lenv.cref)
-          @cname_code_range = lenv.code_range_from_node(raw_node)
+          @cname_code_range_loc = raw_node.location
         else
           raise
         end
         @rhs = rhs
       end
 
-      attr_reader :cpath, :rhs, :static_cpath, :cname_code_range
+      attr_reader :cpath, :rhs, :static_cpath
+
+      def cname_code_range
+        @cname_code_range ||= @lenv.code_range_from_node(@cname_code_range_loc) if @cname_code_range_loc
+      end
 
       def subnodes = { cpath:, rhs: }
       def attrs = { static_cpath: }
