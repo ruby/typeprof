@@ -232,10 +232,10 @@ module TypeProf::Core
       def define0(genv)
         @args.each {|arg| arg.define(genv) }
         const_reads = []
-        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref, false)
+        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref, true)
         const_reads << const_read
         @cpath[1..].each do |cname|
-          const_read = ScopedConstRead.new(cname, const_read, false)
+          const_read = ScopedConstRead.new(cname, const_read, true)
           const_reads << const_read
         end
         mod = genv.resolve_cpath(@lenv.cref.cpath)
@@ -281,10 +281,10 @@ module TypeProf::Core
       def define0(genv)
         @args.each {|arg| arg.define(genv) }
         const_reads = []
-        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref, false)
+        const_read = BaseConstRead.new(genv, @cpath.first, @toplevel ? CRef::Toplevel : @lenv.cref, true)
         const_reads << const_read
         @cpath[1..].each do |cname|
-          const_read = ScopedConstRead.new(cname, const_read, false)
+          const_read = ScopedConstRead.new(cname, const_read, true)
           const_reads << const_read
         end
         mod = genv.resolve_cpath(@lenv.cref.cpath)
