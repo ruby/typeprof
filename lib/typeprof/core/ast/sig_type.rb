@@ -550,6 +550,8 @@ module TypeProf::Core
         name = raw_decl.name
         @cpath = name.namespace.path + [name.name]
         @toplevel = name.namespace.absolute?
+        # RBS::Types::ClassSingleton#args was added in RBS 4.0
+        @args = raw_decl.respond_to?(:args) ? raw_decl.args.map {|arg| AST.create_rbs_type(arg, lenv) } : []
       end
 
       attr_reader :cpath, :toplevel
