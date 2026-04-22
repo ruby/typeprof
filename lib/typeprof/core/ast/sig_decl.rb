@@ -190,7 +190,7 @@ module TypeProf::Core
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)
         @mid = raw_decl.name
-        @mid_code_range = lenv.code_range_from_node(raw_decl.location[:name])
+        @mid_code_range_loc = raw_decl.location[:name]
         @singleton = raw_decl.singleton?
         @instance = raw_decl.instance?
         @method_types = OverloadSet.new(raw_decl.overloads.map do |overload|
@@ -200,12 +200,16 @@ module TypeProf::Core
         @overloading = raw_decl.overloading
       end
 
-      attr_reader :mid, :singleton, :instance, :method_types, :overloading, :mid_code_range
+      attr_reader :mid, :singleton, :instance, :method_types, :overloading
+
+      def mid_code_range
+        @mid_code_range ||= @lenv.code_range_from_node(@mid_code_range_loc) if @mid_code_range_loc
+      end
 
       def subnodes = { method_types: @method_types.to_a }
-      def attrs = { mid:, mid_code_range:, singleton:, instance:, overloading: }
+      def attrs = { mid:, singleton:, instance:, overloading: }
 
-      def mname_code_range(_name) = @mid_code_range
+      def mname_code_range(_name) = mid_code_range
 
       def install0(genv)
         [[@singleton, true], [@instance, false]].each do |enabled, singleton|
