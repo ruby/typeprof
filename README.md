@@ -37,7 +37,8 @@ $ bundle exec rake test
 
 ## More details
 
-https://speakerdeck.com/mame/good-first-issues-of-typeprof
+- [Good first issues of TypeProf](https://speakerdeck.com/mame/good-first-issues-of-typeprof) (slides)
+- [How to report bugs / propose features](doc/report_guide.md)
 
 ## LICENSE
 
