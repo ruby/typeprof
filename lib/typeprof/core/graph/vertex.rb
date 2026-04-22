@@ -2,7 +2,6 @@ module TypeProf::Core
   class BasicVertex
     def initialize(types)
       @types = types
-      @types_to_be_added = {}
     end
 
     attr_reader :types
@@ -10,13 +9,15 @@ module TypeProf::Core
     def each_type(&blk)
       @types.each_key(&blk)
 
-      until @types_to_be_added.empty?
-        h = @types_to_be_added.dup
-        h.each do |ty, source|
-          @types[ty] = source
+      if @types_to_be_added
+        until @types_to_be_added.empty?
+          h = @types_to_be_added.dup
+          h.each do |ty, source|
+            @types[ty] = source
+          end
+          @types_to_be_added.clear
+          h.each_key(&blk)
         end
-        @types_to_be_added.clear
-        h.each_key(&blk)
       end
     end
 
@@ -151,7 +152,7 @@ module TypeProf::Core
           begin
             @types[ty] = set
           rescue
-            @types_to_be_added[ty] = set
+            (@types_to_be_added ||= {})[ty] = set
           end
           set << src_var
           (new_added_types ||= []) << ty
@@ -167,7 +168,7 @@ module TypeProf::Core
     def on_type_removed(genv, src_var, removed_types)
       new_removed_types = nil
       removed_types.each do |ty|
-        raise "!!! not implemented" if @types_to_be_added[ty]
+        raise "!!! not implemented" if @types_to_be_added&.[](ty)
         @types[ty].delete(src_var) || raise
         if @types[ty].empty?
           @types.delete(ty) || raise
