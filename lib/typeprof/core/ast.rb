@@ -479,6 +479,28 @@ module TypeProf::Core
       end
     end
 
+    def self.parse_type_var_comment(raw_node, lenv)
+      comments = lenv.file_context.comments
+      return nil unless comments
+      node_line = raw_node.location.start_line
+      idx = comments.bsearch_index { |c| c.location.start_line >= node_line }
+      idx = (idx || comments.size) - 1
+      return nil if idx < 0
+      comment = comments[idx]
+      return nil unless comment.location.start_line == node_line - 1
+      text = comment.location.slice
+      if text =~ /\A#\s*@type\s+var\s+(\w+)\s*:\s*(.+)\z/
+        var_name = $1.to_sym
+        type_str = $2
+        rbs_type = RBS::Parser.parse_type(type_str)
+        return nil unless rbs_type
+        rbs_type_node = AST.create_rbs_type(rbs_type, lenv)
+        [var_name, rbs_type_node]
+      end
+    rescue RBS::ParsingError
+      nil
+    end
+
     def self.create_rbs_func_type(raw_decl, raw_type_params, raw_block, lenv)
       SigFuncType.new(raw_decl, raw_type_params, raw_block, lenv)
     end
