@@ -1,19 +1,23 @@
 ## update
-#: (*Integer) -> Integer
-def foo(x, y)
-  x + y
+class C
+  #: (*Integer) -> Integer
+  def foo(x, y)
+    x + y
+  end
 end
 
 ## assert
-class Object
+class C
   def foo: (Integer, Integer) -> Integer
 end
 
 ## update
-#: (*Integer) -> String
-def foo(x, y)
-  x + y
+class C
+  #: (*Integer) -> String
+  def foo(x, y)
+    x + y
+  end
 end
 
 ## diagnostics
-(3,2)-(3,7): expected: String; actual: Integer
+(4,4)-(4,9): expected: String; actual: Integer

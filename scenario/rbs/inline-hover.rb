@@ -1,9 +1,11 @@
 ## update: test.rb
-#: (Integer) -> void
-def check(var)
-#          ^[A]
-  var
-#  ^[B]
+class Foo
+  #: (Integer) -> void
+  def check(var)
+#            ^[A]
+    var
+#    ^[B]
+  end
 end
 
 ## hover: [A]
@@ -13,7 +15,7 @@ Integer
 Integer
 
 ## update: test2.rb
-class Foo
+class Foo2
   #: (String) -> void
   def bar(x)
 #         ^[C]
