@@ -61,6 +61,7 @@ module TypeProf::Core
       while true
         case raw_node.type
         when :parentheses_node
+          return DummyNilNode.new(lenv.code_range_from_node(raw_node), lenv) if raw_node.body.nil?
           raw_node = raw_node.body
         when :implicit_node
           raw_node = raw_node.value
