@@ -28,11 +28,14 @@ module TypeProf::LSP
       @id = 0
     end
 
-    def init(fixture)
+    def init(fixture, position_encodings: nil, expected_position_encoding: "utf-16")
       @folder = @lsp.path_to_uri(File.expand_path(File.join(__dir__, "..", "fixtures", fixture))) + "/"
-      id = request("initialize", workspaceFolders: [{ uri: @folder }])
+      params = { workspaceFolders: [{ uri: @folder }] }
+      params[:capabilities] = { general: { positionEncodings: position_encodings } } if position_encodings
+      id = request("initialize", **params)
       expect_response(id) do |recv|
         assert_equal({ name: "typeprof", version: TypeProf::VERSION }, recv[:serverInfo])
+        assert_equal(expected_position_encoding, recv[:capabilities][:positionEncoding])
       end
       notify("initialized")
     end
@@ -403,6 +406,36 @@ foo
         assert(rbs_result[:uri].end_with?("sig/test.rbs"))
         assert(rb_result[:uri].end_with?("test.rb"))
       end
+    end
+
+    def test_position_encoding_default
+      init("basic")
+      assert_equal(Encoding::UTF_16LE, @lsp.position_encoding)
+    end
+
+    def test_position_encoding_utf8_preferred
+      init("basic", position_encodings: ["utf-8", "utf-16"], expected_position_encoding: "utf-8")
+      assert_equal(Encoding::UTF_8, @lsp.position_encoding)
+    end
+
+    def test_position_encoding_empty_array
+      init("basic", position_encodings: [], expected_position_encoding: "utf-16")
+      assert_equal(Encoding::UTF_16LE, @lsp.position_encoding)
+    end
+
+    def test_position_encoding_unsupported_only
+      init("basic", position_encodings: ["ascii"], expected_position_encoding: "utf-16")
+      assert_equal(Encoding::UTF_16LE, @lsp.position_encoding)
+    end
+
+    def test_position_encoding_prefers_first_supported
+      init("basic", position_encodings: ["ascii", "utf-16", "utf-8"], expected_position_encoding: "utf-16")
+      assert_equal(Encoding::UTF_16LE, @lsp.position_encoding)
+    end
+
+    def test_position_encoding_utf32_preferred
+      init("basic", position_encodings: ["utf-32", "utf-16"], expected_position_encoding: "utf-32")
+      assert_equal(Encoding::UTF_32LE, @lsp.position_encoding)
     end
 
     def test_type_definition_for_local_variable
