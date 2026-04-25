@@ -259,14 +259,14 @@ module TypeProf::Core
       mod.get_type_alias(name)
     end
 
-    def load_core_rbs(raw_decls)
-      file_context = FileContext.new(nil)
+    def load_core_rbs(raw_decls, position_encoding)
+      file_context = FileContext.new(nil, position_encoding)
       lenv = LocalEnv.new(file_context, CRef::Toplevel, {}, [])
       decls = raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
 
-      decls += AST.parse_rbs("typeprof-rbs-shim.rbs", <<-RBS)
+      decls += AST.parse_rbs("typeprof-rbs-shim.rbs", <<-RBS, position_encoding)
         class Exception
           include _Exception
         end
@@ -308,16 +308,34 @@ module TypeProf::Core
   end
 
   class FileContext
-    attr_reader :path, :comments
-    def initialize(path, prism_source = nil, comments = nil)
+    attr_reader :path, :comments, :position_encoding
+    def initialize(path, position_encoding = nil, prism_source = nil, comments = nil)
       @path = path
+      @position_encoding = position_encoding || Encoding::UTF_16LE
       @prism_source = prism_source
       @code_units_cache = nil
       @comments = comments
     end
 
+    # Returns [start_column, end_column] for a Prism::Location, in the session-configured
+    # position encoding. UTF-8 uses Prism's native byte columns directly (Prism's UTF-8
+    # code_units_cache reports code points, not bytes — see LSP 3.17 spec).
+    def column_offsets_for(prism_location)
+      if @position_encoding == Encoding::UTF_8
+        [prism_location.start_column, prism_location.end_column]
+      else
+        cache = code_units_cache
+        [
+          prism_location.cached_start_code_units_column(cache),
+          prism_location.cached_end_code_units_column(cache),
+        ]
+      end
+    end
+
+    private
+
     def code_units_cache
-      @code_units_cache ||= @prism_source&.code_units_cache(Encoding::UTF_16LE)
+      @code_units_cache ||= @prism_source&.code_units_cache(@position_encoding)
     end
   end
 
@@ -339,7 +357,7 @@ module TypeProf::Core
 
     def path = @file_context&.path
     def code_range_from_node(node)
-      TypeProf::CodeRange.from_node(node, @file_context&.code_units_cache)
+      TypeProf::CodeRange.from_node(node, @file_context)
     end
 
     def new_var(name, node)

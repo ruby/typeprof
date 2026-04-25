@@ -47,6 +47,15 @@ module TypeProf::LSP
       end
     end
 
+    # see: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocuments
+    LSP_POSITION_ENCODINGS = {
+      Encoding::UTF_8 => "utf-8",
+      Encoding::UTF_16LE => "utf-16",
+      Encoding::UTF_32LE => "utf-32",
+    }.freeze
+
+    private_constant :LSP_POSITION_ENCODINGS
+
     def initialize(core_options, reader, writer, url_schema: nil)
       @core_options = core_options
       @cores = {}
@@ -62,8 +71,28 @@ module TypeProf::LSP
       @diagnostic_severity = :error
     end
 
-    attr_reader :open_texts
+    attr_reader :open_texts, :position_encoding
     attr_accessor :signature_enabled
+
+    # Pick the first mutually-supported encoding from the client's preference-ordered list
+    # and store it. Falls back to UTF-16LE (mandatory per LSP 3.17 spec).
+    def negotiate_position_encoding(client_encodings)
+      @position_encoding = pick_position_encoding(client_encodings)
+    end
+
+    def lsp_position_encoding
+      LSP_POSITION_ENCODINGS.fetch(@position_encoding)
+    end
+
+    def pick_position_encoding(client_encodings)
+      return Encoding::UTF_16LE unless client_encodings.is_a?(Array)
+      client_encodings.each do |enc|
+        encoding = LSP_POSITION_ENCODINGS.key(enc)
+        return encoding if encoding
+      end
+      Encoding::UTF_16LE
+    end
+    private :pick_position_encoding
 
     #: (String) -> String
     def path_to_uri(path)
@@ -105,9 +134,10 @@ module TypeProf::LSP
               end
             end
             @core_options[:exclude_patterns] = conf[:exclude] if conf[:exclude]
+            service_options = @core_options.merge(position_encoding: @position_encoding)
             conf[:analysis_unit_dirs].each do |dir|
               dir = File.expand_path(dir, path)
-              core = @cores[dir] = TypeProf::Core::Service.new(@core_options)
+              core = @cores[dir] = TypeProf::Core::Service.new(service_options)
               core.add_workspace(dir, @rbs_dir)
             end
           else

@@ -56,6 +56,10 @@ module TypeProf::LSP
   class Message::Initialize < Message
     METHOD = "initialize" # request (required)
     def run
+      # Must negotiate encoding before add_workspaces so newly created Services honor it.
+      client_encodings = @params.dig(:capabilities, :general, :positionEncodings)
+      @server.negotiate_position_encoding(client_encodings)
+
       folders = @params[:workspaceFolders].map do |folder|
         folder => { uri:, }
         @server.uri_to_path(uri)
@@ -65,6 +69,7 @@ module TypeProf::LSP
 
       respond(
         capabilities: {
+          positionEncoding: @server.lsp_position_encoding,
           textDocumentSync: {
             openClose: true,
             change: 2, # Incremental
