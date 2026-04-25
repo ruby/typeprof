@@ -7,7 +7,7 @@ module TypeProf::Core
       @rbs_text_nodes = {}
 
       @genv = GlobalEnv.new
-      @genv.load_core_rbs(load_rbs_declarations(@options[:rbs_collection]).declarations)
+      @genv.load_core_rbs(load_rbs_declarations(@options[:rbs_collection]).declarations, @options[:position_encoding])
 
       Builtin.new(genv).deploy
     end
@@ -58,7 +58,7 @@ module TypeProf::Core
       prev_node = @rb_text_nodes[path]
 
       code = File.read(path) unless code
-      node = AST.parse_rb(path, code)
+      node = AST.parse_rb(path, code, @options[:position_encoding])
       return false unless node
 
       node.diff(@rb_text_nodes[path]) if prev_node
@@ -119,7 +119,7 @@ module TypeProf::Core
 
       code = File.read(path) unless code
       begin
-        decls = AST.parse_rbs(path, code)
+        decls = AST.parse_rbs(path, code, @options[:position_encoding])
       rescue RBS::ParsingError
         return false
       end

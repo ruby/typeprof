@@ -1,6 +1,6 @@
 module TypeProf::Core
   class AST
-    def self.parse_rb(path, src)
+    def self.parse_rb(path, src, position_encoding)
       result = Prism.parse(src)
 
       return nil unless result.errors.empty?
@@ -11,7 +11,7 @@ module TypeProf::Core
       raise unless raw_scope.type == :program_node
 
       prism_source = result.source
-      file_context = FileContext.new(path, prism_source, result.comments)
+      file_context = FileContext.new(path, position_encoding, prism_source, result.comments)
 
       cref = CRef::Toplevel
       lenv = LocalEnv.new(file_context, cref, {}, [])
@@ -414,11 +414,11 @@ module TypeProf::Core
       return cpath + names.reverse if cpath
     end
 
-    def self.parse_rbs(path, src)
+    def self.parse_rbs(path, src, position_encoding)
       _buffer, _directives, raw_decls = RBS::Parser.parse_signature(src)
 
       cref = CRef::Toplevel
-      file_context = FileContext.new(path)
+      file_context = FileContext.new(path, position_encoding)
       lenv = LocalEnv.new(file_context, cref, {}, [])
 
       raw_decls.map do |raw_decl|
