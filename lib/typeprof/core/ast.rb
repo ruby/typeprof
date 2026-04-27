@@ -423,7 +423,7 @@ module TypeProf::Core
 
       raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
-      end
+      end.compact
     end
 
     def self.create_rbs_decl(raw_decl, lenv)
