@@ -1,0 +1,82 @@
+# config file for the tagpr in git config format
+# The tagpr generates the initial configuration, which you can rewrite to suit your environment.
+# CONFIGURATIONS:
+#   tagpr.releaseBranch
+#       Generally, it is "main." It is the branch for releases. The tagpr tracks this branch,
+#       creates or updates a pull request as a release candidate, or tags when they are merged.
+#
+#   tagpr.versionFile
+#       Versioning file containing the semantic version needed to be updated at release.
+#       It will be synchronized with the "git tag".
+#       Often this is a meta-information file such as gemspec, setup.cfg, package.json, etc.
+#       Sometimes the source code file, such as version.go or Bar.pm, is used.
+#       If you do not want to use versioning files but only git tags, specify the "-" string here.
+#       You can specify multiple version files by comma separated strings.
+#
+#   tagpr.vPrefix
+#       Flag whether or not v-prefix is added to semver when git tagging. (e.g. v1.2.3 if true)
+#       This is only a tagging convention, not how it is described in the version file.
+#
+#   tagpr.changelog (Optional)
+#       Flag whether or not changelog is added or changed during the release.
+#
+#   tagpr.command (Optional)
+#       Command to change files just before release and versioning.
+#
+#   tagpr.postVersionCommand (Optional)
+#       Command to change files just after versioning.
+#
+#   tagpr.template (Optional)
+#       Pull request template file in go template format
+#
+#   tagpr.templateText (Optional)
+#       Pull request template text in go template format
+#
+#   tagpr.release (Optional)
+#       GitHub Release creation behavior after tagging [true, draft, false]
+#       If this value is not set, the release is to be created.
+#
+#   tagpr.majorLabels (Optional)
+#       Label of major update targets. Default is [major]
+#
+#   tagpr.minorLabels (Optional)
+#       Label of minor update targets. Default is [minor]
+#
+#   tagpr.commitPrefix (Optional)
+#       Prefix of commit message. Default is "[tagpr]"
+#
+#   tagpr.tagPrefix (Optional)
+#       Tag prefix for monorepo support. This allows managing multiple packages
+#       with independent versioning in a single repository.
+#       The prefix is prepended to the version tag with a slash separator.
+#       Trailing slashes in the prefix are handled automatically.
+#       Examples:
+#         - "tools" produces tags like "tools/v1.2.3"
+#         - "backend/api" produces tags like "backend/api/v1.0.0"
+#
+#   tagpr.calendarVersioning (Optional)
+#       Use Calendar Versioning instead of Semantic Versioning.
+#       Set to true for the default format (YYYY.MM0D.MICRO), or specify a custom format string.
+#       Available tokens (see https://calver.org):
+#         Year:    YYYY (4-digit), YY (2-digit), 0Y (zero-padded 2-digit)
+#         Month:   MM (no padding), 0M (zero-padded)
+#         Week:    WW (no padding), 0W (zero-padded)
+#         Day:     DD (no padding), 0D (zero-padded)
+#         Micro:   MICRO (auto-incrementing patch number for same date)
+#       Examples:
+#         - true or "YYYY.MM0D.MICRO" -> 2026.1203.0 (Dec 3)
+#         - "YYYY.0M.MICRO" -> 2026.01.0
+#         - "YY.0M0D.MICRO" -> 26.0123.0
+#
+#   tagpr.fixedMajorVersion (Optional)
+#       Fix the major version for releases. When set, tagpr only considers tags
+#       with this major version. Useful for maintaining multiple major versions
+#       on different branches (e.g., v1 branch for v1.x.x, main for v2.x.x).
+#       Accepts both numeric ("1") and v-prefixed ("v1") formats.
+#       Cannot be used with calendarVersioning.
+#
+[tagpr]
+  vPrefix = true
+  releaseBranch = master
+  versionFile = lib/typeprof/version.rb
+  postVersionCommand = BUNDLE_FROZEN=false bundle install
