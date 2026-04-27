@@ -10,6 +10,11 @@ module TypeProf::Core
       @prepend_decls = []
       @prepend_defs = []
 
+      # `class Foo = Bar` / `module Foo = Bar` declarations attached to this entity.
+      # Maps an alias decl to the target ModuleEntity at the time of registration.
+      @alias_decls = {}
+      @alias_target = nil
+
       @inner_modules = {}
       @outer_module = outer_module
 
@@ -42,6 +47,8 @@ module TypeProf::Core
     attr_reader :cpath
     attr_reader :module_decls
     attr_reader :module_defs
+    attr_reader :alias_decls
+    attr_reader :alias_target
 
     attr_reader :inner_modules
     attr_reader :outer_module
@@ -79,7 +86,7 @@ module TypeProf::Core
     end
 
     def exist?
-      !@module_decls.empty? || !@module_defs.empty?
+      !@module_decls.empty? || !@module_defs.empty? || !@alias_decls.empty?
     end
 
     def on_inner_modules_changed(genv, changed_cname)
@@ -173,6 +180,22 @@ module TypeProf::Core
     def remove_module_def(genv, node)
       @outer_module.get_const(get_cname).remove_def(node)
       @module_defs.delete(node) || raise
+      on_module_removed(genv)
+    end
+
+    def add_alias_decl(genv, decl, target_mod)
+      on_module_added(genv)
+      @alias_decls[decl] = target_mod
+      @alias_target = @alias_decls.values.first
+      ce = @outer_module.get_const(get_cname)
+      ce.add_decl(decl)
+      ce
+    end
+
+    def remove_alias_decl(genv, decl)
+      @outer_module.get_const(get_cname).remove_decl(decl)
+      @alias_decls.delete(decl) || raise
+      @alias_target = @alias_decls.values.first
       on_module_removed(genv)
     end
 
