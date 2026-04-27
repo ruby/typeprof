@@ -221,6 +221,18 @@ module TypeProf::Core
       raise unless cpath # annotation
       cpath.each do |cname|
         mod = mod.inner_modules[cname] ||= ModuleEntity.new(mod.cpath + [cname], mod)
+        mod = follow_alias(mod)
+      end
+      mod
+    end
+
+    def follow_alias(mod)
+      visited = nil
+      while mod.alias_target
+        visited ||= Set.empty
+        break if visited.include?(mod) # cycle
+        visited << mod
+        mod = mod.alias_target
       end
       mod
     end

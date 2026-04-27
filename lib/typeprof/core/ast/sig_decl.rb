@@ -414,6 +414,52 @@ module TypeProf::Core
       end
     end
 
+    class SigModuleAliasBaseNode < Node
+      def initialize(raw_decl, lenv)
+        super(raw_decl, lenv)
+        @cpath = AST.resolve_rbs_name(raw_decl.new_name, lenv)
+        @old_cpath = AST.resolve_rbs_name(raw_decl.old_name, lenv)
+      end
+
+      attr_reader :cpath, :old_cpath
+      def attrs = { cpath:, old_cpath: }
+
+      def define0(genv)
+        outer = genv.resolve_cpath(@cpath[0..-2])
+        cname = @cpath.last
+        alias_mod = outer.inner_modules[cname] ||= ModuleEntity.new(outer.cpath + [cname], outer)
+        target_mod = genv.resolve_cpath(@old_cpath)
+        alias_mod.add_alias_decl(genv, self, target_mod)
+      end
+
+      def define_copy(genv)
+        outer = genv.resolve_cpath(@cpath[0..-2])
+        alias_mod = outer.inner_modules[@cpath.last]
+        target_mod = genv.resolve_cpath(@old_cpath)
+        alias_mod.add_alias_decl(genv, self, target_mod)
+        alias_mod.remove_alias_decl(genv, @prev_node)
+        super(genv)
+      end
+
+      def undefine0(genv)
+        outer = genv.resolve_cpath(@cpath[0..-2])
+        alias_mod = outer.inner_modules[@cpath.last]
+        alias_mod.remove_alias_decl(genv, self)
+      end
+
+      def install0(genv)
+        mod_val = Source.new(Type::Singleton.new(genv, genv.resolve_cpath(@cpath)))
+        @changes.add_edge(genv, mod_val, @static_ret.vtx)
+        Source.new
+      end
+    end
+
+    class SigClassAliasNode < SigModuleAliasBaseNode
+    end
+
+    class SigModuleAliasNode < SigModuleAliasBaseNode
+    end
+
     class SigConstNode < Node
       def initialize(raw_decl, lenv)
         super(raw_decl, lenv)

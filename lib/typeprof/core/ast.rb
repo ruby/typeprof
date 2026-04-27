@@ -437,7 +437,10 @@ module TypeProf::Core
         SigInterfaceNode.new(raw_decl, lenv)
       when RBS::AST::Declarations::Constant
         SigConstNode.new(raw_decl, lenv)
-      when RBS::AST::Declarations::AliasDecl
+      when RBS::AST::Declarations::ClassAlias
+        SigClassAliasNode.new(raw_decl, lenv)
+      when RBS::AST::Declarations::ModuleAlias
+        SigModuleAliasNode.new(raw_decl, lenv)
       when RBS::AST::Declarations::TypeAlias
         SigTypeAliasNode.new(raw_decl, lenv)
         # TODO: check
