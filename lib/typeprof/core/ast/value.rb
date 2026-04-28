@@ -275,7 +275,7 @@ module TypeProf::Core
             if raw_elem.value
               @vals << AST.create_node(raw_elem.value, lenv)
             else
-              @vals << DummyNilNode.new(code_range, lenv)
+              @vals << nil
             end
             @splat = true
           else
@@ -306,7 +306,7 @@ module TypeProf::Core
               all_symbol_keys = false
             end
           else
-            if val.is_a?(DummyNilNode)
+            if val.nil?
               h = @lenv.get_var(:"**anonymous_keyword")
             else
               h = val.install(genv)
