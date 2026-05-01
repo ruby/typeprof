@@ -327,6 +327,7 @@ module TypeProf::LSP
       end
       items = []
       sort = "aaaa"
+      original_pos = pos
       text.modify_for_completion(text, pos) do |string, trigger, pos|
         @server.update_file(text.path, string)
         pos = TypeProf::CodePosition.from_lsp(pos)
@@ -339,12 +340,67 @@ module TypeProf::LSP
           }
           sort = sort.succ
         end
+
+        next unless trigger.nil?
+
+        const_sort = "z000"
+        @server.each_const_completion(text.path, TypeProf::CodePosition.from_lsp(original_pos)) do |label, require_name|
+          item = {
+            label: label,
+            kind: 21, # Constant
+            sortText: const_sort,
+          }
+          if require_name
+            insert = compute_require_insert(text.string, require_name)
+            edits = insert && build_require_text_edits(require_name, insert, original_pos)
+            if edits
+              item[:detail] = "from '#{ require_name }'"
+              item[:additionalTextEdits] = edits
+            end
+          end
+          items << item
+          const_sort = const_sort.succ
+        end
       end
       respond(
         isIncomplete: false,
         items: items,
       )
       @server.update_file(text.path, text.string)
+    end
+
+    def compute_require_insert(source, require_name)
+      lines = source.lines
+      insert_line = 0
+      lines.each_with_index do |line, i|
+        s = line.strip
+        if (i == 0 && s.start_with?("#!")) || s.match?(/\A\s*#\s*(?:encoding|frozen_string_literal|coding|warn_indent):/)
+          insert_line = i + 1
+        else
+          break
+        end
+      end
+      while (line = lines[insert_line])
+        md = line.match(/\A\s*require(?:_relative)?\s*\(?\s*['"]([^'"]+)['"]/)
+        break unless md
+        return nil if md[1] == require_name
+        insert_line += 1
+      end
+      eol = source.include?("\r\n") ? "\r\n" : "\n"
+      next_line = lines[insert_line]
+      suffix = next_line.nil? || next_line.strip.empty? ? "" : eol
+      { line: insert_line, eol: eol, suffix: suffix }
+    end
+
+    # nil when the insert position would overlap with the cursor (LSP forbids
+    # overlap between additionalTextEdits and the primary edit at the cursor).
+    def build_require_text_edits(require_name, require_insert, completion_pos)
+      return nil if require_insert[:line] == completion_pos[:line] && completion_pos[:character] == 0
+      pos = { line: require_insert[:line], character: 0 }
+      [{
+        range: { start: pos, end: pos },
+        newText: "require '#{ require_name }'#{ require_insert[:eol] }#{ require_insert[:suffix] }",
+      }]
     end
   end
 

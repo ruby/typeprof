@@ -134,7 +134,11 @@ module TypeProf::LSP
               end
             end
             @core_options[:exclude_patterns] = conf[:exclude] if conf[:exclude]
-            service_options = @core_options.merge(position_encoding: @position_encoding)
+            rbs_collection = setup_rbs_collection_for_workspace(path, conf[:rbs_collection])
+            service_options = @core_options.merge(
+              position_encoding: @position_encoding,
+              rbs_collection: rbs_collection,
+            )
             conf[:analysis_unit_dirs].each do |dir|
               dir = File.expand_path(dir, path)
               core = @cores[dir] = TypeProf::Core::Service.new(service_options)
@@ -145,6 +149,32 @@ module TypeProf::LSP
           end
         end
       end
+    end
+
+    def setup_rbs_collection_for_workspace(workspace_path, conf_value)
+      if conf_value == false
+        return nil
+      elsif conf_value.is_a?(String)
+        config_path = File.expand_path(conf_value, workspace_path)
+        return nil unless File.readable?(config_path)
+      else
+        config_path = File.expand_path("rbs_collection.yaml", workspace_path)
+        return nil unless File.readable?(config_path)
+      end
+
+      lock_path = RBS::Collection::Config.to_lockfile_path(Pathname(config_path))
+      unless File.readable?(lock_path)
+        $stderr.puts "rbs_collection lockfile not found: #{ lock_path }; please run 'rbs collection install'"
+        return nil
+      end
+
+      RBS::Collection::Config::Lockfile.from_lockfile(
+        lockfile_path: lock_path,
+        data: YAML.load_file(lock_path),
+      )
+    rescue => e
+      $stderr.puts "Failed to load rbs_collection: #{ e.class }: #{ e.message }"
+      nil
     end
 
     #: (String) -> bool
@@ -214,6 +244,12 @@ module TypeProf::LSP
     def completion(path, trigger, pos, &blk)
       each_core(path) do |core|
         core.completion(path, trigger, pos, &blk)
+      end
+    end
+
+    def each_const_completion(path, pos, &blk)
+      each_core(path) do |core|
+        core.each_const_completion(path, pos, &blk)
       end
     end
 
