@@ -247,6 +247,12 @@ module TypeProf::LSP
       end
     end
 
+    def each_const_completion(path, pos, &blk)
+      each_core(path) do |core|
+        core.each_const_completion(path, pos, &blk)
+      end
+    end
+
     def rename(path, pos)
       aggregate_each_core(path) do |core|
         core.rename(path, pos)
