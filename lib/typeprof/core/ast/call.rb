@@ -247,7 +247,7 @@ module TypeProf::Core
               subnode.modified_vars(tbl, vars)
             end
           else
-            subnode.each {|n| n.modified_vars(tbl, vars) }
+            subnode.each {|n| n&.modified_vars(tbl, vars) }
           end
         end
       end
