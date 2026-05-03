@@ -12,17 +12,9 @@ module TypeProf::Core
       Builtin.new(genv).deploy
 
       @constant_catalog = options[:constant_catalog]
-      @dynamic_rbs_loader = nil
-      @requested_rbs_libraries = ::Set.new
-      @loaded_rbs_paths = ::Set.new
-    end
 
-    def dynamic_rbs_loader
-      @dynamic_rbs_loader ||= begin
-        loader = RBS::EnvironmentLoader.new(core_root: nil)
-        loader.add_collection(@options[:rbs_collection]) if @options[:rbs_collection]
-        loader
-      end
+      @rbs_loader = RBS::EnvironmentLoader.new(core_root: nil)
+      @rbs_loader.add_collection(@options[:rbs_collection]) if @options[:rbs_collection]
     end
 
     def load_rbs_declarations(rbs_collection)
@@ -138,19 +130,20 @@ module TypeProf::Core
 
     def load_library_for_require(require_name)
       lib_name = require_name.tr("/", "-")
-      return unless @requested_rbs_libraries.add?(lib_name)
+      return if @rbs_loader.libs.any? { |l| l.name == lib_name }
 
-      loader = dynamic_rbs_loader
-      prev_libs = loader.libs.dup
+      prev_libs = @rbs_loader.libs.dup
       begin
-        loader.add(library: lib_name, version: nil)
-        loader.each_signature do |_source, path, _buffer, _decls, _dirs|
-          path_str = path.to_s
-          next unless @loaded_rbs_paths.add?(path_str)
-          update_rbs_file(path_str, path.read)
+        @rbs_loader.add(library: lib_name, version: nil)
+        new_libs = @rbs_loader.libs - prev_libs
+        @rbs_loader.each_signature do |source, path, _buffer, _decls, _dirs|
+          next unless source.is_a?(RBS::EnvironmentLoader::Library)
+          next unless new_libs.include?(source)
+          next if @rbs_text_nodes.key?(path.to_s)
+          update_rbs_file(path.to_s, path.read)
         end
       rescue RBS::EnvironmentLoader::UnknownLibraryError, RuntimeError, Gem::LoadError, LoadError
-        loader.libs.replace(prev_libs)
+        @rbs_loader.libs.replace(prev_libs)
       end
     end
 
