@@ -135,9 +135,11 @@ module TypeProf::LSP
             end
             @core_options[:exclude_patterns] = conf[:exclude] if conf[:exclude]
             rbs_collection = setup_rbs_collection_for_workspace(path, conf[:rbs_collection])
+            constant_catalog = ConstantCatalog.new(rbs_collection: rbs_collection)
             service_options = @core_options.merge(
               position_encoding: @position_encoding,
               rbs_collection: rbs_collection,
+              constant_catalog: constant_catalog,
             )
             conf[:analysis_unit_dirs].each do |dir|
               dir = File.expand_path(dir, path)

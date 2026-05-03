@@ -11,14 +11,10 @@ module TypeProf::Core
 
       Builtin.new(genv).deploy
 
-      @constant_catalog = nil
+      @constant_catalog = options[:constant_catalog]
       @dynamic_rbs_loader = nil
       @requested_rbs_libraries = ::Set.new
       @loaded_rbs_paths = ::Set.new
-    end
-
-    def constant_catalog
-      @constant_catalog ||= TypeProf::LSP::ConstantCatalog.new(rbs_collection: @options[:rbs_collection])
     end
 
     def dynamic_rbs_loader
@@ -444,7 +440,7 @@ module TypeProf::Core
       if const_node.cbase
         parent_cpath = static_cpath_of(const_node.cbase)
         return unless parent_cpath
-        constant_catalog.each_match(parent_cpath, prefix) do |cname, require_name|
+        @constant_catalog&.each_match(parent_cpath, prefix) do |cname, require_name|
           yield cname.to_s, require_name if seen.add?(cname)
         end
         mod = @genv.resolve_cpath(parent_cpath)
@@ -456,7 +452,7 @@ module TypeProf::Core
           end
         end
       else
-        constant_catalog.each_match([], prefix) do |cname, require_name|
+        @constant_catalog&.each_match([], prefix) do |cname, require_name|
           yield cname.to_s, require_name if seen.add?(cname)
         end
         each_visible_const_with_prefix(const_node, prefix) do |cname|
