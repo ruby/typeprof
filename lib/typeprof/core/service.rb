@@ -7,26 +7,20 @@ module TypeProf::Core
       @rbs_text_nodes = {}
 
       @genv = GlobalEnv.new
-      @genv.load_core_rbs(load_rbs_declarations(@options[:rbs_collection]).declarations, @options[:position_encoding])
+      @genv.load_core_rbs(load_rbs_declarations.declarations, @options[:position_encoding])
 
       Builtin.new(genv).deploy
 
       @constant_catalog = options[:constant_catalog]
 
       @rbs_loader = RBS::EnvironmentLoader.new(core_root: nil)
-      @rbs_loader.add_collection(@options[:rbs_collection]) if @options[:rbs_collection]
+      @rbs_loader.repository.add(@options[:rbs_collection].fullpath) if @options[:rbs_collection]
     end
 
-    def load_rbs_declarations(rbs_collection)
-      if rbs_collection
-        loader = RBS::EnvironmentLoader.new
-        loader.add_collection(rbs_collection)
-        RBS::Environment.from_loader(loader)
-      else
-        return $raw_rbs_env if defined?($raw_rbs_env)
-        loader = RBS::EnvironmentLoader.new
-        $raw_rbs_env = RBS::Environment.from_loader(loader)
-      end
+    def load_rbs_declarations
+      return $raw_rbs_env if defined?($raw_rbs_env)
+      loader = RBS::EnvironmentLoader.new
+      $raw_rbs_env = RBS::Environment.from_loader(loader)
     end
 
     attr_reader :genv
@@ -426,16 +420,9 @@ module TypeProf::Core
       prefix = const_node.cname.to_s
       seen = ::Set.new
 
-      # Yield from the catalog first so candidates needing `require` win the
-      # dedup over identically-named env entries. With rbs_collection, gems are
-      # eagerly added to the env at startup; without this ordering the catalog
-      # entry's require_name would get masked by the (require-less) env one.
       if const_node.cbase
         parent_cpath = static_cpath_of(const_node.cbase)
         return unless parent_cpath
-        @constant_catalog&.each_match(parent_cpath, prefix) do |cname, require_name|
-          yield cname.to_s, require_name if seen.add?(cname)
-        end
         mod = @genv.resolve_cpath(parent_cpath)
         if mod && mod.exist?
           mod.consts.each do |cname, cdef|
@@ -444,12 +431,15 @@ module TypeProf::Core
             yield cname.to_s, nil if seen.add?(cname)
           end
         end
-      else
-        @constant_catalog&.each_match([], prefix) do |cname, require_name|
+        @constant_catalog&.each_match(parent_cpath, prefix) do |cname, require_name|
           yield cname.to_s, require_name if seen.add?(cname)
         end
+      else
         each_visible_const_with_prefix(const_node, prefix) do |cname|
           yield cname.to_s, nil if seen.add?(cname)
+        end
+        @constant_catalog&.each_match([], prefix) do |cname, require_name|
+          yield cname.to_s, require_name if seen.add?(cname)
         end
       end
     end
