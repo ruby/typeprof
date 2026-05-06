@@ -60,17 +60,24 @@ module TypeProf::Core
             @block_multi_targets = {}
             @block_f_args = case raw_block.parameters
                             when Prism::BlockParametersNode
+                              # `{ || ... }` (empty pipes) and `{ |; x| ... }`
+                              # (block-local-only) yield BlockParametersNode
+                              # whose inner `parameters` is nil.
                               params = raw_block.parameters.parameters
-                              req = params.requireds.each_with_index.map do |n, i|
-                                if n.is_a?(Prism::MultiTargetNode)
-                                  @block_multi_targets[i] = n
-                                  nil
-                                else
-                                  n.name
+                              if params
+                                req = params.requireds.each_with_index.map do |n, i|
+                                  if n.is_a?(Prism::MultiTargetNode)
+                                    @block_multi_targets[i] = n
+                                    nil
+                                  else
+                                    n.name
+                                  end
                                 end
+                                opt = params.optionals.map {|n| n.name }
+                                req + opt
+                              else
+                                []
                               end
-                              opt = params.optionals.map {|n| n.name }
-                              req + opt
                             when Prism::NumberedParametersNode
                               1.upto(raw_block.parameters.maximum).map { |n| :"_#{n}" }
                             when Prism::ItParametersNode
@@ -83,7 +90,7 @@ module TypeProf::Core
             ncref = CRef.new(lenv.cref.cpath, :instance, @mid, lenv.cref)
             nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, @lenv.return_boxes)
             @block_opt_positional_defaults = []
-            if raw_block.parameters.is_a?(Prism::BlockParametersNode)
+            if raw_block.parameters.is_a?(Prism::BlockParametersNode) && raw_block.parameters.parameters
               raw_block.parameters.parameters.optionals.each do |n|
                 @block_opt_positional_defaults << AST.create_node(n.value, nlenv)
               end
