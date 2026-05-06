@@ -156,6 +156,21 @@ module TypeProf
       END
     end
 
+    def test_e2e_dir_with_rb_suffix
+      # A directory whose name ends with `.rb` (e.g. the `http_parser.rb`
+      # gem name appearing in rubygems' VCR cassettes) must be skipped,
+      # not opened as a Ruby file.
+      # https://github.com/rubygems/rubygems/tree/v4.0.11/bundler/spec/support/artifice/vcr_cassettes/realworld/index.rubygems.org/info/http_parser.rb
+      assert_equal(<<~END, test_run("dir_with_rb_suffix", ["."]))
+        # TypeProf #{ TypeProf::VERSION }
+
+        # ./main.rb
+        class Object
+          def foo: (String) -> String
+        end
+      END
+    end
+
     def test_e2e_show_stats
       result = test_run("show_stats", ["--no-show-typeprof-version", "--show-stats", "."])
       stats = result[/# TypeProf Evaluation Statistics.*/m]

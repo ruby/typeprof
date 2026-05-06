@@ -156,7 +156,7 @@ module TypeProf::CLI
       files = []
       @cli_options[:argv].each do |path|
         if File.directory?(path)
-          files.concat(Dir.glob("#{ path }/**/*.{rb,rbs}"))
+          files.concat(Dir.glob("#{ path }/**/*.{rb,rbs}").select {|f| File.file?(f) })
         elsif File.file?(path)
           files << path
         else
