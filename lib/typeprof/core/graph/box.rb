@@ -43,6 +43,15 @@ module TypeProf::Core
       raise NotImplementedError
     end
 
+    def add_symbol_proc_call_box(changes, genv, sym, caller_positionals)
+      return if caller_positionals.empty?
+
+      recv = caller_positionals.first
+      positionals = caller_positionals[1..]
+      a_args = ActualArguments.new(positionals, ::Array.new(positionals.size, false), nil, nil)
+      changes.add_method_call_box(genv, recv, sym, a_args, false)
+    end
+
     def to_s
       "#{ self.class.to_s.split("::").last }#{ @id ||= $new_id += 1 }"
     end
@@ -382,6 +391,8 @@ module TypeProf::Core
                 end
               end
             end
+          when Type::Symbol
+            resolve_symbol_proc(changes, genv, ty.sym, blk_a_args, rbs_blk, param_map0)
           end
         end
       end
@@ -394,6 +405,13 @@ module TypeProf::Core
         ret_vtx = method_type.return_type.covariant_vertex(genv, changes, param_map0)
         changes.add_edge(genv, ret_vtx, ret)
       end
+    end
+
+    def resolve_symbol_proc(changes, genv, sym, blk_a_args, rbs_blk, param_map)
+      box = add_symbol_proc_call_box(changes, genv, sym, blk_a_args)
+      return unless box
+
+      rbs_blk.return_type.typecheck(genv, changes, box.ret, param_map)
     end
 
     def resolve_overloads(changes, genv, node, param_map, a_args, ret, &blk)
@@ -1026,7 +1044,10 @@ module TypeProf::Core
       called_mdefs = Set.empty
       error_count = 0
       resolve(genv, changes) do |me, ty, mid, orig_ty|
-        if !me
+        if @node.is_a?(AST::YieldNode) && mid == :call && orig_ty.is_a?(Type::Symbol)
+          box = add_symbol_proc_call_box(changes, genv, orig_ty.sym, @a_args.positionals)
+          changes.add_edge(genv, box.ret, @ret) if box
+        elsif !me
           unless @suppress_errors
             if error_count < 3
               meth = @node.mid_code_range ? :mid_code_range : :code_range
