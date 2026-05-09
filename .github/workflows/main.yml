@@ -42,7 +42,12 @@ jobs:
       run: |
         bundle exec rake TESTOPT=-v RUBYOPT="${{ matrix.rubyopt }}"
       if: ${{ !startsWith(matrix.ruby, 'truffle') }}
-    - name: Run the dog bench
-      run: |
-        bundle exec ruby tool/dog_bench.rb
+    - name: Run the typeprof benchmark
+      run: bundle exec ruby tool/benchmarks/typeprof.rb
+      if: ${{ !startsWith(matrix.ruby, 'truffle') }}
+    - name: Run the optcarrot benchmark
+      run: bundle exec ruby tool/benchmarks/optcarrot.rb
+      if: ${{ !startsWith(matrix.ruby, 'truffle') }}
+    - name: Run the redmine benchmark
+      run: bundle exec ruby tool/benchmarks/redmine.rb
       if: ${{ !startsWith(matrix.ruby, 'truffle') }}
