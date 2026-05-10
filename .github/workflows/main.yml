@@ -27,6 +27,10 @@ jobs:
             rubyopt: "--enable-frozen-string-literal"
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Released Bundler is broken on ruby-head due to ruby/ruby#16895.
+      # Use Ruby's bundled Bundler until rubygems/rubygems#9529 is released.
+      BUNDLER_VERSION: ${{ case(matrix.ruby == 'head', '0', '') }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up Ruby
