@@ -10,7 +10,7 @@ GIT
 PATH
   remote: .
   specs:
-    typeprof (0.31.1)
+    typeprof (0.32.0)
       prism (>= 1.4.0)
       rbs (>= 3.6.0)
 
