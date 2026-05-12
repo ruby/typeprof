@@ -17,6 +17,7 @@ module TypeProf::Core
       $box_counts[self.class] -= 1
       $box_counts[Box] -= 1
       @destroyed = true
+      destroy_symbol_proc_call_boxes(genv)
       @changes.reinstall(genv) # rollback all changes
     end
 
@@ -43,13 +44,22 @@ module TypeProf::Core
       raise NotImplementedError
     end
 
-    def add_symbol_proc_call_box(changes, genv, sym, caller_positionals)
+    def add_symbol_proc_call_box(_changes, genv, sym, caller_positionals)
       return if caller_positionals.empty?
 
       recv = caller_positionals.first
       positionals = caller_positionals[1..]
-      a_args = ActualArguments.new(positionals, ::Array.new(positionals.size, false), nil, nil)
-      changes.add_method_call_box(genv, recv, sym, a_args, false)
+      @symbol_proc_call_boxes ||= {}
+      @symbol_proc_call_boxes[[recv, sym, *positionals]] ||= begin
+        a_args = ActualArguments.new(positionals, ::Array.new(positionals.size, false), nil, nil)
+        MethodCallBox.new(@node, genv, recv, sym, a_args, false)
+      end
+    end
+
+    def destroy_symbol_proc_call_boxes(genv)
+      return unless @symbol_proc_call_boxes
+      @symbol_proc_call_boxes.each_value { |box| box.destroy(genv) }
+      @symbol_proc_call_boxes = nil
     end
 
     def to_s
@@ -267,6 +277,7 @@ module TypeProf::Core
       me = genv.resolve_method(@cpath, @singleton, @mid)
       me.remove_decl(self)
       me.add_run_all_method_call_boxes(genv)
+      destroy_symbol_proc_call_boxes(genv)
     end
 
     def match_arguments?(genv, changes, param_map, a_args, method_type)
