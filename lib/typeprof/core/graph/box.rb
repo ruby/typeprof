@@ -44,14 +44,14 @@ module TypeProf::Core
       raise NotImplementedError
     end
 
-    def add_symbol_proc_call_box(_changes, genv, sym, caller_positionals)
+    def add_symbol_proc_call_box(_changes, genv, sym, caller_positionals, caller_keywords = nil)
       return if caller_positionals.empty?
 
       recv = caller_positionals.first
       positionals = caller_positionals[1..]
       @symbol_proc_call_boxes ||= {}
-      @symbol_proc_call_boxes[[recv, sym, *positionals]] ||= begin
-        a_args = ActualArguments.new(positionals, ::Array.new(positionals.size, false), nil, nil)
+      @symbol_proc_call_boxes[[recv, sym, *positionals, caller_keywords]] ||= begin
+        a_args = ActualArguments.new(positionals, ::Array.new(positionals.size, false), caller_keywords, nil)
         MethodCallBox.new(@node, genv, recv, sym, a_args, false)
       end
     end
@@ -1056,7 +1056,7 @@ module TypeProf::Core
       error_count = 0
       resolve(genv, changes) do |me, ty, mid, orig_ty|
         if @node.is_a?(AST::YieldNode) && mid == :call && orig_ty.is_a?(Type::Symbol)
-          box = add_symbol_proc_call_box(changes, genv, orig_ty.sym, @a_args.positionals)
+          box = add_symbol_proc_call_box(changes, genv, orig_ty.sym, @a_args.positionals, @a_args.keywords)
           changes.add_edge(genv, box.ret, @ret) if box
         elsif !me
           unless @suppress_errors
