@@ -33,3 +33,5 @@ jobs:
         run: |
           tag_name="$(git describe --tags --abbrev=0)"
           gh release create "${tag_name}" --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
