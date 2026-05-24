@@ -18,11 +18,15 @@ module TypeProf::Core
           @body = nil
         end
 
-        @cname_code_range = meta ? nil : lenv.code_range_from_node(raw_node.constant_path)
+        @cname_code_range_loc = meta ? nil : raw_node.constant_path
         @mod_cdef = nil
       end
 
-      attr_reader :tbl, :cpath, :static_cpath, :cname_code_range, :body
+      attr_reader :tbl, :cpath, :static_cpath, :body
+
+      def cname_code_range
+        @cname_code_range ||= @lenv.code_range_from_node(@cname_code_range_loc) if @cname_code_range_loc
+      end
 
       def subnodes = { cpath:, body: }
       def attrs = { static_cpath:, tbl: }

@@ -135,7 +135,7 @@ module TypeProf::Core
         # TODO: warn "def self.foo" in a metaclass
         singleton = !!raw_node.receiver || lenv.cref.scope_level == :metaclass
         mid = raw_node.name
-        mid_code_range = lenv.code_range_from_node(raw_node.name_loc)
+        mid_code_range_loc = raw_node.name_loc
         @tbl = raw_node.locals
         raw_args = raw_node.parameters
         raw_body = raw_node.body
@@ -144,7 +144,7 @@ module TypeProf::Core
 
         @singleton = singleton
         @mid = mid
-        @mid_code_range = mid_code_range
+        @mid_code_range_loc = mid_code_range_loc
 
         ncref = CRef.new(lenv.cref.cpath, @singleton ? :class : :instance, @mid, lenv.cref)
         nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, [])
@@ -177,7 +177,11 @@ module TypeProf::Core
         @reusable = !use_result
       end
 
-      attr_reader :singleton, :mid, :mid_code_range
+      attr_reader :singleton, :mid
+
+      def mid_code_range
+        @mid_code_range ||= @lenv.code_range_from_node(@mid_code_range_loc) if @mid_code_range_loc
+      end
       attr_reader :tbl
       attr_reader :req_positionals
       attr_reader :opt_positionals
@@ -203,7 +207,6 @@ module TypeProf::Core
       def attrs = {
         singleton:,
         mid:,
-        mid_code_range:,
         tbl:,
         req_positionals:,
         opt_positionals:,
@@ -217,7 +220,7 @@ module TypeProf::Core
         reusable:,
       }
 
-      def mname_code_range(_name) = @mid_code_range
+      def mname_code_range(_name) = mid_code_range
 
       def define(genv) # NOT define0
         return define_copy(genv) if @prev_node && @reusable
