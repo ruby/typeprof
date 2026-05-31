@@ -59,6 +59,41 @@ module TypeProf
       end
 
       attr_reader :cpath
+
+      def define_method_from_block(mid)
+        return unless @cpath
+        return unless @node.block_body
+
+        call_node = @node
+
+        # Block params are already registered as Vertices on block_body.lenv
+        # by CallNode#install0; pick them up as the new method's positional params.
+        blk_f_args = (call_node.block_f_args || []).map do |name|
+          call_node.block_body.lenv.get_var(name)
+        end
+
+        f_args = TypeProf::Core::FormalArguments.new(
+          blk_f_args,
+          [],
+          nil,
+          [],
+          [],
+          [],
+          nil,
+          nil,
+        )
+
+        ret_box = @changes.add_escape_box(@genv, call_node.block_body.ret)
+
+        @changes.add_method_def_box(
+          @genv,
+          @cpath,
+          @singleton,
+          mid,
+          f_args,
+          [ret_box],
+        )
+      end
     end
   end
 end
