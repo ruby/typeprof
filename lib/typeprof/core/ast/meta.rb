@@ -46,6 +46,52 @@ module TypeProf::Core
       end
     end
 
+    class ExtendMetaNode < Node
+      def initialize(raw_node, lenv)
+        super(raw_node, lenv)
+        # TODO: error for splat
+        @args = raw_node.arguments.arguments.map do |raw_arg|
+          next if raw_arg.is_a?(Prism::SplatNode)
+          lenv.use_strict_const_scope do
+            AST.create_node(raw_arg, lenv)
+          end
+        end.compact
+        # TODO: error for non-LIT
+        # TODO: fine-grained hover
+      end
+
+      attr_reader :args
+
+      def subnodes = { args: }
+
+      def define0(genv)
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
+        @args.each do |arg|
+          arg.define(genv)
+          if arg.static_ret
+            arg.static_ret.followers << mod
+            mod.add_extend_def(genv, arg)
+          end
+        end
+      end
+
+      def undefine0(genv)
+        mod = genv.resolve_cpath(@lenv.cref.cpath)
+        @args.each do |arg|
+          if arg.static_ret
+            mod.remove_extend_def(genv, arg)
+          end
+          arg.undefine(genv)
+        end
+        super(genv)
+      end
+
+      def install0(genv)
+        @args.each {|arg| arg.install(genv) }
+        Source.new
+      end
+    end
+
     class AttrReaderMetaNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)

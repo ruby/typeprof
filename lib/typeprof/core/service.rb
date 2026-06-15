@@ -497,6 +497,11 @@ module TypeProf::Core
                   out << "  " * stack.size + "include #{ inc_mod.show_cpath }"
                 end
               end
+              mod.extended_modules.each do |ext_def, ext_mod|
+                if ext_def.is_a?(AST::ConstantReadNode) && ext_def.lenv.path == path
+                  out << "  " * stack.size + "extend #{ ext_mod.show_cpath }"
+                end
+              end
               # Output method definitions from meta nodes (StructNewNode etc.)
               node.boxes(:mdef) do |mdef|
                 out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show(@options[:output_parameter_names])
