@@ -283,6 +283,8 @@ module TypeProf::Core
           case raw_node.name
           when :include
             return IncludeMetaNode.new(raw_node, lenv)
+          when :extend
+            return ExtendMetaNode.new(raw_node, lenv)
           when :attr_reader
             return AttrReaderMetaNode.new(raw_node, lenv)
           when :attr_writer
@@ -460,6 +462,7 @@ module TypeProf::Core
       when RBS::AST::Members::Prepend
         SigPrependNode.new(raw_decl, lenv)
       when RBS::AST::Members::Extend
+        SigExtendNode.new(raw_decl, lenv)
       when RBS::AST::Members::Public
       when RBS::AST::Members::Private
       when RBS::AST::Members::Alias
