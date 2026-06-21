@@ -456,6 +456,7 @@ module TypeProf::Core
     def dump_declarations(path)
       stack = []
       out = []
+      seen_consts = Set.empty
       @rb_text_nodes[path]&.traverse do |event, node|
         case node
         when AST::ModuleNode
@@ -508,7 +509,14 @@ module TypeProf::Core
         when AST::ConstantWriteNode
           if node.static_cpath
             if event == :enter
-              out << "  " * stack.size + "#{ format_declared_const_path(node.static_cpath, stack) }: #{ node.ret.show }"
+              unless seen_consts.include?(node.static_cpath)
+                seen_consts << node.static_cpath
+                cdef = @genv.resolve_const(node.static_cpath)
+                # Use the assigned value for a single write so a same-named class
+                # or module (e.g. declared in RBS) is not mixed in; union the types otherwise.
+                ret = cdef.defs.size > 1 ? cdef.vtx : node.ret
+                out << "  " * stack.size + "#{ format_declared_const_path(node.static_cpath, stack) }: #{ ret.show }"
+              end
             end
           end
         else

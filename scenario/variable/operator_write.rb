@@ -43,7 +43,6 @@ C::E += 1
 ## assert
 class C
   D: Integer
-  D: Integer
   def get_lv: -> Integer
   def set_iv: -> Integer
   def get_iv: -> Integer
@@ -55,5 +54,4 @@ class C
   def test_attr: -> Integer
   def test_attr=: (Integer) -> Integer
 end
-C::E: Integer
 C::E: Integer
