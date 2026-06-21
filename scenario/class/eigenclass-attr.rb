@@ -29,3 +29,17 @@ class C
   def self.name: -> untyped
   def self.value=: (String) -> String
 end
+
+## update
+class << Time
+  attr_accessor :count
+end
+
+Time.count = 1
+Time.count
+
+## assert
+class Time
+  def self.count: -> Integer
+  def self.count=: (Integer) -> Integer
+end
