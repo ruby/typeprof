@@ -5,4 +5,5 @@ end
 
 ## assert
 class Foo
+  def foo: -> bot
 end
