@@ -1158,7 +1158,10 @@ module TypeProf::Core
           skip = false
 
           if ty.is_a?(Type::Singleton)
-            # TODO: extended modules
+            # Check extended modules (their instance methods are singleton methods here)
+            break if resolve_extended_modules(genv, changes, base_ty_env, ty, mid) do |me, ty, mid|
+              yield me, ty, mid, orig_ty
+            end
           else
             # Finally check included modules
             break if resolve_included_modules(genv, changes, base_ty_env, ty, mid) do |me, ty, mid|
@@ -1253,6 +1256,38 @@ module TypeProf::Core
           yield me, inc_ty, mid
         else
           found ||= resolve_included_modules(genv, changes, base_ty_env, inc_ty, mid, &blk)
+        end
+      end
+      found
+    end
+
+    def resolve_extended_modules(genv, changes, base_ty_env, ty, mid, &blk)
+      found = false
+
+      alias_limit = 0
+      # An extended module's instance methods are resolved as the receiver's
+      # singleton methods, so look them up with singleton = false.
+      ty.mod.extended_modules.each do |ext_decl, ext_mod|
+        if ext_decl.is_a?(AST::SigExtendNode) && ext_mod.type_params
+          ext_ty = genv.get_instance_type(ext_mod, ext_decl.args, changes, base_ty_env, ty)
+        else
+          type_params = ext_mod.type_params.map { Source.new() } # TODO: better support
+          ext_ty = Type::Instance.new(genv, ext_mod, type_params)
+        end
+
+        me = ext_ty.mod.get_method(false, mid)
+        changes.add_depended_method_entity(me) if changes
+        if !me.aliases.empty?
+          mid = me.aliases.values.first
+          alias_limit += 1
+          redo if alias_limit < 5
+        end
+        if me.exist?
+          found = true
+          yield me, ext_ty, mid
+        else
+          # The extended module may itself include other modules.
+          found ||= resolve_included_modules(genv, changes, base_ty_env, ext_ty, mid, &blk)
         end
       end
       found

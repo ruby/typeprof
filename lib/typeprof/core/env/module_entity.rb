@@ -9,6 +9,8 @@ module TypeProf::Core
       @include_defs = Set.empty
       @prepend_decls = []
       @prepend_defs = []
+      @extend_decls = Set.empty
+      @extend_defs = Set.empty
 
       # `class Foo = Bar` / `module Foo = Bar` declarations attached to this entity.
       # Maps an alias decl to the target ModuleEntity at the time of registration.
@@ -23,6 +25,7 @@ module TypeProf::Core
       @self_types = {}
       @included_modules = {}
       @prepended_modules = {}
+      @extended_modules = {}
       @basic_object = @cpath == [:BasicObject]
 
       # child modules (subclasses and all modules that include me)
@@ -57,6 +60,7 @@ module TypeProf::Core
     attr_reader :self_types
     attr_reader :included_modules
     attr_reader :prepended_modules
+    attr_reader :extended_modules
     attr_reader :child_modules
 
     attr_reader :superclass_type_args
@@ -216,6 +220,26 @@ module TypeProf::Core
 
     def remove_include_def(genv, node)
       @include_defs.delete(node) || raise
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def add_extend_decl(genv, node)
+      @extend_decls << node
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def remove_extend_decl(genv, node)
+      @extend_decls.delete(node) || raise
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def add_extend_def(genv, node)
+      @extend_defs << node
+      genv.add_static_eval_queue(:parent_modules_changed, self)
+    end
+
+    def remove_extend_def(genv, node)
+      @extend_defs.delete(node) || raise
       genv.add_static_eval_queue(:parent_modules_changed, self)
     end
 
@@ -396,6 +420,30 @@ module TypeProf::Core
           any_updated = true
         end
       end
+      @extend_decls.each do |edecl|
+        new_parent_cpath = edecl.static_ret.last.cpath
+        new_parent, updated = update_parent(genv, edecl, @extended_modules[edecl], new_parent_cpath)
+        if updated
+          if new_parent
+            @extended_modules[edecl] = new_parent
+          else
+            @extended_modules.delete(edecl) || raise
+          end
+          any_updated = true
+        end
+      end
+      @extend_defs.each do |edef|
+        new_parent_cpath = edef.static_ret ? edef.static_ret.cpath : nil
+        new_parent, updated = update_parent(genv, edef, @extended_modules[edef], new_parent_cpath)
+        if updated
+          if new_parent
+            @extended_modules[edef] = new_parent
+          else
+            @extended_modules.delete(edef) || raise
+          end
+          any_updated = true
+        end
+      end
       @included_modules.delete_if do |origin, old_mod|
         if @include_decls.include?(origin) || @include_defs.include?(origin)
           false
@@ -407,6 +455,15 @@ module TypeProf::Core
       end
       @prepended_modules.delete_if do |origin, old_mod|
         if @prepend_decls.include?(origin) || @prepend_defs.include?(origin)
+          false
+        else
+          _new_parent, updated = update_parent(genv, origin, old_mod, nil)
+          any_updated ||= updated
+          true
+        end
+      end
+      @extended_modules.delete_if do |origin, old_mod|
+        if @extend_decls.include?(origin) || @extend_defs.include?(origin)
           false
         else
           _new_parent, updated = update_parent(genv, origin, old_mod, nil)

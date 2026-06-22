@@ -80,7 +80,7 @@ module TypeProf::Core
         # TODO: prepended modules
         yield mod, singleton
         if singleton
-          # TODO: extended modules
+          each_extended_module(mod, &blk)
         else
           each_included_module(mod, &blk)
         end
@@ -92,6 +92,15 @@ module TypeProf::Core
       mod.included_modules.each do |_inc_decl, inc_mod|
         yield inc_mod, false
         each_included_module(inc_mod, &blk)
+      end
+    end
+
+    def each_extended_module(mod, &blk)
+      # An extended module contributes its instance methods (singleton = false)
+      # as the receiver's singleton methods.
+      mod.extended_modules.each do |_ext_decl, ext_mod|
+        yield ext_mod, false
+        each_included_module(ext_mod, &blk)
       end
     end
 
