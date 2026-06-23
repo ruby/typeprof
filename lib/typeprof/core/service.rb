@@ -7,21 +7,20 @@ module TypeProf::Core
       @rbs_text_nodes = {}
 
       @genv = GlobalEnv.new
-      @genv.load_core_rbs(load_rbs_declarations(@options[:rbs_collection]).declarations, @options[:position_encoding])
+      @genv.load_core_rbs(load_rbs_declarations.declarations, @options[:position_encoding])
 
       Builtin.new(genv).deploy
+
+      @constant_catalog = options[:constant_catalog]
+
+      @rbs_loader = RBS::EnvironmentLoader.new(core_root: nil)
+      @rbs_loader.repository.add(@options[:rbs_collection].fullpath) if @options[:rbs_collection]
     end
 
-    def load_rbs_declarations(rbs_collection)
-      if rbs_collection
-        loader = RBS::EnvironmentLoader.new
-        loader.add_collection(rbs_collection)
-        RBS::Environment.from_loader(loader)
-      else
-        return $raw_rbs_env if defined?($raw_rbs_env)
-        loader = RBS::EnvironmentLoader.new
-        $raw_rbs_env = RBS::Environment.from_loader(loader)
-      end
+    def load_rbs_declarations
+      return $raw_rbs_env if defined?($raw_rbs_env)
+      loader = RBS::EnvironmentLoader.new
+      $raw_rbs_env = RBS::Environment.from_loader(loader)
     end
 
     attr_reader :genv
@@ -58,6 +57,7 @@ module TypeProf::Core
       prev_node = @rb_text_nodes[path]
 
       code = File.read(path) unless code
+      load_libraries_for_requires(code)
       node = AST.parse_rb(path, code, @options[:position_encoding])
       return false unless node
 
@@ -112,6 +112,33 @@ module TypeProf::Core
       end
 
       return true
+    end
+
+    def load_libraries_for_requires(code)
+      code.each_line do |line|
+        if md = line.match(/\A\s*require\s*\(?\s*['"]([^'"]+)['"]/)
+          load_library_for_require(md[1])
+        end
+      end
+    end
+
+    def load_library_for_require(require_name)
+      lib_name = require_name.tr("/", "-")
+      return if @rbs_loader.libs.any? { |l| l.name == lib_name }
+
+      prev_libs = @rbs_loader.libs.dup
+      begin
+        @rbs_loader.add(library: lib_name, version: nil)
+        new_libs = @rbs_loader.libs - prev_libs
+        @rbs_loader.each_signature do |source, path, _buffer, _decls, _dirs|
+          next unless source.is_a?(RBS::EnvironmentLoader::Library)
+          next unless new_libs.include?(source)
+          next if @rbs_text_nodes.key?(path.to_s)
+          update_rbs_file(path.to_s, path.read)
+        end
+      rescue RBS::EnvironmentLoader::UnknownLibraryError, RuntimeError, Gem::LoadError, LoadError
+        @rbs_loader.libs.replace(prev_libs)
+      end
     end
 
     def update_rbs_file(path, code)
@@ -383,6 +410,76 @@ module TypeProf::Core
             end
           end
         end
+      end
+    end
+
+    def each_const_completion(path, pos, &blk)
+      const_node = find_constant_at(path, pos) || (pos.column > 0 ? find_constant_at(path, pos.left) : nil)
+      return unless const_node
+
+      prefix = const_node.cname.to_s
+      seen = ::Set.new
+
+      if const_node.cbase
+        parent_cpath = static_cpath_of(const_node.cbase)
+        return unless parent_cpath
+        mod = @genv.resolve_cpath(parent_cpath)
+        if mod && mod.exist?
+          mod.consts.each do |cname, cdef|
+            next unless cdef.exist?
+            next unless cname.to_s.start_with?(prefix)
+            yield cname.to_s, nil if seen.add?(cname)
+          end
+        end
+        @constant_catalog&.each_match(parent_cpath, prefix) do |cname, require_name|
+          yield cname.to_s, require_name if seen.add?(cname)
+        end
+      else
+        each_visible_const_with_prefix(const_node, prefix) do |cname|
+          yield cname.to_s, nil if seen.add?(cname)
+        end
+        @constant_catalog&.each_match([], prefix) do |cname, require_name|
+          yield cname.to_s, require_name if seen.add?(cname)
+        end
+      end
+    end
+
+    def find_constant_at(path, pos)
+      result = nil
+      @rb_text_nodes[path]&.retrieve_at(pos) do |node|
+        next if result
+        next unless node.is_a?(AST::ConstantReadNode)
+        cr = node.cname_code_range
+        result = node if cr.first <= pos && pos <= cr.last
+      end
+      result
+    end
+
+    def static_cpath_of(node)
+      parts = []
+      current = node
+      while current.is_a?(AST::ConstantReadNode)
+        parts.unshift(current.cname)
+        current = current.cbase
+      end
+      current.nil? ? parts : nil
+    end
+
+    def each_visible_const_with_prefix(const_node, prefix)
+      cref = const_node.lenv.cref
+      search_ancestors = !const_node.strict_const_scope
+      while cref
+        mod = @genv.resolve_cpath(cref.cpath)
+        @genv.each_superclass(mod, false) do |m, _singleton|
+          break if m == @genv.mod_object && cref.outer
+          m.consts.each do |cname, cdef|
+            next unless cdef.exist?
+            yield cname if cname.to_s.start_with?(prefix)
+          end
+          break unless search_ancestors
+        end
+        search_ancestors = false
+        cref = cref.outer
       end
     end
 
