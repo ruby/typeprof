@@ -1,0 +1,70 @@
+name: Benchmark
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+# Run sequentially: each benchmark fetches the parent commit's data.json
+# from the previous deploy, so we must not race a still-deploying run.
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - id: pages
+        uses: actions/configure-pages@v6
+
+      # Try parent commit's snapshot first (history continuity), then the
+      # latest data.json (fallback for forks / first push), otherwise keep
+      # the committed template ({"entries": []}). curl -fsSL leaves the
+      # existing file untouched on HTTP errors.
+      - name: Fetch parent's data (with fallback to latest data.json)
+        run: |
+          curl -fsSL "${{ steps.pages.outputs.base_url }}/${{ github.event.before }}.json" \
+            -o tool/site/data.json || \
+          curl -fsSL "${{ steps.pages.outputs.base_url }}/data.json" \
+            -o tool/site/data.json || true
+
+      - name: Run benchmarks
+        run: |
+          bundle exec ruby tool/benchmarks/typeprof.rb
+          bundle exec ruby tool/benchmarks/optcarrot.rb
+          bundle exec ruby tool/benchmarks/redmine.rb
+
+      - name: Update site data
+        run: |
+          ruby tool/update_site_data.rb tool/site/data.json \
+            tmp/typeprof_result.json \
+            tmp/optcarrot_result.json \
+            tmp/redmine_result.json
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: tool/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-slim
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

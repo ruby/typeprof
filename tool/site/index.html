@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>TypeProf Benchmarks</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+    header { margin-bottom: 16px; font-size: 0.9em; color: #555; }
+    header a { color: #36a2eb; text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    .project { margin-bottom: 40px; }
+    canvas { max-height: 300px; }
+  </style>
+</head>
+<body>
+<h1>TypeProf Benchmarks</h1>
+<header>
+  <strong>Last Update:</strong> <span id="last-update">-</span>
+  &nbsp;|&nbsp;
+  <strong>Repository:</strong> <a id="repo-link" rel="noopener">-</a>
+</header>
+<div id="charts"></div>
+<script>
+fetch('data.json').then(r => r.json()).then(data => {
+  const entries = data.entries;
+  const last = entries.at(-1)?.timestamp;
+  document.getElementById('last-update').textContent = last ? new Date(last).toLocaleString() : '-';
+  const link = document.getElementById('repo-link');
+  link.href = `https://github.com/${data.repo}`;
+  link.textContent = data.repo;
+
+  const labels = entries.map(e => e.sha.slice(0, 7));
+  const projects = [...new Set(entries.flatMap(e => e.projects.map(p => p.name)))];
+  const container = document.getElementById('charts');
+
+  const tooltipCallbacks = {
+    afterTitle: (items) => {
+      const e = entries[items[0].dataIndex];
+      return `${e.sha}\n${new Date(e.timestamp).toLocaleString()}`;
+    }
+  };
+  const onClick = (_event, elements) => {
+    if (!elements.length) return;
+    const e = entries[elements[0].index];
+    window.open(`https://github.com/${data.repo}/commit/${e.sha}`, '_blank');
+  };
+
+  const charts = [
+    {
+      id: 'elapsed',
+      title: 'elapsed (s)',
+      datasets: [{ key: 'elapsed', label: 'elapsed (s)', color: '#36a2eb' }],
+    },
+    {
+      id: 'type-coverage',
+      title: 'type coverage (%)',
+      yMax: 100,
+      // coverage_per_slot:   % of type slots (per argument/return) inferred
+      // coverage_per_method: % of methods whose all slots are inferred (fully typed)
+      datasets: [
+        { key: 'coverage_per_slot',   label: 'per slot',   color: '#4bc0c0' },
+        { key: 'coverage_per_method', label: 'per method', color: '#9966ff' },
+      ],
+    },
+  ];
+
+  for (const project of projects) {
+    const section = document.createElement('section');
+    section.className = 'project';
+    section.innerHTML = `<h2>${project}</h2>` +
+      charts.map(c => `<canvas id="${c.id}-${project}"></canvas>`).join('');
+    container.appendChild(section);
+
+    const projData = entries.map(e => e.projects.find(p => p.name === project));
+
+    for (const c of charts) {
+      const datasets = c.datasets.map(d => ({
+        label: d.label,
+        data: projData.map(p => p?.[d.key] ?? null),
+        borderColor: d.color,
+      }));
+      new Chart(document.getElementById(`${c.id}-${project}`), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          scales: { y: { beginAtZero: true, max: c.yMax } },
+          plugins: {
+            title: { display: true, text: c.title },
+            tooltip: { callbacks: tooltipCallbacks },
+          },
+          onClick,
+        },
+      });
+    }
+  }
+});
+</script>
+</body>
+</html>
