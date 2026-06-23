@@ -48,8 +48,31 @@ module TypeProf::Core
         @positionals + [@keywords],
         @splat_flags + [false],
         nil,
-        @block
+        @block,
       )
+    end
+
+    def prepend_positionals(positionals, splat_flags)
+      return self if positionals.empty?
+
+      ActualArguments.new(positionals + @positionals, splat_flags + @splat_flags, @keywords, @block)
+    end
+
+    def with_keywords(keywords)
+      ActualArguments.new(@positionals, @splat_flags, keywords, @block)
+    end
+
+    def with_block(block, omittable: false)
+      ActualArguments.new(@positionals, @splat_flags, @keywords, block)
+    end
+
+    def add_box_edges(genv, box)
+      @keywords.add_edge(genv, box) if @keywords
+      @block.add_edge(genv, box) if @block
+    end
+
+    def normalize_for_method_call(_genv)
+      self
     end
 
     def get_rest_args(genv, changes, start_rest, end_rest)
@@ -95,45 +118,175 @@ module TypeProf::Core
     end
   end
 
+  class ForwardingActualArguments < ActualArguments
+    def initialize(positionals, splat_flags, keywords, block, positionals_omittable, keywords_omittable, block_omittable, activation, activation_required)
+      super(positionals, splat_flags, keywords, block)
+      @positionals_omittable = positionals_omittable
+      @keywords_omittable = keywords_omittable
+      @block_omittable = block_omittable
+      @activation = activation
+      @activation_required = activation_required
+    end
+
+    attr_reader :positionals_omittable, :keywords_omittable, :block_omittable
+
+    def new_vertexes(genv, node)
+      positionals = @positionals.map {|arg| arg.new_vertex(genv, node) }
+      splat_flags = @splat_flags
+      keywords = @keywords ? @keywords.new_vertex(genv, node) : nil
+      block = @block ? @block.new_vertex(genv, node) : nil
+      activation = @activation.new_vertex(genv, node)
+      ForwardingActualArguments.new(positionals, splat_flags, keywords, block, @positionals_omittable, @keywords_omittable, @block_omittable, activation, @activation_required)
+    end
+
+    def with_keywords_as_last_positional_hash
+      return self unless @keywords
+
+      ForwardingActualArguments.new(
+        @positionals + [@keywords],
+        @splat_flags + [false],
+        nil,
+        @block,
+        @positionals_omittable + [false],
+        false,
+        @block_omittable,
+        @activation,
+        @activation_required,
+      )
+    end
+
+    def prepend_positionals(positionals, splat_flags)
+      return self if positionals.empty?
+
+      ForwardingActualArguments.new(
+        positionals + @positionals,
+        splat_flags + @splat_flags,
+        @keywords,
+        @block,
+        ::Array.new(positionals.size, false) + @positionals_omittable,
+        @keywords_omittable,
+        @block_omittable,
+        @activation,
+        @activation_required,
+      )
+    end
+
+    def with_keywords(keywords, keywords_omittable: false)
+      ForwardingActualArguments.new(
+        @positionals,
+        @splat_flags,
+        keywords,
+        @block,
+        @positionals_omittable,
+        keywords_omittable,
+        @block_omittable,
+        @activation,
+        @activation_required,
+      )
+    end
+
+    def with_block(block, omittable: false)
+      ForwardingActualArguments.new(
+        @positionals,
+        @splat_flags,
+        @keywords,
+        block,
+        @positionals_omittable,
+        @keywords_omittable,
+        omittable,
+        @activation,
+        @activation_required,
+      )
+    end
+
+    def add_box_edges(genv, box)
+      @activation.add_edge(genv, box)
+      super
+    end
+
+    def normalize_for_method_call(genv)
+      if @activation.types.empty?
+        return nil if @activation_required
+        return self
+      end
+
+      positionals = []
+      splat_flags = []
+
+      @positionals.each_with_index do |arg, i|
+        unless @positionals_omittable[i] && @splat_flags[i] && empty_omittable_splat_argument?(genv, arg)
+          positionals << arg
+          splat_flags << @splat_flags[i]
+        end
+      end
+
+      keywords = @keywords
+      keywords = nil if @keywords_omittable && keywords && keywords.types.empty?
+
+      block = @block
+      block = nil if @block_omittable && block && block.types.empty?
+
+      ActualArguments.new(positionals, splat_flags, keywords, block)
+    end
+
+    private
+
+    def empty_omittable_splat_argument?(genv, arg)
+      empty = true
+      arg.each_type do |ty|
+        ty = ty.base_type(genv)
+        unless ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0] && ty.args[0].types.empty?
+          empty = false
+          break
+        end
+      end
+      empty
+    end
+  end
+
   class ForwardingArguments
-    def initialize(req_positionals, opt_positionals, opt_positional_elems, rest_positionals, post_positionals, req_keyword_pairs, opt_keyword_pairs, rest_keywords, block)
+    def initialize(req_positionals, opt_positionals, rest_positionals, post_positionals, req_keyword_pairs, opt_keyword_pairs, rest_keywords, block, activation)
       @req_positionals = req_positionals
       @opt_positionals = opt_positionals
-      @opt_positional_elems = opt_positional_elems
       @rest_positionals = rest_positionals
       @post_positionals = post_positionals
       @req_keyword_pairs = req_keyword_pairs
       @opt_keyword_pairs = opt_keyword_pairs
       @rest_keywords = rest_keywords
       @block = block
+      @activation = activation
     end
 
-    attr_reader :block
-
-    def to_actual_arguments(genv, changes, node)
-      positionals = @req_positionals.dup
+    def to_actual_arguments(genv, changes, node, include_leading_positionals: true, activation_required: false)
+      positionals = include_leading_positionals ? @req_positionals.dup : []
       splat_flags = ::Array.new(positionals.size, false)
+      positionals_omittable = ::Array.new(positionals.size, false)
 
-      @opt_positionals.each do |arg|
-        positionals << arg
+      @opt_positionals.each do |elem_vtx|
+        positionals << Source.new(genv.gen_ary_type(elem_vtx))
         splat_flags << true
+        positionals_omittable << true
       end
 
       if @rest_positionals
-        positionals << @rest_positionals
+        positionals << Source.new(genv.gen_ary_type(@rest_positionals))
         splat_flags << true
+        positionals_omittable << true
       end
 
       @post_positionals.each do |arg|
         positionals << arg
         splat_flags << false
+        positionals_omittable << false
       end
 
-      keywords = build_keyword_args(genv, changes, node)
-      ActualArguments.new(positionals, splat_flags, keywords, @block)
+      keywords, keywords_omittable = build_keyword_args(genv, changes, node)
+      ForwardingActualArguments.new(positionals, splat_flags, keywords, @block, positionals_omittable, keywords_omittable, true, @activation, activation_required)
     end
 
     def accept_actual_arguments(genv, changes, a_args)
+      changes.add_edge(genv, Source.new(genv.true_type), @activation)
+
       if a_args.splat_flags.any?
         start_rest = [a_args.splat_flags.index(true), @req_positionals.size + @opt_positionals.size].min
         end_rest = [a_args.splat_flags.rindex(true) + 1, a_args.positionals.size - @post_positionals.size].max
@@ -149,7 +302,7 @@ module TypeProf::Core
           end
         end
 
-        @opt_positional_elems.each_with_index do |elem_vtx, i|
+        @opt_positionals.each_with_index do |elem_vtx, i|
           i += @req_positionals.size
           if i < start_rest
             changes.add_edge(genv, a_args.positionals[i], elem_vtx)
@@ -171,6 +324,12 @@ module TypeProf::Core
           end
         end
 
+        if @rest_positionals
+          rest_vtxs.each do |vtx|
+            changes.add_edge(genv, vtx, @rest_positionals)
+          end
+        end
+
       else
         @req_positionals.each_with_index do |f_vtx, i|
           changes.add_edge(genv, a_args.positionals[i], f_vtx)
@@ -184,10 +343,16 @@ module TypeProf::Core
         start_rest = @req_positionals.size
         end_rest = a_args.positionals.size - @post_positionals.size
         i = 0
-        while i < @opt_positional_elems.size && start_rest < end_rest
-          changes.add_edge(genv, a_args.positionals[start_rest], @opt_positional_elems[i])
+        while i < @opt_positionals.size && start_rest < end_rest
+          changes.add_edge(genv, a_args.positionals[start_rest], @opt_positionals[i])
           i += 1
           start_rest += 1
+        end
+
+        if @rest_positionals
+          start_rest.upto(end_rest - 1) do |i|
+            changes.add_edge(genv, a_args.positionals[i], @rest_positionals)
+          end
         end
       end
 
@@ -222,8 +387,11 @@ module TypeProf::Core
     private
 
     def build_keyword_args(genv, changes, node)
-      return nil if @req_keyword_pairs.empty? && @opt_keyword_pairs.empty? && !@rest_keywords
-      return @rest_keywords if @req_keyword_pairs.empty? && @opt_keyword_pairs.empty?
+      opt_keyword_pairs = @opt_keyword_pairs.reject {|_name, vtx| vtx.types.empty? }
+
+      if @req_keyword_pairs.empty? && opt_keyword_pairs.empty?
+        return @rest_keywords, !!@rest_keywords
+      end
 
       unified_key = Vertex.new(node)
       unified_val = Vertex.new(node)
@@ -235,18 +403,19 @@ module TypeProf::Core
         literal_pairs[name] = vtx
       end
 
-      @opt_keyword_pairs.each do |name, vtx|
+      opt_keyword_pairs.each do |name, vtx|
         changes.add_edge(genv, Source.new(Type::Symbol.new(genv, name)), unified_key)
         changes.add_edge(genv, vtx, unified_val)
+        literal_pairs[name] = vtx
       end
 
       base_hash_type = genv.gen_hash_type(unified_key, unified_val)
       changes.add_hash_splat_box(genv, @rest_keywords, unified_key, unified_val) if @rest_keywords
 
       if literal_pairs.empty?
-        Source.new(base_hash_type)
+        [Source.new(base_hash_type), false]
       else
-        Source.new(Type::Record.new(genv, literal_pairs, base_hash_type))
+        [Source.new(Type::Record.new(genv, literal_pairs, base_hash_type)), false]
       end
     end
   end
