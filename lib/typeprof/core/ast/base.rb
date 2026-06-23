@@ -118,6 +118,19 @@ module TypeProf::Core
         raise "should override"
       end
 
+      # Counterpart of install/install0 for pattern position; reuses the install
+      # machinery so @changes is reconciled the same way during incremental analysis.
+      def install_pattern(genv, subject)
+        @ret = install_pattern0(genv, subject)
+        @changes.reinstall(genv)
+        @ret
+      end
+
+      # By default a pattern behaves as a plain expression, ignoring the matched value.
+      def install_pattern0(genv, subject)
+        install0(genv)
+      end
+
       def uninstall(genv)
         @changes.reinstall(genv)
         each_subnode do |subnode|

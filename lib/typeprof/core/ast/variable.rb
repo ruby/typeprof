@@ -63,6 +63,12 @@ module TypeProf::Core
         val
       end
 
+      def install_pattern0(genv, subject)
+        install0(genv)
+        @changes.add_edge(genv, subject, @rhs.ret)
+        subject
+      end
+
       def retrieve_at(pos, &blk)
         yield self if @var_code_range && @var_code_range.include?(pos)
         super(pos, &blk)

@@ -22,14 +22,19 @@ module TypeProf::Core
       def attrs = { rest: }
       def subnodes = { requireds:, rest_pattern:, posts: }
 
-      def install0(genv)
-        @requireds.each do |pat|
-          pat.install(genv)
+      def install_pattern0(genv, subject)
+        @requireds.each_with_index do |pat, i|
+          pat.install_pattern(genv, @changes.add_splat_box(genv, subject, i).ret)
         end
-        @rest_pattern.install(genv) if @rest_pattern
+        if @rest_pattern
+          elem = @changes.add_splat_box(genv, subject).ret
+          @rest_pattern.install_pattern(genv, Source.new(genv.gen_ary_type(elem)))
+        end
         @posts.each do |pat|
-          pat.install(genv)
+          # TODO: precise indices for post elements (those after `*rest`)
+          pat.install_pattern(genv, @changes.add_splat_box(genv, subject).ret)
         end
+        subject
       end
     end
 
@@ -47,11 +52,13 @@ module TypeProf::Core
       def attrs = { keys:, rest: }
       def subnodes = { values:, rest_pattern: }
 
-      def install0(genv)
+      def install_pattern0(genv, subject)
+        # TODO: extract each key's value type from `subject` (captures stay untyped for now)
         @values.each do |pat|
-          pat.install(genv)
+          pat.install_pattern(genv, Vertex.new(self))
         end
-        @rest_pattern.install(genv) if @rest_pattern
+        @rest_pattern.install_pattern(genv, Vertex.new(self)) if @rest_pattern
+        subject
       end
     end
 
@@ -67,12 +74,15 @@ module TypeProf::Core
 
       def subnodes = { left:, requireds:, right: }
 
-      def install0(genv)
-        @left.install(genv) if @left
+      def install_pattern0(genv, subject)
+        elem = @changes.add_splat_box(genv, subject).ret
+        rest_ary = Source.new(genv.gen_ary_type(elem))
+        @left.install_pattern(genv, rest_ary) if @left
         @requireds.each do |pat|
-          pat.install(genv)
+          pat.install_pattern(genv, elem)
         end
-        @right.install(genv) if @right
+        @right.install_pattern(genv, rest_ary) if @right
+        subject
       end
     end
 
@@ -87,9 +97,10 @@ module TypeProf::Core
 
       def subnodes = { left:, right: }
 
-      def install0(genv)
-        @left.install(genv)
-        @right.install(genv)
+      def install_pattern0(genv, subject)
+        @left.install_pattern(genv, subject)
+        @right.install_pattern(genv, subject)
+        subject
       end
     end
 
@@ -104,9 +115,18 @@ module TypeProf::Core
 
       def subnodes = { value:, target: }
 
-      def install0(genv)
-        @value.install(genv)
-        @target.install(genv)
+      def install_pattern0(genv, subject)
+        @value.install_pattern(genv, subject)
+        # For `Const => var`, narrow the capture by the class, as `when Const` does
+        narrowed =
+          if @value.is_a?(ConstantReadNode) && @value.static_ret
+            filtered = subject.new_vertex(genv, self)
+            IsAFilter.new(genv, self, filtered, false, @value.static_ret).next_vtx
+          else
+            subject
+          end
+        @target.install_pattern(genv, narrowed)
+        subject
       end
     end
 
@@ -124,9 +144,10 @@ module TypeProf::Core
 
       def subnodes = { cond:, body: }
 
-      def install0(genv)
+      def install_pattern0(genv, subject)
         @cond.install(genv)
-        @body.install(genv)
+        @body.install_pattern(genv, subject)
+        subject
       end
     end
 
