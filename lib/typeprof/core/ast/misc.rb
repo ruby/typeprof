@@ -343,8 +343,7 @@ module TypeProf::Core
       def subnodes = { value:, pat: }
 
       def install0(genv)
-        @value.install(genv)
-        @pat.install(genv)
+        @pat.install_pattern(genv, @value.install(genv))
         Source.new(genv.nil_type)
       end
     end
@@ -361,8 +360,7 @@ module TypeProf::Core
       def subnodes = { value:, pat: }
 
       def install0(genv)
-        @value.install(genv)
-        @pat.install(genv)
+        @pat.install_pattern(genv, @value.install(genv))
         Source.new(genv.true_type, genv.false_type)
       end
     end

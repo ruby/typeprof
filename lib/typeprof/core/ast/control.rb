@@ -414,9 +414,9 @@ module TypeProf::Core
 
       def install0(genv)
         ret = Vertex.new(self)
-        @pivot&.install(genv)
+        subject = @pivot ? @pivot.install(genv) : Source.new(genv.nil_type)
         @patterns.zip(@clauses) do |pattern, clause|
-          pattern.install(genv)
+          pattern.install_pattern(genv, subject)
           @changes.add_edge(genv, clause.install(genv), ret)
         end
         @changes.add_edge(genv, @else_clause.install(genv), ret) if @else_clause
