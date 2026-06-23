@@ -2,7 +2,7 @@
 def check(x)
   case x
   in y
-    y # TODO!
+    y
   end
 end
 
@@ -11,14 +11,14 @@ check("foo")
 
 ## assert
 class Object
-  def check: (Integer | String) -> untyped
+  def check: (Integer | String) -> (Integer | String)
 end
 
 ## update: test.rb
 def check(x)
   case x
   in a, b, c, *rest
-    [a, b, c, rest] # TODO!
+    [a, b, c, rest] # TODO: a, b, c stay untyped because x is not an array
   end
 end
 
@@ -27,7 +27,7 @@ check("foo")
 
 ## assert
 class Object
-  def check: (Integer | String) -> [untyped, untyped, untyped, untyped]
+  def check: (Integer | String) -> [untyped, untyped, untyped, Array[untyped]]
 end
 
 
