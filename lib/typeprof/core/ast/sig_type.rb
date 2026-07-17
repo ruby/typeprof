@@ -23,6 +23,9 @@ module TypeProf::Core
           if f_mod.module?
             return true if typecheck_for_prepended_modules(genv, changes, ty, f_mod, f_args, subst)
             return true if typecheck_for_included_modules(genv, changes, ty, f_mod, f_args, subst)
+            if ty.is_a?(Type::Singleton)
+              return true if typecheck_for_extended_modules(genv, changes, ty, f_mod, f_args, subst)
+            end
           end
 
           ty = genv.get_superclass_type(ty, changes, {})
@@ -77,6 +80,32 @@ module TypeProf::Core
         changes.add_depended_superclass(inc_ty.mod)
 
         return true if typecheck_for_included_modules(genv, changes, inc_ty, f_mod, f_args, subst)
+      end
+      return false
+    end
+
+    def self.typecheck_for_extended_modules(genv, changes, a_ty, f_mod, f_args, subst)
+      a_ty.mod.extended_modules.each do |ext_decl, ext_mod|
+        if ext_decl.is_a?(AST::SigExtendNode) && ext_mod.type_params
+          ext_ty = genv.get_instance_type(ext_mod, ext_decl.args, changes, {}, a_ty)
+        else
+          type_params = ext_mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
+          ext_ty = Type::Instance.new(genv, ext_mod, type_params)
+        end
+        if ext_ty.mod == f_mod
+          args_all_match = true
+          f_args.zip(ext_ty.args) do |f_arg_node, a_arg_vtx|
+            unless f_arg_node.typecheck(genv, changes, a_arg_vtx, subst)
+              args_all_match = false
+              break
+            end
+          end
+          return true if args_all_match
+        end
+        changes.add_depended_superclass(ext_ty.mod)
+
+        # The extended module may itself include other modules
+        return true if typecheck_for_included_modules(genv, changes, ext_ty, f_mod, f_args, subst)
       end
       return false
     end
