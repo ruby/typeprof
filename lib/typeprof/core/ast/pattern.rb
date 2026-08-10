@@ -58,9 +58,9 @@ module TypeProf::Core
     class FindPatternNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @left = raw_node.left ? AST.create_pattern_node(raw_node.left.expression, lenv) : nil
+        @left = raw_node.left.expression ? AST.create_pattern_node(raw_node.left.expression, lenv) : nil
         @requireds = raw_node.requireds.map {|raw_elem| AST.create_pattern_node(raw_elem, lenv) }
-        @right = raw_node.right ? AST.create_pattern_node(raw_node.right.expression, lenv) : nil
+        @right = raw_node.right.expression ? AST.create_pattern_node(raw_node.right.expression, lenv) : nil
       end
 
       attr_reader :left, :requireds, :right
