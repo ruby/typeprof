@@ -12,6 +12,8 @@ def check(x)
     :baz
   in MyHash[a: Integer]
     :qux
+  in { **nil }
+    :no_kw
   else
     :zzz
   end
@@ -23,5 +25,5 @@ check({ a: 42 })
 class MyHash
 end
 class Object
-  def check: ({ a: Integer }) -> (:bar | :baz | :foo | :qux | :zzz)
+  def check: ({ a: Integer }) -> (:bar | :baz | :foo | :no_kw | :qux | :zzz)
 end

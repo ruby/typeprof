@@ -39,7 +39,14 @@ module TypeProf::Core
         @keys = raw_node.elements.map {|raw_assoc| raw_assoc.key.value.to_sym }
         @values = raw_node.elements.map {|raw_assoc| AST.create_pattern_node(raw_assoc.value, lenv) }
         @rest = !!raw_node.rest
-        @rest_pattern = raw_node.rest && raw_node.rest.value ? AST.create_pattern_node(raw_node.rest.value, lenv) : nil
+        @rest_pattern = case raw_node.rest
+                        when Prism::AssocSplatNode
+                          AST.create_pattern_node(raw_node.rest.value, lenv) if raw_node.rest.value
+                        when Prism::NoKeywordsParameterNode, nil
+                          nil
+                        else
+                          raise
+                        end
       end
 
       attr_reader :keys, :values, :rest, :rest_pattern
@@ -58,9 +65,9 @@ module TypeProf::Core
     class FindPatternNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        @left = raw_node.left ? AST.create_pattern_node(raw_node.left.expression, lenv) : nil
+        @left = raw_node.left.expression ? AST.create_pattern_node(raw_node.left.expression, lenv) : nil
         @requireds = raw_node.requireds.map {|raw_elem| AST.create_pattern_node(raw_elem, lenv) }
-        @right = raw_node.right ? AST.create_pattern_node(raw_node.right.expression, lenv) : nil
+        @right = raw_node.right.expression ? AST.create_pattern_node(raw_node.right.expression, lenv) : nil
       end
 
       attr_reader :left, :requireds, :right
