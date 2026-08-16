@@ -499,6 +499,7 @@ module TypeProf::Core
               end
               # Output method definitions from meta nodes (StructNewNode etc.)
               node.boxes(:mdef) do |mdef|
+                next if node.is_a?(AST::StructNewNode) && node.block_defines_method?(mdef.singleton, mdef.mid)
                 out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show(@options[:output_parameter_names])
               end
             else

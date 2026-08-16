@@ -69,3 +69,25 @@ class Baz
   def set_label: -> String
   def ivar: -> String
 end
+
+## update
+# https://github.com/ruby/typeprof/issues/458
+# A user-defined initialize in the block overrides the auto-generated one,
+# so the RBS output must contain only the user-defined signature.
+Pt = Struct.new(:x, :y) do
+  def initialize(x = 0, y = 0)
+    super
+  end
+end
+Pt.new
+Pt.new(3, 4)
+
+## assert
+class Pt
+  def x: -> Integer
+  def x=: (untyped) -> untyped
+  def y: -> Integer
+  def y=: (untyped) -> untyped
+  def self.[]: (Integer, Integer) -> Pt
+  def initialize: (?Integer, ?Integer) -> void
+end
