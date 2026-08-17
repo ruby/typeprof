@@ -256,9 +256,19 @@ module TypeProf::Core
         vtx = @expr.install(genv)
 
         a_args = ActualArguments.new([], [], nil, nil)
-        to_a_vtx = @changes.add_method_call_box(genv, vtx, :to_a, a_args, false, suppress_errors: true).ret
+        # Keep missing `to_a` receivers separate so Union members can fall back independently.
+        to_a_fallback = Vertex.new(self)
+        to_a_box = @changes.add_method_call_box(
+          genv,
+          vtx,
+          :to_a,
+          a_args,
+          false,
+          suppress_errors: true,
+          fallback: to_a_fallback,
+        )
 
-        @changes.add_splat_box(genv, to_a_vtx, nil, vtx).ret
+        @changes.add_splat_box(genv, to_a_box.ret, nil, to_a_fallback).ret
       end
     end
 

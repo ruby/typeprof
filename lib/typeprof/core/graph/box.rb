@@ -629,13 +629,13 @@ module TypeProf::Core
   end
 
   class SplatBox < Box
-    def initialize(node, genv, ary, idx, orig = nil)
+    def initialize(node, genv, ary, idx, fallback = nil)
       super(node)
       @ary = ary
       @idx = idx
-      @orig = orig
+      @fallback = fallback
       @ary.add_edge(genv, self)
-      @orig.add_edge(genv, self) if @orig
+      @fallback.add_edge(genv, self) if @fallback
       @ret = Vertex.new(node)
     end
 
@@ -661,8 +661,8 @@ module TypeProf::Core
         end
       end
       # For types where to_a is not defined, [*x] wraps x as [x]
-      if @orig && @ary.types.empty?
-        @orig.each_type do |ty|
+      if @fallback
+        @fallback.each_type do |ty|
           changes.add_edge(genv, Source.new(ty), @ret)
         end
       end
@@ -1033,7 +1033,7 @@ module TypeProf::Core
   end
 
   class MethodCallBox < Box
-    def initialize(node, genv, recv, mid, a_args, subclasses, suppress_errors: false)
+    def initialize(node, genv, recv, mid, a_args, subclasses, suppress_errors: false, fallback: nil)
       raise mid.to_s unless mid
       super(node)
       @recv = recv.new_vertex(genv, node)
@@ -1045,6 +1045,7 @@ module TypeProf::Core
       @ret = Vertex.new(node)
       @subclasses = subclasses
       @suppress_errors = suppress_errors
+      @fallback = fallback
       @generics = {}
     end
 
@@ -1059,6 +1060,9 @@ module TypeProf::Core
           box = add_symbol_proc_call_box(changes, genv, orig_ty.sym, @a_args.positionals, @a_args.keywords)
           changes.add_edge(genv, box.ret, @ret) if box
         elsif !me
+          if @fallback
+            changes.add_edge(genv, Source.new(orig_ty), @fallback)
+          end
           unless @suppress_errors
             if error_count < 3
               meth = @node.mid_code_range ? :mid_code_range : :code_range
