@@ -465,7 +465,13 @@ module TypeProf::Core
           decl = tae.decls.each {|decl| break decl }
           subst0 = subst.dup
           decl.params.zip(@args) do |param, arg|
-            subst0[param] = arg.covariant_vertex(genv, changes, subst0)
+            if arg.is_a?(SigTyVarNode) && subst[arg.var]
+              # Share the vertex so that the types inferred in the alias body flow
+              # back into the variable, which makes `U` of `(array[U])` inferrable
+              subst0[param] = subst[arg.var]
+            else
+              subst0[param] = arg.covariant_vertex(genv, changes, subst0)
+            end
           end
           tae.type.typecheck(genv, changes, vtx, subst0)
         end
