@@ -106,6 +106,9 @@ module TypeProf::Core
           else
             return nil
           end
+        elsif mod == @mod_object
+          # Unresolved while loading the core RBS; the Module fallback below would cycle
+          return [singleton, @mod_basic_object]
         elsif mod == @mod_module && !singleton
           return nil
         else
