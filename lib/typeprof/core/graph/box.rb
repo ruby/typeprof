@@ -146,6 +146,12 @@ module TypeProf::Core
       }
     end
 
+    # lazy cache: overloads split into fixed-arity ones and rest-positional ones
+    def partition_by_rest_positionals
+      @partition_by_rest_positionals ||=
+        @method_types.partition {|method_type| !method_type.rest_positionals }
+    end
+
     private
 
     # Check if two method types have structurally identical positional
@@ -480,11 +486,19 @@ module TypeProf::Core
         return
       end
 
+      # A splatted call can match only a rest-positional overload; otherwise prefer
+      # the fixed-arity ones, as a rest-positional one is usually a catch-all
+      overload_groups =
+        a_args.splat_flags.any? ? [@method_types] : @method_types.partition_by_rest_positionals
+
       match_any_overload = false
-      @method_types.each do |method_type|
-        if resolve_overload(changes, genv, method_type, node, param_map, a_args, ret, false, &blk)
-          match_any_overload = true
+      overload_groups.each do |method_types|
+        method_types.each do |method_type|
+          if resolve_overload(changes, genv, method_type, node, param_map, a_args, ret, false, &blk)
+            match_any_overload = true
+          end
         end
+        break if match_any_overload
       end
       unless match_any_overload
         meth = node.mid_code_range ? :mid_code_range : :code_range
