@@ -1,12 +1,3 @@
-GIT
-  remote: https://github.com/ruby/rbs.git
-  revision: 927ca592755d74bf6267b3c3183872e40f08be09
-  specs:
-    rbs (4.0.0.dev.5)
-      logger
-      prism (>= 1.6.0)
-      tsort
-
 PATH
   remote: .
   specs:
@@ -23,6 +14,10 @@ GEM
     power_assert (3.0.1)
     prism (1.9.0)
     rake (13.3.1)
+    rbs (4.2.0)
+      logger
+      prism (>= 1.6.0)
+      tsort
     simplecov (0.22.0)
       docile (~> 1.1)
       simplecov-html (~> 0.11)
@@ -41,7 +36,6 @@ PLATFORMS
 DEPENDENCIES
   coverage-helpers
   rake
-  rbs!
   simplecov
   simplecov-html
   stackprof
@@ -49,4 +43,4 @@ DEPENDENCIES
   typeprof!
 
 BUNDLED WITH
-   2.6.9
+  4.0.16

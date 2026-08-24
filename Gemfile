@@ -1,12 +1,11 @@
 source "https://rubygems.org"
+
+# Specify your gem's dependencies in typeprof.gemspec
 gemspec
 
-#if ENV["RBS_VERSION"]
+if ENV["RBS_VERSION"]
   gem "rbs", github: "ruby/rbs", ref: ENV["RBS_VERSION"]
-#else
-#  # Specify your gem's dependencies in typeprof.gemspec
-#  gemspec
-#end
+end
 
 group :development do
   gem "rake"
