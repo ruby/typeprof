@@ -1,0 +1,48 @@
+name: Benchmark
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write # auto-push to the gh-pages branch
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Run benchmark
+        run: bundle exec ruby tool/benchmark.rb
+
+      - name: Store analysis time
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: 'Analysis time'
+          tool: 'customSmallerIsBetter'
+          output-file-path: tmp/benchmark/analysis_time.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          summary-always: true
+          # Shared runners vary by 10-20%; only flag clear regressions.
+          alert-threshold: '150%'
+          comment-on-alert: true
+
+      - name: Store type coverage
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: 'Type coverage'
+          tool: 'customBiggerIsBetter'
+          output-file-path: tmp/benchmark/type_coverage.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          summary-always: true
+          alert-threshold: '100%'
+          comment-on-alert: true
