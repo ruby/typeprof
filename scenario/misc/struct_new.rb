@@ -124,3 +124,24 @@ class D
   def age: -> Integer
   def initialize: (name: String, age: String) -> void
 end
+
+## update
+Pt = Struct.new(:x, :y)
+class Pt
+  def initialize(x = 0, y = 0)
+    super
+  end
+end
+Pt.new(3, 4)
+
+## assert
+class Pt
+  def x: -> Integer
+  def x=: (untyped) -> untyped
+  def y: -> Integer
+  def y=: (untyped) -> untyped
+  def self.[]: (Integer, Integer) -> Pt
+end
+class Pt
+  def initialize: (?Integer, ?Integer) -> void
+end

@@ -505,7 +505,9 @@ module TypeProf::Core
               end
               # Output method definitions from meta nodes (StructNewNode etc.)
               node.boxes(:mdef) do |mdef|
-                next if node.is_a?(AST::StructNewNode) && node.block_defines_method?(mdef.singleton, mdef.mid)
+                # A user-written method overrides the generated one
+                next if node.is_a?(AST::StructNewNode) &&
+                        !@genv.resolve_method(node.static_cpath, mdef.singleton, mdef.mid).defs.empty?
                 out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show(@options[:output_parameter_names])
               end
             else

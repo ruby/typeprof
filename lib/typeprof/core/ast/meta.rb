@@ -258,22 +258,6 @@ module TypeProf::Core
       def subnodes = { block_body: }
       def attrs = { static_cpath:, members:, kind: }
 
-      # A method written in the block body (e.g. a custom initialize)
-      # overrides the auto-generated one, which should then be hidden
-      # from the RBS output.
-      def block_defines_method?(singleton, mid)
-        return false unless @block_body
-        found = false
-        @block_body.traverse do |event, node|
-          if event == :enter && node.is_a?(DefNode) &&
-             node.singleton == singleton && node.mid == mid &&
-             node.lenv.cref.cpath == @static_cpath
-            found = true
-          end
-        end
-        found
-      end
-
       # Interface expected by MethodDefBox
       def req_positionals = @kind == :struct ? @members : []
       def opt_positionals = []
