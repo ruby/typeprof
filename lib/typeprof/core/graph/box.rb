@@ -643,13 +643,13 @@ module TypeProf::Core
   end
 
   class SplatBox < Box
-    def initialize(node, genv, ary, idx, fallback = nil)
+    def initialize(node, genv, ary, idx, unresolved_recv = nil)
       super(node)
       @ary = ary
       @idx = idx
-      @fallback = fallback
+      @unresolved_recv = unresolved_recv
       @ary.add_edge(genv, self)
-      @fallback.add_edge(genv, self) if @fallback
+      @unresolved_recv.add_edge(genv, self) if @unresolved_recv
       @ret = Vertex.new(node)
     end
 
@@ -675,8 +675,8 @@ module TypeProf::Core
         end
       end
       # For types where to_a is not defined, [*x] wraps x as [x]
-      if @fallback
-        @fallback.each_type do |ty|
+      if @unresolved_recv
+        @unresolved_recv.each_type do |ty|
           changes.add_edge(genv, Source.new(ty), @ret)
         end
       end
@@ -1047,7 +1047,11 @@ module TypeProf::Core
   end
 
   class MethodCallBox < Box
-    def initialize(node, genv, recv, mid, a_args, subclasses, suppress_errors: false, fallback: nil)
+    # `unresolved_recv`, when given, collects the receiver types for which no
+    # method entity was found. Without it those types only become "undefined
+    # method" diagnostics; with it the caller can handle them itself, as `[*x]`
+    # does to wrap a receiver that has no `to_a`.
+    def initialize(node, genv, recv, mid, a_args, subclasses, suppress_errors: false, unresolved_recv: nil)
       raise mid.to_s unless mid
       super(node)
       @recv = recv.new_vertex(genv, node)
@@ -1059,7 +1063,7 @@ module TypeProf::Core
       @ret = Vertex.new(node)
       @subclasses = subclasses
       @suppress_errors = suppress_errors
-      @fallback = fallback
+      @unresolved_recv = unresolved_recv
       @generics = {}
     end
 
@@ -1074,8 +1078,8 @@ module TypeProf::Core
           box = add_symbol_proc_call_box(changes, genv, orig_ty.sym, @a_args.positionals, @a_args.keywords)
           changes.add_edge(genv, box.ret, @ret) if box
         elsif !me
-          if @fallback
-            changes.add_edge(genv, Source.new(orig_ty), @fallback)
+          if @unresolved_recv
+            changes.add_edge(genv, Source.new(orig_ty), @unresolved_recv)
           end
           unless @suppress_errors
             if error_count < 3

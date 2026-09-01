@@ -256,8 +256,9 @@ module TypeProf::Core
         vtx = @expr.install(genv)
 
         a_args = ActualArguments.new([], [], nil, nil)
-        # Keep missing `to_a` receivers separate so Union members can fall back independently.
-        to_a_fallback = Vertex.new(self)
+        # Receiver types with no `to_a` are collected here, so that each union
+        # member can independently fall back to wrapping itself as `[x]`.
+        unresolved_recv = Vertex.new(self)
         to_a_box = @changes.add_method_call_box(
           genv,
           vtx,
@@ -265,10 +266,10 @@ module TypeProf::Core
           a_args,
           false,
           suppress_errors: true,
-          fallback: to_a_fallback,
+          unresolved_recv: unresolved_recv,
         )
 
-        @changes.add_splat_box(genv, to_a_box.ret, nil, to_a_fallback).ret
+        @changes.add_splat_box(genv, to_a_box.ret, nil, unresolved_recv).ret
       end
     end
 
