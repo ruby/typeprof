@@ -405,7 +405,9 @@ module TypeProf::Core
                     break
                   end
                 end
-                yield mid, "#{ mod.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }" if sig
+                # The base class has no name to show
+                owner = mod.cpath.last == AST::StructNewNode::BASE_CNAME ? base_ty.mod : mod
+                yield mid, "#{ owner.cpath.join("::" )}#{ singleton ? "." : "#" }#{ mid } : #{ sig }" if sig
               end
             end
           end
@@ -481,6 +483,10 @@ module TypeProf::Core
               s = "class #{ format_declared_const_path(node.static_cpath, stack) }"
               mod = @genv.resolve_cpath(node.static_cpath)
               superclass = mod.superclass
+              # The base class is not shown; its members are printed inline
+              while superclass && superclass.cpath.last == AST::StructNewNode::BASE_CNAME
+                superclass = superclass.superclass
+              end
               if superclass == nil
                 s << " # failed to identify its superclass"
               elsif superclass.cpath != []

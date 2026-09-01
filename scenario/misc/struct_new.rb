@@ -91,3 +91,36 @@ class Pt
   def self.[]: (Integer, Integer) -> Pt
   def initialize: (?Integer, ?Integer) -> void
 end
+
+## update
+Dog = Struct.new(:name, :age) do
+  def initialize(name, age)
+    super(name.to_s, age.to_i)
+  end
+end
+Dog.new("fred", "5")
+
+## assert
+class Dog
+  def name: -> String
+  def name=: (untyped) -> untyped
+  def age: -> Integer
+  def age=: (untyped) -> untyped
+  def self.[]: (String, Integer) -> Dog
+  def initialize: (String, String) -> void
+end
+
+## update
+D = Data.define(:name, :age) do
+  def initialize(name:, age:)
+    super(name: name.to_s, age: age.to_i)
+  end
+end
+D.new(name: "fred", age: "5")
+
+## assert
+class D
+  def name: -> String
+  def age: -> Integer
+  def initialize: (name: String, age: String) -> void
+end

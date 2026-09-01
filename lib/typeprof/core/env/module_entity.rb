@@ -285,7 +285,8 @@ module TypeProf::Core
           when AST::ModuleNode
             return nil
           when AST::StructNewNode
-            return []  # inherits from Object (Struct < Object)
+            base_cpath = mdef.struct_base_cpath
+            return base_cpath == @cpath ? [] : base_cpath
           else
             raise
           end
