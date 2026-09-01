@@ -482,6 +482,8 @@ module TypeProf::Core
     end
 
     def on_ancestors_updated(genv, base_mod)
+      # `include` and `extend` can form a cycle in valid Ruby
+      return if base_mod == self
       @child_modules.each_key {|child_mod| child_mod.on_ancestors_updated(genv, base_mod || self) }
       @static_reads.each_value do |static_reads|
         static_reads.each do |static_read|
