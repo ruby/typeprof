@@ -42,7 +42,7 @@ jobs:
       run: |
         bundle exec rake TESTOPT=-v RUBYOPT="${{ matrix.rubyopt }}"
       if: ${{ !startsWith(matrix.ruby, 'truffle') }}
-    - name: Run the dog bench
+    - name: Run TypeProf against real-world projects
       run: |
-        bundle exec ruby tool/dog_bench.rb
-      if: ${{ !startsWith(matrix.ruby, 'truffle') }}
+        bundle exec ruby tool/benchmark.rb
+      if: ${{ matrix.ruby == needs.ruby-versions.outputs.latest && github.event_name == 'pull_request' }}
