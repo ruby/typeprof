@@ -250,6 +250,11 @@ module TypeProf::Core
 
       attr_reader :static_cpath, :members, :kind, :block_body
 
+      # Not a valid constant name, so no Ruby code can refer to it
+      BASE_CNAME = :"<struct base>"
+
+      def struct_base_cpath = @static_cpath + [BASE_CNAME]
+
       def subnodes = { block_body: }
       def attrs = { static_cpath:, members:, kind: }
 
@@ -283,8 +288,9 @@ module TypeProf::Core
         mod = genv.resolve_cpath(@static_cpath)
         # add_module_def internally calls get_const(name).add_def(self)
         cdef = mod.add_module_def(genv, self)
+        genv.resolve_cpath(struct_base_cpath).add_module_def(genv, self)
         @members.each do |member|
-          ive = genv.resolve_ivar(@static_cpath, false, member)
+          ive = genv.resolve_ivar(struct_base_cpath, false, member)
           ive.add_def(self)
         end
         @block_body.define(genv) if @block_body
@@ -295,8 +301,11 @@ module TypeProf::Core
         mod = genv.resolve_cpath(@static_cpath)
         mod.add_module_def(genv, self)
         mod.remove_module_def(genv, @prev_node)
+        base = genv.resolve_cpath(struct_base_cpath)
+        base.add_module_def(genv, self)
+        base.remove_module_def(genv, @prev_node)
         @members.each do |member|
-          ive = genv.resolve_ivar(@static_cpath, false, member)
+          ive = genv.resolve_ivar(struct_base_cpath, false, member)
           ive.add_def(self)
           ive.remove_def(@prev_node)
         end
@@ -306,8 +315,9 @@ module TypeProf::Core
       def undefine0(genv)
         mod = genv.resolve_cpath(@static_cpath)
         mod.remove_module_def(genv, self)
+        genv.resolve_cpath(struct_base_cpath).remove_module_def(genv, self)
         @members.each do |member|
-          ive = genv.resolve_ivar(@static_cpath, false, member)
+          ive = genv.resolve_ivar(struct_base_cpath, false, member)
           ive.remove_def(self)
         end
         @block_body.undefine(genv) if @block_body
@@ -320,7 +330,7 @@ module TypeProf::Core
           @changes.add_edge(genv, mod_val, @static_ret.vtx)
         end
 
-        cpath = @static_cpath
+        cpath = struct_base_cpath
         @members.each do |member|
           # Use bare `:member` (not `:@member`) so the slot can't collide with a
           # user-written @member ivar — Struct/Data fields are not real ivars.
@@ -357,7 +367,8 @@ module TypeProf::Core
 
         # Struct.[] is an alias for Struct.new
         if @kind == :struct
-          self_ret = @changes.add_escape_box(genv, Source.new(Type::Instance.new(genv, genv.resolve_cpath(cpath), [])))
+          # Struct.[] builds the struct class itself, not the base class
+          self_ret = @changes.add_escape_box(genv, Source.new(Type::Instance.new(genv, genv.resolve_cpath(@static_cpath), [])))
           @changes.add_method_def_box(genv, cpath, true, :[], init_f_args, [self_ret])
         end
 
