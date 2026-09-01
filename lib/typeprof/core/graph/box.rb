@@ -683,6 +683,33 @@ module TypeProf::Core
     end
   end
 
+  # Merges the keywords being forwarded into the `**rest` hash while keeping the
+  # rest's own fields, so that the callee can still tell the two apart.
+  class KeywordMergeBox < Box
+    def initialize(node, genv, rest, literal_pairs, fallback)
+      super(node)
+      @rest = rest
+      @literal_pairs = literal_pairs
+      @fallback = fallback
+      @rest.add_edge(genv, self)
+      @ret = Vertex.new(node)
+    end
+
+    attr_reader :ret
+
+    def run0(genv, changes)
+      merged = false
+      @rest.each_type do |ty|
+        if ty.is_a?(Type::Record)
+          fields = ty.fields.merge(@literal_pairs)
+          changes.add_edge(genv, Source.new(Type::Record.new(genv, fields, ty.base_type(genv))), @ret)
+          merged = true
+        end
+      end
+      changes.add_edge(genv, @fallback, @ret) unless merged
+    end
+  end
+
   class HashSplatBox < Box
     def initialize(node, genv, hsh, unified_key, unified_val)
       super(node)
@@ -1077,7 +1104,7 @@ module TypeProf::Core
       error_count = 0
       resolve(genv, changes) do |me, ty, mid, orig_ty|
         if @node.is_a?(AST::YieldNode) && mid == :call && orig_ty.is_a?(Type::Symbol)
-          box = add_symbol_proc_call_box(changes, genv, orig_ty.sym, @a_args.positionals, @a_args.keywords)
+          box = add_symbol_proc_call_box(changes, genv, orig_ty.sym, a_args.positionals, a_args.keywords)
           changes.add_edge(genv, box.ret, @ret) if box
         elsif !me
           if @unresolved_recv
