@@ -131,13 +131,8 @@ module TypeProf::Core
             include_leading_positionals: @forwarding_arguments != :rest,
             activation_required: @forwarding_arguments == :rest,
           )
-          leading_args = @positional_args.map do |arg|
-            if arg.is_a?(DummyNilNode)
-              @lenv.get_var(:"*anonymous_rest")
-            else
-              arg.install(genv)
-            end
-          end
+          # An anonymous rest cannot appear here: `bar(*, ...)` is a syntax error
+          leading_args = @positional_args.map {|arg| arg.install(genv) }
           a_args = forward_a_args.prepend_positionals(leading_args, @splat_flags)
           a_args = a_args.with_keywords(@keyword_args.install(genv)) if @keyword_args
         else
