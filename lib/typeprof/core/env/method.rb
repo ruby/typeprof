@@ -387,7 +387,7 @@ module TypeProf::Core
     private
 
     def build_keyword_args(genv, changes, node)
-      opt_keyword_pairs = @opt_keyword_pairs.reject {|_name, vtx| vtx.types.empty? }
+      opt_keyword_pairs = @opt_keyword_pairs
 
       if @req_keyword_pairs.empty? && opt_keyword_pairs.empty?
         return @rest_keywords, !!@rest_keywords
@@ -414,6 +414,9 @@ module TypeProf::Core
 
       if literal_pairs.empty?
         [Source.new(base_hash_type), false]
+      elsif @rest_keywords
+        fallback = Source.new(Type::Record.new(genv, literal_pairs, base_hash_type))
+        [changes.add_keyword_merge_box(genv, @rest_keywords, literal_pairs, fallback).ret, false]
       else
         [Source.new(Type::Record.new(genv, literal_pairs, base_hash_type)), false]
       end

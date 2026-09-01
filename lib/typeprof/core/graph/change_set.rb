@@ -86,6 +86,11 @@ module TypeProf::Core
       new_boxes[key] ||= SplatBox.new(@node, genv, arg, idx, unresolved_recv)
     end
 
+    def add_keyword_merge_box(genv, rest, literal_pairs, fallback)
+      key = [:kw_merge, rest, literal_pairs, fallback]
+      new_boxes[key] ||= KeywordMergeBox.new(@node, genv, rest, literal_pairs, fallback)
+    end
+
     def add_hash_splat_box(genv, arg, unified_key, unified_val)
       key = [:hash_splat, arg, unified_key, unified_val]
       new_boxes[key] ||= HashSplatBox.new(@node, genv, arg, unified_key, unified_val)
