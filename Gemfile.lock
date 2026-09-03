@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    typeprof (0.32.0)
+    typeprof (0.33.0)
       prism (>= 1.4.0)
       rbs (>= 3.6.0)
 
