@@ -12,6 +12,7 @@ module TypeProf
       def initialize: (Hash[untyped, untyped]) -> void
       def update_file: (String, String?) -> bool
       def update_rb_file: (String, String?) -> bool
+      def update_rb_ast: (String, Prism::ParseResult) -> bool
       def update_rbs_file: (String, String?) -> bool
       def definitions: (String, CodePosition) -> Array[untyped]
       def type_definitions: (String, CodePosition) -> Array[untyped]

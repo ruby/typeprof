@@ -1,14 +1,24 @@
 module TypeProf::Core
   class AST
     def self.parse_rb(path, src, position_encoding)
-      result = Prism.parse(src)
+      build_rb(path, Prism.parse(src), position_encoding)
+    end
+
+    # This needs the comments and the Prism::Source, which a ParseResult has but a
+    # node does not.
+    def self.build_rb(path, result, position_encoding)
+      unless result.is_a?(Prism::ParseResult)
+        raise ArgumentError, "expected Prism::ParseResult, got #{ result.class }"
+      end
 
       return nil unless result.errors.empty?
 
       # comments, errors, magic_comments
       raw_scope = result.value
 
-      raise unless raw_scope.type == :program_node
+      unless raw_scope.is_a?(Prism::ProgramNode)
+        raise ArgumentError, "expected Prism::ProgramNode, got #{ raw_scope.class }"
+      end
 
       prism_source = result.source
       file_context = FileContext.new(path, position_encoding, prism_source, result.comments)

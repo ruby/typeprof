@@ -55,10 +55,15 @@ module TypeProf::Core
     end
 
     def update_rb_file(path, code)
+      code = File.read(path) unless code
+      update_rb_ast(path, Prism.parse(code))
+    end
+
+    # path is used only as a key to find the previous analysis; the file is not read.
+    def update_rb_ast(path, parse_result)
       prev_node = @rb_text_nodes[path]
 
-      code = File.read(path) unless code
-      node = AST.parse_rb(path, code, @options[:position_encoding])
+      node = AST.build_rb(path, parse_result, @options[:position_encoding])
       return false unless node
 
       node.diff(@rb_text_nodes[path]) if prev_node
