@@ -126,7 +126,7 @@ module TypeProf::Core
         if @rights
           @rights.each {|lhs| lhs.install(genv) }
           @rights.each {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) }
-          rights = @rights.map {|rhs| rhs.ret }
+          rights = @rights.map {|lhs| lhs.rhs.ret }
         end
 
         box = @changes.add_masgn_box(genv, value, lefts, rest_elem, rights)
