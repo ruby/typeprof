@@ -3,3 +3,6 @@
 dog_bench.stackprof.dump
 dog_bench.pf2profile
 dog_bench.json
+
+rbs_collection*.yaml
+.gem_rbs_collection

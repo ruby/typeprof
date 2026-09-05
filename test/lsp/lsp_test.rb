@@ -330,6 +330,69 @@ check(1, 2)
       end
     end
 
+    def test_completion_const_csv_inserts_require
+      init("basic")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic.rb", version: 0, text: <<~END },
+          # frozen_string_literal: true
+
+          CS
+        END
+      )
+
+      expect_notification("typeprof.enableToggleButton") {|json| }
+      expect_request("workspace/codeLens/refresh") {|json| }
+
+      id = request(
+        "textDocument/completion",
+        textDocument: { uri: @folder + "basic.rb" },
+        position: { line: 2, character: 2 },
+      )
+      expect_response(id) do |json|
+        items = json[:items]
+        csv_item = items.find { |i| i[:label] == "CSV" }
+        assert_not_nil(csv_item, "CSV candidate expected")
+        assert_equal(21, csv_item[:kind])
+        assert_equal("from 'csv'", csv_item[:detail])
+        edits = csv_item[:additionalTextEdits]
+        assert_not_nil(edits)
+        assert_equal(1, edits.size)
+        assert_match(/require 'csv'/, edits[0][:newText])
+        assert_equal(1, edits[0][:range][:start][:line])
+        assert_equal(0, edits[0][:range][:start][:character])
+      end
+    end
+
+    def test_completion_const_skips_require_when_already_present
+      init("basic")
+
+      notify(
+        "textDocument/didOpen",
+        textDocument: { uri: @folder + "basic.rb", version: 0, text: <<~END },
+          require 'csv'
+
+          CS
+        END
+      )
+
+      expect_notification("typeprof.enableToggleButton") {|json| }
+      expect_request("workspace/codeLens/refresh") {|json| }
+
+      id = request(
+        "textDocument/completion",
+        textDocument: { uri: @folder + "basic.rb" },
+        position: { line: 2, character: 2 },
+      )
+      expect_response(id) do |json|
+        items = json[:items]
+        csv_item = items.find { |i| i[:label] == "CSV" }
+        assert_not_nil(csv_item)
+        assert_nil(csv_item[:additionalTextEdits], "additionalTextEdits should not be set when require is already in the file")
+      end
+    end
+
     def test_completion
       init("basic")
 
