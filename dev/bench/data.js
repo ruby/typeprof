@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788791349221,
+  "lastUpdate": 1788791350820,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -201,6 +201,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/1eef91dff8e1aff2050edb8c466cb07b888d7ce8"
         },
         "date": 1788447044701,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 78.56,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 86.49,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 31.37,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 35.61,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "51983447+ahogappa@users.noreply.github.com",
+            "name": "ahogappa",
+            "username": "ahogappa"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d668de074014fa08c2e4aa295a8d450adafb19c",
+          "message": "Accept a Prism::ParseResult as input in place of Ruby source text (#476)\n\nService#update_rb_ast(path, parse_result) analyzes a Ruby file from a\nPrism::ParseResult that the caller has already produced. The path plays\nthe same role as before: it identifies the file, and re-submitting the\nsame path replaces the previous analysis with a diff against it.\nupdate_rb_file now reads and parses, then delegates to it.\n\nAST.parse_rb is split so the Prism.parse call is separate from building\nthe ProgramNode (AST.build_rb). A ParseResult is required rather than a\nbare Prism node because comments (`#:` annotations, `typeprof:ignore`)\nand the Prism::Source used for position encoding are only reachable\nthrough it.\n\n\nClaude-Session: https://claude.ai/code/session_01KHWGVBXpPwoYJ5QsDHLMro\n\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2026-09-07T23:27:07+09:00",
+          "tree_id": "d12cd82a72416cefd78968ffd7dbb44290e668c6",
+          "url": "https://github.com/ruby/typeprof/commit/7d668de074014fa08c2e4aa295a8d450adafb19c"
+        },
+        "date": 1788791350504,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
