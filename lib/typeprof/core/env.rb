@@ -283,28 +283,12 @@ module TypeProf::Core
       mod.get_type_alias(name)
     end
 
-    # Returns the type parameter names of the first generic declaration of cpath
-    def find_type_params(decls, cpath)
-      decls.each do |decl|
-        next unless decl.cpath == cpath
-        next unless decl.respond_to?(:params)
-        params = decl.params
-        return params if params && !params.empty?
-      end
-      nil
-    end
-
     def load_core_rbs(raw_decls, position_encoding)
       file_context = FileContext.new(nil, position_encoding)
       lenv = LocalEnv.new(file_context, CRef::Toplevel, {}, [])
       decls = raw_decls.map do |raw_decl|
         AST.create_rbs_decl(raw_decl, lenv)
       end.compact
-
-      # A module entity has one set of parameter names shared by all its declarations,
-      # so the shim must reuse the core's ones (Array's was `Elem`, and is `E` since RBS 4.1)
-      ary_elem, = find_type_params(decls, [:Array]) || [:Elem]
-      hash_key, hash_val = find_type_params(decls, [:Hash]) || [:K, :V]
 
       decls += AST.parse_rbs("typeprof-rbs-shim.rbs", <<-RBS, position_encoding)
         class Exception
@@ -314,12 +298,12 @@ module TypeProf::Core
           include _ToS
           include _ToStr
         end
-        class Array[#{ ary_elem }]
-          include _ToAry[#{ ary_elem }]
-          include _Each[#{ ary_elem }]
+        class Array[Elem]
+          include _ToAry[Elem]
+          include _Each[Elem]
         end
-        class Hash[#{ hash_key }, #{ hash_val }]
-          include _Each[[#{ hash_key }, #{ hash_val }]]
+        class Hash[K, V]
+          include _Each[[K, V]]
         end
         class Object
           include Hash::_Key
@@ -380,7 +364,7 @@ module TypeProf::Core
   end
 
   class LocalEnv
-    def initialize(file_context, cref, locals, return_boxes, forward_args = nil)
+    def initialize(file_context, cref, locals, return_boxes, forward_args = nil, sig_type_params: nil)
       @file_context = file_context
       @cref = cref
       @locals = locals
@@ -390,9 +374,11 @@ module TypeProf::Core
       @ivar_narrowings = {}
       @strict_const_scope = false
       @forward_args = forward_args
+      # [cpath, names] of the type parameters of the enclosing RBS declaration
+      @sig_type_params = sig_type_params
     end
 
-    attr_reader :file_context, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope
+    attr_reader :file_context, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope, :sig_type_params
     attr_accessor :module_function, :forward_args
 
     def path = @file_context&.path

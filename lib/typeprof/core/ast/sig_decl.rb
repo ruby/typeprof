@@ -14,16 +14,20 @@ module TypeProf::Core
         @cpath = AST.resolve_rbs_name(raw_decl.name, lenv)
         # TODO: decl.type_params
         # TODO: decl.super_class.args
+        # TODO?: param.variance, param.unchecked, param.upper_bound
+        @params = raw_decl.type_params.map {|param| param.name }
+        sig_type_params = [@cpath, @params]
+        # The header (default types, self types, and superclass arguments) is
+        # resolved in the outer scope but may refer to the type parameters
+        @header_lenv = LocalEnv.new(@lenv.file_context, lenv.cref, {}, [], sig_type_params:)
         ncref = CRef.new(@cpath, :class, nil, lenv.cref)
-        nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, [])
+        nlenv = LocalEnv.new(@lenv.file_context, ncref, {}, [], sig_type_params:)
         @members = raw_decl.members.map do |member|
           AST.create_rbs_member(member, nlenv)
         end.compact
-        # TODO?: param.variance, param.unchecked, param.upper_bound
-        @params = raw_decl.type_params.map {|param| param.name }
         @params_default_types = raw_decl.type_params.map do |param|
           ty = param.default_type
-          ty ? AST.create_rbs_type(ty, lenv) : nil
+          ty ? AST.create_rbs_type(ty, @header_lenv) : nil
         end
       end
 
@@ -81,7 +85,7 @@ module TypeProf::Core
           cpath = name.namespace.path + [self_type.name.name]
           toplevel = name.namespace.absolute?
           @self_types << [cpath, toplevel]
-          @self_type_args << self_type.args.map {|arg| AST.create_rbs_type(arg, lenv) }
+          @self_type_args << self_type.args.map {|arg| AST.create_rbs_type(arg, @header_lenv) }
         end
       end
 
@@ -138,7 +142,7 @@ module TypeProf::Core
           name = superclass.name
           @superclass_cpath = name.namespace.path + [name.name]
           @superclass_toplevel = name.namespace.absolute?
-          @superclass_args = superclass.args.map {|arg| AST.create_rbs_type(arg, lenv) }
+          @superclass_args = superclass.args.map {|arg| AST.create_rbs_type(arg, @header_lenv) }
         else
           @superclass_cpath = nil
           @superclass_toplevel = nil

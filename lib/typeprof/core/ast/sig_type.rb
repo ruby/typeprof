@@ -883,18 +883,34 @@ module TypeProf::Core
 
       def attrs = { var: }
 
+      # A reopened declaration may rename the type parameters (e.g., `Enumerable[E]`
+      # and `Enumerable[Elem]`), but the subst is keyed by the names of the module
+      # entity, so fall back to matching them by position
+      def resolve_var(genv, subst)
+        var_vtx = subst[@var]
+        return var_vtx if var_vtx
+        decl_cpath, decl_params = @lenv.sig_type_params
+        return nil unless decl_params
+        idx = decl_params.index(@var)
+        return nil unless idx
+        subst[genv.resolve_cpath(decl_cpath).type_params.keys[idx]]
+      end
+
       def covariant_vertex0(genv, changes, vtx, subst)
-        raise "unknown type variable: #{ @var }" unless subst[@var]
-        changes.add_edge(genv, subst[@var], vtx)
+        var_vtx = resolve_var(genv, subst)
+        raise "unknown type variable: #{ @var }" unless var_vtx
+        changes.add_edge(genv, var_vtx, vtx)
       end
 
       def contravariant_vertex0(genv, changes, vtx, subst)
-        raise "unknown type variable: #{ @var }" unless subst[@var]
-        changes.add_edge(genv, Source.new(Type::Var.new(genv, @var, subst[@var])), vtx)
+        var_vtx = resolve_var(genv, subst)
+        raise "unknown type variable: #{ @var }" unless var_vtx
+        changes.add_edge(genv, Source.new(Type::Var.new(genv, @var, var_vtx)), vtx)
       end
 
       def typecheck(genv, changes, vtx, subst)
-        changes.add_edge(genv, vtx.new_vertex(genv, self), subst[@var]) unless vtx == subst[@var]
+        var_vtx = resolve_var(genv, subst)
+        changes.add_edge(genv, vtx.new_vertex(genv, self), var_vtx) unless vtx == var_vtx
         true
       end
 
