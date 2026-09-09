@@ -887,12 +887,10 @@ module TypeProf::Core
       # and `Enumerable[Elem]`), but the subst is keyed by the names of the module
       # entity, so fall back to matching them by position
       def resolve_var(genv, subst)
-        var_vtx = subst[@var]
-        return var_vtx if var_vtx
         decl_cpath, decl_params = @lenv.sig_type_params
-        return nil unless decl_params
+        return subst[@var] unless decl_params
         idx = decl_params.index(@var)
-        return nil unless idx
+        return subst[@var] unless idx
         subst[genv.resolve_cpath(decl_cpath).type_params.keys[idx]]
       end
 
