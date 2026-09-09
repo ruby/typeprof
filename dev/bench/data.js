@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788922785556,
+  "lastUpdate": 1788922787045,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -289,6 +289,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/7d668de074014fa08c2e4aa295a8d450adafb19c"
         },
         "date": 1788791350504,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 78.56,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 86.49,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 31.37,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 35.61,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9eb87fbd5ea914263e50cb77daa9464f29c79aef",
+          "message": "Resolve type variables of a reopened declaration by position (#477)\n\n* Resolve type variables of a reopened declaration by position\n\nRBS 4.1 renamed the core's type parameters, e.g. `Array[Elem]` to\n`Array[E]`, but RBS files in rbs collections (activesupport, the rbs gem's\nown shims) still reopen them as `Array[Elem]`, which RBS allows. TypeProf\nlooked up type variables only by the names of the first declaration, so\nusing it with such a collection crashed with \"unknown type variable:\nElem\". Let SigTyVarNode fall back to the name at the same position in the\nmodule entity, which also makes the shim workaround in 91bd108a\nunnecessary.\n\n* Resolve a declaration's type parameters by position only\r\n\r\nTrying the name first got `class Hash[V, K]; def key_of: () -> V` wrong\r\nwhen the reopened declaration swaps the names.\n\nCo-authored-by: Yusuke Endoh <mame@ruby-lang.org>\n\n---------\n\nCo-authored-by: Yusuke Endoh <mame@ruby-lang.org>",
+          "timestamp": "2026-09-09T11:57:31+09:00",
+          "tree_id": "08a0d80cd1e003e5c415d6959c7f300cb4a461ba",
+          "url": "https://github.com/ruby/typeprof/commit/9eb87fbd5ea914263e50cb77daa9464f29c79aef"
+        },
+        "date": 1788922786695,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
