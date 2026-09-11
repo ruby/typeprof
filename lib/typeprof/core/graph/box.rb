@@ -625,20 +625,7 @@ module TypeProf::Core
     def wrong_return_type(f_ret_show, changes)
       actual_ty = @a_ret.show
       msg = "expected: #{ f_ret_show }; actual: #{ actual_ty }"
-      case @node
-      when AST::ReturnNode
-        changes.add_diagnostic(:code_range, msg, @node)
-      when AST::DefNode
-        changes.add_diagnostic(:last_stmt_code_range, msg, @node)
-      when AST::NextNode
-        changes.add_diagnostic(:code_range, msg, @node)
-      when AST::CallNode
-        changes.add_diagnostic(:block_last_stmt_code_range, msg, @node)
-      when AST::AttrReaderMetaNode, AST::AttrAccessorMetaNode
-        changes.add_diagnostic(:code_range, msg, @node)
-      else
-        pp @node.class
-      end
+      changes.add_diagnostic(:ret_code_range, msg, @node)
     end
   end
 
@@ -838,132 +825,8 @@ module TypeProf::Core
     end
 
     def pass_arguments(changes, genv, a_args)
-      if a_args.splat_flags.any?
-        # there is at least one splat actual argument
-
-        lower = @f_args.req_positionals.size + @f_args.post_positionals.size
-        upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
-        if upper && upper < a_args.positionals.size
-          meth = changes.node.mid_code_range ? :mid_code_range : :code_range
-          err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-          changes.add_diagnostic(meth, "wrong number of arguments (#{ err })")
-          return false
-        end
-
-        start_rest = [a_args.splat_flags.index(true), @f_args.req_positionals.size + @f_args.opt_positionals.size].min
-        end_rest = [a_args.splat_flags.rindex(true) + 1, a_args.positionals.size - @f_args.post_positionals.size].max
-        rest_vtxs = a_args.get_rest_args(genv, changes, start_rest, end_rest)
-
-        @f_args.req_positionals.each_with_index do |f_vtx, i|
-          if i < start_rest
-            changes.add_edge(genv, a_args.positionals[i], f_vtx)
-          else
-            rest_vtxs.each do |vtx|
-              changes.add_edge(genv, vtx, f_vtx)
-            end
-          end
-        end
-        @f_args.opt_positionals.each_with_index do |f_vtx, i|
-          i += @f_args.req_positionals.size
-          if i < start_rest
-            changes.add_edge(genv, a_args.positionals[i], f_vtx)
-          else
-            rest_vtxs.each do |vtx|
-              changes.add_edge(genv, vtx, f_vtx)
-            end
-          end
-        end
-        @f_args.post_positionals.each_with_index do |f_vtx, i|
-          i += a_args.positionals.size - @f_args.post_positionals.size
-          if end_rest <= i
-            changes.add_edge(genv, a_args.positionals[i], f_vtx)
-          else
-            rest_vtxs.each do |vtx|
-              changes.add_edge(genv, vtx, f_vtx)
-            end
-          end
-        end
-
-        if @f_args.rest_positionals
-          rest_vtxs.each do |vtx|
-            @f_args.rest_positionals.each_type do |ty|
-              if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
-                changes.add_edge(genv, vtx, ty.args[0])
-              end
-            end
-          end
-        end
-      else
-        # there is no splat actual argument
-
-        lower = @f_args.req_positionals.size + @f_args.post_positionals.size
-        upper = @f_args.rest_positionals ? nil : lower + @f_args.opt_positionals.size
-        if a_args.positionals.size < lower || (upper && upper < a_args.positionals.size)
-          meth = changes.node.mid_code_range ? :mid_code_range : :code_range
-          err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
-          changes.add_diagnostic(meth, "wrong number of arguments (#{ err })")
-          return false
-        end
-
-        @f_args.req_positionals.each_with_index do |f_vtx, i|
-          changes.add_edge(genv, a_args.positionals[i], f_vtx)
-        end
-        @f_args.post_positionals.each_with_index do |f_vtx, i|
-          i -= @f_args.post_positionals.size
-          changes.add_edge(genv, a_args.positionals[i], f_vtx)
-        end
-        start_rest = @f_args.req_positionals.size
-        end_rest = a_args.positionals.size - @f_args.post_positionals.size
-        i = 0
-        while i < @f_args.opt_positionals.size && start_rest < end_rest
-          f_arg = @f_args.opt_positionals[i]
-          changes.add_edge(genv, a_args.positionals[start_rest], f_arg)
-          i += 1
-          start_rest += 1
-        end
-
-        if start_rest < end_rest
-          if @f_args.rest_positionals
-            (start_rest..end_rest-1).each do |i|
-              @f_args.rest_positionals.each_type do |ty|
-                if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
-                  changes.add_edge(genv, a_args.positionals[i], ty.args[0])
-                end
-              end
-            end
-          end
-        end
-      end
-
-      if a_args.keywords
-        # TODO: support diagnostics
-        @node.req_keywords.zip(@f_args.req_keywords) do |name, f_vtx|
-          changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
-        end
-
-        @node.opt_keywords.zip(@f_args.opt_keywords).each do |name, f_vtx|
-          changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
-        end
-
-        if @node.rest_keywords
-          named_keys = @node.req_keywords + @node.opt_keywords
-          a_args.keywords.each_type do |kw_ty|
-            case kw_ty
-            when Type::Record
-              rest_fields = kw_ty.fields.reject {|key, _| named_keys.include?(key) }
-              base = kw_ty.base_type(genv)
-              rest_record = Type::Record.new(genv, rest_fields, base)
-              changes.add_edge(genv, Source.new(rest_record), @f_args.rest_keywords)
-            when Type::Hash, Type::Instance
-              changes.add_edge(genv, Source.new(kw_ty), @f_args.rest_keywords)
-            end
-          end
-        end
-      end
-
-      return true
+      @f_args.pass_arguments(changes, genv, a_args, @node)
     end
-
     def normalize_keyword_hash_argument_for_def(a_args)
       return a_args unless a_args.keywords
       return a_args if @node.no_keywords

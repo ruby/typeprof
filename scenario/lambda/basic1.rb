@@ -16,5 +16,5 @@ end
 
 ## assert
 class Object
-  def foo: -> untyped
+  def foo: -> Integer
 end
