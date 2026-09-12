@@ -396,6 +396,7 @@ module TypeProf::Core
 
       when :array_node then ArrayNode.new(raw_node, lenv) # for %w[foo bar]
       when :range_node then RangeNode.new(raw_node, lenv) # TODO: support range pattern correctly
+      when :lambda_node then LambdaNode.new(raw_node, lenv) # TODO: match by `===` instead of ignoring the subject
 
       else
         raise "unknown pattern node type: #{ raw_node.type }"
