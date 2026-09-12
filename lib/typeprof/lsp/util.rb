@@ -1,6 +1,6 @@
 module TypeProf::LSP
   def self.load_json_with_comments(path, **opts)
-    json = File.read(path)
+    json = File.read(path, encoding: "UTF-8")
 
     state = :normal
     last_comma_index = nil

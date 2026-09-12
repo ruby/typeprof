@@ -55,7 +55,7 @@ module TypeProf::Core
     end
 
     def update_rb_file(path, code)
-      code = File.read(path) unless code
+      code = File.read(path, encoding: "UTF-8") unless code
       update_rb_ast(path, Prism.parse(code))
     end
 
@@ -122,7 +122,7 @@ module TypeProf::Core
     def update_rbs_file(path, code)
       prev_decls = @rbs_text_nodes[path]
 
-      code = File.read(path) unless code
+      code = File.read(path, encoding: "UTF-8") unless code
       begin
         decls = AST.parse_rbs(path, code, @options[:position_encoding])
       rescue RBS::ParsingError
@@ -586,7 +586,7 @@ module TypeProf::Core
           i += 1
         end
 
-        res = update_file(file, File.read(file))
+        res = update_file(file, File.read(file, encoding: "UTF-8"))
 
         if res
           true
