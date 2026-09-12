@@ -362,7 +362,7 @@ module TypeProf::Core
 
       when :capture_pattern_node then CapturePatternNode.new(raw_node, lenv)
 
-      when :if_node then IfPatternNode.new(raw_node, lenv)
+      when :if_node, :unless_node then IfPatternNode.new(raw_node, lenv)
 
       when :pinned_variable_node then PinnedPatternNode.new(raw_node, lenv)
       when :pinned_expression_node then PinnedPatternNode.new(raw_node, lenv)

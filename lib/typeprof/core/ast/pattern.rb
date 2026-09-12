@@ -144,7 +144,8 @@ module TypeProf::Core
         raise if raw_node.statements.type != :statements_node
         raise if raw_node.statements.body.size != 1
         @body = AST.create_pattern_node(raw_node.statements.body[0], lenv)
-        raise if raw_node.subsequent
+        raise if raw_node.type == :if_node && raw_node.subsequent
+        raise if raw_node.type == :unless_node && raw_node.else_clause
       end
 
       attr_reader :cond, :body
