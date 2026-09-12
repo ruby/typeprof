@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788923434438,
+  "lastUpdate": 1789187851473,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -219,6 +219,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 87.96,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "68f047980980345ca600df4b4ba9779a565ced6d",
+          "message": "Give the RBS instance type its type arguments (#480)\n\nType.default_param_map built the `*instance` entry with an empty argument\nlist, so a singleton method declared to return `instance` lost its type\narguments, and crashed when that result reached a type variable check\n(SigTyVarNode#typecheck got nil instead of an actual argument). After\nbase_type the receiver is always an Instance or a Singleton, so\nget_instance_type is always defined.\n\n    table = Hash[[[\"a\", \"b\"]]]  # Hash.[] is declared as `-> instance`\n    \"foo\".gsub(/o/, table)      # gsub takes `hash[String, _ToS]`",
+          "timestamp": "2026-09-12T13:35:34+09:00",
+          "tree_id": "f28ba924cf9b4c7917d8e2ba8f9030e18defb4d4",
+          "url": "https://github.com/ruby/typeprof/commit/68f047980980345ca600df4b4ba9779a565ced6d"
+        },
+        "date": 1789187850874,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.22,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.03,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 17.51,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 78.24,
             "unit": "s"
           }
         ]
