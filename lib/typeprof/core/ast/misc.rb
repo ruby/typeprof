@@ -23,8 +23,13 @@ module TypeProf::Core
 
         post_stmts = []
 
+        # BEGIN runs before the surrounding statements, END after them
         @stmts.each do |stmt|
-          next if stmt.nil?
+          stmt.install(genv) if stmt.is_a?(PreExecutionNode)
+        end
+
+        @stmts.each do |stmt|
+          next if stmt.is_a?(PreExecutionNode)
 
           if stmt.is_a?(PostExecutionNode)
             post_stmts << stmt
