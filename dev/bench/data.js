@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790144261239,
+  "lastUpdate": 1790144493280,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -395,6 +395,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 88.65,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f28445a992317df2463a1d8cd51b2b26cbe5d11",
+          "message": "Support a lambda pattern (#485)\n\n`in ->(x) { ... }` matches by `===`, but AST.create_pattern_node had no\nbranch for :lambda_node and raised \"unknown pattern node type:\nlambda_node\". Route it through the same install_pattern0 path as the\nother value patterns; CaseMatchNode#install0 discards the pattern's\nreturn value, so returning a proc instead of the subject is harmless.\nThe subject is not passed to the lambda, so its parameter stays untyped\nand the body is not checked against the matched value.",
+          "timestamp": "2026-09-23T15:19:45+09:00",
+          "tree_id": "66c14075983bb73a0b4aa868b64d90a7afa1c3a7",
+          "url": "https://github.com/ruby/typeprof/commit/9f28445a992317df2463a1d8cd51b2b26cbe5d11"
+        },
+        "date": 1790144492815,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 3.61,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 2.42,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 16.78,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 68.68,
             "unit": "s"
           }
         ]
