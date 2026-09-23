@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790143326947,
+  "lastUpdate": 1790143328968,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -553,6 +553,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/68f047980980345ca600df4b4ba9779a565ced6d"
         },
         "date": 1789187852622,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 78.56,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 86.49,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 31.37,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 35.61,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "51983447+ahogappa@users.noreply.github.com",
+            "name": "ahogappa",
+            "username": "ahogappa"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "74f9bd8038caaeb29b9ecf7176998f5008afade1",
+          "message": "Analyze the body of a lambda literal (#481)\n\n* Extract block handling from CallBaseNode into BlockNode\n\nThe parsing of block parameters, the block-local scope, and the\ninstallation of the block body lived inside CallBaseNode. Nothing there\ndepends on being a call, and a lambda literal needs exactly the same\nhandling without being a call, so it moves into its own node that a call\nholds as a subnode. Block parameters now go through AST.parse_params and\nmulti-target binding through a shared Node helper, both of which DefNode\nalready used for the same job.\n\nEvery node now answers ret_code_range, so the escape box no longer picks\na code-range method by node class; a body-bearing node points at its\nlast statement, the rest at themselves. A diagnostic on an empty block\ntherefore points at the block instead of the whole call, and a block on\n`super do ... end` no longer falls through to a debug `pp`.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n\n* Analyze the body of a lambda literal\n\n`-> {}` was a stub that produced a bare Proc and never looked inside, so\nmethod calls in the body got no diagnostics, classes and methods defined\nthere were not registered, and parameters were untyped. `lambda {}` had\nnone of these gaps because it goes through the block handling of a call.\n\nLambdaNode is a BlockNode: a lambda literal builds its scope, parameters\nand body exactly like a block. It is not modeled as a `lambda` call\nbecause `->` is syntax and must not dispatch to a user-defined `lambda`\nmethod.\n\nWhere a lambda differs from a block is how the body leaves. A block's\n`return` exits the enclosing method and its `break` exits the method\nthat yielded; a lambda's `return` and `break` both exit the lambda, so\nits body gets its own return boxes and all three escapes join the value\nthe caller of #call receives.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n\n* Bind the arguments of a lambda call like a method's\n\nA lambda literal carried a Block, which models what a yielding method\nhands to a block: positionals only. So a lambda whose parameters a block\ncannot express — rest, post, keywords — bound nothing, and the body read\nthose parameters as nil. Its arity was not checked either, and a sole\narray argument was deconstructed over the parameters the way a block\ndeconstructs one, which a lambda does not do.\n\nA lambda is entered like a method, so it now carries the formals a method\ncarries and Proc#call binds against them. The binding itself is the one\na method definition already used: pass_arguments moves off MethodDefBox\nonto FormalArguments, which is what both now hold.\n\nProc#call already received the whole ActualArguments and passed on only\nthe positionals, so the keywords and splat flags were there all along.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n\n* Handle a block parameter list ending in a comma\n\nExtracting the block parameters into BlockNode routed them through\nparse_params, which reads the rest parameter. The previous block-only\ncode read just the requireds and the optionals, so it never met the node\n`{ |a,| }` puts there: Prism::ImplicitRestNode, which has no #name.\n\nA trailing comma is the only way to write a rest without naming it in a\nblock, and it cannot appear in a method definition or a lambda literal,\nwhere it is a syntax error.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2026-09-23T14:59:59+09:00",
+          "tree_id": "7d022aa0539a6421a4c42331bf51f9cac6262007",
+          "url": "https://github.com/ruby/typeprof/commit/74f9bd8038caaeb29b9ecf7176998f5008afade1"
+        },
+        "date": 1790143328328,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
