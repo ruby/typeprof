@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790144494698,
+  "lastUpdate": 1790144721275,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -439,6 +439,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 68.68,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b54714c1e7cdfa8a83009716d5361643809e55f",
+          "message": "Support BEGIN blocks (#486)\n\n`BEGIN { ... }` raised \"not supported yet: pre_execution_node\" and\naborted the whole run, unlike `END { ... }`, which was already\nsupported. BEGIN now shares its implementation with END but is installed\nbefore the surrounding statements instead of after, so a method or a\nlocal variable it defines reaches the statements that follow.",
+          "timestamp": "2026-09-23T15:23:17+09:00",
+          "tree_id": "fb02b95150f19fbff6525ffc65bfda8eba78cbf2",
+          "url": "https://github.com/ruby/typeprof/commit/0b54714c1e7cdfa8a83009716d5361643809e55f"
+        },
+        "date": 1790144720324,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.41,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.02,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 19.78,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 77.08,
             "unit": "s"
           }
         ]
