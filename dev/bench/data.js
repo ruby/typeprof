@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790144721275,
+  "lastUpdate": 1790144723302,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -905,6 +905,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/9f28445a992317df2463a1d8cd51b2b26cbe5d11"
         },
         "date": 1790144494414,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 78.56,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 86.49,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 31.37,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 35.61,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b54714c1e7cdfa8a83009716d5361643809e55f",
+          "message": "Support BEGIN blocks (#486)\n\n`BEGIN { ... }` raised \"not supported yet: pre_execution_node\" and\naborted the whole run, unlike `END { ... }`, which was already\nsupported. BEGIN now shares its implementation with END but is installed\nbefore the surrounding statements instead of after, so a method or a\nlocal variable it defines reaches the statements that follow.",
+          "timestamp": "2026-09-23T15:23:17+09:00",
+          "tree_id": "fb02b95150f19fbff6525ffc65bfda8eba78cbf2",
+          "url": "https://github.com/ruby/typeprof/commit/0b54714c1e7cdfa8a83009716d5361643809e55f"
+        },
+        "date": 1790144722674,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
