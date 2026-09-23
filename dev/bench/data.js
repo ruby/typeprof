@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790143328968,
+  "lastUpdate": 1790143890743,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -307,6 +307,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 80.53,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92876451f5efa8651fe9c1b24f82fb72db8d2bd3",
+          "message": "Fix nested destructuring after a splat in multiple assignment (#482)\n\nMultiWriteNode#install0 collected the targets after the splat by their\nown `ret` instead of the vertex behind their DummyRHSNode. A nested\ntarget (MultiTargetNode) has a nil `ret`, which blew up as the\ndestination of a graph edge in the next reinstall. The same mistake hit\nan index or attribute writer silently: it got the return vertex of its\nown call, so the assigned value never reached it.\n\n    *a, (b, c) = 1, 2, [3, 4]\n    #=> undefined method 'on_type_added' for nil",
+          "timestamp": "2026-09-23T15:09:16+09:00",
+          "tree_id": "7a5b881b4bbd3e575e9b7ec061eae8923c1c5cc8",
+          "url": "https://github.com/ruby/typeprof/commit/92876451f5efa8651fe9c1b24f82fb72db8d2bd3"
+        },
+        "date": 1790143889624,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.42,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.14,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 20.32,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 86.81,
             "unit": "s"
           }
         ]
