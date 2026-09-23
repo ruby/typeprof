@@ -16,6 +16,8 @@ module TypeProf::Core
 
       attr_reader :stmts
 
+      def ret_code_range = @stmts.last.code_range
+
       def subnodes = { stmts: }
 
       def install0(genv)

@@ -77,7 +77,17 @@ module TypeProf::Core
         end
       end
 
-      rest_positionals = raw_args.rest ? (raw_args.rest.name || :"*anonymous_rest") : nil
+      rest_positionals =
+        case raw_args.rest
+        when nil
+          nil
+        when Prism::ImplicitRestNode
+          # `{ |a,| }`. The trailing comma says there is a rest without naming
+          # it, so the node carries no name to ask for.
+          :"*anonymous_rest"
+        else
+          raw_args.rest.name || :"*anonymous_rest"
+        end
 
       req_keywords = []
       opt_keywords = []
@@ -244,8 +254,8 @@ module TypeProf::Core
         opt_positionals = @opt_positionals.map {|var| @body.lenv.new_var(var, self) }
         rest_positionals = @rest_positionals ? @body.lenv.new_var(@rest_positionals, self) : nil
         post_positionals = @post_positionals.map {|var| @body.lenv.new_var(var, self) }
-        install_multi_targets(genv, @req_multi_targets, req_positionals)
-        install_multi_targets(genv, @post_multi_targets, post_positionals)
+        install_multi_targets(genv, @req_multi_targets, req_positionals, @body.lenv)
+        install_multi_targets(genv, @post_multi_targets, post_positionals, @body.lenv)
         req_keywords = @req_keywords.map {|var| @body.lenv.new_var(var, self) }
         opt_keywords = @opt_keywords.map {|var| @body.lenv.new_var(var, self) }
         rest_keywords = @rest_keywords ? @body.lenv.new_var(@rest_keywords, self) : nil
@@ -317,27 +327,7 @@ module TypeProf::Core
         Source.new(Type::Symbol.new(genv, @mid))
       end
 
-      def install_multi_targets(genv, multi_targets, positionals)
-        multi_targets.each do |idx, raw_multi_target|
-          param_vtx = positionals[idx]
-          lefts = raw_multi_target.lefts.map do |n|
-            @body.lenv.new_var(n.is_a?(Prism::MultiTargetNode) ? nil : n.name, self)
-          end
-          @changes.add_masgn_box(genv, param_vtx, lefts, nil, nil)
-        end
-      end
-
-      def last_stmt_code_range
-        if @body
-          if @body.is_a?(AST::StatementsNode)
-            @body.stmts.last.code_range
-          else
-            @body.code_range
-          end
-        else
-          nil
-        end
-      end
+      def ret_code_range = @body.ret_code_range
 
       def retrieve_at(pos, &blk)
         if @rbs_method_type

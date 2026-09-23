@@ -21,6 +21,136 @@ module TypeProf::Core
     attr_reader :opt_keywords
     attr_reader :rest_keywords
     attr_reader :block
+
+    # Binds a call's actual arguments to these formals. `node` supplies the
+    # keyword names, which live on the AST node rather than in the vertices.
+    def pass_arguments(changes, genv, a_args, node)
+      if a_args.splat_flags.any?
+        # there is at least one splat actual argument
+
+        lower = @req_positionals.size + @post_positionals.size
+        upper = @rest_positionals ? nil : lower + @opt_positionals.size
+        if upper && upper < a_args.positionals.size
+          meth = changes.node.mid_code_range ? :mid_code_range : :code_range
+          err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+          changes.add_diagnostic(meth, "wrong number of arguments (#{ err })")
+          return false
+        end
+
+        start_rest = [a_args.splat_flags.index(true), @req_positionals.size + @opt_positionals.size].min
+        end_rest = [a_args.splat_flags.rindex(true) + 1, a_args.positionals.size - @post_positionals.size].max
+        rest_vtxs = a_args.get_rest_args(genv, changes, start_rest, end_rest)
+
+        @req_positionals.each_with_index do |f_vtx, i|
+          if i < start_rest
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(genv, vtx, f_vtx)
+            end
+          end
+        end
+        @opt_positionals.each_with_index do |f_vtx, i|
+          i += @req_positionals.size
+          if i < start_rest
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(genv, vtx, f_vtx)
+            end
+          end
+        end
+        @post_positionals.each_with_index do |f_vtx, i|
+          i += a_args.positionals.size - @post_positionals.size
+          if end_rest <= i
+            changes.add_edge(genv, a_args.positionals[i], f_vtx)
+          else
+            rest_vtxs.each do |vtx|
+              changes.add_edge(genv, vtx, f_vtx)
+            end
+          end
+        end
+
+        if @rest_positionals
+          rest_vtxs.each do |vtx|
+            @rest_positionals.each_type do |ty|
+              if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
+                changes.add_edge(genv, vtx, ty.args[0])
+              end
+            end
+          end
+        end
+      else
+        # there is no splat actual argument
+
+        lower = @req_positionals.size + @post_positionals.size
+        upper = @rest_positionals ? nil : lower + @opt_positionals.size
+        if a_args.positionals.size < lower || (upper && upper < a_args.positionals.size)
+          meth = changes.node.mid_code_range ? :mid_code_range : :code_range
+          err = "#{ a_args.positionals.size } for #{ lower }#{ upper ? lower < upper ? "...#{ upper }" : "" : "+" }"
+          changes.add_diagnostic(meth, "wrong number of arguments (#{ err })")
+          return false
+        end
+
+        @req_positionals.each_with_index do |f_vtx, i|
+          changes.add_edge(genv, a_args.positionals[i], f_vtx)
+        end
+        @post_positionals.each_with_index do |f_vtx, i|
+          i -= @post_positionals.size
+          changes.add_edge(genv, a_args.positionals[i], f_vtx)
+        end
+        start_rest = @req_positionals.size
+        end_rest = a_args.positionals.size - @post_positionals.size
+        i = 0
+        while i < @opt_positionals.size && start_rest < end_rest
+          f_arg = @opt_positionals[i]
+          changes.add_edge(genv, a_args.positionals[start_rest], f_arg)
+          i += 1
+          start_rest += 1
+        end
+
+        if start_rest < end_rest
+          if @rest_positionals
+            (start_rest..end_rest-1).each do |i|
+              @rest_positionals.each_type do |ty|
+                if ty.is_a?(Type::Instance) && ty.mod == genv.mod_ary && ty.args[0]
+                  changes.add_edge(genv, a_args.positionals[i], ty.args[0])
+                end
+              end
+            end
+          end
+        end
+      end
+
+      if a_args.keywords
+        # TODO: support diagnostics
+        node.req_keywords.zip(@req_keywords) do |name, f_vtx|
+          changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
+        end
+
+        node.opt_keywords.zip(@opt_keywords).each do |name, f_vtx|
+          changes.add_edge(genv, a_args.get_keyword_arg(genv, changes, name), f_vtx)
+        end
+
+        if node.rest_keywords
+          named_keys = node.req_keywords + node.opt_keywords
+          a_args.keywords.each_type do |kw_ty|
+            case kw_ty
+            when Type::Record
+              rest_fields = kw_ty.fields.reject {|key, _| named_keys.include?(key) }
+              base = kw_ty.base_type(genv)
+              rest_record = Type::Record.new(genv, rest_fields, base)
+              changes.add_edge(genv, Source.new(rest_record), @rest_keywords)
+            when Type::Hash, Type::Instance
+              changes.add_edge(genv, Source.new(kw_ty), @rest_keywords)
+            end
+          end
+        end
+      end
+
+      return true
+    end
+
   end
 
   class ActualArguments
@@ -424,18 +554,32 @@ module TypeProf::Core
   end
 
   class Block
-    #: (AST::CallBaseNode, Vertex, Array[Vertex], Array[EscapeBox]) -> void
-    def initialize(node, f_ary_arg, f_args, next_boxes)
+    #: (AST::BlockNode, Vertex, Array[Vertex], Array[EscapeBox], FormalArguments?) -> void
+    def initialize(node, f_ary_arg, f_args, next_boxes, formals = nil)
       @node = node
       @f_ary_arg = f_ary_arg
       @f_args = f_args
       @next_boxes = next_boxes
+      # Set when the body is entered like a method rather than yielded to, which
+      # is to say for a lambda: the full formals then bind the call's arguments.
+      @formals = formals
     end
 
     attr_reader :node, :f_args, :next_boxes
 
+    # The arguments of a call that enters this body directly, as Proc#call does.
+    def pass_arguments(genv, changes, a_args)
+      if @formals
+        @formals.pass_arguments(changes, genv, a_args, @node)
+      else
+        accept_args(genv, changes, a_args.positionals)
+      end
+    end
+
     def accept_args(genv, changes, caller_positionals)
-      if caller_positionals.size == 1 && @f_args.size >= 2
+      if caller_positionals.size == 1 && @f_args.size >= 2 && !@formals
+        # A block deconstructs a sole array argument over its parameters; a
+        # lambda takes it as the one argument it is.
         changes.add_edge(genv, caller_positionals[0], @f_ary_arg)
       else
         caller_positionals.zip(@f_args) do |a_arg, f_arg|
@@ -452,6 +596,10 @@ module TypeProf::Core
   end
 
   class RecordBlock
+    def pass_arguments(genv, changes, a_args)
+      accept_args(genv, changes, a_args.positionals)
+    end
+
     def initialize(node)
       @node = node
       @used = false

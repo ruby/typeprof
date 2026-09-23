@@ -25,7 +25,7 @@ module TypeProf::Core
     def proc_call(changes, node, ty, a_args, ret)
       case ty
       when Type::Proc
-        ty.block.accept_args(@genv, changes, a_args.positionals)
+        ty.block.pass_arguments(@genv, changes, a_args)
         ty.block.add_ret(@genv, changes, ret)
         true
       else
