@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790144259355,
+  "lastUpdate": 1790144261239,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -729,6 +729,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/92876451f5efa8651fe9c1b24f82fb72db8d2bd3"
         },
         "date": 1790143892388,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 78.56,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 86.49,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 31.37,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 35.61,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d4edb438bfc5412b3bdc4e600938ad1f9f0992e",
+          "message": "Support an unless guard in a pattern (#483)\n\nAST.create_pattern_node routed a guard to IfPatternNode only for\n:if_node, so `in pat unless cond` raised \"unknown pattern node type:\nunless_node\". IfPatternNode reads only the predicate and the guarded\npattern, so an unless guard needs no node of its own; only the sanity\ncheck differs, because Prism names the else slot `subsequent` on IfNode\nand `else_clause` on UnlessNode.",
+          "timestamp": "2026-09-23T15:15:21+09:00",
+          "tree_id": "9bdef8d4f893003ab8c3002cc56739794092f081",
+          "url": "https://github.com/ruby/typeprof/commit/0d4edb438bfc5412b3bdc4e600938ad1f9f0992e"
+        },
+        "date": 1790144260704,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
