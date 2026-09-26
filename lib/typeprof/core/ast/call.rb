@@ -214,7 +214,13 @@ module TypeProf::Core
         end
 
         if @forwarding_arguments
-          forward_a_args = (@lenv.forward_args || raise).to_actual_arguments(
+          forward_args = @lenv.forward_args
+          # `...` needs a method definition, so only a bare `super` can reach here
+          @changes.add_diagnostic(:code_range, "implicit argument passing of super is not supported here") unless forward_args
+        end
+
+        if forward_args
+          forward_a_args = forward_args.to_actual_arguments(
             genv,
             @changes,
             self,
@@ -242,11 +248,11 @@ module TypeProf::Core
           blk_ty = @block_pass.install(genv)
         elsif @anonymous_block_forwarding
           blk_ty = @lenv.get_var(:"*anonymous_block")
-        elsif @forwarding_arguments
+        elsif forward_args
           blk_ty = forward_a_args.block
         end
 
-        if @forwarding_arguments
+        if forward_args
           a_args = a_args.with_block(blk_ty, omittable: !@block && !@block_pass && !@anonymous_block_forwarding)
         else
           a_args = a_args.with_block(blk_ty)
