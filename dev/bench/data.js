@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790444044838,
+  "lastUpdate": 1790444286730,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -659,6 +659,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 73.66,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2e217811de3b060cad1c48b04d74a802d9afa04c",
+          "message": "Fix the scope and argument binding of a lambda literal (#490)\n\n* Give an empty block body its own local scope\n\nA block or lambda with an empty body built its DummyNilNode with the\nenclosing LocalEnv, and install0 takes the body's LocalEnv as its own.\nSo `->(x) { }` bound x in the enclosing scope, and an empty lambda took\nthe enclosing method's return and the enclosing block's break as the\nvalue #call returns. An empty block had the same bug before a lambda\nliteral was analyzed at all.\n\n* Pass keywords to a lambda without keyword parameters as a hash\n\nA method with no keyword parameters takes `f(k: 1)` as a trailing\npositional hash, but a lambda call skipped that step and reported\n`->(h) { h }.call(k: 1)` as a wrong number of arguments.\n\n* Bind the block passed to a lambda call\n\nA method call binds the block it is given to its `&b` parameter, but a\nlambda call left that parameter untyped. Proc#call already receives the\nblock, so it is bound the same way.\n\n* Bind a lambda passed with `&` through its formals\n\nA lambda given with `&` to an RBS-declared method was still bound like\na block: its rest and post parameters got nothing and its arity was\nnot checked, while the same lambda called with #call bound fully.\n\n* Analyze the keyword defaults of a block\n\nparse_params builds nodes for keyword defaults, but in a block they\nwere never installed, so a call in `{ |x: helper(1)| }` got no\ndiagnostics. A block still does not bind keywords.\n\n* Add a scenario for the return type of a block passed to super\n\nThe block of `super() { ... }` used to fall through to a debug `pp` in\nwrong_return_type and report nothing.",
+          "timestamp": "2026-09-27T02:35:29+09:00",
+          "tree_id": "2fe7cfc81351fe1e165c3ce0340f73bfa1c02a29",
+          "url": "https://github.com/ruby/typeprof/commit/2e217811de3b060cad1c48b04d74a802d9afa04c"
+        },
+        "date": 1790444285952,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.43,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.68,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 28.27,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 71.35,
             "unit": "s"
           }
         ]
