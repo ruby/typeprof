@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790396182401,
+  "lastUpdate": 1790396182604,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1169,6 +1169,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/d55c0b3efe4898dc66b397d96a126c869aa9c081"
         },
         "date": 1790392102270,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 88.02,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.75,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 47,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22d6b89edcbe5d7b8230e0b372afe41b6ee57719",
+          "message": "Report super outside a method instead of crashing (#484)\n\nOnly a method definition sets lenv.forward_args, which a bare `super`\nshares with `...` forwarding, so `define_method(:foo) { |x| super }` ran\na bare `raise` and surfaced as a RuntimeError with no message. Report a\ndiagnostic instead and treat the call as taking no arguments. Ruby's own\nwording differs by context, an implicit argument passing error from\ndefine_method and \"super called outside of method\" at the top level, and\nTypeProf only knows that forward_args is missing, so the message quotes\nneither.",
+          "timestamp": "2026-09-26T13:11:47+09:00",
+          "tree_id": "0fbb34affb902295a3e3eee0fb2b7350b57b3e53",
+          "url": "https://github.com/ruby/typeprof/commit/22d6b89edcbe5d7b8230e0b372afe41b6ee57719"
+        },
+        "date": 1790396182574,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
