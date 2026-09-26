@@ -19,9 +19,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
+        id: ruby
         with:
-          ruby-version: '3.4'
+          ruby-version: '4.0'
           bundler-cache: true
+
+      # Keyed by the scripts, which pin the gem versions and the collection revision.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            tmp/benchmark/bundle
+            ~/.cache/rbs
+          key: benchmark-${{ steps.ruby.outputs.ruby-prefix }}-${{ hashFiles('tool/benchmark.rb', 'tool/benchmark/project.rb') }}
 
       - name: Run benchmark
         run: bundle exec ruby tool/benchmark.rb
