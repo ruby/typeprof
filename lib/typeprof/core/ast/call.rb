@@ -33,7 +33,7 @@ module TypeProf::Core
         else
           raise "not supported yet: #{ raw_node.parameters.class }"
         end
-        @body = raw_node.body ? AST.create_node(raw_node.body, nlenv) : DummyNilNode.new(code_range, lenv)
+        @body = raw_node.body ? AST.create_node(raw_node.body, nlenv) : DummyNilNode.new(code_range, nlenv)
       end
 
       attr_reader :tbl, :f_args, :opt_positional_defaults, :body
