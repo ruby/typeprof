@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790144723302,
+  "lastUpdate": 1790391515451,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -483,6 +483,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 77.08,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84485681841ca476b980ad3c8cb04564aedc527a",
+          "message": "Push benchmark results to gh-pages in a single push (#488)\n\nEach store step pushed to gh-pages, so GitHub Pages was deployed twice\nper run and the first deployment was always cancelled.",
+          "timestamp": "2026-09-26T11:56:23+09:00",
+          "tree_id": "29eb5aa18b217d8356b736fba067d6f6997b1803",
+          "url": "https://github.com/ruby/typeprof/commit/84485681841ca476b980ad3c8cb04564aedc527a"
+        },
+        "date": 1790391514535,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.35,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.09,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 20.93,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 84.76,
             "unit": "s"
           }
         ]
