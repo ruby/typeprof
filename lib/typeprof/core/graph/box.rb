@@ -1214,6 +1214,8 @@ module TypeProf::Core
         base_ty = ty.base_type(genv)
         singleton = base_ty.is_a?(Type::Singleton)
         mod = base_ty.mod
+        # Every class descends from Object, so this would only find unrelated methods
+        next if mod.cpath.empty?
         mod.each_descendant do |desc_mod|
           next if mod == desc_mod
           me = desc_mod.get_method(singleton, @mid)
