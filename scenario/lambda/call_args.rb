@@ -16,6 +16,9 @@ rest_keywords
 
 def block_param = ->(&b) { b }.call
 
+def block_given = ->(&b) { b }.call { 1 }
+block_given
+
 ## assert
 class Object
   def rest: -> Array[Integer | String]
@@ -24,4 +27,5 @@ class Object
   def keywords: -> (Integer | String)
   def rest_keywords: -> { a: Integer }
   def block_param: -> untyped
+  def block_given: -> Proc
 end

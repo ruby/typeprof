@@ -581,6 +581,7 @@ module TypeProf::Core
       if @formals
         a_args = a_args.with_keywords_normalized_for(@node)
         @formals.pass_arguments(changes, genv, a_args, @node)
+        changes.add_edge(genv, a_args.block, @formals.block) if @formals.block && a_args.block
       else
         accept_args(genv, changes, a_args.positionals)
       end
