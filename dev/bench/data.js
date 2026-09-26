@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790392102302,
+  "lastUpdate": 1790396182401,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -571,6 +571,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 181.65,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22d6b89edcbe5d7b8230e0b372afe41b6ee57719",
+          "message": "Report super outside a method instead of crashing (#484)\n\nOnly a method definition sets lenv.forward_args, which a bare `super`\nshares with `...` forwarding, so `define_method(:foo) { |x| super }` ran\na bare `raise` and surfaced as a RuntimeError with no message. Report a\ndiagnostic instead and treat the call as taking no arguments. Ruby's own\nwording differs by context, an implicit argument passing error from\ndefine_method and \"super called outside of method\" at the top level, and\nTypeProf only knows that forward_args is missing, so the message quotes\nneither.",
+          "timestamp": "2026-09-26T13:11:47+09:00",
+          "tree_id": "0fbb34affb902295a3e3eee0fb2b7350b57b3e53",
+          "url": "https://github.com/ruby/typeprof/commit/22d6b89edcbe5d7b8230e0b372afe41b6ee57719"
+        },
+        "date": 1790396181856,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 5.05,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.96,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 79.01,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 142.96,
             "unit": "s"
           }
         ]
