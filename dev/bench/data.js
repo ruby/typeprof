@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790444044633,
+  "lastUpdate": 1790444044838,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1277,6 +1277,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 47,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3125e3127f413280a423ebdfd1d1f69ea6bc93b7",
+          "message": "Skip the subclass method lookup for calls on Object (#489)\n\nTop-level calls like `get` in Rails routes passed their arguments to\nunrelated methods such as Faraday's `get`, and walking every class on\neach call made the analysis of large projects like rubygems.org much\nslower.",
+          "timestamp": "2026-09-27T02:31:25+09:00",
+          "tree_id": "18b0c8ddc82c4bc5586b626f085859be6b12f65b",
+          "url": "https://github.com/ruby/typeprof/commit/3125e3127f413280a423ebdfd1d1f69ea6bc93b7"
+        },
+        "date": 1790444044806,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 88.02,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.74,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
             "unit": "%"
           }
         ]
