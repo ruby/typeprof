@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790392101404,
+  "lastUpdate": 1790392102302,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1101,6 +1101,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 35.61,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d55c0b3efe4898dc66b397d96a126c869aa9c081",
+          "message": "Analyze the benchmark projects with the RBS of their gems (#487)\n\nThe projects were analyzed with `--no-collection`, so every library\nthey use was untyped. Installing their gems and the matching RBS makes\nthe numbers reflect the way TypeProf is used on a real project, at the\ncost of a longer analysis.\n\nThe gem versions and the RBS collection are pinned to a fixed date so\nthat runs stay comparable. Bundler's cooldown does the pinning, which\navoids keeping a lockfile per project in this repository.\n\nBoth workflows run the benchmark on the same Ruby, so that the gems\ninstalled for one of them can be restored by the other.",
+          "timestamp": "2026-09-26T12:00:54+09:00",
+          "tree_id": "b7a9f6239d41dd90d9240ffd756c7a91f49b0e4a",
+          "url": "https://github.com/ruby/typeprof/commit/d55c0b3efe4898dc66b397d96a126c869aa9c081"
+        },
+        "date": 1790392102270,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 88.02,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.75,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 47,
             "unit": "%"
           }
         ]
