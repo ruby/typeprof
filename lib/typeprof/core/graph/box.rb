@@ -399,7 +399,7 @@ module TypeProf::Core
         a_args.block.each_type do |ty|
           case ty
           when Type::Proc
-            ty.block.accept_args(genv, changes, blk_a_args)
+            ty.block.pass_arguments(genv, changes, ActualArguments.new(blk_a_args, ::Array.new(blk_a_args.size, false), nil, nil))
 
             if ty.block.is_a?(Block)
               ty.block.next_boxes.each do |next_box|
