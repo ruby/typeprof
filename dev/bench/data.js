@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790391515451,
+  "lastUpdate": 1790391515655,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -993,6 +993,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/0b54714c1e7cdfa8a83009716d5361643809e55f"
         },
         "date": 1790144722674,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 78.56,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 86.49,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 31.37,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 35.61,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84485681841ca476b980ad3c8cb04564aedc527a",
+          "message": "Push benchmark results to gh-pages in a single push (#488)\n\nEach store step pushed to gh-pages, so GitHub Pages was deployed twice\nper run and the first deployment was always cancelled.",
+          "timestamp": "2026-09-26T11:56:23+09:00",
+          "tree_id": "29eb5aa18b217d8356b736fba067d6f6997b1803",
+          "url": "https://github.com/ruby/typeprof/commit/84485681841ca476b980ad3c8cb04564aedc527a"
+        },
+        "date": 1790391515625,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
