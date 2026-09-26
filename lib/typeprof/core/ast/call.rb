@@ -33,7 +33,7 @@ module TypeProf::Core
         else
           raise "not supported yet: #{ raw_node.parameters.class }"
         end
-        @body = raw_node.body ? AST.create_node(raw_node.body, nlenv) : DummyNilNode.new(code_range, lenv)
+        @body = raw_node.body ? AST.create_node(raw_node.body, nlenv) : DummyNilNode.new(code_range, nlenv)
       end
 
       attr_reader :tbl, :f_args, :opt_positional_defaults, :body
@@ -44,8 +44,9 @@ module TypeProf::Core
       def opt_keywords = @params[:opt_keywords]
       def rest_keywords = @params[:rest_keywords]
       def opt_keyword_defaults = @params[:opt_keyword_defaults]
+      def no_keywords = @params[:no_keywords]
 
-      def subnodes = { opt_positional_defaults:, body: }
+      def subnodes = { opt_positional_defaults:, body:, opt_keyword_defaults: }
       # f_args covers only the parameters a block binds, so the rest have to be
       # compared too or an edit that only touches them looks like no edit at all.
       def attrs = { tbl:, f_args:, formal_names: }
@@ -116,8 +117,12 @@ module TypeProf::Core
       end
 
       # A block is yielded to, and what a yielding method passes is the positional
-      # list alone; there are no formals to bind beyond it.
-      def build_formals(genv, blenv, f_args) = nil
+      # list alone; there are no formals to bind beyond it. Keyword defaults are
+      # still code in the block, so they are analyzed without being bound.
+      def build_formals(genv, blenv, f_args)
+        opt_keyword_defaults.each {|expr| expr.install(genv) }
+        nil
+      end
 
       # Block-local variables shadow the outer ones, so writes to them are not
       # modifications of the enclosing scope.

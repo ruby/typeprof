@@ -182,6 +182,15 @@ module TypeProf::Core
       )
     end
 
+    # Keywords passed to formals that take none are the last positional hash.
+    def with_keywords_normalized_for(node)
+      return self unless keywords
+      return self if node.no_keywords || node.rest_keywords
+      return self unless node.req_keywords.empty? && node.opt_keywords.empty?
+
+      with_keywords_as_last_positional_hash
+    end
+
     def prepend_positionals(positionals, splat_flags)
       return self if positionals.empty?
 
@@ -570,7 +579,9 @@ module TypeProf::Core
     # The arguments of a call that enters this body directly, as Proc#call does.
     def pass_arguments(genv, changes, a_args)
       if @formals
+        a_args = a_args.with_keywords_normalized_for(@node)
         @formals.pass_arguments(changes, genv, a_args, @node)
+        changes.add_edge(genv, a_args.block, @formals.block) if @formals.block && a_args.block
       else
         accept_args(genv, changes, a_args.positionals)
       end
