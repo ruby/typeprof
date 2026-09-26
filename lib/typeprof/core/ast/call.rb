@@ -44,6 +44,7 @@ module TypeProf::Core
       def opt_keywords = @params[:opt_keywords]
       def rest_keywords = @params[:rest_keywords]
       def opt_keyword_defaults = @params[:opt_keyword_defaults]
+      def no_keywords = @params[:no_keywords]
 
       def subnodes = { opt_positional_defaults:, body: }
       # f_args covers only the parameters a block binds, so the rest have to be

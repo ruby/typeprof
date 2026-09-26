@@ -827,17 +827,9 @@ module TypeProf::Core
     def pass_arguments(changes, genv, a_args)
       @f_args.pass_arguments(changes, genv, a_args, @node)
     end
-    def normalize_keyword_hash_argument_for_def(a_args)
-      return a_args unless a_args.keywords
-      return a_args if @node.no_keywords
-      return a_args if @node.rest_keywords
-      return a_args unless @node.req_keywords.empty? && @node.opt_keywords.empty?
-
-      a_args.with_keywords_as_last_positional_hash
-    end
 
     def call(changes, genv, a_args, ret)
-      a_args = normalize_keyword_hash_argument_for_def(a_args)
+      a_args = a_args.with_keywords_normalized_for(@node)
       if pass_arguments(changes, genv, a_args)
         if @node.is_a?(AST::DefNode)
           @node.body.lenv.forward_args&.accept_actual_arguments(genv, changes, a_args)
