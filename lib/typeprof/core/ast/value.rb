@@ -336,8 +336,6 @@ module TypeProf::Core
 
       def lambda? = true
 
-      def subnodes = { opt_positional_defaults:, body:, opt_keyword_defaults: }
-
       # A lambda is entered like a method, so every parameter kind binds, not just
       # the positionals a block is handed.
       def build_formals(genv, blenv, f_args)
