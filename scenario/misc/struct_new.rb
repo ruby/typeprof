@@ -88,7 +88,7 @@ class Pt
   def x=: (untyped) -> untyped
   def y: -> Integer
   def y=: (untyped) -> untyped
-  def self.[]: (Integer, Integer) -> Pt
+  def self.[]: (?Integer, ?Integer) -> Pt
   def initialize: (?Integer, ?Integer) -> void
 end
 
@@ -106,7 +106,7 @@ class Dog
   def name=: (untyped) -> untyped
   def age: -> Integer
   def age=: (untyped) -> untyped
-  def self.[]: (String, Integer) -> Dog
+  def self.[]: (String, String) -> Dog
   def initialize: (String, String) -> void
 end
 
@@ -140,7 +140,7 @@ class Pt
   def x=: (untyped) -> untyped
   def y: -> Integer
   def y=: (untyped) -> untyped
-  def self.[]: (Integer, Integer) -> Pt
+  def self.[]: (?Integer, ?Integer) -> Pt
 end
 class Pt
   def initialize: (?Integer, ?Integer) -> void

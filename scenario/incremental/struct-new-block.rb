@@ -26,7 +26,7 @@ class Dog
   def name=: (untyped) -> untyped
   def age: -> Integer
   def age=: (untyped) -> untyped
-  def self.[]: (String, Integer) -> Dog
+  def self.[]: (String, String) -> Dog
   def initialize: (String, String) -> void
 end
 

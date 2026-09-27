@@ -840,7 +840,7 @@ module TypeProf::Core
       end
     end
 
-    def show(output_parameter_names)
+    def show(output_parameter_names, ret: nil)
       block_show = []
       if @record_block.used
         blk_f_args = @record_block.f_args.map {|arg| arg.show }.join(", ")
@@ -891,7 +891,7 @@ module TypeProf::Core
       args = args.join(", ")
       s = args.empty? ? [] : ["(#{ args })"]
       s << "#{ block_show.sort.join(" | ") }" unless block_show.empty?
-      s << "-> #{ @mid == :initialize ? "void" : @ret.show }"
+      s << "-> #{ ret || (@mid == :initialize ? "void" : @ret.show) }"
       s.join(" ")
     end
   end

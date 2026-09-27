@@ -520,6 +520,14 @@ module TypeProf::Core
                         !@genv.resolve_method(node.static_cpath, mdef.singleton, mdef.mid).defs.empty?
                 out << "  " * stack.size + "def #{ mdef.singleton ? "self." : "" }#{ mdef.mid }: " + mdef.show(@options[:output_parameter_names])
               end
+              if node.is_a?(AST::StructNewNode) && node.kind == :struct &&
+                 @genv.resolve_method(node.static_cpath, true, :[]).defs.empty?
+                # Struct.[] takes the same arguments as the initialize it reaches
+                init_mdef = @genv.resolve_method(node.static_cpath, false, :initialize).defs.to_a.first ||
+                            @genv.resolve_method(node.struct_base_cpath, false, :initialize).defs.to_a.first
+                ret = Type::Instance.new(@genv, mod, []).show
+                out << "  " * stack.size + "def self.[]: " + init_mdef.show(@options[:output_parameter_names], ret:)
+              end
             else
               stack.pop
               out << "  " * stack.size + "end"
