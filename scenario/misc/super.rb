@@ -329,6 +329,77 @@ end
 
 class SuperChild < SuperBase
   def foo(a)
+    [1].map { super }
+  end
+end
+
+SuperChild.new.foo("str")
+
+## assert
+class SuperBase
+  def foo: (String) -> String
+end
+class SuperChild < SuperBase
+  def foo: (String) -> Array[String]
+end
+
+## diagnostics
+
+## update
+class SuperBase
+  def foo(a)
+    a
+  end
+end
+
+class SuperChild < SuperBase
+  def foo(a)
+    [1].each {|a| a = "str"; [2].each { super } }
+  end
+end
+
+SuperChild.new.foo(1)
+
+## assert
+class SuperBase
+  def foo: (Integer) -> Integer
+end
+class SuperChild < SuperBase
+  def foo: (Integer) -> Array[Integer]
+end
+
+## update
+class SuperBase
+  def foo(a)
+    a
+  end
+end
+
+class SuperChild < SuperBase
+  def foo(a)
+    [1].each {|a| [2].each {|a| a = "str"; super } }
+  end
+end
+
+SuperChild.new.foo(1)
+
+## assert
+class SuperBase
+  def foo: (Integer) -> Integer
+end
+class SuperChild < SuperBase
+  def foo: (Integer) -> Array[Integer]
+end
+
+## update
+class SuperBase
+  def foo(a)
+    a
+  end
+end
+
+class SuperChild < SuperBase
+  def foo(a)
     f = ->(a) { a = "str"; super }
     f.call(1)
   end

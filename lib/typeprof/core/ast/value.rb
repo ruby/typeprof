@@ -330,10 +330,6 @@ module TypeProf::Core
     # A lambda literal is a block without a call: `->` never dispatches to a
     # user-defined `lambda` method.
     class LambdaNode < BlockNode
-      def initialize(raw_node, lenv)
-        super(raw_node, lenv, lenv.cref.mid)
-      end
-
       def lambda? = true
 
       # A lambda is entered like a method, so every parameter kind binds, not just

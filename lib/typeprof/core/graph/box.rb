@@ -1027,6 +1027,8 @@ module TypeProf::Core
         next if orig_ty == genv.bot_type
         if @mid == :"*super"
           mid = @node.lenv.cref.mid
+          # Outside a method or in a define_method block, the method is unknown
+          next unless mid
           skip = true
         else
           mid = @mid

@@ -2,11 +2,15 @@ module TypeProf::Core
   class AST
     # @lenv is the scope the block closes over; the body has its own LocalEnv.
     class BlockNode < Node
-      def initialize(raw_node, lenv, mid)
+      def initialize(raw_node, lenv, method_body: false)
         super(raw_node, lenv)
 
         @tbl = raw_node.locals
-        ncref = CRef.new(lenv.cref.cpath, :instance, mid, lenv.cref)
+        @method_body = method_body
+        # A `super` in a block calls the super of the enclosing method, but a
+        # block given to define_method is the body of another method, whose name
+        # is not known here
+        ncref = CRef.new(lenv.cref.cpath, :instance, method_body ? nil : lenv.cref.mid, lenv.cref)
         # A `return` in a block exits the enclosing method, so the body writes into
         # its return boxes. A lambda's `return` exits the lambda, so it gets its own.
         nlenv = LocalEnv.new(lenv.file_context, ncref, {}, lambda? ? [] : lenv.return_boxes)
@@ -60,7 +64,8 @@ module TypeProf::Core
 
       def install0(genv)
         blenv = @body.lenv
-        blenv.forward_args = @lenv.forward_args
+        # Ruby rejects a bare `super` in a define_method block at runtime
+        blenv.forward_args = @lenv.forward_args unless @method_body
         # An outer block may have shadowed the same name already; its entry is
         # the method's variable, so it must win over the outer block's own one
         blenv.shadowed_vars = @lenv.locals.slice(*@tbl).merge(@lenv.shadowed_vars)
@@ -143,6 +148,8 @@ module TypeProf::Core
     end
 
     class CallBaseNode < Node
+      DEFINE_METHOD_MIDS = [:define_method, :define_singleton_method].freeze
+
       def initialize(raw_node, recv, mid, mid_code_range_loc, raw_args, last_arg, raw_block, lenv, forwarding_arguments: false)
         super(raw_node, lenv)
 
@@ -194,7 +201,7 @@ module TypeProf::Core
               @anonymous_block_forwarding = true
             end
           else
-            @block = BlockNode.new(raw_block, lenv, @mid)
+            @block = BlockNode.new(raw_block, lenv, method_body: DEFINE_METHOD_MIDS.include?(@mid))
           end
         end
 
