@@ -374,12 +374,13 @@ module TypeProf::Core
       @ivar_narrowings = {}
       @strict_const_scope = false
       @forward_args = forward_args
+      @shadowed_vars = {}
       # [cpath, names] of the type parameters of the enclosing RBS declaration
       @sig_type_params = sig_type_params
     end
 
     attr_reader :file_context, :cref, :locals, :return_boxes, :break_vtx, :next_boxes, :strict_const_scope, :sig_type_params
-    attr_accessor :module_function, :forward_args
+    attr_accessor :module_function, :forward_args, :shadowed_vars
 
     def path = @file_context&.path
     def code_range_from_node(node)
@@ -396,6 +397,12 @@ module TypeProf::Core
 
     def get_var(name)
       @locals[name] || raise("#{ name }")
+    end
+
+    # A bare `super` passes the variables of the method, not the block
+    # parameters that shadow them
+    def get_method_var(name)
+      @shadowed_vars[name] || get_var(name)
     end
 
     def exist_var?(name)

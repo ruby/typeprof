@@ -384,7 +384,7 @@ module TypeProf::Core
   end
 
   class ForwardingArguments
-    def initialize(req_positionals, opt_positionals, rest_positionals, post_positionals, req_keyword_pairs, opt_keyword_pairs, rest_keywords, block, activation)
+    def initialize(req_positionals, opt_positionals, rest_positionals, post_positionals, req_keyword_pairs, opt_keyword_pairs, rest_keywords, block, activation, param_names)
       @req_positionals = req_positionals
       @opt_positionals = opt_positionals
       @rest_positionals = rest_positionals
@@ -394,12 +394,14 @@ module TypeProf::Core
       @rest_keywords = rest_keywords
       @block = block
       @activation = activation
+      @param_names = param_names
     end
 
-    def to_actual_arguments(genv, changes, node, include_leading_positionals: true, activation_required: false)
-      positionals = include_leading_positionals ? @req_positionals.dup : []
-      splat_flags = ::Array.new(positionals.size, false)
-      positionals_omittable = ::Array.new(positionals.size, false)
+    # The arguments that `...` forwards: only the ones the caller passed.
+    def to_actual_arguments(genv, changes, node)
+      positionals = []
+      splat_flags = []
+      positionals_omittable = []
 
       @opt_positionals.each do |elem_vtx|
         positionals << Source.new(genv.gen_ary_type(elem_vtx))
@@ -419,8 +421,51 @@ module TypeProf::Core
         positionals_omittable << false
       end
 
-      keywords, keywords_omittable = build_keyword_args(genv, changes, node)
-      ForwardingActualArguments.new(positionals, splat_flags, keywords, @block, positionals_omittable, keywords_omittable, true, @activation, activation_required)
+      # `...` cannot follow keyword parameters, so only the rest keywords remain
+      ForwardingActualArguments.new(positionals, splat_flags, @rest_keywords, @block, positionals_omittable, !!@rest_keywords, true, @activation, true)
+    end
+
+    # A bare `super` passes the current values of the parameters, which
+    # include the defaults of omitted ones and any reassignment.
+    def to_implicit_super_arguments(genv, changes, node, lenv)
+      positionals = []
+      splat_flags = []
+      positionals_omittable = []
+
+      # A destructured parameter has no name, so it is passed as it was given
+      @param_names[:req_positionals].zip(@req_positionals) do |name, vtx|
+        positionals << (name ? lenv.get_method_var(name) : vtx)
+        splat_flags << false
+        positionals_omittable << false
+      end
+
+      @param_names[:opt_positionals].each do |name|
+        positionals << lenv.get_method_var(name)
+        splat_flags << false
+        positionals_omittable << false
+      end
+
+      if @param_names[:rest_positionals]
+        positionals << lenv.get_method_var(@param_names[:rest_positionals])
+        splat_flags << true
+        positionals_omittable << true
+      elsif @rest_positionals
+        positionals << Source.new(genv.gen_ary_type(@rest_positionals))
+        splat_flags << true
+        positionals_omittable << true
+      end
+
+      @param_names[:post_positionals].zip(@post_positionals) do |name, vtx|
+        positionals << (name ? lenv.get_method_var(name) : vtx)
+        splat_flags << false
+        positionals_omittable << false
+      end
+
+      req_keyword_pairs = @param_names[:req_keywords].map {|name| [name, lenv.get_method_var(name)] }
+      opt_keyword_pairs = @param_names[:opt_keywords].map {|name| [name, lenv.get_method_var(name)] }
+      rest_keywords = @param_names[:rest_keywords] ? lenv.get_method_var(@param_names[:rest_keywords]) : @rest_keywords
+      keywords, keywords_omittable = build_keyword_args(genv, changes, node, req_keyword_pairs, opt_keyword_pairs, rest_keywords)
+      ForwardingActualArguments.new(positionals, splat_flags, keywords, @block, positionals_omittable, keywords_omittable, true, @activation, false)
     end
 
     def accept_actual_arguments(genv, changes, a_args)
@@ -525,18 +570,16 @@ module TypeProf::Core
 
     private
 
-    def build_keyword_args(genv, changes, node)
-      opt_keyword_pairs = @opt_keyword_pairs
-
-      if @req_keyword_pairs.empty? && opt_keyword_pairs.empty?
-        return @rest_keywords, !!@rest_keywords
+    def build_keyword_args(genv, changes, node, req_keyword_pairs, opt_keyword_pairs, rest_keywords)
+      if req_keyword_pairs.empty? && opt_keyword_pairs.empty?
+        return rest_keywords, !!rest_keywords
       end
 
       unified_key = Vertex.new(node)
       unified_val = Vertex.new(node)
       literal_pairs = {}
 
-      @req_keyword_pairs.each do |name, vtx|
+      req_keyword_pairs.each do |name, vtx|
         changes.add_edge(genv, Source.new(Type::Symbol.new(genv, name)), unified_key)
         changes.add_edge(genv, vtx, unified_val)
         literal_pairs[name] = vtx
@@ -549,13 +592,13 @@ module TypeProf::Core
       end
 
       base_hash_type = genv.gen_hash_type(unified_key, unified_val)
-      changes.add_hash_splat_box(genv, @rest_keywords, unified_key, unified_val) if @rest_keywords
+      changes.add_hash_splat_box(genv, rest_keywords, unified_key, unified_val) if rest_keywords
 
       if literal_pairs.empty?
         [Source.new(base_hash_type), false]
-      elsif @rest_keywords
+      elsif rest_keywords
         fallback = Source.new(Type::Record.new(genv, literal_pairs, base_hash_type))
-        [changes.add_keyword_merge_box(genv, @rest_keywords, literal_pairs, fallback).ret, false]
+        [changes.add_keyword_merge_box(genv, rest_keywords, literal_pairs, fallback).ret, false]
       else
         [Source.new(Type::Record.new(genv, literal_pairs, base_hash_type)), false]
       end

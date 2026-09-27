@@ -680,6 +680,8 @@ module TypeProf::Core
       @fallback = fallback
       @rest.add_edge(genv, self)
       @ret = Vertex.new(node)
+      # An empty rest never triggers a run, but the fallback still has to flow
+      genv.add_run(self)
     end
 
     attr_reader :ret

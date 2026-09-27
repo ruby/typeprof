@@ -61,6 +61,9 @@ module TypeProf::Core
       def install0(genv)
         blenv = @body.lenv
         blenv.forward_args = @lenv.forward_args
+        # An outer block may have shadowed the same name already; its entry is
+        # the method's variable, so it must win over the outer block's own one
+        blenv.shadowed_vars = @lenv.locals.slice(*@tbl).merge(@lenv.shadowed_vars)
         @lenv.locals.each {|var, vtx| blenv.locals[var] = vtx }
         @tbl.each {|var| blenv.locals[var] = Source.new(genv.nil_type) }
         blenv.locals[:"*self"] = blenv.cref.get_self(genv)
@@ -225,13 +228,12 @@ module TypeProf::Core
         end
 
         if forward_args
-          forward_a_args = forward_args.to_actual_arguments(
-            genv,
-            @changes,
-            self,
-            include_leading_positionals: @forwarding_arguments != :rest,
-            activation_required: @forwarding_arguments == :rest,
-          )
+          forward_a_args =
+            if @forwarding_arguments == :all
+              forward_args.to_implicit_super_arguments(genv, @changes, self, @lenv)
+            else
+              forward_args.to_actual_arguments(genv, @changes, self)
+            end
           # An anonymous rest cannot appear here: `bar(*, ...)` is a syntax error
           leading_args = @positional_args.map {|arg| arg.install(genv) }
           a_args = forward_a_args.prepend_positionals(leading_args, @splat_flags)
