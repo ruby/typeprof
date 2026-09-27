@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790502792943,
+  "lastUpdate": 1790502793153,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1448,6 +1448,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "rubygems.org",
             "value": 35.74,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "371f90a1b38c8efad5e843c94981cb9797eaf2d8",
+          "message": "Fix wrong arity diagnostics for .new and .[] of a Struct class (#491)\n\n* Dispatch Struct.[] to the initialize of the receiver class\n\nStruct.[] is an alias for Struct.new, but TypeProf generated it from the\nmember list independently of initialize. When a struct overrode\ninitialize, `self.[]` did not follow it: the RBS showed a stale\nsignature and valid calls were reported as wrong number of arguments.\n\n* Make the members optional in the generated Struct initialize\n\nStruct.new(:x, :y).new and Struct.new(:x, :y)[] are valid, but TypeProf\nrequired every member as an argument and reported these calls as wrong\nnumber of arguments. The omitted members are not typed as nil, so the\nreaders keep the types of the given values.",
+          "timestamp": "2026-09-27T18:50:40+09:00",
+          "tree_id": "ca423ccf36ab459bca68d0bb2006e366abc6c0ab",
+          "url": "https://github.com/ruby/typeprof/commit/371f90a1b38c8efad5e843c94981cb9797eaf2d8"
+        },
+        "date": 1790502793122,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
             "unit": "%"
           },
           {
