@@ -8,8 +8,8 @@ class Dog
   def name=: (untyped) -> untyped
   def age: -> Integer
   def age=: (untyped) -> untyped
-  def initialize: (String, Integer) -> void
-  def self.[]: (String, Integer) -> Dog
+  def initialize: (?String, ?Integer) -> void
+  def self.[]: (?String, ?Integer) -> Dog
 end
 
 ## update
@@ -40,6 +40,6 @@ class Dog
   def name=: (untyped) -> untyped
   def age: -> Integer
   def age=: (untyped) -> untyped
-  def initialize: (String, Integer) -> void
-  def self.[]: (String, Integer) -> Dog
+  def initialize: (?String, ?Integer) -> void
+  def self.[]: (?String, ?Integer) -> Dog
 end

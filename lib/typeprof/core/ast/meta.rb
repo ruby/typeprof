@@ -305,8 +305,9 @@ module TypeProf::Core
       def attrs = { static_cpath:, members:, kind: }
 
       # Interface expected by MethodDefBox
-      def req_positionals = @kind == :struct ? @members : []
-      def opt_positionals = []
+      def req_positionals = []
+      # Struct.new(:x).new is valid, so every member is optional
+      def opt_positionals = @kind == :struct ? @members : []
       def rest_positionals = nil
       def post_positionals = []
       def req_keywords = @kind == :data ? @members : []
@@ -397,7 +398,7 @@ module TypeProf::Core
         end
         init_ret = @changes.add_escape_box(genv, Source.new(genv.nil_type))
         if @kind == :struct
-          init_f_args = FormalArguments.new(init_vtxs, [], nil, [], [], [], nil, nil)
+          init_f_args = FormalArguments.new([], init_vtxs, nil, [], [], [], nil, nil)
         else
           # Data.define uses keyword arguments
           init_f_args = FormalArguments.new([], [], nil, [], init_vtxs, [], nil, nil)
