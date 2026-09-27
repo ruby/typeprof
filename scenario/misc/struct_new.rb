@@ -12,8 +12,8 @@ class Foo
   def bar=: (Integer) -> Integer
   def baz: -> String
   def baz=: (untyped) -> untyped
-  def initialize: (Integer, String) -> void
-  def self.[]: (Integer, String) -> Foo
+  def initialize: (?Integer, ?String) -> void
+  def self.[]: (?Integer, ?String) -> Foo
 end
 
 ## update
@@ -41,8 +41,8 @@ Bar.new(5).double
 class Bar
   def n: -> Integer
   def n=: (untyped) -> untyped
-  def initialize: (Integer) -> void
-  def self.[]: (Integer) -> Bar
+  def initialize: (?Integer) -> void
+  def self.[]: (?Integer) -> Bar
   def double: -> Integer
 end
 
@@ -64,8 +64,8 @@ Baz.new(42).ivar
 class Baz
   def v: -> Integer
   def v=: (untyped) -> untyped
-  def initialize: (Integer) -> void
-  def self.[]: (Integer) -> Baz
+  def initialize: (?Integer) -> void
+  def self.[]: (?Integer) -> Baz
   def set_label: -> String
   def ivar: -> String
 end
@@ -88,7 +88,7 @@ class Pt
   def x=: (untyped) -> untyped
   def y: -> Integer
   def y=: (untyped) -> untyped
-  def self.[]: (Integer, Integer) -> Pt
+  def self.[]: (?Integer, ?Integer) -> Pt
   def initialize: (?Integer, ?Integer) -> void
 end
 
@@ -106,7 +106,7 @@ class Dog
   def name=: (untyped) -> untyped
   def age: -> Integer
   def age=: (untyped) -> untyped
-  def self.[]: (String, Integer) -> Dog
+  def self.[]: (String, String) -> Dog
   def initialize: (String, String) -> void
 end
 
@@ -140,7 +140,7 @@ class Pt
   def x=: (untyped) -> untyped
   def y: -> Integer
   def y=: (untyped) -> untyped
-  def self.[]: (Integer, Integer) -> Pt
+  def self.[]: (?Integer, ?Integer) -> Pt
 end
 class Pt
   def initialize: (?Integer, ?Integer) -> void
