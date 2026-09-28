@@ -326,7 +326,12 @@ module TypeProf::Core
         end
         if @kind == :struct
           # Struct.[] calls the receiver's initialize, like Class#new
-          genv.resolve_method(struct_base_cpath, true, :[]).builtin = Builtin.new(genv).method(:class_new)
+          me = genv.resolve_method(struct_base_cpath, true, :[])
+          unless me.builtin
+            me.builtin = Builtin.new(genv).method(:class_new)
+            # Unlike a method definition, a builtin does not notify the calls itself
+            me.add_run_all_method_call_boxes(genv)
+          end
         end
         @block_body.define(genv) if @block_body
         cdef
@@ -358,7 +363,9 @@ module TypeProf::Core
         end
         # On an update, the new node has already set the builtin
         if base.module_defs.to_a.none? { _1.kind == :struct }
-          genv.resolve_method(struct_base_cpath, true, :[]).builtin = nil
+          me = genv.resolve_method(struct_base_cpath, true, :[])
+          me.builtin = nil
+          me.add_run_all_method_call_boxes(genv)
         end
         @block_body.undefine(genv) if @block_body
       end
