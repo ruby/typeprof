@@ -779,7 +779,7 @@ module TypeProf::Core
         ty = Type::Singleton.new(genv, mod)
         param_map0 = Type.default_param_map(genv, ty)
       else
-        type_params = mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
+        type_params = mod.type_params.map {|(_name, _default_ty)| genv.untyped_arg } # TODO: better support
         ty = Type::Instance.new(genv, mod, type_params)
         param_map0 = Type.default_param_map(genv, ty)
         if ty.is_a?(Type::Instance)
@@ -984,7 +984,7 @@ module TypeProf::Core
             ty_env = Type.default_param_map(genv, orig_ty)
             if ty.is_a?(Type::Instance)
               ty.mod.type_params.zip(ty.args) do |(param, default_ty), arg|
-                ty_env[param] = arg || (default_ty ? default_ty.covariant_vertex(genv, changes, ty_env) : Source.new)
+                ty_env[param] = arg || (default_ty ? default_ty.covariant_vertex(genv, changes, ty_env) : genv.untyped_arg)
               end
             end
             mdecl.resolve_overloads(changes, genv, @node, ty_env, a_args, @ret) do |method_type|
@@ -1095,7 +1095,7 @@ module TypeProf::Core
         if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
           prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, base_ty_env, ty)
         else
-          type_params = prep_mod.type_params.map { Source.new() } # TODO: better support
+          type_params = prep_mod.type_params.map { genv.untyped_arg } # TODO: better support
           prep_ty = Type::Instance.new(genv, prep_mod, type_params)
         end
 
@@ -1150,7 +1150,7 @@ module TypeProf::Core
         if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
           inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, base_ty_env, ty)
         else
-          type_params = inc_mod.type_params.map { Source.new() } # TODO: better support
+          type_params = inc_mod.type_params.map { genv.untyped_arg } # TODO: better support
           inc_ty = Type::Instance.new(genv, inc_mod, type_params)
         end
 
@@ -1181,7 +1181,7 @@ module TypeProf::Core
         if ext_decl.is_a?(AST::SigExtendNode) && ext_mod.type_params
           ext_ty = genv.get_instance_type(ext_mod, ext_decl.args, changes, base_ty_env, ty)
         else
-          type_params = ext_mod.type_params.map { Source.new() } # TODO: better support
+          type_params = ext_mod.type_params.map { genv.untyped_arg } # TODO: better support
           ext_ty = Type::Instance.new(genv, ext_mod, type_params)
         end
 

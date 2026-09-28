@@ -620,14 +620,30 @@ module TypeProf::Core
       def install0(genv)
         ret = Vertex.new(self)
 
+        retrying_clauses = @rescue_clauses.select {|clause| has_retry?(clause) }
+
         vars = []
         @body.modified_vars(@lenv.locals.keys, vars) if @body
+        unless retrying_clauses.empty?
+          retrying_clauses.each {|clause| clause.modified_vars(@lenv.locals.keys, vars) }
+        end
         vars.uniq!
 
         old_vtxs = {}
         vars.each do |var|
           vtx = @lenv.get_var(var)
           old_vtxs[var] = vtx
+        end
+
+        retry_vtxs = {}
+        unless retrying_clauses.empty?
+          # A retry starts the begin body again with the locals from the rescue clause.
+          vars.each do |var|
+            vtx = Vertex.new(self)
+            @changes.add_edge(genv, old_vtxs[var], vtx)
+            retry_vtxs[var] = vtx
+            @lenv.set_var(var, vtx)
+          end
         end
 
         @changes.add_edge(genv, @body.install(genv), ret)
@@ -639,12 +655,14 @@ module TypeProf::Core
 
         clause_vtxs_list = []
         @rescue_clauses.each do |clause|
+          rescue_input_vtxs = {}
           vars.each do |var|
             old_vtx = old_vtxs[var]
             nvtx = old_vtx.new_vertex(genv, self)
 
             @changes.add_edge(genv, body_vtxs[var], nvtx) unless body_vtxs[var] == old_vtxs[var]
 
+            rescue_input_vtxs[var] = nvtx
             @lenv.set_var(var, nvtx)
           end
 
@@ -653,6 +671,14 @@ module TypeProf::Core
           clause_vtxs_list << {}
           vars.each do |var|
             clause_vtxs_list.last[var] = @lenv.get_var(var)
+          end
+
+          if retrying_clauses.include?(clause)
+            vars.each do |var|
+              # Avoid a redundant cycle when neither the body nor rescue changes this local.
+              next if clause_vtxs_list.last[var] == rescue_input_vtxs[var] && body_vtxs[var] == retry_vtxs[var]
+              @changes.add_edge(genv, clause_vtxs_list.last[var], retry_vtxs[var])
+            end
           end
         end
 
@@ -702,6 +728,25 @@ module TypeProf::Core
         end
 
         ret
+      end
+
+      private
+
+      def has_retry?(root)
+        nodes = [root]
+        until nodes.empty?
+          node = nodes.pop
+          next if node != root && (node.is_a?(DefNode) || node.is_a?(LambdaNode))
+          if node != root && node.is_a?(BeginNode)
+            # Its body and else remain in this retry scope; its rescue clauses form a new one.
+            nodes << node.body
+            nodes << node.else_clause if node.else_clause
+            next
+          end
+          return true if node.is_a?(RetryNode)
+          node.each_subnode {|subnode| nodes << subnode }
+        end
+        false
       end
     end
 
