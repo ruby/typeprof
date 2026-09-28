@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790601464753,
+  "lastUpdate": 1790601464968,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1697,6 +1697,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/5f6e05b68cc5fc94df8be16add32492ab7b2c129"
         },
         "date": 1790601297385,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "95b7d7a47dfb96832b3077f28a28608a702fc2d5",
+          "message": "Fill in omitted type arguments of RBS types\n\nA generic class or interface written without type arguments in RBS\n(e.g., `def gen: () -> Gen` for `Gen[T]`) made an Instance type with no\narguments, and matching it against `Gen[Integer]` passed nil as the\nactual argument, which crashed with \"undefined method 'each_type' for\nnil\". Fill in the missing arguments with their default types or\nuntyped.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-09-28T22:13:44+09:00",
+          "tree_id": "9c37aea8c03ffe7117614ebc10deb5477b89595e",
+          "url": "https://github.com/ruby/typeprof/commit/95b7d7a47dfb96832b3077f28a28608a702fc2d5"
+        },
+        "date": 1790601464933,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
