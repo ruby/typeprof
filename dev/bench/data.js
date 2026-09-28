@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790602129998,
+  "lastUpdate": 1790602293220,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -967,6 +967,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 73.41,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "f3b635ad1e8fc7c312f21e90a493930095cba1c9",
+          "message": "Re-run the calls of Struct.[] when its builtin is set or removed\n\nStruct.[] is a builtin set on the method entity rather than a method\ndefinition, and assigning a builtin does not notify the calls that\ndepend on the entity. After editing `Pt = Struct.new(:x, :y)` into\n`Pt = Data.define(:x, :y)`, `Pt[1, 2]` still used the removed builtin\nand reported \"wrong number of arguments (2 for 0)\" instead of an\nundefined method.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-09-28T22:26:03+09:00",
+          "tree_id": "5a1bb51d8866d9a616819ec3d081043fb3e47747",
+          "url": "https://github.com/ruby/typeprof/commit/f3b635ad1e8fc7c312f21e90a493930095cba1c9"
+        },
+        "date": 1790602292161,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.56,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.74,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 29.3,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 73.32,
             "unit": "s"
           }
         ]
