@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790602451144,
+  "lastUpdate": 1790602451350,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -2049,6 +2049,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/f3b635ad1e8fc7c312f21e90a493930095cba1c9"
         },
         "date": 1790602293401,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "e40572f31ca148c0695bf3b4af73b1561407f670",
+          "message": "Do not forward the optional parameters before `...`\n\n`...` forwards only the arguments it takes, but it also forwarded the\noptional parameters before it, a leftover from when a bare `super`\nshared this code (#492 gave it its own). So in\n\n    def foo(a = 1, ...) = bar(...)\n    foo(:sym, \"str\")\n\nbar received :sym as well as \"str\". A parameter cannot follow `...`, so\nthe loop over the post parameters goes away with it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-09-28T22:29:05+09:00",
+          "tree_id": "1c50f4d71ddc8e78455ef2e4c9333dd989b8e84f",
+          "url": "https://github.com/ruby/typeprof/commit/e40572f31ca148c0695bf3b4af73b1561407f670"
+        },
+        "date": 1790602451319,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
