@@ -705,6 +705,10 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.covariant_vertex(genv, changes, subst) }
+        # Omitted type arguments (e.g., `Foo` for `Foo[T]`) default to untyped
+        mod.type_params.drop(args.size).each do |_, default_ty|
+          args << (default_ty ? default_ty.covariant_vertex(genv, changes, subst) : genv.untyped_arg)
+        end
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
@@ -1095,6 +1099,10 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.covariant_vertex(genv, changes, subst) }
+        # Omitted type arguments (e.g., `Foo` for `Foo[T]`) default to untyped
+        mod.type_params.drop(args.size).each do |_, default_ty|
+          args << (default_ty ? default_ty.covariant_vertex(genv, changes, subst) : genv.untyped_arg)
+        end
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
@@ -1104,6 +1112,7 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
+        mod.type_params.drop(args.size).each { args << genv.untyped_arg }
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
