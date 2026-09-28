@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790601297211,
+  "lastUpdate": 1790601297416,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1609,6 +1609,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/08a852bce80e91c0df883b8f9d675a02fe085921"
         },
         "date": 1790567811542,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pvcresin0730@gmail.com",
+            "name": "pvcresin",
+            "username": "pvcresin"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "5f6e05b68cc5fc94df8be16add32492ab7b2c129",
+          "message": "Fix local variable inference across retry",
+          "timestamp": "2026-09-28T22:12:16+09:00",
+          "tree_id": "a3b1ee5e21fabd25c9c6c384f80a862fffef8cf0",
+          "url": "https://github.com/ruby/typeprof/commit/5f6e05b68cc5fc94df8be16add32492ab7b2c129"
+        },
+        "date": 1790601297385,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
