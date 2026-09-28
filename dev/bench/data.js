@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790567811369,
+  "lastUpdate": 1790567811572,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1521,6 +1521,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/371f90a1b38c8efad5e843c94981cb9797eaf2d8"
         },
         "date": 1790502793122,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "08a852bce80e91c0df883b8f9d675a02fe085921",
+          "message": "Fix the arguments and the lookup of super (#492)\n\n* Pass the current values of the parameters in a bare super\n\nA bare `super` passes the current values of the parameters, including\ndefaults and reassignments, but TypeProf forwarded only what the caller\ngave, as `...` does. So `def foo(x = 0) = super` called without\narguments was reported as a wrong number of arguments for the parent.\n\n`...` and anonymous or destructured parameters have no variable the\nmethod can reassign, so they are still forwarded as given. A block or\nlambda parameter can shadow a parameter of the method, so a `super` in\nit still passes the variable of the method.\n\nA named `**rest` that stays empty never ran the box merging the keywords\ninto it, so a keyword default did not reach the parent either. The box\nnow runs once when it is created.\n\n* Resolve super in a block to the enclosing method\n\nA block took the name of the method it was passed to, so\n`[1].map { super }` in `def foo` looked up `map` instead of `foo`. It\nnow takes the name of the enclosing method, as a lambda literal already\ndid.\n\nA block outside any method then has no method name, so its `super` is\nskipped instead of reported as an undefined method with an empty name.\nA block given to define_method or define_singleton_method is the body\nof another method, so it has no method name either, and a bare `super`\nin it is reported as not supported, as Ruby raises for it at runtime.",
+          "timestamp": "2026-09-28T12:54:08+09:00",
+          "tree_id": "a057a6f7f7ac3c345b3cfab7744b3738bf60f6ed",
+          "url": "https://github.com/ruby/typeprof/commit/08a852bce80e91c0df883b8f9d675a02fe085921"
+        },
+        "date": 1790567811542,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
