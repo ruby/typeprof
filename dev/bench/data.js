@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790615065741,
+  "lastUpdate": 1790615065967,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -2137,6 +2137,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/e40572f31ca148c0695bf3b4af73b1561407f670"
         },
         "date": 1790602451319,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "d8373fc0b5e72b18679a6d00ea8dc0a1434443fc",
+          "message": "Pass the subject to a lambda pattern\n\n`in ->(x) { ... }` matches by calling the lambda with `===`, but the\nlambda pattern was installed as a plain expression, so its parameter\nstayed untyped and nothing in the body was checked against the matched\nvalue. Call `===` on it with the subject, which binds the parameters now\nthat a lambda call binds like a method's.\n\nA wrong arity is reported, as Ruby raises ArgumentError for it. The\ndiagnostic reads mid_code_range from the node, which LambdaNode now\nanswers with nil so that it points at the whole lambda.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-09-29T02:01:14+09:00",
+          "tree_id": "1f88615cf458545ab3a6ccee8ab1a58de1b784c0",
+          "url": "https://github.com/ruby/typeprof/commit/d8373fc0b5e72b18679a6d00ea8dc0a1434443fc"
+        },
+        "date": 1790615065932,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
