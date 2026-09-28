@@ -300,6 +300,17 @@ module TypeProf::Core
           forward_rest_keywords,
           forward_block,
           forward_activation,
+          {
+            req_positionals: @req_positionals,
+            opt_positionals: @opt_positionals,
+            # The variables of `...` and anonymous parameters hold only a
+            # placeholder, so what the caller passed is forwarded instead
+            rest_positionals: [:"...", :"*anonymous_rest"].include?(@rest_positionals) ? nil : @rest_positionals,
+            post_positionals: @post_positionals,
+            req_keywords: @req_keywords,
+            opt_keywords: @opt_keywords,
+            rest_keywords: [:"...", :"**anonymous_keyword"].include?(@rest_keywords) ? nil : @rest_keywords,
+          },
         )
 
         if @body
