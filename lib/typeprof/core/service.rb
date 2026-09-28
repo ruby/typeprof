@@ -123,6 +123,7 @@ module TypeProf::Core
       prev_decls = @rbs_text_nodes[path]
 
       code = File.read(path, encoding: "UTF-8") unless code
+      return false unless code.valid_encoding?
       begin
         decls = AST.parse_rbs(path, code, @options[:position_encoding])
       rescue RBS::ParsingError
