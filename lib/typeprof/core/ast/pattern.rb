@@ -153,8 +153,9 @@ module TypeProf::Core
       def subnodes = { cond:, body: }
 
       def install_pattern0(genv, subject)
-        @cond.install(genv)
+        # The guard is evaluated after the pattern binds its variables
         @body.install_pattern(genv, subject)
+        @cond.install(genv)
         subject
       end
     end

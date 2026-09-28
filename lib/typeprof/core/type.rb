@@ -77,7 +77,7 @@ module TypeProf::Core
 
       def get_instance_type(genv)
         params = @mod.type_params
-        Instance.new(genv, @mod, params ? params.map { Source.new } : []) # TODO: respect param_default_types
+        Instance.new(genv, @mod, params ? params.map { genv.untyped_arg } : []) # TODO: respect param_default_types
       end
     end
 
