@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790601882426,
+  "lastUpdate": 1790601882630,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1785,6 +1785,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/95b7d7a47dfb96832b3077f28a28608a702fc2d5"
         },
         "date": 1790601464933,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "a375a786976e1c7b73d1705fc922f1509da6bdcf",
+          "message": "Analyze a pattern guard after the pattern binds its variables\n\nIfPatternNode installed the guard before the guarded pattern, so a\nvariable bound by the pattern was still nil in the guard, and a common\nguard like `in [x] if x.even?` reported \"undefined method: nil#even?\".\nRuby evaluates the guard after the pattern matches, so install the\npattern first.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-09-28T22:22:02+09:00",
+          "tree_id": "feabf04aec700eb9a807717614ae689e9f230b8b",
+          "url": "https://github.com/ruby/typeprof/commit/a375a786976e1c7b73d1705fc922f1509da6bdcf"
+        },
+        "date": 1790601882599,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
