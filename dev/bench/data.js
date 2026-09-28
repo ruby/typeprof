@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790601882630,
+  "lastUpdate": 1790602129791,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -923,6 +923,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 71.25,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "ab1bf4b0ab54e6b294408818518326375fc11c6e",
+          "message": "Tell super outside a method from super in a define_method block\n\nA bare `super` without enclosing method arguments reported \"implicit\nargument passing of super is not supported here\" wherever it was, and\n`super()` outside a method reported nothing. Ruby raises \"super called\noutside of method\" at the top level, in a class body and in a block\nthere, and rejects only the bare `super` in a define_method block.\n\nCRef now records whether it is inside a method body, which a\ndefine_method block is although its method name is unknown, so the two\ncases are reported with Ruby's wording.\n\nThis also lets a define_method block keep the enclosing method's\nforward_args, which it had dropped to reject a bare `super`, so `...`\nin the block no longer reports the super diagnostic:\n\n    def self.m(...)\n      define_method(:x) { pr(...) }\n    end\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-09-28T22:25:55+09:00",
+          "tree_id": "059145c3a327b087cce54af189869295dcd342fc",
+          "url": "https://github.com/ruby/typeprof/commit/ab1bf4b0ab54e6b294408818518326375fc11c6e"
+        },
+        "date": 1790602129228,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.65,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.72,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 28.87,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 73.41,
             "unit": "s"
           }
         ]
