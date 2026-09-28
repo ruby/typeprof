@@ -11,9 +11,13 @@ class Test::Unit::TestCase
   # not affect how TypeProf reads files
   def with_default_external(encoding)
     orig = Encoding.default_external
+    verbose, $VERBOSE = $VERBOSE, nil
     Encoding.default_external = encoding
+    $VERBOSE = verbose
     yield
   ensure
+    $VERBOSE = nil
     Encoding.default_external = orig
+    $VERBOSE = verbose
   end
 end
