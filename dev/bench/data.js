@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790502793153,
+  "lastUpdate": 1790567811369,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -747,6 +747,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 73.15,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "08a852bce80e91c0df883b8f9d675a02fe085921",
+          "message": "Fix the arguments and the lookup of super (#492)\n\n* Pass the current values of the parameters in a bare super\n\nA bare `super` passes the current values of the parameters, including\ndefaults and reassignments, but TypeProf forwarded only what the caller\ngave, as `...` does. So `def foo(x = 0) = super` called without\narguments was reported as a wrong number of arguments for the parent.\n\n`...` and anonymous or destructured parameters have no variable the\nmethod can reassign, so they are still forwarded as given. A block or\nlambda parameter can shadow a parameter of the method, so a `super` in\nit still passes the variable of the method.\n\nA named `**rest` that stays empty never ran the box merging the keywords\ninto it, so a keyword default did not reach the parent either. The box\nnow runs once when it is created.\n\n* Resolve super in a block to the enclosing method\n\nA block took the name of the method it was passed to, so\n`[1].map { super }` in `def foo` looked up `map` instead of `foo`. It\nnow takes the name of the enclosing method, as a lambda literal already\ndid.\n\nA block outside any method then has no method name, so its `super` is\nskipped instead of reported as an undefined method with an empty name.\nA block given to define_method or define_singleton_method is the body\nof another method, so it has no method name either, and a bare `super`\nin it is reported as not supported, as Ruby raises for it at runtime.",
+          "timestamp": "2026-09-28T12:54:08+09:00",
+          "tree_id": "a057a6f7f7ac3c345b3cfab7744b3738bf60f6ed",
+          "url": "https://github.com/ruby/typeprof/commit/08a852bce80e91c0df883b8f9d675a02fe085921"
+        },
+        "date": 1790567810508,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.5,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.58,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 28.14,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 72.27,
             "unit": "s"
           }
         ]
