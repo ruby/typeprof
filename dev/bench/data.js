@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790615065967,
+  "lastUpdate": 1790615225141,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1099,6 +1099,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 90.26,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "e0078c17d89d1d50a13f716b9c83d9603b170f0b",
+          "message": "Suppress warnings regarding Encoding.default_external\n\nCo-authored-by: Yusuke Endoh <mame@ruby-lang.org>",
+          "timestamp": "2026-09-29T02:03:41+09:00",
+          "tree_id": "6118aba2f2b0d13edc990443b76ecee05d4b3c4e",
+          "url": "https://github.com/ruby/typeprof/commit/e0078c17d89d1d50a13f716b9c83d9603b170f0b"
+        },
+        "date": 1790615224524,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.84,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.88,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 29.92,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 73.72,
             "unit": "s"
           }
         ]
