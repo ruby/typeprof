@@ -42,6 +42,11 @@ module TypeProf::Core
 
       @bot_type = Type::Bot.new(self)
 
+      # The vertex for a type argument that is not given. This must be shared:
+      # a fresh vertex makes a different Instance type and a different edge on
+      # every run, so a box that uses it is re-run forever.
+      @untyped_arg = Source.new
+
       @run_count = 0
     end
 
@@ -52,7 +57,7 @@ module TypeProf::Core
     attr_reader :obj_type, :nil_type, :true_type, :false_type, :str_type
     attr_reader :int_type, :float_type, :rational_type, :complex_type
     attr_reader :proc_type, :symbol_type, :method_type, :set_type, :regexp_type
-    attr_reader :bot_type
+    attr_reader :bot_type, :untyped_arg
 
     def gen_ary_type(elem_vtx)
       Type::Instance.new(self, @mod_ary, [elem_vtx])
@@ -130,18 +135,18 @@ module TypeProf::Core
       ty_env = base_ty_env.dup
       if base_ty.is_a?(Type::Instance)
         base_ty.mod.type_params.zip(base_ty.args) do |(param, default_ty), arg|
-          ty_env[param] = arg || (default_ty ? default_ty.covariant_vertex(self, changes, ty_env) : Source.new)
+          ty_env[param] = arg || (default_ty ? default_ty.covariant_vertex(self, changes, ty_env) : @untyped_arg)
         end
       elsif base_ty.is_a?(Type::Singleton)
         base_ty.mod.type_params&.each do |(param, default_ty)|
-          ty_env[param] = default_ty ? default_ty.covariant_vertex(self, changes, ty_env) : Source.new
+          ty_env[param] = default_ty ? default_ty.covariant_vertex(self, changes, ty_env) : @untyped_arg
         end
       end
       args = mod.type_params.zip(type_args).map do |(param, default_ty), arg|
         if changes
-          (arg || default_ty)&.covariant_vertex(self, changes, ty_env) || Source.new
+          (arg || default_ty)&.covariant_vertex(self, changes, ty_env) || @untyped_arg
         else
-          Source.new
+          @untyped_arg
         end
       end
       Type::Instance.new(self, mod, args)
@@ -463,7 +468,7 @@ module TypeProf::Core
       case @scope_level
       when :instance
         mod = genv.resolve_cpath(@cpath || [])
-        type_params = mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
+        type_params = mod.type_params.map {|(_name, _default_ty)| genv.untyped_arg } # TODO: better support
         ty = Type::Instance.new(genv, mod, type_params)
         Source.new(ty)
       when :class
