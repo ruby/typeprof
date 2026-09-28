@@ -587,7 +587,7 @@ module TypeProf::Core
           i += 1
         end
 
-        res = update_file(file, File.read(file, encoding: "UTF-8"))
+        res = update_file(file, nil)
 
         if res
           true
