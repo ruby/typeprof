@@ -257,7 +257,7 @@ module TypeProf::Core
       end
     end
 
-    class PostExecutionNode < Node
+    class ExecutionBaseNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
         @body = raw_node.statements ? AST.create_node(raw_node.statements, lenv) : DummyNilNode.new(TypeProf::CodeRange.new(code_range.last, code_range.last), lenv)
@@ -271,6 +271,12 @@ module TypeProf::Core
         @body.install(genv)
         Source.new(genv.nil_type)
       end
+    end
+
+    class PreExecutionNode < ExecutionBaseNode
+    end
+
+    class PostExecutionNode < ExecutionBaseNode
     end
 
     class ClassVariableWriteNode < Node

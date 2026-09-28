@@ -278,6 +278,7 @@ module TypeProf::Core
       when :splat_node then SplatNode.new(raw_node, lenv)
       when :for_node then ForNode.new(raw_node, lenv)
       when :alias_global_variable_node then AliasGlobalVariableNode.new(raw_node, lenv)
+      when :pre_execution_node then PreExecutionNode.new(raw_node, lenv)
       when :post_execution_node then PostExecutionNode.new(raw_node, lenv)
       when :flip_flop_node then FlipFlopNode.new(raw_node, lenv)
       when :shareable_constant_node then create_node(raw_node.write, lenv)
@@ -362,7 +363,7 @@ module TypeProf::Core
 
       when :capture_pattern_node then CapturePatternNode.new(raw_node, lenv)
 
-      when :if_node then IfPatternNode.new(raw_node, lenv)
+      when :if_node, :unless_node then IfPatternNode.new(raw_node, lenv)
 
       when :pinned_variable_node then PinnedPatternNode.new(raw_node, lenv)
       when :pinned_expression_node then PinnedPatternNode.new(raw_node, lenv)
@@ -396,6 +397,7 @@ module TypeProf::Core
 
       when :array_node then ArrayNode.new(raw_node, lenv) # for %w[foo bar]
       when :range_node then RangeNode.new(raw_node, lenv) # TODO: support range pattern correctly
+      when :lambda_node then LambdaNode.new(raw_node, lenv)
 
       else
         raise "unknown pattern node type: #{ raw_node.type }"

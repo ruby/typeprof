@@ -218,6 +218,20 @@ module TypeProf::Core
         end
       end
 
+      # Where a diagnostic about the value this node yields is placed: a node
+      # with a body points at the body's last statement, the rest at itself.
+      def ret_code_range = code_range
+
+      def install_multi_targets(genv, multi_targets, positionals, lenv)
+        multi_targets.each do |idx, raw_multi_target|
+          param_vtx = positionals[idx]
+          lefts = raw_multi_target.lefts.map do |n|
+            lenv.new_var(n.is_a?(Prism::MultiTargetNode) ? nil : n.name, self)
+          end
+          @changes.add_masgn_box(genv, param_vtx, lefts, nil, nil)
+        end
+      end
+
       def pretty_print_instance_variables
         super() - [:@raw_node, :@lenv, :@prev_node, :@static_ret, :@changes]
       end

@@ -26,7 +26,7 @@ jobs:
           - ruby: "3.3"
             rubyopt: "--enable-frozen-string-literal"
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       # Released Bundler is broken on ruby-head due to ruby/ruby#16895.
       # Use Ruby's bundled Bundler until rubygems/rubygems#9529 is released.
@@ -35,6 +35,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
+      id: ruby
       with:
         ruby-version: ${{ matrix.ruby }}
         bundler-cache: true
@@ -42,6 +43,15 @@ jobs:
       run: |
         bundle exec rake TESTOPT=-v RUBYOPT="${{ matrix.rubyopt }}"
       if: ${{ !startsWith(matrix.ruby, 'truffle') }}
+    # Saved by the benchmark workflow on master; a cache saved here would only
+    # be visible to re-runs of the same pull request.
+    - uses: actions/cache/restore@v6
+      with:
+        path: |
+          tmp/benchmark/bundle
+          ~/.cache/rbs
+        key: benchmark-${{ steps.ruby.outputs.ruby-prefix }}-${{ hashFiles('tool/benchmark.rb', 'tool/benchmark/project.rb') }}
+      if: ${{ matrix.ruby == needs.ruby-versions.outputs.latest && github.event_name == 'pull_request' }}
     - name: Run TypeProf against real-world projects
       run: |
         bundle exec ruby tool/benchmark.rb

@@ -16,6 +16,8 @@ module TypeProf::Core
 
       attr_reader :stmts
 
+      def ret_code_range = @stmts.last.code_range
+
       def subnodes = { stmts: }
 
       def install0(genv)
@@ -23,8 +25,13 @@ module TypeProf::Core
 
         post_stmts = []
 
+        # BEGIN runs before the surrounding statements, END after them
         @stmts.each do |stmt|
-          next if stmt.nil?
+          stmt.install(genv) if stmt.is_a?(PreExecutionNode)
+        end
+
+        @stmts.each do |stmt|
+          next if stmt.is_a?(PreExecutionNode)
 
           if stmt.is_a?(PostExecutionNode)
             post_stmts << stmt
@@ -126,7 +133,7 @@ module TypeProf::Core
         if @rights
           @rights.each {|lhs| lhs.install(genv) }
           @rights.each {|lhs| lhs.rhs.ret || raise(lhs.rhs.inspect) }
-          rights = @rights.map {|rhs| rhs.ret }
+          rights = @rights.map {|lhs| lhs.rhs.ret }
         end
 
         box = @changes.add_masgn_box(genv, value, lefts, rest_elem, rights)

@@ -326,10 +326,59 @@ module TypeProf::Core
       end
     end
 
-    class LambdaNode < Node
-      def install0(genv)
-        Source.new(genv.proc_type)
+    # Prism::LambdaNode has the same locals/parameters/body as Prism::BlockNode.
+    # A lambda literal is a block without a call: `->` never dispatches to a
+    # user-defined `lambda` method.
+    class LambdaNode < BlockNode
+      def lambda? = true
+
+      # A diagnostic on the `===` call below, such as wrong arity, points at the
+      # whole lambda.
+      def mid_code_range = nil
+
+      # `in ->(x) { ... }` matches by calling the lambda with the subject.
+      def install_pattern0(genv, subject)
+        recv = install0(genv)
+        a_args = ActualArguments.new([subject], [false], nil, nil)
+        @changes.add_method_call_box(genv, recv, :===, a_args, false)
+        recv
       end
+
+      # A lambda is entered like a method, so every parameter kind binds, not just
+      # the positionals a block is handed.
+      def build_formals(genv, blenv, f_args)
+        # f_args is the block-shaped list, required then optional; numbered and `it`
+        # parameters put names there that @params does not carry.
+        req_count = f_args.size - @opt_positional_defaults.size
+        rest = new_formal(blenv, @params[:rest_positionals])
+        post = @params[:post_positionals].map {|v| blenv.new_var(v, self) }
+        req_keywords = self.req_keywords.map {|v| blenv.new_var(v, self) }
+        opt_keywords = self.opt_keywords.map {|v| blenv.new_var(v, self) }
+        rest_keywords = new_formal(blenv, self.rest_keywords)
+        block = new_formal(blenv, @params[:block])
+
+        if rest
+          @changes.add_edge(genv, Source.new(genv.gen_ary_type(Vertex.new(self))), rest)
+        end
+        # Only the anonymous `**` needs seeding, as it does for a method: a named
+        # one takes its type from what the call passes.
+        if self.rest_keywords == :"**anonymous_keyword"
+          @changes.add_edge(genv, Source.new(genv.gen_hash_type(Vertex.new(self), Vertex.new(self))), rest_keywords)
+        end
+        install_multi_targets(genv, @params[:post_multi_targets], post, blenv)
+        opt_keyword_defaults.zip(opt_keywords) do |expr, vtx|
+          @changes.add_edge(genv, expr.install(genv), vtx)
+        end
+
+        FormalArguments.new(
+          f_args[0, req_count], f_args[req_count..], rest, post,
+          req_keywords, opt_keywords, rest_keywords, block,
+        )
+      end
+
+      private
+
+      def new_formal(blenv, name) = name ? blenv.new_var(name, self) : nil
     end
   end
 end

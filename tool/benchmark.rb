@@ -2,16 +2,21 @@
 
 # Measures TypeProf against the benchmark projects.
 #
+# Each project is analyzed with the RBS of its gems, installed by `rbs collection`.
+# Both the gems and the RBS are pinned to a fixed date, so that results stay
+# comparable while the projects' dependencies move on.
+#
 # Analyzes the working tree as it is — uncommitted changes included — writes
 # the two files github-action-benchmark reads, prints a per-project summary,
 # and fails if any project crashes or hangs.
 #
-#   $ ruby tool/benchmark.rb [project ...]
+#   $ bundle exec ruby tool/benchmark.rb [project ...]
 #   typeprof         ok          1.96s    79.04%  1002 diagnostics
 #   ...
 #   => tmp/benchmark/analysis_time.json  (customSmallerIsBetter, seconds)
 #   => tmp/benchmark/type_coverage.json  (customBiggerIsBetter, typed slots %)
 
+require "bundler"
 require "fileutils"
 require "json"
 require_relative "benchmark/project"
@@ -46,30 +51,27 @@ module TypeProf
       abort "unknown project: #{ unknown.join(", ") }" unless unknown.empty?
       projects = names.empty? ? PROJECTS : PROJECTS.select {|project| names.include?(project.name) }
 
-      # `bundle exec` for the children resolves the Gemfile from here.
-      Dir.chdir(ROOT)
-
-      # A stale lockfile (e.g. after switching branches) would crash every project.
-      system("bundle", "install", "--quiet") or raise "bundle install failed"
-
       analysis_time = []
       type_coverage = []
       failed = false
 
-      projects.each do |project|
-        project.prepare!
-        result = project.measure
+      # The children run in each project's bundle, not in the one this runs in.
+      Bundler.with_unbundled_env do
+        projects.each do |project|
+          project.prepare!
+          result = project.measure
 
-        if result[:status] == :ok
-          typed, total = result[:overall].values_at(:typed, :total)
-          pct = total.zero? ? 0.0 : (typed * 100.0 / total).round(2)
-          puts format("%-16s %-7s %8.2fs %8.2f%% %5d diagnostics",
-                      result[:name], result[:status], result[:elapsed], pct, result[:diagnostics])
-          analysis_time << { name: result[:name], unit: "s", value: result[:elapsed] }
-          type_coverage << { name: result[:name], unit: "%", value: pct }
-        else
-          failed = true
-          puts format("%-16s %-7s %s", result[:name], result[:status], result[:error])
+          if result[:status] == :ok
+            typed, total = result[:overall].values_at(:typed, :total)
+            pct = total.zero? ? 0.0 : (typed * 100.0 / total).round(2)
+            puts format("%-16s %-7s %8.2fs %8.2f%% %5d diagnostics",
+                        result[:name], result[:status], result[:elapsed], pct, result[:diagnostics])
+            analysis_time << { name: result[:name], unit: "s", value: result[:elapsed] }
+            type_coverage << { name: result[:name], unit: "%", value: pct }
+          else
+            failed = true
+            puts format("%-16s %-7s %s", result[:name], result[:status], result[:error])
+          end
         end
       end
 

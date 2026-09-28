@@ -305,8 +305,9 @@ module TypeProf::Core
       def attrs = { static_cpath:, members:, kind: }
 
       # Interface expected by MethodDefBox
-      def req_positionals = @kind == :struct ? @members : []
-      def opt_positionals = []
+      def req_positionals = []
+      # Struct.new(:x).new is valid, so every member is optional
+      def opt_positionals = @kind == :struct ? @members : []
       def rest_positionals = nil
       def post_positionals = []
       def req_keywords = @kind == :data ? @members : []
@@ -322,6 +323,15 @@ module TypeProf::Core
         @members.each do |member|
           ive = genv.resolve_ivar(struct_base_cpath, false, member)
           ive.add_def(self)
+        end
+        if @kind == :struct
+          # Struct.[] calls the receiver's initialize, like Class#new
+          me = genv.resolve_method(struct_base_cpath, true, :[])
+          unless me.builtin
+            me.builtin = Builtin.new(genv).method(:class_new)
+            # Unlike a method definition, a builtin does not notify the calls itself
+            me.add_run_all_method_call_boxes(genv)
+          end
         end
         @block_body.define(genv) if @block_body
         cdef
@@ -345,10 +355,17 @@ module TypeProf::Core
       def undefine0(genv)
         mod = genv.resolve_cpath(@static_cpath)
         mod.remove_module_def(genv, self)
-        genv.resolve_cpath(struct_base_cpath).remove_module_def(genv, self)
+        base = genv.resolve_cpath(struct_base_cpath)
+        base.remove_module_def(genv, self)
         @members.each do |member|
           ive = genv.resolve_ivar(struct_base_cpath, false, member)
           ive.remove_def(self)
+        end
+        # On an update, the new node has already set the builtin
+        if base.module_defs.to_a.none? { _1.kind == :struct }
+          me = genv.resolve_method(struct_base_cpath, true, :[])
+          me.builtin = nil
+          me.add_run_all_method_call_boxes(genv)
         end
         @block_body.undefine(genv) if @block_body
       end
@@ -388,19 +405,12 @@ module TypeProf::Core
         end
         init_ret = @changes.add_escape_box(genv, Source.new(genv.nil_type))
         if @kind == :struct
-          init_f_args = FormalArguments.new(init_vtxs, [], nil, [], [], [], nil, nil)
+          init_f_args = FormalArguments.new([], init_vtxs, nil, [], [], [], nil, nil)
         else
           # Data.define uses keyword arguments
           init_f_args = FormalArguments.new([], [], nil, [], init_vtxs, [], nil, nil)
         end
         @changes.add_method_def_box(genv, cpath, false, :initialize, init_f_args, [init_ret])
-
-        # Struct.[] is an alias for Struct.new
-        if @kind == :struct
-          # Struct.[] builds the struct class itself, not the base class
-          self_ret = @changes.add_escape_box(genv, Source.new(Type::Instance.new(genv, genv.resolve_cpath(@static_cpath), [])))
-          @changes.add_method_def_box(genv, cpath, true, :[], init_f_args, [self_ret])
-        end
 
         # Install block body (additional method definitions)
         if @block_body

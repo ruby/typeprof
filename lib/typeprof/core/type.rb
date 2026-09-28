@@ -48,7 +48,7 @@ module TypeProf::Core
 
     def self.default_param_map(genv, ty)
       ty = ty.base_type(genv)
-      instance_ty = ty.is_a?(Type::Instance) ? ty : Type::Instance.new(genv, ty.mod, []) # TODO: type params
+      instance_ty = ty.is_a?(Type::Instance) ? ty : ty.get_instance_type(genv)
       singleton_ty = ty.is_a?(Type::Instance) ? Type::Singleton.new(genv, ty.mod) : ty
       {
         "*self": Source.new(ty),
@@ -77,7 +77,7 @@ module TypeProf::Core
 
       def get_instance_type(genv)
         params = @mod.type_params
-        Instance.new(genv, @mod, params ? params.map { Source.new } : []) # TODO: respect param_default_types
+        Instance.new(genv, @mod, params ? params.map { genv.untyped_arg } : []) # TODO: respect param_default_types
       end
     end
 
