@@ -6,11 +6,10 @@ module TypeProf::Core
         super(raw_node, lenv)
 
         @tbl = raw_node.locals
-        @method_body = method_body
         # A `super` in a block calls the super of the enclosing method, but a
         # block given to define_method is the body of another method, whose name
         # is not known here
-        ncref = CRef.new(lenv.cref.cpath, :instance, method_body ? nil : lenv.cref.mid, lenv.cref)
+        ncref = CRef.new(lenv.cref.cpath, :instance, method_body ? nil : lenv.cref.mid, lenv.cref, in_method: method_body || lenv.cref.in_method)
         # A `return` in a block exits the enclosing method, so the body writes into
         # its return boxes. A lambda's `return` exits the lambda, so it gets its own.
         nlenv = LocalEnv.new(lenv.file_context, ncref, {}, lambda? ? [] : lenv.return_boxes)
@@ -64,8 +63,9 @@ module TypeProf::Core
 
       def install0(genv)
         blenv = @body.lenv
-        # Ruby rejects a bare `super` in a define_method block at runtime
-        blenv.forward_args = @lenv.forward_args unless @method_body
+        # `...` in a define_method block still forwards the enclosing method's
+        # arguments; a bare `super` there is rejected in CallBaseNode#install0
+        blenv.forward_args = @lenv.forward_args
         # An outer block may have shadowed the same name already; its entry is
         # the method's variable, so it must win over the outer block's own one
         blenv.shadowed_vars = @lenv.locals.slice(*@tbl).merge(@lenv.shadowed_vars)
@@ -228,10 +228,18 @@ module TypeProf::Core
           recv = NilFilter.new(genv, self, recv, false).next_vtx
         end
 
-        if @forwarding_arguments
+        if @mid == :"*super"
+          if !@lenv.cref.in_method
+            @changes.add_diagnostic(:code_range, "super called outside of method")
+          elsif @forwarding_arguments && !@lenv.cref.mid
+            # A define_method block: the arguments of the enclosing method, if any,
+            # are not the ones a bare `super` would pass
+            @changes.add_diagnostic(:code_range, "implicit argument passing of super from method defined by define_method() is not supported")
+          end
+        end
+
+        if @forwarding_arguments && (@mid != :"*super" || @lenv.cref.mid)
           forward_args = @lenv.forward_args
-          # `...` needs a method definition, so only a bare `super` can reach here
-          @changes.add_diagnostic(:code_range, "implicit argument passing of super is not supported here") unless forward_args
         end
 
         if forward_args

@@ -450,14 +450,17 @@ module TypeProf::Core
   end
 
   class CRef
-    def initialize(cpath, scope_level, mid, outer)
+    # in_method: whether this is inside a method body, which a define_method
+    # block is even though its method name (mid) is not known
+    def initialize(cpath, scope_level, mid, outer, in_method: !mid.nil?)
       @cpath = cpath
       @scope_level = scope_level
       @mid = mid
       @outer = outer
+      @in_method = in_method
     end
 
-    attr_reader :cpath, :scope_level, :mid, :outer
+    attr_reader :cpath, :scope_level, :mid, :outer, :in_method
 
     def get_self(genv)
       case @scope_level
