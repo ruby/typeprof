@@ -332,6 +332,18 @@ module TypeProf::Core
     class LambdaNode < BlockNode
       def lambda? = true
 
+      # A diagnostic on the `===` call below, such as wrong arity, points at the
+      # whole lambda.
+      def mid_code_range = nil
+
+      # `in ->(x) { ... }` matches by calling the lambda with the subject.
+      def install_pattern0(genv, subject)
+        recv = install0(genv)
+        a_args = ActualArguments.new([subject], [false], nil, nil)
+        @changes.add_method_call_box(genv, recv, :===, a_args, false)
+        recv
+      end
+
       # A lambda is entered like a method, so every parameter kind binds, not just
       # the positionals a block is handed.
       def build_formals(genv, blenv, f_args)
