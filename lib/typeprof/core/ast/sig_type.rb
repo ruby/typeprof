@@ -39,7 +39,7 @@ module TypeProf::Core
         if prep_decl.is_a?(AST::SigPrependNode) && prep_mod.type_params
           prep_ty = genv.get_instance_type(prep_mod, prep_decl.args, changes, {}, a_ty)
         else
-          type_params = prep_mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
+          type_params = prep_mod.type_params.map {|(_name, _default_ty)| genv.untyped_arg } # TODO: better support
           prep_ty = Type::Instance.new(genv, prep_mod, type_params)
         end
         if prep_ty.mod == f_mod
@@ -64,7 +64,7 @@ module TypeProf::Core
         if inc_decl.is_a?(AST::SigIncludeNode) && inc_mod.type_params
           inc_ty = genv.get_instance_type(inc_mod, inc_decl.args, changes, {}, a_ty)
         else
-          type_params = inc_mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
+          type_params = inc_mod.type_params.map {|(_name, _default_ty)| genv.untyped_arg } # TODO: better support
           inc_ty = Type::Instance.new(genv, inc_mod, type_params)
         end
         if inc_ty.mod == f_mod
@@ -89,7 +89,7 @@ module TypeProf::Core
         if ext_decl.is_a?(AST::SigExtendNode) && ext_mod.type_params
           ext_ty = genv.get_instance_type(ext_mod, ext_decl.args, changes, {}, a_ty)
         else
-          type_params = ext_mod.type_params.map {|(_name, _default_ty)| Source.new() } # TODO: better support
+          type_params = ext_mod.type_params.map {|(_name, _default_ty)| genv.untyped_arg } # TODO: better support
           ext_ty = Type::Instance.new(genv, ext_mod, type_params)
         end
         if ext_ty.mod == f_mod
@@ -705,6 +705,10 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.covariant_vertex(genv, changes, subst) }
+        # Omitted type arguments (e.g., `Foo` for `Foo[T]`) default to untyped
+        mod.type_params.drop(args.size).each do |_, default_ty|
+          args << (default_ty ? default_ty.covariant_vertex(genv, changes, subst) : genv.untyped_arg)
+        end
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
@@ -716,7 +720,7 @@ module TypeProf::Core
         # TODO: report error for wrong type arguments
         # TODO: support default type args
         args = mod.type_params.zip(@args).map do |_, arg|
-          arg ? arg.contravariant_vertex(genv, changes, subst) : Source.new
+          arg ? arg.contravariant_vertex(genv, changes, subst) : genv.untyped_arg
         end
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
@@ -1095,6 +1099,10 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.covariant_vertex(genv, changes, subst) }
+        # Omitted type arguments (e.g., `Foo` for `Foo[T]`) default to untyped
+        mod.type_params.drop(args.size).each do |_, default_ty|
+          args << (default_ty ? default_ty.covariant_vertex(genv, changes, subst) : genv.untyped_arg)
+        end
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
@@ -1104,6 +1112,7 @@ module TypeProf::Core
         return unless cpath
         mod = genv.resolve_cpath(cpath)
         args = @args.map {|arg| arg.contravariant_vertex(genv, changes, subst) }
+        mod.type_params.drop(args.size).each { args << genv.untyped_arg }
         changes.add_edge(genv, Source.new(Type::Instance.new(genv, mod, args)), vtx)
       end
 
