@@ -132,3 +132,21 @@ class Object
   def foo: (*Integer, **Integer) -> Integer
   def bar: (*Integer, **Integer) -> [Array[Integer], { x: Integer, y: Integer }]
 end
+
+## update
+# `...` forwards only what it takes, not the optional parameters before it
+def foo(a = 1, ...)
+  bar(...)
+end
+
+def bar(*r)
+  r
+end
+
+foo(:sym, "str")
+
+## assert
+class Object
+  def foo: (?:sym | Integer, *String, **untyped) -> Array[String]
+  def bar: (*String) -> Array[String]
+end

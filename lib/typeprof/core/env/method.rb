@@ -397,28 +397,18 @@ module TypeProf::Core
       @param_names = param_names
     end
 
-    # The arguments that `...` forwards: only the ones the caller passed.
+    # The arguments that `...` forwards: only the ones the caller passed to it.
+    # The parameters before `...` (`def foo(a, b = 1, ...)`) are not forwarded,
+    # and none can follow it.
     def to_actual_arguments(genv, changes, node)
       positionals = []
       splat_flags = []
       positionals_omittable = []
 
-      @opt_positionals.each do |elem_vtx|
-        positionals << Source.new(genv.gen_ary_type(elem_vtx))
-        splat_flags << true
-        positionals_omittable << true
-      end
-
       if @rest_positionals
         positionals << Source.new(genv.gen_ary_type(@rest_positionals))
         splat_flags << true
         positionals_omittable << true
-      end
-
-      @post_positionals.each do |arg|
-        positionals << arg
-        splat_flags << false
-        positionals_omittable << false
       end
 
       # `...` cannot follow keyword parameters, so only the rest keywords remain
