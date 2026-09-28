@@ -55,7 +55,7 @@ module TypeProf::Core
     end
 
     def update_rb_file(path, code)
-      code = File.read(path, encoding: "UTF-8") unless code
+      code = File.binread(path) unless code
       update_rb_ast(path, Prism.parse(code))
     end
 
