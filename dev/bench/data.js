@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790602293433,
+  "lastUpdate": 1790602451144,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -1011,6 +1011,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "redmine",
             "value": 73.32,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "committer": {
+            "email": "mame@ruby-lang.org",
+            "name": "Yusuke Endoh",
+            "username": "mame"
+          },
+          "distinct": true,
+          "id": "e40572f31ca148c0695bf3b4af73b1561407f670",
+          "message": "Do not forward the optional parameters before `...`\n\n`...` forwards only the arguments it takes, but it also forwarded the\noptional parameters before it, a leftover from when a bare `super`\nshared this code (#492 gave it its own). So in\n\n    def foo(a = 1, ...) = bar(...)\n    foo(:sym, \"str\")\n\nbar received :sym as well as \"str\". A parameter cannot follow `...`, so\nthe loop over the post parameters goes away with it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-09-28T22:29:05+09:00",
+          "tree_id": "1c50f4d71ddc8e78455ef2e4c9333dd989b8e84f",
+          "url": "https://github.com/ruby/typeprof/commit/e40572f31ca148c0695bf3b4af73b1561407f670"
+        },
+        "date": 1790602450410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 4.8,
+            "unit": "s"
+          },
+          {
+            "name": "optcarrot",
+            "value": 3.83,
+            "unit": "s"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 29.97,
+            "unit": "s"
+          },
+          {
+            "name": "redmine",
+            "value": 72.81,
             "unit": "s"
           }
         ]
