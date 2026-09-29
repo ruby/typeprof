@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790644387020,
+  "lastUpdate": 1790644387234,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -2313,6 +2313,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/e0078c17d89d1d50a13f716b9c83d9603b170f0b"
         },
         "date": 1790615225319,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sinsoku.listy@gmail.com",
+            "name": "Takumi Shotoku",
+            "username": "sinsoku"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8cd8c126c3eb3f1a9a0730f64ad7619a2153eb42",
+          "message": "Bump version to v0.33.2 (#500)",
+          "timestamp": "2026-09-29T10:10:19+09:00",
+          "tree_id": "f441ae0fe484c0f54629154b6ac1c7dd13c23210",
+          "url": "https://github.com/ruby/typeprof/commit/8cd8c126c3eb3f1a9a0730f64ad7619a2153eb42"
+        },
+        "date": 1790644387202,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
