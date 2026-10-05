@@ -166,7 +166,10 @@ module TypeProf::Core
           @lenv.set_var(:"*expected_block_ret", nil)
         end
 
-        @body.install(genv)
+        # A loop's break must not escape to an enclosing block.
+        @lenv.with_new_break_vtx do
+          @body.install(genv)
+        end
 
         if expected_block_ret
           @lenv.set_var(:"*expected_block_ret", expected_block_ret)
