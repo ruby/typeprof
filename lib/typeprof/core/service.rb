@@ -10,6 +10,7 @@ module TypeProf::Core
       @genv.load_core_rbs(load_rbs_declarations(@options[:rbs_collection]).declarations, @options[:position_encoding])
 
       Builtin.new(genv).deploy
+      TypeProf::Dsl::Registry.apply(genv)
     end
 
     def load_rbs_declarations(rbs_collection)
