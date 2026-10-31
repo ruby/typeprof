@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793423741353,
+  "lastUpdate": 1793423741567,
   "repoUrl": "https://github.com/ruby/typeprof",
   "entries": {
     "Analysis time": [
@@ -2401,6 +2401,50 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/ruby/typeprof/commit/8cd8c126c3eb3f1a9a0730f64ad7619a2153eb42"
         },
         "date": 1790644387202,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "typeprof",
+            "value": 82.68,
+            "unit": "%"
+          },
+          {
+            "name": "optcarrot",
+            "value": 87.95,
+            "unit": "%"
+          },
+          {
+            "name": "rubygems.org",
+            "value": 35.93,
+            "unit": "%"
+          },
+          {
+            "name": "redmine",
+            "value": 46.96,
+            "unit": "%"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "pvcresin0730@gmail.com",
+            "name": "pvcresin",
+            "username": "pvcresin"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3471536494117219114c20814549f7665302b3e1",
+          "message": "Scope break values to loop bodies (#501)",
+          "timestamp": "2026-10-31T14:11:34+09:00",
+          "tree_id": "962b5b54fd0edc9903422c7dcd258eb876f1d86d",
+          "url": "https://github.com/ruby/typeprof/commit/3471536494117219114c20814549f7665302b3e1"
+        },
+        "date": 1793423741532,
         "tool": "customBiggerIsBetter",
         "benches": [
           {
