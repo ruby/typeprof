@@ -426,6 +426,14 @@ module TypeProf::Core
       @break_vtx ||= Vertex.new(:break_vtx)
     end
 
+    def with_new_break_vtx
+      previous_break_vtx = @break_vtx
+      @break_vtx = Vertex.new(:break_vtx)
+      yield
+    ensure
+      @break_vtx = previous_break_vtx
+    end
+
     def push_ivar_narrowing(name, narrowing)
       raise unless narrowing.is_a?(Narrowing::Constraint)
       (@ivar_narrowings[name] ||= []) << narrowing
