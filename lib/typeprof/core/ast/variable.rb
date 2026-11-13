@@ -249,10 +249,24 @@ module TypeProf::Core
     class AliasGlobalVariableNode < Node
       def initialize(raw_node, lenv)
         super(raw_node, lenv)
-        # XXX: Who use this? I want to hard-code English.rb
+        @new_name = raw_node.new_name.name
+        @old_name = raw_node.old_name.name
       end
 
+      attr_reader :new_name, :old_name
+
+      def attrs = { new_name:, old_name: }
+
       def install0(genv)
+        new_vtx = genv.resolve_gvar(@new_name).vtx
+        old_vtx = genv.resolve_gvar(@old_name).vtx
+        # Go through intermediate vertices to avoid multi-edges when another
+        # alias node of the same variables exists
+        [[old_vtx, new_vtx], [new_vtx, old_vtx]].each do |src, dst|
+          vtx = Vertex.new(self)
+          @changes.add_edge(genv, src, vtx)
+          @changes.add_edge(genv, vtx, dst)
+        end
         Source.new(genv.nil_type)
       end
     end
