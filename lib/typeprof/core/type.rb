@@ -160,10 +160,18 @@ module TypeProf::Core
       end
 
       def show
-        if @elems
+        if @elems && !extended?
           "[#{ @elems.map {|e| Type.strip_parens(e.show) }.join(", ") }]"
         else
-          "#{ @base_type.mod.show_cpath }[#{ Type.strip_parens(@unified_elem.show) }]"
+          @base_type.show
+        end
+      end
+
+      # Whether the unified element has a type that comes from none of the
+      # tuple elements, e.g., `ary = []; ary << 1`
+      def extended?
+        @base_type.args.first.types.each_key.any? do |ty|
+          @elems.none? {|elem| elem.types.include?(ty) }
         end
       end
     end

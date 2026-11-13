@@ -27,3 +27,15 @@ collect(["a", "b"])
 class Object
   def collect: ([String, String]) -> Array[[Integer, String]]
 end
+
+## update
+def foo
+  ary = [1]
+  ary << "str"
+  ary
+end
+
+## assert
+class Object
+  def foo: -> Array[Integer | String]
+end

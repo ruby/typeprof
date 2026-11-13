@@ -10,5 +10,5 @@ end
 
 ## assert
 class Object
-  def check: -> (Array[Integer] | [])
+  def check: -> (Array[:foo] | Array[Integer])
 end
